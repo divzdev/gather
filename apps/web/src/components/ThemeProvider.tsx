@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useSyncExternalStore } from "react";
 
 import {
   ACCENTS,
@@ -34,52 +34,58 @@ export const themeBootScript = `(()=>{try{
   for(var k in v)r.style.setProperty("--"+k,v[k]);
 }catch(e){}})()`;
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>("system");
-  const [accent, setAccentState] = useState<AccentName>("Coral");
-  const [dark, setDark] = useState(false);
+/* Theme lives in localStorage and the OS, not in React. useSyncExternalStore is
+ * the sanctioned way to read that: no state set from an effect, and no flash,
+ * because the boot script has already painted the right colours. The snapshot is
+ * a string so repeated calls are referentially stable. */
 
-  useEffect(() => {
-    const stored = readStoredTheme();
-    setModeState(stored.mode);
-    setAccentState(stored.accent);
-    applyTheme(stored.mode, stored.accent);
-    setDark(isDark(stored.mode));
+const listeners = new Set<() => void>();
+
+function emit(): void {
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  const query = window.matchMedia("(prefers-color-scheme: dark)");
+  query.addEventListener("change", listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    listeners.delete(listener);
+    query.removeEventListener("change", listener);
+    window.removeEventListener("storage", listener);
+  };
+}
+
+function getSnapshot(): string {
+  const { mode, accent } = readStoredTheme();
+  return `${mode}|${accent}|${isDark(mode) ? "d" : "l"}`;
+}
+
+function getServerSnapshot(): string {
+  return "system|Coral|l";
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [mode, accent, shade] = snapshot.split("|") as [ThemeMode, AccentName, string];
+
+  const setMode = useCallback((next: ThemeMode) => {
+    window.localStorage.setItem(STORAGE_KEYS.theme, next);
+    applyTheme(next, readStoredTheme().accent);
+    emit();
   }, []);
 
-  // Following the system means following it as it changes, not only at load.
-  useEffect(() => {
-    if (mode !== "system") return;
-    const query = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      applyTheme("system", accent);
-      setDark(query.matches);
-    };
-    query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
-  }, [mode, accent]);
-
-  const setMode = useCallback(
-    (next: ThemeMode) => {
-      setModeState(next);
-      window.localStorage.setItem(STORAGE_KEYS.theme, next);
-      applyTheme(next, accent);
-      setDark(isDark(next));
-    },
-    [accent],
-  );
-
-  const setAccent = useCallback(
-    (next: AccentName) => {
-      setAccentState(next);
-      window.localStorage.setItem(STORAGE_KEYS.accent, next);
-      applyTheme(mode, next);
-    },
-    [mode],
-  );
+  const setAccent = useCallback((next: AccentName) => {
+    window.localStorage.setItem(STORAGE_KEYS.accent, next);
+    applyTheme(readStoredTheme().mode, next);
+    emit();
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ mode, accent, dark, setMode, setAccent }}>
+    <ThemeContext.Provider
+      value={{ mode, accent, dark: shade === "d", setMode, setAccent }}
+    >
       {children}
     </ThemeContext.Provider>
   );
