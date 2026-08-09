@@ -14,7 +14,7 @@ import pytest
 from app.features.forms.schema import FormSchema, resolve
 from app.features.forms.validation import validate_answers
 
-FIXTURES = Path(__file__).resolve().parents[3] / "docs" / "fixtures" / "form-logic-cases.json"
+FIXTURES = Path(__file__).resolve().parents[3] / "fixtures" / "form-logic-cases.json"
 _DATA = json.loads(FIXTURES.read_text())
 _SCHEMA = FormSchema.model_validate(_DATA["schema"])
 

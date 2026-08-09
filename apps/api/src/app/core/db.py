@@ -31,7 +31,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     the response completes, which for a StreamingResponse means after the final
     token — pinning a connection for the whole model call and exhausting the pool.
     Those routes open short-lived sessions from `session_factory` instead.
-    See docs/ARCHITECTURE.md, "Transaction boundaries".
+    Streaming routes open short-lived sessions from `session_factory` instead.
     """
     async with session_factory() as session:
         try:

@@ -38,13 +38,15 @@ downgrade → upgrade`), so a migration that doesn't reverse cleanly fails there
   predicate; don't weaken the guard.
 - **A migration whose `downgrade()` leaves enum types behind.** Autogenerate drops
   tables but never the enums it created, and the orphans break the next upgrade.
-- **An SSE endpoint that takes the `get_db` dependency.** It would hold a database
-  connection for the whole model call. See `docs/ARCHITECTURE.md`.
+- **An SSE endpoint that takes the `get_db` dependency.** A `yield` dependency tears down after
+  the response completes, which for a stream is after the last token — it would pin a database
+  connection for the whole model call. Streaming routes open short sessions of their own.
 
 ## Where to look
 
-`docs/ARCHITECTURE.md` for how the system fits together and why, `docs/APP_CONTEXT.md`
-for the domain rules, `docs/DECISIONS.md` for calls already made and the
-alternatives rejected. If you're about to do something the docs argue against,
-that's worth a conversation first — but the docs are wrong sometimes, and saying
-so with a reason is welcome.
+`apps/api/src/app/core/` holds the load-bearing parts and each module explains itself at the top —
+`tenancy.py` in particular is worth reading before you write a query. Feature folders under
+`features/` are self-contained: router, service, schemas.
+
+If you're about to do something this file argues against, that's worth an issue first. The rules
+are wrong sometimes, and saying so with a reason is welcome.

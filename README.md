@@ -39,26 +39,32 @@ make types    # regenerate the frontend's API types from the OpenAPI schema
 
 ```
 apps/api     FastAPI, async end to end. router → service → models.
-apps/web     Next.js App Router.
+  core/        config, db, tenancy, auth deps, errors, pagination
+  models/      SQLAlchemy 2.0, the shared schema spine
+  features/    one folder per capability: router · service · schemas
+apps/web     Next.js App Router. Design tokens in src/styles/tokens.css.
 apps/embed   Standalone widget bundle for embedding the schedule elsewhere.
-docs/        Architecture, domain context, delivery plan, decisions.
 ```
 
 ## Reading the code
 
-Start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the system shape, how
-multi-tenancy is enforced, and every significant decision with the alternative
-that was rejected. [`docs/APP_CONTEXT.md`](docs/APP_CONTEXT.md) covers the domain:
-what the nouns mean and which invariants must hold.
+Four things explain most of the design:
 
-Two things are worth knowing before you change anything:
+- **Tenancy is automatic.** `org_id`/`event_id` filtering is applied by SQLAlchemy session
+  events, not at call sites, so no query can forget it. A query with no tenant in context
+  **raises** rather than returning everything, and bulk `UPDATE`/`DELETE` without a tenant
+  predicate is rejected. See `apps/api/src/app/core/tenancy.py`.
+- **Deciding is not sending.** Recording an accept/reject writes a pending state and emails
+  nobody. One endpoint sends, and it re-verifies the recipient count server-side first — so a
+  stale browser tab cannot mass-mail the wrong decisions.
+- **The public schedule reads a snapshot.** Publishing writes an immutable versioned JSON
+  document; public pages never join live tables. Rollback is republishing an older version.
+- **One form engine.** The same JSON schema and conditional-logic evaluator drives the CFP form
+  and the speaker portal's task forms. It runs in the browser for feedback and on the server for
+  truth, bound by a shared fixture file so the two cannot drift.
 
-- **Deciding is not sending.** Recording an accept/reject writes a pending state
-  and emails nobody. Only one endpoint sends, and it re-verifies the recipient
-  count server-side first.
-- **Tenancy is automatic.** `org_id`/`event_id` filtering is applied by SQLAlchemy
-  session events, not at call sites. Queries with no tenant in context raise
-  rather than returning everything.
+Times are stored UTC as `timestamptz`; the client renders using the event's timezone.
+Migrations are forward-only and CI proves each one reverses cleanly.
 
 ## Licence
 

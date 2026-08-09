@@ -17,7 +17,9 @@ engineering-brief.md
 frontend-spec.md
 tech-stack.md
 conference-platform-feature-spec.md
+Sessionboard-Clone-Spec*
 *$10,0000 Kill My SaaS*
+*.extracted.txt
 
 
 # --- OS / editor ---
@@ -70,5 +72,7 @@ tmp/
 .uploads/
 .next/
 
-# --- Eval harness (cloned by `make eval.setup`) ---
-tools/evals/
+tools/
+
+# --- Local-only working notes and tooling (never committed) ---
+.local/

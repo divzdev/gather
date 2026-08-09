@@ -3,7 +3,7 @@
 One engine serves CFP forms and portal task forms. The same rules are evaluated
 in the browser as the speaker types and again here on submit — the client is
 convenience, the server decides. Both implementations are replayed against
-`docs/fixtures/form-logic-cases.json` in CI so they cannot drift.
+the shared fixture file in CI so they cannot drift.
 """
 
 from __future__ import annotations

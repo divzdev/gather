@@ -1,0 +1,88 @@
+{
+  "$comment": "Shared conditional-logic cases. Replayed by pytest (apps/api) and Vitest (apps/web) so the two evaluators cannot drift. Add a case here before fixing a logic bug in either implementation.",
+  "schema": {
+    "sections": [
+      {
+        "key": "main",
+        "title": "Your talk",
+        "fields": [
+          { "key": "title", "type": "short_text", "label": "Title", "required": true },
+          {
+            "key": "format",
+            "type": "select",
+            "label": "Format",
+            "required": true,
+            "choices": [
+              { "value": "talk", "label": "Talk (30 min)" },
+              { "value": "workshop", "label": "Workshop (120 min)" },
+              { "value": "lightning", "label": "Lightning Talk (10 min)" }
+            ]
+          },
+          { "key": "prerequisites", "type": "long_text", "label": "Workshop prerequisites" },
+          { "key": "attendees", "type": "number", "label": "Expected attendees" },
+          { "key": "equipment", "type": "short_text", "label": "Equipment needed" },
+          { "key": "recording_ok", "type": "checkbox", "label": "Happy to be recorded" }
+        ]
+      }
+    ],
+    "logic": [
+      { "field": "format", "operator": "is", "value": "workshop", "action": "show", "target": "prerequisites" },
+      { "field": "format", "operator": "is", "value": "workshop", "action": "require", "target": "prerequisites" },
+      { "field": "format", "operator": "is_not", "value": "workshop", "action": "hide", "target": "prerequisites" },
+      { "field": "attendees", "operator": "gt", "value": 100, "action": "require", "target": "equipment" },
+      { "field": "format", "operator": "is_any_of", "value": ["talk", "workshop"], "action": "show", "target": "recording_ok" },
+      { "field": "title", "operator": "is_empty", "action": "hide", "target": "attendees" }
+    ],
+    "settings": {}
+  },
+  "cases": [
+    {
+      "name": "workshop reveals and requires prerequisites",
+      "answers": { "title": "Deep dive", "format": "workshop" },
+      "expected_visible": ["title", "format", "prerequisites", "attendees", "equipment", "recording_ok"],
+      "expected_required": ["title", "format", "prerequisites"]
+    },
+    {
+      "name": "talk hides prerequisites entirely",
+      "answers": { "title": "Deep dive", "format": "talk" },
+      "expected_visible": ["title", "format", "attendees", "equipment", "recording_ok"],
+      "expected_required": ["title", "format"]
+    },
+    {
+      "name": "a hidden field is never required",
+      "answers": { "title": "", "format": "workshop", "attendees": 500 },
+      "expected_visible": ["title", "format", "prerequisites", "equipment", "recording_ok"],
+      "expected_required": ["title", "format", "prerequisites", "equipment"]
+    },
+    {
+      "name": "gt threshold requires equipment",
+      "answers": { "title": "Big room", "format": "talk", "attendees": 250 },
+      "expected_visible": ["title", "format", "attendees", "equipment", "recording_ok"],
+      "expected_required": ["title", "format", "equipment"]
+    },
+    {
+      "name": "gt threshold not met leaves equipment optional",
+      "answers": { "title": "Small room", "format": "talk", "attendees": 40 },
+      "expected_visible": ["title", "format", "attendees", "equipment", "recording_ok"],
+      "expected_required": ["title", "format"]
+    },
+    {
+      "name": "gt against a non-numeric answer does not match",
+      "answers": { "title": "Odd", "format": "talk", "attendees": "many" },
+      "expected_visible": ["title", "format", "attendees", "equipment", "recording_ok"],
+      "expected_required": ["title", "format"]
+    },
+    {
+      "name": "is_any_of matches the second option",
+      "answers": { "title": "Lightning", "format": "lightning" },
+      "expected_visible": ["title", "format", "attendees", "equipment"],
+      "expected_required": ["title", "format"]
+    },
+    {
+      "name": "no answers at all",
+      "answers": {},
+      "expected_visible": ["title", "format", "equipment"],
+      "expected_required": ["title", "format"]
+    }
+  ]
+}
