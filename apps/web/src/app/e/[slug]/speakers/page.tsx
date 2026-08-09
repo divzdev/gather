@@ -1,0 +1,92 @@
+import Link from "next/link";
+
+import { NotPublished, PublicShell, getPublic, type EventInfo } from "../public";
+
+export const dynamic = "force-dynamic";
+
+type Speaker = {
+  id: string; name: string; company: string | null; job_title: string | null;
+  bio: string | null; sessions: { id: string; slug: string; title: string }[];
+};
+type Payload = { event: EventInfo; speakers: Speaker[] };
+
+function initials(name: string): string {
+  return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+}
+
+export default async function Speakers({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  let data: Payload | null = null;
+  try {
+    data = await getPublic<Payload>(slug, "/speakers");
+  } catch {
+    data = null;
+  }
+  if (data === null) {
+    const form = await getPublic<{ event_name: string; event_description: string | null }>(slug, "/cfp-form");
+    return (
+      <PublicShell
+        event={{ name: form.event_name, slug, description: form.event_description, location: null, starts_on: new Date().toISOString(), ends_on: new Date().toISOString() }}
+        slug={slug}
+        active="Speakers"
+      >
+        <NotPublished what="speaker list" />
+      </PublicShell>
+    );
+  }
+
+  return (
+    <PublicShell event={data.event} slug={slug} active="Speakers">
+      <p style={{ color: "var(--i3)", margin: "0 0 16px", fontSize: 14 }}>
+        {data.speakers.length} speakers, by surname
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
+        {data.speakers.map((person) => (
+          <article
+            key={person.id}
+            style={{ background: "var(--cd)", border: "1px solid var(--ln)", borderRadius: 14, padding: 18 }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              <span
+                aria-hidden
+                style={{
+                  width: 44, height: 44, borderRadius: "50%", flex: "none",
+                  background: "var(--sw)", color: "var(--sg)",
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  font: "600 14px var(--font-plex-condensed), sans-serif",
+                }}
+              >
+                {initials(person.name)}
+              </span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "block", font: "600 15px var(--font-plex-sans)", color: "var(--ik)" }}>
+                  {person.name}
+                </span>
+                <span style={{ display: "block", font: "400 12.5px var(--font-plex-sans)", color: "var(--i3)" }}>
+                  {[person.job_title, person.company].filter(Boolean).join(", ")}
+                </span>
+              </span>
+            </div>
+            {person.bio !== null && (
+              <p style={{ font: "400 13.5px var(--font-plex-sans)", color: "var(--i2)", margin: "0 0 10px", lineHeight: 1.55 }}>
+                {person.bio.length > 180 ? `${person.bio.slice(0, 180)}…` : person.bio}
+              </p>
+            )}
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 }}>
+              {person.sessions.map((session) => (
+                <li key={session.id}>
+                  <Link
+                    href={`/e/${slug}/schedule/${session.slug}` as never}
+                    style={{ font: "500 13px var(--font-plex-sans)", color: "var(--sg)", textDecoration: "none" }}
+                  >
+                    {session.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </PublicShell>
+  );
+}

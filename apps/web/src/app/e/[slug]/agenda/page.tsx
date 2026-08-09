@@ -1,0 +1,96 @@
+import { NotPublished, PublicShell, getPublic, type EventInfo } from "../public";
+
+export const dynamic = "force-dynamic";
+
+type Session = {
+  id: string; title: string; starts_at: string | null; room: string | null;
+  track: string | null; duration_minutes: number; speakers: { id: string; name: string }[];
+};
+type Day = { id: string; date: string; label: string | null; sessions: Session[] };
+type Payload = { event: EventInfo; rooms: { id: string; name: string }[]; days: Day[]; unscheduled: Session[] };
+
+function time(iso: string | null): string {
+  return iso === null ? "" : new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+export default async function Agenda({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  let data: Payload | null = null;
+  try {
+    data = await getPublic<Payload>(slug, "/agenda");
+  } catch {
+    data = null;
+  }
+  if (data === null) {
+    const form = await getPublic<{ event_name: string; event_description: string | null }>(slug, "/cfp-form");
+    return (
+      <PublicShell
+        event={{ name: form.event_name, slug, description: form.event_description, location: null, starts_on: new Date().toISOString(), ends_on: new Date().toISOString() }}
+        slug={slug}
+        active="Agenda"
+      >
+        <NotPublished what="agenda" />
+      </PublicShell>
+    );
+  }
+
+  return (
+    <PublicShell event={data.event} slug={slug} active="Agenda">
+      {data.days.map((day) => (
+        <section key={day.id} style={{ marginBottom: 28 }}>
+          <h2 style={{ font: "600 18px var(--font-plex-sans)", color: "var(--ik)", margin: "0 0 12px" }}>
+            {day.label ?? new Date(day.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+          </h2>
+          {day.sessions.length === 0 ? (
+            <p style={{ color: "var(--i3)", fontSize: 14 }}>Nothing scheduled on this day yet.</p>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              {day.sessions.map((session) => (
+                <div
+                  key={session.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "96px 1fr",
+                    gap: 14,
+                    background: "var(--cd)",
+                    border: "1px solid var(--ln)",
+                    borderRadius: 10,
+                    padding: "12px 16px",
+                  }}
+                >
+                  <span className="tabular" style={{ font: "500 13px var(--font-plex-mono)", color: "var(--i3)" }}>
+                    {time(session.starts_at)}
+                  </span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", font: "600 14px var(--font-plex-sans)", color: "var(--ik)" }}>
+                      {session.title}
+                    </span>
+                    <span style={{ display: "block", font: "400 12.5px var(--font-plex-sans)", color: "var(--i3)", marginTop: 2 }}>
+                      {[session.room, session.track, session.speakers.map((s) => s.name).join(", ")]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
+      {data.unscheduled.length > 0 && (
+        <section>
+          <h2 style={{ font: "600 15px var(--font-plex-sans)", color: "var(--i3)", margin: "0 0 10px" }}>
+            Not yet scheduled
+          </h2>
+          <div style={{ display: "grid", gap: 6 }}>
+            {data.unscheduled.map((session) => (
+              <p key={session.id} style={{ margin: 0, font: "400 13.5px var(--font-plex-sans)", color: "var(--i2)" }}>
+                {session.title}
+              </p>
+            ))}
+          </div>
+        </section>
+      )}
+    </PublicShell>
+  );
+}
