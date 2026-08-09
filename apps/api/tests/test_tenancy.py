@@ -175,3 +175,42 @@ async def test_unknown_tenant_sees_nothing(
         events = (await session.execute(select(Event))).scalars().all()
 
     assert events == []
+
+
+async def test_aggregate_without_an_orm_entity_is_refused(
+    session: AsyncSession, two_orgs: tuple[Organization, Organization]
+) -> None:
+    """`select(func.count()).select_from(Model)` puts no entity in the columns
+    clause, so with_loader_criteria has nothing to attach to and the query would
+    silently count every organization. It must raise instead."""
+    from sqlalchemy import func
+
+    from app.core.tenancy import UnscopedStatementError
+
+    org_a, _ = two_orgs
+    with tenant_scope(org_a.id), pytest.raises(UnscopedStatementError):
+        await session.execute(select(func.count()).select_from(Event))
+
+
+async def test_the_entity_form_of_the_same_count_is_filtered(
+    session: AsyncSession, two_orgs: tuple[Organization, Organization]
+) -> None:
+    from sqlalchemy import func
+
+    org_a, _ = two_orgs
+    with tenant_scope(org_a.id):
+        count = await session.scalar(select(func.count(Event.id)))
+
+    assert count == 1
+
+
+async def test_tenancy_disabled_still_allows_the_unmapped_aggregate(
+    session: AsyncSession, two_orgs: tuple[Organization, Organization]
+) -> None:
+    """Seeds and admin reads legitimately count across organizations."""
+    from sqlalchemy import func
+
+    with tenancy_disabled():
+        count = await session.scalar(select(func.count()).select_from(Event))
+
+    assert count is not None and count >= 2

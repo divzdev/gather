@@ -23,6 +23,10 @@ class Speaker(Base, PrimaryKey, Timestamps, OrgScoped):
 
     email: Mapped[str] = mapped_column(CITEXT(), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Optional. Magic links remain the primary path; a password exists so a
+    # speaker whose mail is delayed or filtered is not locked out of their own
+    # submission, and so the portal can be demonstrated without an inbox.
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     pronouns: Mapped[str | None] = mapped_column(String(60), nullable=True)
     company: Mapped[str | None] = mapped_column(String(200), nullable=True)
     job_title: Mapped[str | None] = mapped_column(String(200), nullable=True)

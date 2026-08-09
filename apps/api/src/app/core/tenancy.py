@@ -4,7 +4,7 @@ Every row of an :class:`~app.models.base.OrgScoped` model is filtered by the
 active tenant. This is enforced by SQLAlchemy session events rather than by
 call-site discipline, so there is no query path that can forget it.
 
-Three guarantees, and one thing they do not cover:
+Four guarantees, and one thing they do not cover:
 
 1. **Reads** — ``do_orm_execute`` applies ``with_loader_criteria`` to every ORM
    SELECT, including relationship loads.
@@ -17,6 +17,10 @@ Three guarantees, and one thing they do not cover:
    ``before_execute``, because the ORM's own unit-of-work flush emits Core
    UPDATE statements keyed only on the primary key; an engine-level guard would
    reject every ordinary save.
+
+4. **Statements with no ORM entity** — ``select(func.count()).select_from(Model)``
+   has nothing for ``with_loader_criteria`` to attach to, so it is refused rather
+   than answered across every organization. Use ``select(func.count(Model.id))``.
 
 **What this does not cover:** a statement executed on a raw ``Connection``
 rather than through the ``Session``. Application code always goes through the
@@ -37,6 +41,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Final
 
 from sqlalchemy import event
@@ -63,6 +68,10 @@ class CrossTenantWriteError(TenancyError):
 
 class UnscopedBulkStatementError(TenancyError):
     pass
+
+
+class UnscopedStatementError(TenancyError):
+    """A statement touches a tenant-scoped table that cannot be filtered."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,8 +123,35 @@ def tenancy_disabled() -> Iterator[None]:
         _tenant.reset(token)
 
 
+@lru_cache(maxsize=1)
+def _tenant_scoped_tables() -> frozenset[str]:
+    from app.models.base import Base
+
+    return frozenset(
+        mapper.class_.__tablename__  # type: ignore[attr-defined]
+        for mapper in Base.registry.mappers
+        if issubclass(mapper.class_, OrgScoped)
+    )
+
+
 def _touches_tenant_scoped(state: ORMExecuteState) -> bool:
     return any(issubclass(mapper.class_, OrgScoped) for mapper in state.all_mappers)
+
+
+def _unmapped_tenant_tables(state: ORMExecuteState) -> set[str]:
+    """Tenant-scoped tables present in the statement with no ORM entity attached.
+
+    `select(func.count()).select_from(Model)` is the common shape: the model is a
+    FROM but not a column, so `all_mappers` is empty and `with_loader_criteria`
+    has nothing to attach to. Left alone that query silently counts every
+    organization's rows.
+    """
+    try:
+        froms = state.statement.get_final_froms()  # type: ignore[attr-defined]
+    except (AttributeError, NotImplementedError):
+        return set()
+    names = {getattr(f, "name", None) for f in froms}
+    return {n for n in names if n is not None and n in _tenant_scoped_tables()}
 
 
 def _is_unset(obj: object, field: str) -> bool:
@@ -145,10 +181,21 @@ def _apply_tenancy(state: ORMExecuteState) -> None:
     # to the statement that triggered them.
     if state.is_column_load or state.is_relationship_load:
         return
-    if not _touches_tenant_scoped(state):
-        return
 
     value = _tenant.get()
+
+    if not _touches_tenant_scoped(state):
+        # No ORM entity to hang criteria on. If a tenant-scoped table is in the
+        # FROM anyway, refuse rather than answer across every organization.
+        orphans = _unmapped_tenant_tables(state)
+        if orphans and not isinstance(value, _Disabled):
+            raise UnscopedStatementError(
+                f"statement selects from tenant-scoped {sorted(orphans)} with no ORM entity, "
+                "so it cannot be filtered. Use the entity form — select(func.count(Model.id)) "
+                "rather than select(func.count()).select_from(Model)."
+            )
+        return
+
     if isinstance(value, _Disabled):
         return
     if value is None:
