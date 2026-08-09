@@ -120,7 +120,9 @@ ROUTES = {
     "Gather Landing.dc.html": "/",
     "Overview.dc.html": "/admin",
     "Submissions.dc.html": "/admin/submissions",
-    "Review.dc.html": "/admin/review",
+    # The reviewer queue is its own top-level route: reviewers get a reduced
+    # console, and the eval harness addresses it at /review.
+    "Review.dc.html": "/review",
     "Evaluations.dc.html": "/admin/review",
     "Sessions.dc.html": "/admin/sessions",
     "Speakers.dc.html": "/admin/speakers",

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
-import { Review, type ReviewData } from "@/components/design/Review";
+import { Evaluations, type EvaluationsData } from "@/components/design/Evaluations";
 import { authed, getEventId } from "@/lib/session";
 
 type Round = {
@@ -15,233 +15,235 @@ type Round = {
   sort_order: number;
   closes_at: string | null;
 };
-type QueueItem = { submission_id: string; code: string; title: string; completed: boolean };
-type Criterion = {
-  id: string;
-  label: string;
-  description: string | null;
-  scale_min: number;
-  scale_max: number;
-  is_required: boolean;
-  sort_order: number;
-};
-type Subject = {
-  id: string;
-  code: string;
-  title: string;
-  answers: Record<string, unknown>;
-  track_id: string | null;
-  session_format_id: string | null;
-  speakers: Record<string, unknown>[];
-  is_blind: boolean;
-};
 
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+type Progress = {
+  user_id: string;
+  name: string;
+  email: string;
+  assigned: number;
+  completed: number;
+};
 
-function firstSpeakerName(subject: Subject | undefined): string | null {
-  const name = subject?.speakers[0]?.["name"];
-  return typeof name === "string" ? name : null;
+type Pace = "Done" | "On pace" | "Behind" | "Not started";
+
+const PACE_COLOURS: Record<Pace, { fg: string; bg: string }> = {
+  Done: { fg: "var(--ok,#0E7A5F)", bg: "var(--okw,#E2F1EC)" },
+  "On pace": { fg: "var(--ok,#0E7A5F)", bg: "var(--okw,#E2F1EC)" },
+  Behind: { fg: "var(--pd,#B96A1F)", bg: "var(--pdw,#F9EDDF)" },
+  "Not started": { fg: "var(--cn,#D8432B)", bg: "var(--cnw,#FBE8E6)" },
+};
+
+/** Behind is under half done. The prototype's four bands, derived from the two
+ *  numbers the API actually reports rather than a stored status. */
+function paceOf(row: Progress): Pace {
+  if (row.assigned === 0) return "Done";
+  if (row.completed === 0) return "Not started";
+  if (row.completed >= row.assigned) return "Done";
+  return row.completed / row.assigned < 0.5 ? "Behind" : "On pace";
 }
 
-const TRACK_HUES = ["#3E8896", "#A85788", "#5A6BA8", "#7E5CB8", "#C4703A", "#34526B"];
-
-function answer(subject: Subject | undefined, key: string): string {
-  const value = subject?.answers[key];
-  return typeof value === "string" ? value : "";
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .map((part) => part[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
-/** The reviewer's queue: one proposal at a time, scored against the round's
- *  rubric. Blind rounds arrive already stripped of identity by the API, so
- *  there is nothing to hide here. */
-export default function ReviewPage() {
-  const { chrome, toasts, dismiss, toast } = useConsoleChrome();
+type SortKey = "name" | "done" | "pace" | "bias";
+
+/** Review progress across the round: who is assigned what, who has finished,
+ *  and who needs chasing. Nudging is the one write on this screen. */
+export default function EvaluationsPage() {
+  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
   const queryClient = useQueryClient();
   const eventId = typeof window === "undefined" ? null : getEventId();
 
-  const [index, setIndex] = useState(0);
-  const [focus, setFocus] = useState(0);
-  const [scores, setScores] = useState<Record<string, Record<string, number>>>({});
-  const [comments, setComments] = useState<Record<string, string>>({});
-  const [aiOpen, setAiOpen] = useState(false);
-  const [finished, setFinished] = useState(false);
+  const [view, setView] = useState<"plans" | "eval">("eval");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<1 | -1>(1);
 
   const { data: rounds } = useQuery({
-    queryKey: ["review-rounds", eventId],
+    queryKey: ["review-rounds-admin", eventId],
     enabled: eventId !== null,
-    queryFn: () => authed<Round[]>(`/events/${eventId}/review/rounds`),
+    queryFn: () => authed<Round[]>(`/events/${eventId}/review-rounds`),
   });
-  const round = rounds?.find((entry) => entry.status === "open") ?? rounds?.[0] ?? null;
+  const openRound = rounds?.find((round) => round.status === "open") ?? rounds?.[0] ?? null;
 
-  const { data } = useQuery({
-    queryKey: ["review-queue", eventId, round?.id],
-    enabled: eventId !== null && round != null,
+  const { data: progress } = useQuery({
+    queryKey: ["review-progress", eventId, openRound?.id],
+    enabled: eventId !== null && openRound != null,
+    queryFn: () => authed<Progress[]>(`/events/${eventId}/review-rounds/${openRound?.id}/progress`),
+  });
+
+  const { data: scores } = useQuery({
+    queryKey: ["review-scores", eventId],
+    enabled: eventId !== null,
     queryFn: async () => {
-      const [queue, criteria] = await Promise.all([
-        authed<QueueItem[]>(`/events/${eventId}/review/queue?round_id=${round?.id}`),
-        authed<Criterion[]>(`/events/${eventId}/review/rounds/${round?.id}/criteria`),
-      ]);
-      return { queue, criteria };
+      const page = await authed<{ data: { score_avg: string | null }[] }>(
+        `/events/${eventId}/submissions?per_page=200`,
+      );
+      return page.data
+        .map((row) => (row.score_avg === null ? null : Number(row.score_avg)))
+        .filter((value): value is number => value !== null)
+        .sort((a, b) => a - b);
     },
   });
 
-  const queue = data?.queue ?? [];
-  const criteria = [...(data?.criteria ?? [])].sort((a, b) => a.sort_order - b.sort_order);
-  const current = queue[Math.min(index, Math.max(0, queue.length - 1))];
-
-  const { data: subject } = useQuery({
-    queryKey: ["review-subject", eventId, round?.id, current?.submission_id],
-    enabled: eventId !== null && round != null && current !== undefined,
-    queryFn: () =>
-      authed<Subject>(
-        `/events/${eventId}/review/submissions/${current?.submission_id}?round_id=${round?.id}`,
+  const nudge = useMutation({
+    mutationFn: () =>
+      authed<{ sent: number; skipped: number }>(
+        `/events/${eventId}/review-rounds/${openRound?.id}/nudge`,
+        { method: "POST" },
       ),
-  });
-
-  const save = useMutation({
-    mutationFn: async (submissionId: string) =>
-      authed(`/events/${eventId}/review/submissions/${submissionId}/scores?round_id=${round?.id}`, {
-        method: "PUT",
-        body: {
-          values: scores[submissionId] ?? {},
-          comment: comments[submissionId] ?? null,
-          conflict_of_interest: false,
-        },
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["review-queue", eventId, round?.id] });
-      void queryClient.invalidateQueries({ queryKey: ["program-stats", eventId] });
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["review-progress", eventId] });
+      toast(
+        `Reminder queued for ${result.sent} reviewer${result.sent === 1 ? "" : "s"}` +
+          (result.skipped > 0 ? `; ${result.skipped} already finished.` : "."),
+      );
     },
     onError: (error: Error) => toast(error.message),
   });
 
-  const scoredCount = queue.filter((item) => {
-    const given = scores[item.submission_id];
-    const complete =
-      criteria.length > 0 && criteria.every((criterion) => given?.[criterion.id] !== undefined);
-    return item.completed || complete;
+  const reviewers = progress ?? [];
+  const done = reviewers.reduce((total, row) => total + row.completed, 0);
+  const assigned = reviewers.reduce((total, row) => total + row.assigned, 0);
+  const chasing = reviewers.filter((row) => {
+    const pace = paceOf(row);
+    return pace === "Behind" || pace === "Not started";
   }).length;
 
-  const move = (delta: number) => {
-    setIndex((current) => Math.min(Math.max(0, current + delta), Math.max(0, queue.length - 1)));
-    setFocus(0);
-  };
+  const scored = scores ?? [];
+  const median =
+    scored.length === 0
+      ? null
+      : scored.length % 2 === 1
+        ? scored[(scored.length - 1) / 2]!
+        : (scored[scored.length / 2 - 1]! + scored[scored.length / 2]!) / 2;
 
-  const setScore = (criterionId: string, value: number) => {
-    if (current === undefined) return;
-    setScores((all) => ({
-      ...all,
-      [current.submission_id]: { ...all[current.submission_id], [criterionId]: value },
-    }));
-    setFocus((position) => Math.min(position + 1, Math.max(0, criteria.length - 1)));
-  };
+  const sorted = [...reviewers].sort((a, b) => {
+    const by =
+      sortKey === "done"
+        ? (a.assigned === 0 ? 0 : a.completed / a.assigned) -
+          (b.assigned === 0 ? 0 : b.completed / b.assigned)
+        : sortKey === "pace"
+          ? paceOf(a).localeCompare(paceOf(b))
+          : a.name.localeCompare(b.name);
+    return by * sortDir;
+  });
 
-  const saveAndNext = () => {
-    if (current === undefined) return;
-    save.mutate(current.submission_id);
-    if (index >= queue.length - 1) setFinished(true);
-    else move(1);
-  };
+  const sorter = (key: SortKey) => ({
+    on: () => {
+      if (sortKey === key) setSortDir((dir) => (dir === 1 ? -1 : 1));
+      else {
+        setSortKey(key);
+        setSortDir(key === "name" ? 1 : -1);
+      }
+    },
+    g: sortKey === key ? (sortDir === 1 ? "↑" : "↓") : "↑↓",
+    gc: sortKey === key ? "var(--sg,#E04E4E)" : "var(--i4,#99A6AD)",
+    fg: sortKey === key ? "var(--ik,#16232B)" : "var(--i3,#6B7B84)",
+  });
 
-  const given = current === undefined ? {} : (scores[current.submission_id] ?? {});
-  const hue = TRACK_HUES[0]!;
+  const tile = (active: boolean, count: number, on: () => void) => ({
+    c: count,
+    on,
+    bd: active ? "var(--sg,#E04E4E)" : "var(--ln,#E1E7E9)",
+    ring: active ? "0 0 0 3px var(--sw,#FFEAE6)" : "0 1px 2px rgba(13,16,32,.04)",
+    numFg: active ? "var(--sg,#E04E4E)" : "var(--ik,#16232B)",
+  });
 
-  const screen: ReviewData = {
+  const segment = (active: boolean) =>
+    active
+      ? {
+          bg: "var(--cd,#FFFFFF)",
+          fg: "var(--ik,#16232B)",
+          wt: "600",
+          sh: "0 1px 2px rgba(13,16,32,.08)",
+        }
+      : { bg: "none", fg: "var(--i3,#6B7B84)", wt: "500", sh: "none" };
+
+  const roundCount = rounds?.length ?? 0;
+
+  const screen: EvaluationsData = {
     ...chrome,
 
-    // Blind review is enforced by the API, which strips identity before it
-    // reaches here; the banner reports what the round actually is.
-    blindLabel:
-      subject?.is_blind === true
-        ? "BLIND REVIEW ON · SPEAKER DETAILS HIDDEN"
-        : `${round?.name ?? "Review"} · OPEN`,
-    speakerLine:
-      subject?.is_blind === true
-        ? "Hidden by blind review"
-        : (firstSpeakerName(subject) ?? "—"),
+    tPlans: tile(view === "plans", roundCount, () => setView("plans")),
+    tEvalsT: tile(view === "eval", reviewers.length, () => setView("eval")),
+    tBehind: tile(false, chasing, () => {
+      setView("eval");
+      setSortKey("done");
+      setSortDir(1);
+    }),
+    tDoneE: tile(false, done, () => setView("eval")),
+    sumLine:
+      `${roundCount} ${roundCount === 1 ? "round" : "rounds"} configured · ` +
+      `${done} of ${assigned} reviews in · ` +
+      `${chasing} ${chasing === 1 ? "evaluator needs" : "evaluators need"} a nudge`,
+
+    coverage: assigned === 0 ? "—" : `${Math.round((done / assigned) * 100)}%`,
+    evalsFrac: `${done}/${assigned}`,
+    medianScore: median === null ? "—" : median.toFixed(1),
+    notStartedLine:
+      chasing === 0
+        ? "EVERY REVIEWER HAS STARTED"
+        : `${chasing} ${chasing === 1 ? "REVIEWER NEEDS" : "REVIEWERS NEED"} A NUDGE`,
     closesLine:
-      round?.closes_at == null ? "no close date set" : `round closes ${DAY.format(new Date(round.closes_at))}`,
+      openRound === null
+        ? "no round configured"
+        : openRound.closes_at == null
+          ? `${openRound.name} · no close date`
+          : `${openRound.name} closes ${DAY.format(new Date(openRound.closes_at))}`,
+    evaluatorCount: reviewers.length,
 
-    working: !finished && queue.length > 0,
-    done: finished || queue.length === 0,
-    pos:
-      queue.length === 0
-        ? "Nothing assigned to you yet"
-        : `${Math.min(index + 1, queue.length)} of ${queue.length} in your queue`,
-    progress: `${scoredCount} of ${queue.length} reviewed`,
-    progW: queue.length === 0 ? "0%" : `${Math.round((scoredCount / queue.length) * 100)}%`,
-    doneLine: `You reviewed ${scoredCount} of ${queue.length}.`,
-    restart: () => {
-      setFinished(false);
-      setIndex(0);
-      setFocus(0);
-    },
+    onPlans: view === "plans",
+    onEval: view === "eval",
+    vPlans: () => setView("plans"),
+    vEval: () => setView("eval"),
+    pB: segment(view === "plans"),
+    eB: segment(view === "eval"),
 
-    it: {
-      id: current?.code ?? "",
-      t: current?.title ?? "Nothing to review",
-      tr: answer(subject, "track"),
-      col: hue,
-      fmt: answer(subject, "format"),
-      lvl: answer(subject, "audience_level"),
-      ab: answer(subject, "abstract"),
-      before: answer(subject, "audience_level") || "—",
-      tools: answer(subject, "key_takeaway") || "—",
-      a1: "Who is this for?",
-      a1r: answer(subject, "audience_level") || "—",
-      a2: "What will they leave with?",
-      a2r: answer(subject, "key_takeaway") || "—",
-    },
+    soName: sorter("name"),
+    soDone: sorter("done"),
+    soPace: sorter("pace"),
+    soBias: sorter("bias"),
 
-    crits: criteria.map((criterion, position) => {
-      const focused = focus === position;
-      const chosen = given[criterion.id];
-      const range = Array.from(
-        { length: criterion.scale_max - criterion.scale_min + 1 },
-        (_, offset) => criterion.scale_min + offset,
-      );
+    evals: sorted.map((row) => {
+      const pace = paceOf(row);
+      const fraction = row.assigned === 0 ? 0 : row.completed / row.assigned;
       return {
-        n: criterion.label,
-        hint: focused ? `press ${criterion.scale_min}–${criterion.scale_max}` : "",
-        bd: focused ? "var(--sg,#E04E4E)" : "var(--ln,#E1E7E9)",
-        bg: focused ? "var(--sw,#FFEAE6)" : "var(--cd,#FFFFFF)",
-        lc: focused ? "var(--sg,#E04E4E)" : "var(--i3,#6B7B84)",
-        onFocus: () => setFocus(position),
-        opts: range.map((value) => ({
-          n: String(value),
-          on: (event: React.SyntheticEvent) => {
-            event.stopPropagation();
-            setScore(criterion.id, value);
-          },
-          bg: chosen === value ? "var(--bt,#FF6B6B)" : "var(--cd,#FFFFFF)",
-          fg: chosen === value ? "var(--bf,#331313)" : "var(--i3,#6B7B84)",
-          bd: chosen === value ? "var(--bt,#FF6B6B)" : "var(--ls,#C8D2D5)",
-          wt: chosen === value ? "600" : "400",
-        })),
+        n: row.name,
+        ini: initials(row.name),
+        frac: `${row.completed}/${row.assigned}`,
+        w: `${Math.round(fraction * 100)}%`,
+        fill:
+          pace === "Not started"
+            ? "var(--cn,#D8432B)"
+            : pace === "Behind"
+              ? "var(--pd,#B96A1F)"
+              : "var(--ok,#0E7A5F)",
+        pace,
+        paceFg: PACE_COLOURS[pace].fg,
+        paceBg: PACE_COLOURS[pace].bg,
+        // Scoring bias needs each reviewer's mean against the overall mean; the
+        // progress endpoint reports counts only, so this stays blank rather
+        // than showing a number nothing computed.
+        bias: "·",
+        biasFg: "var(--i4,#99A6AD)",
+        onNudge: () => nudge.mutate(),
       };
     }),
-    comment: current === undefined ? "" : (comments[current.submission_id] ?? ""),
-    onComment: (event: React.SyntheticEvent) => {
-      if (current === undefined) return;
-      const value = (event.target as HTMLTextAreaElement).value;
-      setComments((all) => ({ ...all, [current.submission_id]: value }));
-    },
 
-    aiOpen,
-    togAi: () => setAiOpen((open) => !open),
-    aiChev: aiOpen ? "hide" : "show",
-
-    saveNext: saveAndNext,
-    saveLabel: index >= queue.length - 1 ? "Save and finish" : "Save and next",
-    skip: () => {
-      toast("Skipped. It stays in your queue.");
-      move(1);
-    },
-    flag: () => toast("Flagged for a conflict-of-interest check. The round owner sees it."),
-    prev: () => move(-1),
-    next: () => move(1),
+    nudgeSlow: () => nudge.mutate(),
+    newPlan: () => toast("Round creation is on the API; the builder screen is not wired yet."),
+    editR2: () => toast("Round editing is on the API; the builder screen is not wired yet."),
+    previewR2: () => toast("Preview follows the round builder."),
 
     toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),
   };
 
-  return <Review d={screen} />;
+  return <Evaluations d={screen} />;
 }
