@@ -14,6 +14,7 @@ from app.features.auth.schemas import (
     LoginRequest,
     MagicLinkConsumeRequest,
     MagicLinkRequest,
+    RegisterRequest,
     TokenResponse,
     UserResponse,
 )
@@ -45,6 +46,32 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         # cookie has to be scoped to a path that survives the rewrite.
         path="/",
     )
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def register(
+    body: RegisterRequest,
+    request: Request,
+    response: Response,
+    session: DbSession,
+) -> TokenResponse:
+    await rate_limit.enforce(
+        _redis(request),
+        rate_limit.REGISTER,
+        bucket="register",
+        identifier=_client_ip(request) or "anon",
+    )
+    issued = await service.register(
+        session,
+        name=body.name,
+        email=str(body.email),
+        password=body.password,
+        organisation=body.organisation,
+        user_agent=request.headers.get("user-agent"),
+        ip=_client_ip(request),
+    )
+    _set_refresh_cookie(response, issued.refresh_token)
+    return TokenResponse(access_token=issued.access_token, expires_in=issued.expires_in)
 
 
 @router.post("/login", response_model=TokenResponse)

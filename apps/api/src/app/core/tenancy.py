@@ -191,8 +191,8 @@ def _apply_tenancy(state: ORMExecuteState) -> None:
         if orphans and not isinstance(value, _Disabled):
             raise UnscopedStatementError(
                 f"statement selects from tenant-scoped {sorted(orphans)} with no ORM entity, "
-                "so it cannot be filtered. Use the entity form — select(func.count(Model.id)) "
-                "rather than select(func.count()).select_from(Model)."
+                "so it cannot be filtered. Use the entity form — select(func.count(Model.id)), "
+                "with the mapped attribute rather than the table column."
             )
         return
 

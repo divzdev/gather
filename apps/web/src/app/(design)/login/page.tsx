@@ -53,6 +53,31 @@ export default function LoginPage() {
     }
   };
 
+  const createWorkspace = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const { access_token } = await apiFetch<{ access_token: string }>("/auth/register", {
+        method: "POST",
+        body: { name, organisation, email, password },
+      });
+      setToken(access_token);
+      const events = await apiFetch<{ id: string }[]>("/events", {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+      const first = events[0];
+      if (first !== undefined) setEventId(first.id);
+      router.push("/admin");
+    } catch (caught) {
+      setError(
+        caught instanceof ApiError ? caught.message : "Could not create the workspace. Try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const sendMagicLink = async () => {
     if (email.trim() === "") {
       setError("Enter your email first.");
@@ -68,8 +93,7 @@ export default function LoginPage() {
   };
 
   const unavailable = (what: string) => {
-    setError(`${what} is not part of this build. An organisation owner adds staff directly.`);
-    setMode("login");
+    setError(`${what} is not part of this build. Create a workspace with an email and password.`);
   };
 
   const screen: AuthData = {
@@ -86,8 +110,14 @@ export default function LoginPage() {
     subtitle:
       mode === "login"
         ? "The console for your speaker programme."
-        : "Accounts are created by an organisation owner.",
-    cta: busy ? "Signing in…" : mode === "login" ? "Sign in" : "Create workspace",
+        : "Your organisation, your first event, and you as its owner.",
+    cta: busy
+      ? mode === "login"
+        ? "Signing in…"
+        : "Creating…"
+      : mode === "login"
+        ? "Sign in"
+        : "Create workspace",
 
     email,
     onEmail: (event: React.SyntheticEvent) =>
@@ -112,13 +142,7 @@ export default function LoginPage() {
     err: error,
     hasErr: error !== "",
 
-    submit: () => {
-      if (mode === "register") {
-        unavailable("Self-serve registration");
-        return;
-      }
-      void signIn();
-    },
+    submit: () => void (mode === "register" ? createWorkspace() : signIn()),
     magic: () => void sendMagicLink(),
     forgot: () => void sendMagicLink(),
     resetFlow: () => setSent(null),

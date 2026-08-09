@@ -56,6 +56,12 @@ class ConflictError(ApiError):
     code = "CONFLICT"
 
 
+class EmailTakenError(ConflictError):
+    """Signup only. Login never says whether an address exists."""
+
+    code = "EMAIL_TAKEN"
+
+
 class AuthenticationError(ApiError):
     status_code = status.HTTP_401_UNAUTHORIZED
     code = "NOT_AUTHENTICATED"

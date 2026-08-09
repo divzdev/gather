@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -8,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import AuthenticationError, MagicLinkExpiredError
+from app.core.errors import AuthenticationError, EmailTakenError, MagicLinkExpiredError
 from app.core.security import (
     create_access_token,
     generate_token,
@@ -19,7 +20,17 @@ from app.core.security import (
     verify_password,
 )
 from app.core.tenancy import tenancy_disabled
-from app.models import AuthSession, Event, MagicLink, MagicLinkPurpose, User
+from app.models import (
+    AuthSession,
+    Event,
+    EventMember,
+    MagicLink,
+    MagicLinkPurpose,
+    Organization,
+    OrgMember,
+    Role,
+    User,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +63,78 @@ async def _issue_session(
         refresh_token=refresh_token,
         expires_in=settings.access_token_ttl_minutes * 60,
     )
+
+
+SLUG_ALLOWED = re.compile(r"[^a-z0-9]+")
+
+
+def _slugify(value: str, *, fallback: str) -> str:
+    slug = SLUG_ALLOWED.sub("-", value.lower()).strip("-")[:80]
+    return slug or fallback
+
+
+async def _unique_org_slug(session: AsyncSession, name: str) -> str:
+    """Organisation slugs are unique across the whole install, so two people
+    signing up with the same company name must not collide."""
+    base = _slugify(name, fallback="org")
+    candidate = base
+    for suffix in range(2, 50):
+        taken = await session.scalar(select(Organization).where(Organization.slug == candidate))
+        if taken is None:
+            return candidate
+        candidate = f"{base}-{suffix}"
+    return f"{base}-{uuid.uuid4().hex[:6]}"
+
+
+async def register(
+    session: AsyncSession,
+    *,
+    name: str,
+    email: str,
+    password: str,
+    organisation: str,
+    user_agent: str | None = None,
+    ip: str | None = None,
+) -> IssuedSession:
+    """Create an organisation, its first owner, and a draft event to work in.
+
+    Signing up with no event would drop the new owner into a console with
+    nothing to configure, so the event is part of the same transaction.
+    """
+    with tenancy_disabled():
+        if await session.scalar(select(User).where(User.email == email)) is not None:
+            raise EmailTakenError("An account with that email already exists.")
+
+        org = Organization(name=organisation, slug=await _unique_org_slug(session, organisation))
+        session.add(org)
+        await session.flush()
+
+        user = User(email=email, name=name, password_hash=hash_password(password))
+        session.add(user)
+        await session.flush()
+
+        session.add(OrgMember(org_id=org.id, user_id=user.id, role=Role.OWNER))
+
+        today = _now().date()
+        event = Event(
+            org_id=org.id,
+            name=f"{organisation} {today.year}",
+            slug=_slugify(f"{organisation}-{today.year}", fallback=f"event-{today.year}"),
+            timezone="UTC",
+            starts_on=today + timedelta(days=90),
+            ends_on=today + timedelta(days=92),
+        )
+        session.add(event)
+        await session.flush()
+        session.add(EventMember(org_id=org.id, event_id=event.id, user_id=user.id, role=Role.OWNER))
+
+        issued = await _issue_session(session, user, user_agent=user_agent, ip=ip)
+        # Flush before the scope closes. The request commits during dependency
+        # teardown, by which point tenancy is enforced again and no tenant is
+        # bound — anything still pending would be rejected there, after the
+        # response has already gone out as a success.
+        await session.flush()
+        return issued
 
 
 async def authenticate(

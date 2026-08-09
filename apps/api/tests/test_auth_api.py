@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -219,3 +220,55 @@ async def test_speaker_token_cannot_open_a_staff_route(
 
     response = await client.get("/v1/auth/me", headers={"Authorization": f"Bearer {speaker_token}"})
     assert response.status_code == 401
+
+
+async def test_registration_creates_an_org_an_owner_and_an_event(client: AsyncClient) -> None:
+    response = await client.post(
+        "/v1/auth/register",
+        json={
+            "name": "Rae Lindqvist",
+            "organisation": "Northbound Conf",
+            "email": "rae@northbound.example",
+            "password": "a-long-enough-passphrase",
+        },
+    )
+
+    assert response.status_code == 201
+    token = response.json()["access_token"]
+
+    # The whole point of the regression: the response used to succeed while the
+    # rows were rejected at commit, so read it back through a second request.
+    events = await client.get("/v1/events", headers={"Authorization": f"Bearer {token}"})
+    assert events.status_code == 200
+    year = datetime.now(UTC).year
+    assert [event["name"] for event in events.json()] == [f"Northbound Conf {year}"]
+    assert events.json()[0]["status"] == "draft"
+
+
+async def test_registering_a_taken_email_is_rejected(client: AsyncClient, staff_user: User) -> None:
+    response = await client.post(
+        "/v1/auth/register",
+        json={
+            "name": "Someone Else",
+            "organisation": "Other Co",
+            "email": staff_user.email,
+            "password": "a-long-enough-passphrase",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "EMAIL_TAKEN"
+
+
+async def test_registration_requires_a_long_password(client: AsyncClient) -> None:
+    response = await client.post(
+        "/v1/auth/register",
+        json={
+            "name": "Rae",
+            "organisation": "Northbound",
+            "email": "rae2@northbound.example",
+            "password": "short",
+        },
+    )
+
+    assert response.status_code == 422

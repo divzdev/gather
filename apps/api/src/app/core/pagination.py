@@ -12,7 +12,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 MAX_PER_PAGE = 200
@@ -100,11 +100,23 @@ async def paginate(
     session: AsyncSession, statement: Select[Any], query: ListQuery
 ) -> tuple[list[Any], PageMeta]:
     """Count and fetch one page. The count strips ordering, which Postgres would
-    otherwise sort pointlessly."""
-    total = await session.scalar(
-        select(func.count()).select_from(statement.order_by(None).subquery())
-    )
-    total = int(total or 0)
+    otherwise sort pointlessly.
+
+    The count is taken over the entity's primary key rather than
+    `select(func.count()).select_from(subquery)`. The subquery form hides the
+    entity behind an anonymous FROM, so the session's tenancy criteria have
+    nothing to attach to and the total is counted across every organization —
+    a new workspace could read another one's row count.
+    """
+    entity = statement.column_descriptions[0]["entity"]
+    # The mapped attribute, not the table column: an aggregate over a bare
+    # Column carries no mapper, so the session's tenancy criteria have nothing
+    # to attach to and the total is counted across every organization.
+    primary_key = getattr(entity, inspect(entity).primary_key[0].name)
+    count_statement = select(func.count(primary_key))
+    if statement.whereclause is not None:
+        count_statement = count_statement.where(statement.whereclause)
+    total = int(await session.scalar(count_statement) or 0)
 
     rows = (
         (await session.execute(statement.limit(query.per_page).offset(query.offset)))

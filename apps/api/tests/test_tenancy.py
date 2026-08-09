@@ -223,3 +223,34 @@ async def test_tenancy_disabled_still_allows_the_unmapped_aggregate(
         count = await session.scalar(select(func.count()).select_from(Event))
 
     assert count is not None and count >= 2
+
+
+async def test_a_paginated_count_is_scoped_to_the_tenant(
+    session: AsyncSession, two_orgs: tuple[Organization, Organization]
+) -> None:
+    """The bug this guards: `paginate` counted through an anonymous subquery, so
+    the rows were correctly filtered but the total was not — a brand new
+    organization could read another one's row count."""
+    from app.core.pagination import ListQuery, paginate
+
+    org_a, _ = two_orgs
+    with tenant_scope(org_a.id):
+        rows, meta = await paginate(session, select(Event), ListQuery())
+
+    assert len(rows) == 1
+    assert meta.total == 1
+
+
+async def test_an_aggregate_over_a_table_column_is_refused(
+    session: AsyncSession, two_orgs: tuple[Organization, Organization]
+) -> None:
+    """`Event.__table__.c.id` is a plain Column, not the mapped attribute, so it
+    carries no mapper for the criteria to attach to. It must not silently count
+    every organization."""
+    from sqlalchemy import func
+
+    from app.core.tenancy import UnscopedStatementError
+
+    org_a, _ = two_orgs
+    with tenant_scope(org_a.id), pytest.raises(UnscopedStatementError):
+        await session.execute(select(func.count(Event.__table__.c.id)))

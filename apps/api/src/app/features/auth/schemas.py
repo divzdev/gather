@@ -16,6 +16,14 @@ class LoginRequest(Strict):
     password: str = Field(min_length=1, max_length=200)
 
 
+class RegisterRequest(Strict):
+    name: str = Field(min_length=1, max_length=200)
+    organisation: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+    # Long enough to matter, capped so a huge string cannot burn Argon2 time.
+    password: str = Field(min_length=12, max_length=200)
+
+
 class TokenResponse(Strict):
     access_token: str
     token_type: str = "bearer"  # noqa: S105 - the OAuth scheme name, not a secret
