@@ -68,22 +68,22 @@
     </div>
 
     <div style="height:32px;flex:none;display:flex;align-items:center;gap:16px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
-      <button onClick="{{ hsAll }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">SUB 216</button><span style="color:var(--i4,#99A6AD)">·</span>
-      <button onClick="{{ hsUnrev }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">UNREVIEWED 38</button><span style="color:var(--i4,#99A6AD)">·</span>
-      <button onClick="{{ hsDecided }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">DECIDED 61</button><span style="color:var(--i4,#99A6AD)">·</span>
+      <button onClick="{{ hsAll }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">SUB {{ subCount }}</button><span style="color:var(--i4,#99A6AD)">·</span>
+      <button onClick="{{ hsUnrev }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">UNREVIEWED {{ unreviewedCount }}</button><span style="color:var(--i4,#99A6AD)">·</span>
+      <button onClick="{{ hsDecided }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">DECIDED {{ decidedCount }}</button><span style="color:var(--i4,#99A6AD)">·</span>
       <a href="Tasks.dc.html" style="text-decoration:none;background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--pd,#B96A1F)" style-hover="color:var(--ik,#16232B)">OVERDUE TASKS 12</a><span style="color:var(--i4,#99A6AD)">·</span>
       <a href="Agenda.dc.html" style="text-decoration:none;background:none;border:none;padding:0;font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--cn,#D8432B)" style-hover="color:var(--ik,#16232B)">⚠ 3 CONFLICTS</a>
       <div style="flex:1"></div>
-      <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">CFP closes in 38d</span>
+      <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">CFP closes in {{ cfpShort }}</span>
     </div>
 
     <div style="flex:1;overflow-y:auto;position:relative;padding:20px 28px 80px">
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
         <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Submissions</h1>
         <div style="flex:1"></div>
-        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">16 of 216 shown · seeded slice</span>
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ countLine }} · seeded slice</span>
       </div>
-      <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">38 unreviewed across the program · 9 decisions queued to send · CFP closes in 38 days</div>
+      <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">{{ unreviewedCount }} unreviewed across the program · {{ pendingCount }} decisions queued to send · CFP closes in {{ cfpDays }} days</div>
       <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px">
         <button onClick="{{ vAll.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ vAll.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ vAll.ring }};text-align:left;cursor:pointer">
           <span style="width:32px;height:32px;border-radius:9px;background:var(--ifw,#E9ECF7);color:var(--if,#47599F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="currentColor"><rect x="1.5" y="2" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="6.3" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="10.6" width="8" height="2.4" rx="1.2"></rect></svg></span>
@@ -106,7 +106,7 @@
       <sc-if value="{{ banner }}" hint-placeholder-val="{{ true }}">
         <div style="display:flex;align-items:center;gap:12px;background:var(--pdw,#F9EDDF);border:1px solid var(--pdl,#EFD3B6);border-radius:10px;padding:10px 14px;margin-bottom:14px">
           <span style="width:7px;height:7px;border-radius:50%;background:var(--pd,#B96A1F);flex:none"></span>
-          <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);flex:1"><span style="font-weight:600;color:var(--pd,#B96A1F)">9 decisions are set but not sent.</span> Emails only go out from Messages. Sending is always a separate, explicit step.</span>
+          <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);flex:1"><span style="font-weight:600;color:var(--pd,#B96A1F)">{{ pendingCount }} decisions are set but not sent.</span> Emails only go out from Messages. Sending is always a separate, explicit step.</span>
           <button onClick="{{ bannerGo }}" style="height:26px;padding:0 10px;border-radius:6px;background:none;border:1px solid var(--pdl,#EFD3B6);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F)">Review and send</button>
           <button onClick="{{ bannerX }}" aria-label="Dismiss" style="background:none;border:none;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:2px">✕</button>
         </div>

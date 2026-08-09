@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
 import { Overview, type OverviewData } from "@/components/design/Overview";

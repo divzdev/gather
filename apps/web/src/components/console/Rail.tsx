@@ -7,11 +7,10 @@
  * reload under the same localStorage key the prototype used.
  */
 
-import { useQuery } from "@tanstack/react-query";
 import { useState, useSyncExternalStore } from "react";
 
 import { ConsoleRail, type ConsoleRailData } from "@/components/design/ConsoleRail";
-import { authed, getEventId } from "@/lib/session";
+import { useProgramStats } from "@/components/console/stats";
 
 const RAIL_KEY = "gather.rail";
 
@@ -55,33 +54,16 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     () => false,
   );
   const [logoHover, setLogoHover] = useState(false);
-  const eventId = typeof window === "undefined" ? null : getEventId();
-
-  // The rail is on every console screen, so its counts are one shared query.
-  const { data: counts } = useQuery({
-    queryKey: ["rail-counts", eventId],
-    enabled: eventId !== null,
-    staleTime: 30_000,
-    queryFn: async () => {
-      const page = await authed<{ data: { status: string }[]; meta: { total: number } }>(
-        `/events/${eventId}/submissions?per_page=200`,
-      );
-      return {
-        submissions: page.meta.total,
-        unreviewed: page.data.filter((row) => row.status === "submitted").length,
-        accepted: page.data.filter((row) => row.status === "accepted").length,
-      };
-    },
-  });
+  const { stats } = useProgramStats();
 
   // A count of zero takes the badge out of the rail rather than showing "0".
-  const badge = (value: number | undefined) => ({
-    text: value === undefined || value === 0 ? "" : String(value),
-    display: value === undefined || value === 0 ? "none" : "inline-block",
+  const badge = (value: number) => ({
+    text: value === 0 ? "" : String(value),
+    display: value === 0 ? "none" : "inline-block",
   });
-  const submissions = badge(counts?.submissions);
-  const sessions = badge(counts?.accepted);
-  const review = badge(counts?.unreviewed);
+  const submissions = badge(stats.total);
+  const sessions = badge(stats.accepted);
+  const review = badge(stats.unreviewed);
 
   const item = (name: NavName) =>
     name === active
