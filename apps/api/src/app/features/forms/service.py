@@ -41,8 +41,8 @@ def check_schema_change(current: FormSchema, incoming: FormSchema, *, is_locked:
     removed = sorted(set(current_fields) - set(incoming_fields))
     if removed:
         raise FormLockedError(
-            f"This form has submissions, so {removed[0]!r} cannot be deleted — "
-            "set hidden_from_new instead so existing answers keep their meaning.",
+            f"This form has submissions, so {removed[0]!r} cannot be deleted. "
+            "Hide it from new submissions instead, so existing answers keep their meaning.",
             field=removed[0],
             details={"removed": removed},
         )

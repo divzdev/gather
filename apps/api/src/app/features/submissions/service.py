@@ -225,7 +225,7 @@ async def submit(
         to_email=speaker.email,
         to_speaker_id=speaker.id,
         purpose=MessagePurpose.CUSTOM,
-        subject=f"We received your proposal — {submission.code}",
+        subject=f"We received your proposal: {submission.code}",
         body=(
             f"<p>Thanks {speaker.name}, your proposal <strong>{submission.title}</strong> "
             f"is in.</p><p>Your reference is <strong>{submission.code}</strong>. "

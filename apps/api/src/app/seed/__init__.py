@@ -167,7 +167,7 @@ CFP_SCHEMA: dict[str, Any] = {
         },
     ],
     "settings": {
-        "confirmation_message": "Thanks — your proposal is in. We review in early March.",
+        "confirmation_message": "Thanks, your proposal is in. We review in early March.",
     },
 }
 

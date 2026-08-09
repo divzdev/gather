@@ -114,7 +114,7 @@ class FormSettings(Strict):
     allow_drafts: bool = True
     allow_co_speakers: bool = True
     max_co_speakers: int = Field(default=4, ge=0, le=20)
-    confirmation_message: str = "Thanks — your proposal is in."
+    confirmation_message: str = "Thanks, your proposal is in."
 
 
 class FormSchema(Strict):
