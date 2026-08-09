@@ -130,7 +130,6 @@ CFP_SCHEMA: dict[str, Any] = {
                     "key": "key_takeaway",
                     "type": "short_text",
                     "label": "Key takeaway",
-                    "required": True,
                     "help_text": "One sentence an attendee should remember.",
                 },
                 {
@@ -337,7 +336,12 @@ async def _upsert_form(session: AsyncSession, event: Event) -> Form:
             closes_at=event.cfp_closes_at,
         )
         session.add(form)
-        await session.flush()
+    else:
+        # Seeding is an upsert, so the demo form follows the schema in this file
+        # rather than freezing at whatever the first run created.
+        form.schema = CFP_SCHEMA
+        form.closes_at = event.cfp_closes_at
+    await session.flush()
     return form
 
 
