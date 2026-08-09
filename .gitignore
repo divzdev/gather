@@ -76,3 +76,4 @@ tools/
 
 # --- Local-only working notes and tooling (never committed) ---
 .local/
+GatherDesign/

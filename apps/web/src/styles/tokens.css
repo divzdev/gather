@@ -1,111 +1,109 @@
-/* Design tokens — frontend-spec.md §1. Do not add values here that are not in
-   that section, and never inline a raw colour, size, or duration in a component. */
+/* Gather design tokens.
+ *
+ * Taken verbatim from GatherDesign/CLAUDE.md (user-locked, Aug 2026) and the
+ * .dc.html prototypes, which reference these exact variable names with light
+ * fallbacks: var(--pp, #F4F6F7). The dark map and the accent sets are applied to
+ * the root element by the theme provider, so a ported screen needs no changes.
+ *
+ * Do not reintroduce the retired indigo palette (#3D2FE0, #6C5CFF, #0D1020,
+ * #151A2E) or teal/green accents. frontend-spec.md §1.4 is superseded by this
+ * file.
+ */
 
 :root {
-  /* Neutrals, light */
-  --paper: #f6f7f9;
-  --card: #ffffff;
-  --card-sunk: #f1f3f6;
-  --line: #e3e6eb;
-  --line-strong: #cdd2da;
-  --ink: #101319;
-  --ink-2: #3d4552;
-  --ink-3: #6b7280;
-  --ink-4: #9aa1ac;
+  /* Console light. Cool neutrals, no beige. */
+  --pp: #f4f6f7; /* page */
+  --cd: #ffffff; /* card */
+  --sk: #edf1f2; /* sunk */
+  --ln: #e1e7e9; /* hairline */
+  --ls: #c8d2d5; /* strong line */
+  --ik: #16232b; /* ink */
+  --i2: #3e4e58;
+  --i3: #6b7b84;
+  --i4: #99a6ad;
 
-  /* Signal — the only brand colour */
-  --signal: #3d2fe0;
-  --signal-hover: #3527c4;
-  --signal-weak: #eeecfe;
-  --signal-line: #c9c3f8;
+  /* Accent. Overwritten by the theme provider; Coral is the default. */
+  --sg: #e04e4e; /* accent text */
+  --sw: #ffeae6; /* accent weak */
+  --sl: #ffc9c0; /* accent line */
+  --bt: #ff6b6b; /* primary button */
+  --bf: #331313; /* primary button foreground */
 
-  /* Status — semantic only, never decorative */
-  --conflict: #d6323f;
-  --conflict-weak: #fdecee;
-  --conflict-line: #f4c4ca;
-  --pending: #b4690e;
-  --pending-weak: #fdf2e3;
-  --pending-line: #f0d4a8;
-  --clear: #0e7a5f;
-  --clear-weak: #e6f5f0;
-  --clear-line: #b3ded1;
-  --info: #1f6fb2;
-  --info-weak: #e9f2fa;
-  --info-line: #bcd8ee;
+  /* Status. Colour only ever means state. */
+  --cn: #d8432b; /* conflict, orange-red, never pink */
+  --cnw: #fbe8e6;
+  --cnl: #f3c7c2;
+  --pd: #b96a1f; /* pending, waiting on a human */
+  --pdw: #f9eddf;
+  --pdl: #efd3b6;
+  --ok: #0e7a5f; /* clear, done */
+  --okw: #e2f1ec;
+  --okl: #c2e0d5;
+  --if: #47599f; /* info */
+  --ifw: #e9ecf7;
+  --ifl: #c6cdea;
 
-  /* Track hues — assigned in creation order, stored on the track record.
-     3px left border, chip, and filter dot only. Never a card fill. */
-  --track-1: #2f6db5;
-  --track-2: #148f7a;
-  --track-3: #b0632b;
-  --track-4: #b0416b;
-  --track-5: #8a5cc0;
-  --track-6: #a8562a;
-  --track-7: #37766b;
-  --track-8: #4a5b8f;
+  /* Portal-only surfaces. */
+  --zn: #f7f9fa;
+  --heroa: #fff3f0;
+  --herob: #ffe8e2;
+  --herobd: #ffd5cc;
+  --stepln: #e1e7e9;
 
-  /* Radius lives in the @theme block in globals.css (Tailwind owns the
-     --radius-* namespace and re-emits it here), so it is not duplicated. */
+  /* Track hues, assigned per track and stored so a colour never shifts. */
+  --track-agents: #3e8896;
+  --track-evals: #a85788;
+  --track-infrastructure: #5a6ba8;
+  --track-retrieval: #7e5cb8;
+  --track-multimodal: #c4703a;
+  --track-production: #34526b;
 
-  /* Elevation — hairlines, not shadows. These three are the whole set. */
-  --shadow-pop: 0 2px 6px rgb(16 19 25 / 0.08), 0 0 0 1px var(--line);
-  --shadow-modal: 0 12px 32px rgb(16 19 25 / 0.16), 0 0 0 1px var(--line);
-  --shadow-drag: 0 8px 20px rgb(16 19 25 / 0.2);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-card: 14px;
 
-  /* Motion — functional only */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 240ms;
 }
 
-[data-theme="dark"] {
-  --paper: #0e1116;
-  --card: #161a21;
-  --card-sunk: #11151b;
-  --line: #252b34;
-  --line-strong: #333b47;
-  --ink: #eceef2;
-  --ink-2: #b4bbc6;
-  --ink-3: #8a93a0;
-  --ink-4: #5c6675;
+/* Neutral charcoal, no blue cast. The provider sets data-theme; this block is
+   the same map so a no-JS render still looks right in dark mode. */
+:root[data-theme="dark"] {
+  --pp: #101013;
+  --cd: #17171b;
+  --sk: #1f1f24;
+  --ln: #2a2a31;
+  --ls: #3f3f49;
+  --ik: #f2f2f0;
+  --i2: #c9c9c6;
+  --i3: #929290;
+  --i4: #686865;
 
-  --signal: #6c5cff;
-  --signal-hover: #7d6fff;
-  --signal-weak: #1d1b3a;
-  --signal-line: #35318a;
+  --sg: #ff8e8e;
+  --sw: #3a1d1d;
+  --sl: #66302e;
 
-  /* Status lifts lightness ~12% and drops saturation slightly */
-  --conflict: #e85561;
-  --conflict-weak: #2a1518;
-  --conflict-line: #5a2a2f;
-  --pending: #d18a2c;
-  --pending-weak: #2a1f10;
-  --pending-line: #5a411c;
-  --clear: #2f9d80;
-  --clear-weak: #10241f;
-  --clear-line: #1f4d40;
-  --info: #4290cf;
-  --info-weak: #101f2b;
-  --info-line: #1f4058;
-}
+  --cn: #f0766a;
+  --cnw: #3a1f1e;
+  --cnl: #5e2e2b;
+  --pd: #f0a468;
+  --pdw: #332617;
+  --pdl: #54402a;
+  --ok: #57b899;
+  --okw: #123029;
+  --okl: #1f4a3e;
+  --if: #8b9ad0;
+  --ifw: #262833;
+  --ifl: #3e4152;
 
-/* Density — two modes, set as data-density on <html>, never prop-drilled */
-:root,
-[data-density="compact"] {
-  --row-height: 36px;
-  --cell-padding-y: 8px;
-  --cell-padding-x: 12px;
-  --control-height: 32px;
-  --grid-minute-height: 0.9px;
-}
-
-[data-density="comfortable"] {
-  --row-height: 44px;
-  --cell-padding-y: 12px;
-  --cell-padding-x: 16px;
-  --control-height: 36px;
-  --grid-minute-height: 1.2px;
+  --zn: #141416;
+  --heroa: #241a1b;
+  --herob: #191719;
+  --herobd: #332826;
+  --stepln: #2a2a31;
 }
 
 @media (prefers-reduced-motion: reduce) {

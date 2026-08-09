@@ -5,12 +5,14 @@ import {
   IBM_Plex_Sans,
   IBM_Plex_Sans_Condensed,
 } from "next/font/google";
+
+import { ThemeProvider, themeBootScript } from "@/components/ThemeProvider";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
   variable: "--font-plex-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
 });
 
 const plexMono = IBM_Plex_Mono({
@@ -25,10 +27,11 @@ const plexCondensed = IBM_Plex_Sans_Condensed({
   weight: ["500", "600"],
 });
 
-// Display face — public pages and auth only, 32px and up. Never in the console.
+// Display face: marketing, public and auth only, 32px and up. Never in console.
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
   subsets: ["latin"],
+  weight: ["600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -38,13 +41,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // data-theme and data-density are read by tokens.css. Defaults are light and
-    // compact; the theme and density providers will drive these per user.
-    <html lang="en" data-density="compact" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Runs before paint so a dark-mode reload never flashes light. */}
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body
         className={`${plexSans.variable} ${plexMono.variable} ${plexCondensed.variable} ${bricolage.variable} font-sans antialiased`}
       >
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

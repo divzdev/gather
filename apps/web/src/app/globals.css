@@ -1,79 +1,77 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
 
-/* Tailwind v4 reads the tokens through @theme, so utilities like bg-card and
-   text-ink-2 resolve to the CSS variables in tokens.css — one source of truth. */
+/* Tailwind reads the design tokens, so bg-cd / text-i2 / border-ln resolve to the
+   same variables the ported .dc.html screens use inline. One source of truth. */
 @theme inline {
-  --color-paper: var(--paper);
-  --color-card: var(--card);
-  --color-card-sunk: var(--card-sunk);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-ink-3: var(--ink-3);
-  --color-ink-4: var(--ink-4);
+  --color-pp: var(--pp);
+  --color-cd: var(--cd);
+  --color-sk: var(--sk);
+  --color-ln: var(--ln);
+  --color-ls: var(--ls);
+  --color-ik: var(--ik);
+  --color-i2: var(--i2);
+  --color-i3: var(--i3);
+  --color-i4: var(--i4);
 
-  --color-signal: var(--signal);
-  --color-signal-hover: var(--signal-hover);
-  --color-signal-weak: var(--signal-weak);
-  --color-signal-line: var(--signal-line);
+  --color-sg: var(--sg);
+  --color-sw: var(--sw);
+  --color-sl: var(--sl);
+  --color-bt: var(--bt);
+  --color-bf: var(--bf);
 
-  --color-conflict: var(--conflict);
-  --color-conflict-weak: var(--conflict-weak);
-  --color-conflict-line: var(--conflict-line);
-  --color-pending: var(--pending);
-  --color-pending-weak: var(--pending-weak);
-  --color-pending-line: var(--pending-line);
-  --color-clear: var(--clear);
-  --color-clear-weak: var(--clear-weak);
-  --color-clear-line: var(--clear-line);
-  --color-info: var(--info);
-  --color-info-weak: var(--info-weak);
-  --color-info-line: var(--info-line);
+  --color-cn: var(--cn);
+  --color-cnw: var(--cnw);
+  --color-cnl: var(--cnl);
+  --color-pd: var(--pd);
+  --color-pdw: var(--pdw);
+  --color-pdl: var(--pdl);
+  --color-ok: var(--ok);
+  --color-okw: var(--okw);
+  --color-okl: var(--okl);
+  --color-if: var(--if);
+  --color-ifw: var(--ifw);
+  --color-ifl: var(--ifl);
 
-  /* No radius above 10px anywhere. frontend-spec §1.5 */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
+  --radius-card: 14px;
 
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
   --font-condensed: var(--font-plex-condensed), var(--font-plex-sans), sans-serif;
   --font-display: var(--font-bricolage), var(--font-plex-sans), sans-serif;
-
-  /* Type scale — fixed steps, no interpolation. frontend-spec §1.3 */
-  --text-display-xl: 48px;
-  --text-display-xl--line-height: 52px;
-  --text-display-lg: 36px;
-  --text-display-lg--line-height: 40px;
-  --text-display-md: 28px;
-  --text-display-md--line-height: 34px;
-  --text-title-lg: 20px;
-  --text-title-lg--line-height: 28px;
-  --text-title-md: 16px;
-  --text-title-md--line-height: 24px;
-  --text-body: 14px;
-  --text-body--line-height: 20px;
-  --text-body-sm: 13px;
-  --text-body-sm--line-height: 18px;
-  --text-label: 12px;
-  --text-label--line-height: 16px;
-  --text-eyebrow: 11px;
-  --text-eyebrow--line-height: 14px;
-  --text-micro: 11px;
-  --text-micro--line-height: 14px;
 }
 
 html {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--pp);
+  color: var(--ik);
 }
 
 body {
-  /* Console default is 14px, not 16px. Public pages override to 16px. */
-  font-size: var(--text-body);
+  /* Console body is 14px, not 16px. Public pages override. */
+  margin: 0;
+  font-family: var(--font-plex-sans), sans-serif;
+  font-size: 14px;
   line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--sg);
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: var(--sw);
+}
+
+input::placeholder {
+  color: var(--i4);
 }
 
 /* Times, durations, counts, codes and scores never reflow as digits change. */
@@ -82,6 +80,6 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--signal);
+  outline: 2px solid var(--sg);
   outline-offset: 2px;
 }
