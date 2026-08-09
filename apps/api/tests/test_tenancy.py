@@ -145,14 +145,18 @@ async def test_bulk_delete_without_a_tenant_predicate_raises(
 async def test_bulk_update_with_a_tenant_predicate_is_allowed_and_scoped(
     session: AsyncSession, two_orgs: tuple[Organization, Organization]
 ) -> None:
-    org_a, _ = two_orgs
+    org_a, org_b = two_orgs
     with tenant_scope(org_a.id):
         await session.execute(
             update(Event).where(Event.org_id == org_a.id).values(location="Hall A")
         )
 
     with tenancy_disabled():
-        rows = (await session.execute(select(Event.name, Event.location))).all()
+        rows = (
+            await session.execute(
+                select(Event.name, Event.location).where(Event.org_id.in_([org_a.id, org_b.id]))
+            )
+        ).all()
 
     locations = dict(rows)
     assert locations["Alpha 2026"] == "Hall A"
@@ -162,8 +166,13 @@ async def test_bulk_update_with_a_tenant_predicate_is_allowed_and_scoped(
 async def test_tenancy_disabled_sees_every_org(
     session: AsyncSession, two_orgs: tuple[Organization, Organization]
 ) -> None:
+    org_a, org_b = two_orgs
     with tenancy_disabled():
-        events = (await session.execute(select(Event))).scalars().all()
+        events = (
+            (await session.execute(select(Event).where(Event.org_id.in_([org_a.id, org_b.id]))))
+            .scalars()
+            .all()
+        )
 
     assert {e.name for e in events} == {"Alpha 2026", "Beta 2026"}
 

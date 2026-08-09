@@ -129,6 +129,33 @@ def require_role(*allowed: Role) -> Callable[..., Awaitable[User]]:
     return dependency
 
 
+async def bind_public_event(
+    session: DbSession, event_slug: Annotated[str, Path()]
+) -> AsyncIterator[Event]:
+    """Resolve an event from its public slug and bind the tenant for the request.
+
+    A dependency rather than an inline `with` block because the session commits
+    during dependency teardown — a scope that closes when the handler returns
+    would leave the flush with no tenant.
+    """
+    from app.core.errors import NotFoundError
+
+    with tenancy_disabled():
+        event = await session.scalar(select(Event).where(Event.slug == event_slug))
+    if event is None:
+        raise NotFoundError("No such event.")
+
+    with tenant_scope(org_id=event.org_id, event_id=event.id):
+        yield event
+        # Flush while the scope is still open. `get_db` is entered first and so
+        # tears down last, meaning its commit lands after this scope has closed —
+        # anything still pending would flush with no tenant and be rejected.
+        await session.flush()
+
+
+PublicEvent = Annotated[Event, Depends(bind_public_event)]
+
+
 async def bind_tenant(
     session: DbSession,
     user: CurrentUser,
@@ -150,3 +177,5 @@ async def bind_tenant(
 
     with tenant_scope(org_id=event.org_id, event_id=event.id):
         yield
+        # See bind_public_event: flush before the scope closes.
+        await session.flush()

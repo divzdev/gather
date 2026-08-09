@@ -15,7 +15,10 @@ from app.core.db import engine
 from app.core.errors import ApiError, api_error_handler, validation_error_handler
 from app.core.idempotency import IdempotencyMiddleware
 from app.features.auth.router import router as auth_router
+from app.features.forms.router import router as forms_router
 from app.features.program.router import ROUTERS as PROGRAM_ROUTERS
+from app.features.submissions.public_router import router as public_router
+from app.features.submissions.router import router as submissions_router
 
 
 @asynccontextmanager
@@ -55,6 +58,9 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     for program_router in PROGRAM_ROUTERS:
         app.include_router(program_router)
+    app.include_router(forms_router)
+    app.include_router(submissions_router)
+    app.include_router(public_router)
 
     @app.get("/v1/health", tags=["ops"])
     async def health() -> dict[str, str]:
