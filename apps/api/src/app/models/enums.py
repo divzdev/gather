@@ -70,6 +70,14 @@ class ReviewRoundStatus(StrEnum):
     CLOSED = "closed"
 
 
+class CriterionKind(StrEnum):
+    """A scorecard field. `text` is qualitative and never enters the mean."""
+
+    RATING = "rating"
+    SELECT = "select"
+    TEXT = "text"
+
+
 class ReviewStatus(StrEnum):
     PENDING = "pending"
     SCORED = "scored"

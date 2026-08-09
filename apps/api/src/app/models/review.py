@@ -19,7 +19,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, EventScoped, PrimaryKey, Timestamps, Uuid, pg_enum
-from app.models.enums import DuplicateStatus, ReviewRoundStatus, ReviewStatus
+from app.models.enums import CriterionKind, DuplicateStatus, ReviewRoundStatus, ReviewStatus
 
 
 class ReviewRound(Base, PrimaryKey, Timestamps, EventScoped):
@@ -49,6 +49,11 @@ class RubricCriterion(Base, PrimaryKey, Timestamps, EventScoped):
     )
     label: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    kind: Mapped[CriterionKind] = mapped_column(
+        pg_enum(CriterionKind, "criterion_kind"), nullable=False, default=CriterionKind.RATING
+    )
+    # Only for `select`: [{"value": 3, "label": "Strong accept"}, ...]
+    choices: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     scale_min: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     scale_max: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     weight: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False, default=Decimal("1.00"))
@@ -119,7 +124,9 @@ class ReviewScore(Base, PrimaryKey, Timestamps, EventScoped):
     rubric_criterion_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("rubric_criteria.id", ondelete="CASCADE"), nullable=False
     )
-    value: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Exactly one is set: numeric for rating/select, text for a free-text criterion.
+    value: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    value_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class AiScore(Base, PrimaryKey, Timestamps, EventScoped):
