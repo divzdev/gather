@@ -17,7 +17,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, EventScoped, PrimaryKey, Timestamps, Uuid, pg_enum
-from app.models.enums import ConflictKind, SessionSpeakerRole, SessionStatus
+from app.models.enums import ConflictKind, ContentStatus, SessionSpeakerRole, SessionStatus
 
 
 class Session(Base, PrimaryKey, Timestamps, EventScoped):
@@ -59,6 +59,11 @@ class Session(Base, PrimaryKey, Timestamps, EventScoped):
     is_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[SessionStatus] = mapped_column(
         pg_enum(SessionStatus, "session_status"), nullable=False, default=SessionStatus.UNSCHEDULED
+    )
+    # Unapproved content never reaches a public surface. Default is pending so a
+    # newly promoted session cannot leak an unreviewed abstract to the world.
+    content_status: Mapped[ContentStatus] = mapped_column(
+        pg_enum(ContentStatus, "content_status"), nullable=False, default=ContentStatus.PENDING
     )
     materials_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     recording_embed_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

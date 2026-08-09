@@ -17,6 +17,9 @@ from app.core.idempotency import IdempotencyMiddleware
 from app.features.auth.router import router as auth_router
 from app.features.forms.router import router as forms_router
 from app.features.program.router import ROUTERS as PROGRAM_ROUTERS
+from app.features.publishing.public_router import router as public_surfaces_router
+from app.features.publishing.router import approval_router
+from app.features.publishing.router import router as publishing_router
 from app.features.review.reviewer_router import router as reviewer_router
 from app.features.review.router import router as review_admin_router
 from app.features.submissions.public_router import router as public_router
@@ -64,7 +67,10 @@ def create_app() -> FastAPI:
     app.include_router(submissions_router)
     app.include_router(review_admin_router)
     app.include_router(reviewer_router)
+    app.include_router(publishing_router)
+    app.include_router(approval_router)
     app.include_router(public_router)
+    app.include_router(public_surfaces_router)
 
     @app.get("/v1/health", tags=["ops"])
     async def health() -> dict[str, str]:

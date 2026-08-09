@@ -16,8 +16,10 @@ class EventDay(Base, PrimaryKey, Timestamps, EventScoped):
     __table_args__ = (UniqueConstraint("event_id", "day_date"),)
 
     day_date: Mapped[date] = mapped_column(nullable=False)
-    starts_at_local: Mapped[time] = mapped_column(nullable=False)
-    ends_at_local: Mapped[time] = mapped_column(nullable=False)
+    # A day without hours is meaningless, and 9-18 is the shape of almost every
+    # conference day, so callers only override when it differs.
+    starts_at_local: Mapped[time] = mapped_column(nullable=False, default=time(9, 0))
+    ends_at_local: Mapped[time] = mapped_column(nullable=False, default=time(18, 0))
     label: Mapped[str | None] = mapped_column(String(100), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 

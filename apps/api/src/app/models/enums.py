@@ -104,6 +104,14 @@ class SessionSpeakerRole(StrEnum):
     PANELIST = "panelist"
 
 
+class ContentStatus(StrEnum):
+    """Approval gate for anything speaker-supplied that reaches the public site."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    CHANGES_REQUESTED = "changes_requested"
+
+
 class ConflictKind(StrEnum):
     ROOM = "room"
     SPEAKER = "speaker"
