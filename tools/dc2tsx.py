@@ -32,6 +32,7 @@ Usage: python tools/dc2tsx.py "GatherDesign/Overview.dc.html" out.tsx Overview
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import sys
 from html.parser import HTMLParser
@@ -99,6 +100,18 @@ CASED = {
     "onmouseleave": "onMouseLeave",
     "onmousedown": "onMouseDown",
     "onmouseup": "onMouseUp",
+    "ondoubleclick": "onDoubleClick",
+    "ondblclick": "onDoubleClick",
+    "oncontextmenu": "onContextMenu",
+    "ondragstart": "onDragStart",
+    "ondragover": "onDragOver",
+    "ondragend": "onDragEnd",
+    "ondrop": "onDrop",
+    "onpointerdown": "onPointerDown",
+    "onpointerup": "onPointerUp",
+    "onpointermove": "onPointerMove",
+    "onwheel": "onWheel",
+    "onscroll": "onScroll",
 }
 
 # The prototypes link to each other by filename. Every screen carries the same
@@ -136,16 +149,37 @@ PATH = re.compile(r"^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$")
 KIND_TS = {
     "list": None,  # structural — rendered as an array of the item's own shape
     "handler": "(event: React.SyntheticEvent) => void",
+    "aria": '"true" | "false" | "mixed"',
     "bool": "boolean",
     "text": "string",
     "node": "React.ReactNode",
 }
 KIND_ORDER = list(KIND_TS)
 
+# React types these as a tri-state union rather than a free string.
+ARIA_TRISTATE = {"aria-checked", "aria-pressed", "aria-selected", "aria-expanded"}
+
+# HTML writes these as text; React types them as numbers.
+NUMERIC_ATTRS = {
+    "rows", "cols", "size", "span", "start", "maxLength", "minLength",
+    "tabIndex", "colSpan", "rowSpan",
+}
+
 
 def camel(name: str) -> str:
     head, *rest = name.split("-")
     return head + "".join(part[:1].upper() + part[1:] for part in rest)
+
+
+def attr_literal(name: str, value: str) -> str:
+    """A JSX attribute whose value may itself contain a double quote.
+
+    `placeholder="a "b" c"` closes the attribute early and corrupts the rest of
+    the document, so anything with a quote is emitted as an expression instead.
+    """
+    if '"' in value:
+        return f"{name}={{{json.dumps(value)}}}"
+    return f'{name}="{value}"'
 
 
 def js_quote(value: str) -> str:
@@ -286,21 +320,32 @@ class Converter(HTMLParser):
                 continue
 
             if name == "href" and value in ROUTES:
-                rendered.append(f'href="{ROUTES[value]}"')
+                rendered.append(attr_literal("href", ROUTES[value]))
                 continue
-            kind = "handler" if name.startswith("on") else "text"
+            kind = (
+                "handler"
+                if name.startswith("on")
+                else "aria"
+                if name in ARIA_TRISTATE
+                else "text"
+            )
             bound = self.interpolate(value, kind)
             attr = name if name.startswith(KEEP_DASHED) else (
                 ATTR_MAP.get(name) or CASED.get(name) or camel(name)
             )
             # Always emit a string when there is no binding: a bare attribute
             # becomes `true`, which React rejects for string-typed props.
-            rendered.append(f"{attr}={{{bound}}}" if bound else f'{attr}="{value}"')
+            if bound:
+                rendered.append(f"{attr}={{{bound}}}")
+            elif attr in NUMERIC_ATTRS and value.strip().lstrip("-").isdigit():
+                rendered.append(f"{attr}={{{value.strip()}}}")
+            else:
+                rendered.append(attr_literal(attr, value))
 
         if classes or class_expr:
             literal = " ".join(classes)
             if class_expr is None:
-                rendered.insert(0, f'className="{literal}"')
+                rendered.insert(0, attr_literal("className", literal))
             elif literal:
                 rendered.insert(0, f'className={{`{literal} ${{{class_expr}}}`}}')
             else:

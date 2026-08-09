@@ -1,13 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { useConsoleChrome } from "@/components/console/chrome";
 import { Overview, type OverviewData } from "@/components/design/Overview";
-import { useTheme } from "@/components/ThemeProvider";
-import { ACCENT_NAMES, ACCENTS } from "@/lib/theme";
-import { authed, clearToken, getEventId } from "@/lib/session";
+import { authed, getEventId } from "@/lib/session";
 
 type Pending = { accepted: number; waitlisted: number; rejected: number; total: number };
 type SubmissionPage = { data: { status: string }[]; meta: { total: number } };
@@ -24,8 +22,7 @@ function parseDateOnly(iso: string): Date {
   return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
 }
 
-const MILESTONE_STATES = ["done", "next", "todo"] as const;
-type MilestoneState = (typeof MILESTONE_STATES)[number];
+type MilestoneState = "done" | "next" | "todo";
 
 function daysUntil(iso: string | null): number | null {
   if (iso === null) return null;
@@ -37,10 +34,7 @@ function daysUntil(iso: string | null): number | null {
 /** Overview, rendered from the design prototype. The counts, dates and calendar
  *  come from the event; everything visual is the generated component's. */
 export default function OverviewPage() {
-  const router = useRouter();
-  const theme = useTheme();
-  const [userMenu, setUserMenu] = useState(false);
-  const [toasts, setToasts] = useState<{ id: string; msg: string }[]>([]);
+  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
   const eventId = typeof window === "undefined" ? null : getEventId();
 
   const { data } = useQuery({
@@ -55,12 +49,6 @@ export default function OverviewPage() {
       return { event, pending, page };
     },
   });
-
-  const toast = (msg: string) => {
-    const id = crypto.randomUUID();
-    setToasts((current) => [...current.slice(-2), { id, msg }]);
-    window.setTimeout(() => setToasts((current) => current.filter((t) => t.id !== id)), 6000);
-  };
 
   const rows = data?.page.data ?? [];
   const total = data?.page.meta.total ?? 0;
@@ -97,41 +85,12 @@ export default function OverviewPage() {
     legendReviews: legend(1, "Reviews close"),
     legendDecisions: legend(2, "Decisions out"),
 
-    popUser: userMenu,
-    togUser: () => setUserMenu((open) => !open),
-    closeUser: () => setUserMenu(false),
-    profileGo: () => {
-      setUserMenu(false);
-      toast("Your profile: name, avatar, and notification rules.");
-    },
-    signOut: () => {
-      setUserMenu(false);
-      clearToken();
-      router.push("/login");
-    },
-
-    themeWord: theme.mode.replace(/^./, (c) => c.toUpperCase()),
-    themeGlyph: theme.mode === "system" ? "◐" : theme.mode === "light" ? "○" : "●",
-    themeTitle: `Theme: ${theme.mode}, click to change`,
-    togTheme: () =>
-      theme.setMode(theme.mode === "system" ? "light" : theme.mode === "light" ? "dark" : "system"),
-    accents: ACCENT_NAMES.map((name) => ({
-      n: name,
-      c: ACCENTS[name].dot,
-      on: () => theme.setAccent(name),
-      ring:
-        theme.accent === name
-          ? `0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ${ACCENTS[name].dot}`
-          : "inset 0 0 0 1px rgba(0,0,0,.12)",
-    })),
+    ...chrome,
 
     kToast: () => toast("Command palette ships with the full build. Every rail item is a real page."),
     bell: () => toast(`${unreviewed} proposals are waiting on review.`),
     nudge: () => toast("Nudges are queued in Messages. Nothing sends until you confirm."),
-    toasts: toasts.map((t) => ({
-      msg: t.msg,
-      onX: () => setToasts((current) => current.filter((x) => x.id !== t.id)),
-    })),
+    toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),
   };
 
   return <Overview d={overview} />;
