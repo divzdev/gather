@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api";
+import { setEventId, setToken } from "@/lib/session";
 
 type Mode = "password" | "magic-link";
 
@@ -32,10 +33,16 @@ export default function LoginPage() {
         await apiFetch("/auth/magic-link", { method: "POST", body: { email } });
         setSent(true);
       } else {
-        await apiFetch<{ access_token: string }>("/auth/login", {
+        const result = await apiFetch<{ access_token: string }>("/auth/login", {
           method: "POST",
           body: { email, password },
         });
+        setToken(result.access_token);
+        // One event in the demo. An event switcher replaces this when multi-event lands.
+        const events = await apiFetch<{ id: string }[]>("/events", {
+          headers: { Authorization: `Bearer ${result.access_token}` },
+        }).catch(() => []);
+        if (events[0]) setEventId(events[0].id);
         router.push("/admin");
       }
     } catch (caught) {

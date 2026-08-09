@@ -6,7 +6,8 @@ import {
   IBM_Plex_Sans_Condensed,
 } from "next/font/google";
 
-import { ThemeProvider, themeBootScript } from "@/components/ThemeProvider";
+import { Providers } from "@/components/Providers";
+import { themeBootScript } from "@/components/ThemeProvider";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -49,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${plexSans.variable} ${plexMono.variable} ${plexCondensed.variable} ${bricolage.variable} font-sans antialiased`}
       >
-        <ThemeProvider>{children}</ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
