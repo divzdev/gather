@@ -69,3 +69,6 @@ tmp/
 .mail/
 .uploads/
 .next/
+
+# --- Eval harness (cloned by `make eval.setup`) ---
+tools/evals/

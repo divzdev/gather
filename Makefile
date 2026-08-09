@@ -82,6 +82,32 @@ fmt: ## Format everything
 
 verify: lint test ## Full gate: lint, typecheck, tests
 
+EVALS := tools/evals
+
+eval.setup: ## Clone and install the killmysaas-evals judge harness
+	@test -d $(EVALS) || git clone -q https://forge.smol.ai/swyx/killmysaas-evals.git $(EVALS)
+	cd $(EVALS) && git pull -q && npm install --silent
+	@cp -f evalconfig.json $(EVALS)/evalconfig.json
+	@echo "Ready. Needs ANTHROPIC_API_KEY exported. Try: make eval.pilot"
+
+eval.list: ## Show the areas, scenarios and rubric the judge will run
+	cd $(EVALS) && npm run --silent list
+
+eval.pilot: ## Cheap single-area probe (~\$0.50). AREA=call-for-papers make eval.pilot
+	@test -n "$$ANTHROPIC_API_KEY" || { echo "export ANTHROPIC_API_KEY first"; exit 1; }
+	@cp -f evalconfig.json $(EVALS)/evalconfig.json
+	cd $(EVALS) && npm run eval -- \
+		--areas $${AREA:-call-for-papers} --max-turns 22 \
+		--agent-model claude-haiku-4-5 --judge-model claude-sonnet-5
+
+eval: ## Full scored run against the URL in evalconfig.json (~\$2-10)
+	@test -n "$$ANTHROPIC_API_KEY" || { echo "export ANTHROPIC_API_KEY first"; exit 1; }
+	@cp -f evalconfig.json $(EVALS)/evalconfig.json
+	cd $(EVALS) && npm run eval -- --include-optional
+
+eval.report: ## Open the most recent report
+	@open $$(ls -td $(EVALS)/runs/*/ | head -1)report.html
+
 clean: ## Remove caches and build output
 	find . -type d -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
 	rm -rf $(API)/.pytest_cache $(API)/.ruff_cache $(API)/.mypy_cache

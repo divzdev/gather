@@ -1,0 +1,38 @@
+{
+  "//": "Config for the killmysaas-evals harness (sbek). `make eval` reads this. The harness itself lives in tools/evals/ and is gitignored; `make eval.setup` clones it.",
+
+  "url": "http://127.0.0.1:3000",
+
+  "//credentials": "The seed pre-creates these exact accounts from fixtures/sample-data.json, so the agent never spends turns on signup or magic links. Turn budget is 70 per scenario and rule/scoping items are reached last, so auth friction costs real points. These are demo credentials for a demo dataset; they are not secrets.",
+  "credentials": {
+    "organizer": {
+      "email": "sbek-organizer@example.com",
+      "password": "SbekTest!2027-org",
+      "notes": "Jordan Alvarez. Pre-seeded owner of DevFlow Conf 2027."
+    },
+    "speaker": {
+      "email": "sbek-speaker@example.com",
+      "password": "SbekTest!2027-spk",
+      "notes": "Priya Raman. Has submissions and portal tasks."
+    },
+    "speaker2": {
+      "email": "sbek-speaker2@example.com",
+      "password": "SbekTest!2027-spk2",
+      "notes": "Marcus Okafor. Co-author on one submission."
+    },
+    "reviewer": {
+      "email": "sbek-reviewer@example.com",
+      "password": "SbekTest!2027-rev",
+      "notes": "Sam Whitfield. Reviewer role only; sees an assigned queue."
+    }
+  },
+
+  "areas": [],
+  "includeOptional": true,
+  "agentModel": "claude-sonnet-5",
+  "judgeModel": "claude-opus-5",
+  "maxTurnsPerScenario": 70,
+  "headless": true,
+
+  "submissionNotes": "Gather — open-source Sessionboard alternative. Seeded with DevFlow Conf 2027 exactly as in fixtures/sample-data.json (3 tracks, 5 session formats, 4 rooms). All four fixture personas exist with the fixture passwords; sign in at /login with password — no magic link or inbox needed, though magic links also work for real users. Organizer console at /admin, speaker portal at /portal, reviewer queue at /review. Public surfaces need no login: /e/devflow-conf-2027 (landing), /cfp (submission form), /schedule, /speakers, /sessions."
+}
