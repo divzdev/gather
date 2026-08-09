@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, status
@@ -11,7 +13,18 @@ from sqlalchemy import select
 from app.core.deps import DbSession, bind_tenant, require_role
 from app.core.errors import NotFoundError
 from app.features.publishing import snapshot
-from app.models import ContentStatus, Event, PublishedSchedule, Role, Session, User
+from app.models import (
+    ContentStatus,
+    Event,
+    PublishedSchedule,
+    Role,
+    Session,
+    SessionSpeaker,
+    SessionSpeakerRole,
+    SessionStatus,
+    Speaker,
+    User,
+)
 
 router = APIRouter(
     prefix="/v1/events/{event_id}/schedule",
@@ -128,6 +141,91 @@ approval_router = APIRouter(
     tags=["publishing"],
     dependencies=[Depends(bind_tenant)],
 )
+
+
+class SessionSpeakerRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    role: SessionSpeakerRole
+
+
+class SessionRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    slug: str
+    abstract: str | None
+    submission_id: uuid.UUID | None
+    track_id: uuid.UUID | None
+    session_format_id: uuid.UUID | None
+    duration_minutes: int
+    event_day_id: uuid.UUID | None
+    room_id: uuid.UUID | None
+    starts_at: datetime | None
+    is_locked: bool
+    status: SessionStatus
+    content_status: ContentStatus
+    speakers: list[SessionSpeakerRead] = Field(default_factory=list)
+
+
+@approval_router.get("", response_model=list[SessionRead])
+async def list_sessions(
+    session: DbSession, _: User = Depends(require_role(*STAFF))
+) -> list[SessionRead]:
+    """Every session in the event, placed or not.
+
+    The agenda's unscheduled tray and the sessions table are the same list read
+    two ways, so this returns both rather than filtering on placement.
+    """
+    rows = (
+        (await session.execute(select(Session).order_by(Session.starts_at, Session.title)))
+        .scalars()
+        .all()
+    )
+    if not rows:
+        return []
+
+    links = (
+        (
+            await session.execute(
+                select(SessionSpeaker, Speaker)
+                .join(Speaker, Speaker.id == SessionSpeaker.speaker_id)
+                .where(SessionSpeaker.session_id.in_([row.id for row in rows]))
+                .order_by(SessionSpeaker.sort_order)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    by_session: dict[uuid.UUID, list[SessionSpeakerRead]] = {}
+    for link, speaker in links:
+        by_session.setdefault(link.session_id, []).append(
+            SessionSpeakerRead(id=speaker.id, name=speaker.name, role=link.role)
+        )
+
+    return [
+        SessionRead(
+            id=row.id,
+            title=row.title,
+            slug=row.slug,
+            abstract=row.abstract,
+            submission_id=row.submission_id,
+            track_id=row.track_id,
+            session_format_id=row.session_format_id,
+            duration_minutes=row.duration_minutes,
+            event_day_id=row.event_day_id,
+            room_id=row.room_id,
+            starts_at=row.starts_at,
+            is_locked=row.is_locked,
+            status=row.status,
+            content_status=row.content_status,
+            speakers=by_session.get(row.id, []),
+        )
+        for row in rows
+    ]
 
 
 @approval_router.post("/{session_id}/approval")

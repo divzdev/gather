@@ -419,6 +419,17 @@ async def test_accepted_submission_becomes_a_session(
     )
     assert again.json()["id"] == promoted.json()["id"]
 
+    listed = await client.get(f"/v1/events/{event.id}/sessions", headers=headers)
+
+    assert listed.status_code == 200
+    rows = listed.json()
+    assert [row["id"] for row in rows] == [promoted.json()["id"]]
+    # Unplaced, and its content is not public until someone approves it.
+    assert rows[0]["starts_at"] is None
+    assert rows[0]["status"] == "unscheduled"
+    assert rows[0]["content_status"] == "pending"
+    assert [speaker["name"] for speaker in rows[0]["speakers"]] == ["Priya Raman"]
+
 
 async def test_only_accepted_submissions_can_be_promoted(
     client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
