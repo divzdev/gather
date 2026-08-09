@@ -242,6 +242,19 @@ class Converter(HTMLParser):
         self.note_type(expr, kind)
         return f"d.{expr}"
 
+    def canonical(self, expr: str) -> str:
+        """The path a binding records under, with loop aliases resolved.
+
+        A nested loop over `cr.opts`, where `cr` iterates `crits`, belongs under
+        `crits[].opts` — otherwise its children are recorded against a phantom
+        `cr` root and the emitted type has no shape for them.
+        """
+        root, _, rest = expr.partition(".")
+        base = self.aliases.get(root)
+        if base is None:
+            return expr
+        return f"{base}[]{'.' + rest if rest else ''}"
+
     def note_type(self, path: str, kind: str) -> None:
         current = self.types.get(path)
         if current is None or KIND_ORDER.index(kind) < KIND_ORDER.index(current):
@@ -380,7 +393,7 @@ class Converter(HTMLParser):
             self.stack.append(("sc-for", "", None))
             return
         expr = self.resolve(match.group(1), "list")
-        canonical = expr[2:] if expr.startswith("d.") else expr
+        canonical = self.canonical(match.group(1).strip())
         self.out.append(f"{{({expr} ?? []).map(({alias}, {alias}Index) => (<Fragment key={{{alias}Index}}>")
         self.stack.append(("sc-for", "</Fragment>))}", (alias, canonical)))
 

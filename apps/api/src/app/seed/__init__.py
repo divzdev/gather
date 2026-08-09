@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
@@ -21,6 +22,7 @@ from app.core.db import session_factory
 from app.core.security import hash_password
 from app.core.tenancy import tenancy_disabled
 from app.models import (
+    CriterionKind,
     Event,
     EventDay,
     EventSpeaker,
@@ -30,8 +32,12 @@ from app.models import (
     FormStatus,
     Organization,
     OrgMember,
+    ReviewerAssignment,
+    ReviewRound,
+    ReviewRoundStatus,
     Role,
     Room,
+    RubricCriterion,
     SessionFormat,
     Speaker,
     SpeakerStatus,
@@ -412,6 +418,94 @@ async def _upsert_proposals(
     await session.flush()
 
 
+RUBRIC = [
+    ("Relevance", "Does this belong on this programme, for this audience?", Decimal("1.50")),
+    ("Originality", "Have we seen this talk before, here or elsewhere?", Decimal("1.00")),
+    ("Speaker readiness", "Can they deliver it at this length, to this room?", Decimal("1.00")),
+]
+
+
+async def _upsert_review_round(session: AsyncSession, event: Event) -> None:
+    """An open round with a rubric, and every submitted proposal assigned to the
+    reviewer persona — otherwise the review queue has nothing to show."""
+    round_ = await session.scalar(
+        select(ReviewRound).where(ReviewRound.event_id == event.id, ReviewRound.sort_order == 1)
+    )
+    if round_ is None:
+        round_ = ReviewRound(
+            org_id=event.org_id, event_id=event.id, name="First pass", sort_order=1
+        )
+        session.add(round_)
+    round_.is_blind = False
+    round_.status = ReviewRoundStatus.OPEN
+    round_.opens_at = datetime.now(UTC) - timedelta(days=3)
+    round_.closes_at = event.cfp_closes_at
+    round_.advance_rule = {"kind": "manual"}
+    await session.flush()
+
+    existing = {
+        criterion.label
+        for criterion in (
+            await session.scalars(
+                select(RubricCriterion).where(RubricCriterion.review_round_id == round_.id)
+            )
+        ).all()
+    }
+    for order, (label, description, weight) in enumerate(RUBRIC):
+        if label in existing:
+            continue
+        session.add(
+            RubricCriterion(
+                org_id=event.org_id,
+                event_id=event.id,
+                review_round_id=round_.id,
+                label=label,
+                description=description,
+                kind=CriterionKind.RATING,
+                scale_min=1,
+                scale_max=5,
+                weight=weight,
+                sort_order=order,
+            )
+        )
+
+    reviewer = await session.scalar(select(User).where(User.email == STAFF[1][1]))
+    if reviewer is None:
+        return
+    submissions = (
+        await session.scalars(
+            select(Submission).where(
+                Submission.event_id == event.id,
+                Submission.status == SubmissionStatus.SUBMITTED,
+            )
+        )
+    ).all()
+    assigned = {
+        assignment.submission_id
+        for assignment in (
+            await session.scalars(
+                select(ReviewerAssignment).where(
+                    ReviewerAssignment.review_round_id == round_.id,
+                    ReviewerAssignment.user_id == reviewer.id,
+                )
+            )
+        ).all()
+    }
+    for submission in submissions:
+        if submission.id in assigned:
+            continue
+        session.add(
+            ReviewerAssignment(
+                org_id=event.org_id,
+                event_id=event.id,
+                review_round_id=round_.id,
+                submission_id=submission.id,
+                user_id=reviewer.id,
+            )
+        )
+    await session.flush()
+
+
 async def seed() -> None:
     settings = get_settings()
     if not settings.seeding_allowed:
@@ -427,6 +521,7 @@ async def seed() -> None:
             form = await _upsert_form(session, event)
             people = await _upsert_speakers(session, event)
             await _upsert_proposals(session, event, form, program, people)
+            await _upsert_review_round(session, event)
             await session.commit()
 
     print(

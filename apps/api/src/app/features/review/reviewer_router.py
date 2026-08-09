@@ -21,12 +21,14 @@ from app.features.review.schemas import (
     QueueItem,
     ReviewRead,
     ReviewSubject,
+    RoundRead,
     ScoreRequest,
 )
 from app.models import (
     Form,
     Review,
     ReviewerAssignment,
+    ReviewRound,
     Role,
     RubricCriterion,
     Speaker,
@@ -52,6 +54,37 @@ async def _identity_keys(session: DbSession, submission: Submission) -> set[str]
         return set()
     schema = FormSchema.model_validate(form.schema)
     return {f.key for f in schema.all_fields() if f.identity_bearing}
+
+
+@router.get("/rounds", response_model=list[RoundRead])
+async def my_rounds(
+    session: DbSession,
+    user: CurrentUser,
+    _: User = Depends(require_role(*ANY_REVIEWER)),
+) -> list[ReviewRound]:
+    """The rounds this reviewer has work in.
+
+    The admin round list is staff-only and carries configuration a reviewer has
+    no business seeing; this returns only rounds they are assigned in, which is
+    also what the queue needs to address itself.
+    """
+    rows = (
+        (
+            await session.execute(
+                select(ReviewRound)
+                .join(
+                    ReviewerAssignment,
+                    ReviewerAssignment.review_round_id == ReviewRound.id,
+                )
+                .where(ReviewerAssignment.user_id == user.id)
+                .distinct()
+                .order_by(ReviewRound.sort_order)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return list(rows)
 
 
 @router.get("/queue", response_model=list[QueueItem])
