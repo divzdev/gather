@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>html{scroll-behavior:smooth}body{margin:0;background:#F4F6F7;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:#E04E4E}a:hover{color:#C93E3E}::selection{background:#FFEAE6}</style>
+</helmet>
+<div style="min-height:100vh;background:#FF6B6B;color:#331313">
+  <header style="position:sticky;top:0;z-index:40;background:rgba(244,246,247,.92);backdrop-filter:blur(8px);border-bottom:1px solid #E1E7E9">
+    <div style="max-width:1120px;margin:0 auto;padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;gap:24px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-label="Gather"><rect width="24" height="24" rx="6.5" fill="#16232B"></rect><circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B"></circle><circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7"></circle><circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7"></circle><circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7"></circle></svg>
+        <span style="font:700 15px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em">AI Engineer 2026</span>
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:#99A6AD;margin-left:2px">12–14 OCT · SF</span>
+      </div>
+      <nav style="display:flex;align-items:center;gap:22px">
+        <a href="#tracks" style="font:500 13px 'IBM Plex Sans',sans-serif;color:#3E4E58;text-decoration:none">Tracks</a>
+        <a href="#ask" style="font:500 13px 'IBM Plex Sans',sans-serif;color:#3E4E58;text-decoration:none">What we ask for</a>
+        <a href="#dates" style="font:500 13px 'IBM Plex Sans',sans-serif;color:#3E4E58;text-decoration:none">Key dates</a>
+        <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+          <a href="CFP.dc.html" style="display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:6px;background:#FF6B6B;color:#331313;font:500 13px 'IBM Plex Sans',sans-serif;text-decoration:none" style-hover="background:#E85B5B;color:#331313">Submit a proposal</a>
+        </sc-if>
+        <sc-if value="{{ closed }}" hint-placeholder-val="{{ false }}">
+          <a href="#dates" style="display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:6px;background:#FFFFFF;border:1px solid #C8D2D5;color:#16232B;font:500 13px 'IBM Plex Sans',sans-serif;text-decoration:none">Check your status</a>
+        </sc-if>
+      </nav>
+    </div>
+  </header>
+
+  <section style="max-width:1120px;margin:0 auto;padding:88px 32px 64px;display:grid;grid-template-columns:1fr 400px;gap:48px;align-items:center">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+          <span style="width:7px;height:7px;border-radius:50%;background:#E04E4E"></span>
+          <span style="font:600 11px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.14em;color:#E04E4E">CALL FOR PAPERS · OPEN</span>
+        </sc-if>
+        <sc-if value="{{ closed }}" hint-placeholder-val="{{ false }}">
+          <span style="width:7px;height:7px;border-radius:50%;background:#6B7B84"></span>
+          <span style="font:600 11px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.14em;color:#6B7B84">CALL FOR PAPERS · CLOSED</span>
+        </sc-if>
+      </div>
+      <h1 style="font:700 62px/1.02 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em;color:#16232B;margin:18px 0 14px;text-wrap:balance">AI Engineer 2026</h1>
+      <div style="font:400 13.5px 'IBM Plex Mono',monospace;color:#6B7B84;margin-bottom:18px">12–14 October 2026 · Fort Mason, San Francisco</div>
+      <p style="font:400 16.5px/26px 'IBM Plex Sans',sans-serif;color:#3E4E58;max-width:520px;margin:0 0 28px">Three days on agents, evals, retrieval, and the infrastructure underneath them. 1,800 engineers, six tracks, 90 session slots, built from talks like yours.</p>
+      <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <a href="CFP.dc.html" style="display:inline-flex;align-items:center;height:44px;padding:0 22px;border-radius:6px;background:#FF6B6B;color:#331313;font:500 15px 'IBM Plex Sans',sans-serif;text-decoration:none" style-hover="background:#E85B5B;color:#331313">Submit a proposal</a>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <span style="font:500 13px 'IBM Plex Mono',monospace;color:#16232B;font-variant-numeric:tabular-nums">{{ countdown }}</span>
+            <span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#99A6AD">closes Tue 15 Sep, 23:59 PT</span>
+          </div>
+        </div>
+        <div style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6B7B84;margin-top:16px">No account needed. Takes about 15 minutes, and it autosaves, so you can stop and come back.</div>
+      </sc-if>
+      <sc-if value="{{ closed }}" hint-placeholder-val="{{ false }}">
+        <div style="max-width:480px;background:#E9ECF7;border:1px solid #C6CDEA;border-radius:6px;padding:14px 16px">
+          <div style="font:600 13.5px 'IBM Plex Sans',sans-serif;color:#47599F;margin-bottom:3px">The call for papers closed 15 Sep</div>
+          <div style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#3E4E58">Decisions go out by 29 Sep. If you submitted, your status link shows exactly where your proposal is.</div>
+        </div>
+      </sc-if>
+    </div>
+    <div style="position:relative;height:340px" aria-hidden="true">
+      <div style="position:absolute;right:36px;bottom:36px;width:220px;height:220px;border:1px solid #E1E7E9;border-radius:50%"></div>
+      <div style="position:absolute;left:18px;top:36px;width:10px;height:10px;border-radius:50%;background:#16232B;opacity:.14"></div>
+      <div style="position:absolute;left:96px;top:12px;width:7px;height:7px;border-radius:50%;background:#16232B;opacity:.2"></div>
+      <div style="position:absolute;left:170px;top:58px;width:12px;height:12px;border-radius:50%;background:#16232B;opacity:.28"></div>
+      <div style="position:absolute;left:52px;top:118px;width:8px;height:8px;border-radius:50%;background:#16232B;opacity:.24"></div>
+      <div style="position:absolute;left:132px;top:140px;width:16px;height:16px;border-radius:50%;background:#16232B;opacity:.4"></div>
+      <div style="position:absolute;left:216px;top:96px;width:10px;height:10px;border-radius:50%;background:#E04E4E;opacity:.45"></div>
+      <div style="position:absolute;left:186px;top:196px;width:13px;height:13px;border-radius:50%;background:#16232B;opacity:.5"></div>
+      <div style="position:absolute;left:246px;top:160px;width:22px;height:22px;border-radius:50%;background:#E04E4E;opacity:.62"></div>
+      <div style="position:absolute;right:64px;bottom:64px;width:164px;height:164px;border-radius:50%;background:#E04E4E">
+        <div style="position:absolute;left:34px;top:34px;width:22px;height:22px;border-radius:50%;background:#EBEDF7"></div>
+        <div style="position:absolute;left:82px;top:26px;width:13px;height:13px;border-radius:50%;background:#EBEDF7"></div>
+        <div style="position:absolute;left:28px;top:82px;width:13px;height:13px;border-radius:50%;background:#EBEDF7"></div>
+      </div>
+    </div>
+  </section>
+
+  <div style="border-top:1px solid #E1E7E9;border-bottom:1px solid #E1E7E9;background:#FFFFFF">
+    <div style="max-width:1120px;margin:0 auto;padding:14px 32px;display:flex;gap:36px;flex-wrap:wrap">
+      <span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#3E4E58">214 proposals so far</span>
+      <span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#3E4E58">38 countries</span>
+      <span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#3E4E58">6 tracks · 90 session slots</span>
+      <span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#6B7B84">every proposal reviewed by 3+ engineers</span>
+    </div>
+  </div>
+
+  <section id="tracks" style="max-width:1120px;margin:0 auto;padding:72px 32px 8px;scroll-margin-top:70px">
+    <div style="font:600 11px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.14em;color:#6B7B84">TRACKS</div>
+    <h2 style="font:700 32px/38px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:10px 0 26px">Six tracks. Pick where your talk lives.</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+      <div style="background:#FFFFFF;border:1px solid #E1E7E9;border-left:3px solid #3E8896;border-radius:8px;padding:16px 18px"><div style="font:600 15px 'IBM Plex Sans',sans-serif;color:#16232B;margin-bottom:4px">Agents</div><div style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#6B7B84">Planning, tool use, and recovering when step two fails.</div></div>
+      <div style="background:#FFFFFF;border:1px solid #E1E7E9;border-left:3px solid #A85788;border-radius:8px;padding:16px 18px"><div style="font:600 15px 'IBM Plex Sans',sans-serif;color:#16232B;margin-bottom:4px">Evals</div><div style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#6B7B84">Rubrics, regression suites, and preference data that holds up.</div></div>
+      <div style="background:#FFFFFF;border:1px solid #E1E7E9;border-left:3px solid #5A6BA8;border-radius:8px;padding:16px 18px"><div style="font:600 15px 'IBM Plex Sans',sans-serif;color:#16232B;margin-bottom:4px">Infrastructure</div><div style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#6B7B84">Serving, routing, caching, and the GPU bill.</div></div>
+      <div style="background:#FFFFFF;border:1px solid #E1E7E9;border-left:3px solid #7E5CB8;border-radius:8px;padding:16px 18px"><div style="font:600 15px 'IBM Plex Sans',sans-serif;color:#16232B;margin-bottom:4px">Retrieval</div><div style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#6B7B84">Indexing, chunking, and hybrid search at real scale.</div></div>
+      <div style="background:#FFFFFF;border:1px solid #E1E7E9;border-left:3px solid #C4703A;border-radius:8px;padding:16px 18px"><div style="font:600 15px 'IBM Plex Sans',sans-serif;color:#16232B;margin-bottom:4px">Multimodal</div><div style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#6B7B84">Vision, voice, and interfaces beyond the textbox.</div></div>
+      <div style="background:#FFFFFF;border:1px solid #E1E7E9;border-left:3px solid #34526B;border-radius:8px;padding:16px 18px"><div style="font:600 15px 'IBM Plex Sans',sans-serif;color:#16232B;margin-bottom:4px">In production</div><div style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#6B7B84">Postmortems, guardrails, and running it for real.</div></div>
+    </div>
+    <div style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6B7B84;margin-top:14px">First time speaking? Lightning talks are 10 minutes and reviewed on the same footing.</div>
+  </section>
+
+  <section id="ask" style="max-width:1120px;margin:0 auto;padding:72px 32px 8px;scroll-margin-top:70px">
+    <div style="font:600 11px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.14em;color:#6B7B84">WHAT WE ASK FOR</div>
+    <h2 style="font:700 32px/38px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:10px 0 8px">Have these ready. It takes about 15 minutes.</h2>
+    <p style="font:400 14.5px/22px 'IBM Plex Sans',sans-serif;color:#3E4E58;max-width:560px;margin:0 0 26px">This is everything the form asks: no surprises halfway through, nothing you can't edit later.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;background:#FFFFFF;border:1px solid #E1E7E9;border-radius:10px;overflow:hidden">
+      <div style="padding:16px 20px;border-bottom:1px solid #E1E7E9;border-right:1px solid #E1E7E9;display:flex;gap:14px"><span style="font:500 12px 'IBM Plex Mono',monospace;color:#99A6AD;padding-top:2px">01</span><div><div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#16232B">Title</div><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:#6B7B84">Under 80 characters. Say what the talk delivers.</div></div></div>
+      <div style="padding:16px 20px;border-bottom:1px solid #E1E7E9;display:flex;gap:14px"><span style="font:500 12px 'IBM Plex Mono',monospace;color:#99A6AD;padding-top:2px">02</span><div><div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#16232B">Abstract</div><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:#6B7B84">150–400 words on what attendees walk away with.</div></div></div>
+      <div style="padding:16px 20px;border-bottom:1px solid #E1E7E9;border-right:1px solid #E1E7E9;display:flex;gap:14px"><span style="font:500 12px 'IBM Plex Mono',monospace;color:#99A6AD;padding-top:2px">03</span><div><div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#16232B">Track and format</div><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:#6B7B84">30-min talk, 10-min lightning, or 90-min workshop.</div></div></div>
+      <div style="padding:16px 20px;border-bottom:1px solid #E1E7E9;display:flex;gap:14px"><span style="font:500 12px 'IBM Plex Mono',monospace;color:#99A6AD;padding-top:2px">04</span><div><div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#16232B">Speaker bio</div><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:#6B7B84">50–100 words, third person. We'll help with house style.</div></div></div>
+      <div style="padding:16px 20px;border-right:1px solid #E1E7E9;display:flex;gap:14px"><span style="font:500 12px 'IBM Plex Mono',monospace;color:#99A6AD;padding-top:2px">05</span><div><div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#16232B">Headshot</div><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:#6B7B84">Square, 800px or larger. Fine to add after acceptance.</div></div></div>
+      <div style="padding:16px 20px;display:flex;gap:14px"><span style="font:500 12px 'IBM Plex Mono',monospace;color:#99A6AD;padding-top:2px">06</span><div><div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#16232B">Co-speakers</div><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:#6B7B84">Optional. Each gets their own portal invite on acceptance.</div></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px">
+      <div style="background:#EDF1F2;border-radius:8px;padding:14px 16px"><div style="font:600 13px 'IBM Plex Sans',sans-serif;color:#16232B;margin-bottom:3px">No account, no passwords</div><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:#6B7B84">Your email is your identity. We send a magic link.</div></div>
+      <div style="background:#EDF1F2;border-radius:8px;padding:14px 16px"><div style="font:600 13px 'IBM Plex Sans',sans-serif;color:#16232B;margin-bottom:3px">Autosaves as you type</div><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:#6B7B84">Stop mid-sentence, come back any time before the deadline.</div></div>
+      <div style="background:#EDF1F2;border-radius:8px;padding:14px 16px"><div style="font:600 13px 'IBM Plex Sans',sans-serif;color:#16232B;margin-bottom:3px">Always know where you stand</div><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:#6B7B84">A status link shows submitted → in review → decision.</div></div>
+    </div>
+  </section>
+
+  <section id="dates" style="max-width:1120px;margin:0 auto;padding:72px 32px 24px;scroll-margin-top:70px">
+    <div style="font:600 11px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.14em;color:#6B7B84">KEY DATES</div>
+    <h2 style="font:700 32px/38px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:10px 0 30px">Four dates. We keep every one.</h2>
+    <div style="display:flex;align-items:flex-start">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center"><span style="width:11px;height:11px;border-radius:50%;background:#E04E4E"></span><span style="flex:1;height:1px;background:#E1E7E9"></span></div>
+        <div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#E04E4E;margin:10px 0 2px">15 Sep</div>
+        <div style="font:600 13.5px 'IBM Plex Sans',sans-serif;color:#16232B">CFP closes</div>
+        <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#99A6AD">23:59 PT, no extensions</div>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center"><span style="width:11px;height:11px;border-radius:50%;background:#FFFFFF;border:1px solid #C8D2D5;box-sizing:border-box"></span><span style="flex:1;height:1px;background:#E1E7E9"></span></div>
+        <div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#6B7B84;margin:10px 0 2px">29 Sep</div>
+        <div style="font:600 13.5px 'IBM Plex Sans',sans-serif;color:#16232B">Decisions out</div>
+        <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#99A6AD">every submitter hears back</div>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center"><span style="width:11px;height:11px;border-radius:50%;background:#FFFFFF;border:1px solid #C8D2D5;box-sizing:border-box"></span><span style="flex:1;height:1px;background:#E1E7E9"></span></div>
+        <div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#6B7B84;margin:10px 0 2px">6 Oct</div>
+        <div style="font:600 13.5px 'IBM Plex Sans',sans-serif;color:#16232B">Schedule live</div>
+        <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#99A6AD">rooms, times, calendar links</div>
+      </div>
+      <div style="flex:0 0 auto">
+        <div style="display:flex;align-items:center"><span style="width:11px;height:11px;border-radius:50%;background:#FFFFFF;border:1px solid #C8D2D5;box-sizing:border-box"></span></div>
+        <div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#6B7B84;margin:10px 0 2px">12–14 Oct</div>
+        <div style="font:600 13.5px 'IBM Plex Sans',sans-serif;color:#16232B">Event days</div>
+        <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#99A6AD">Fort Mason, San Francisco</div>
+      </div>
+    </div>
+  </section>
+
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+    <section style="max-width:1120px;margin:48px auto 72px;padding:0 32px">
+      <div style="background:#16232B;border-radius:10px;padding:36px 40px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap">
+        <div>
+          <div style="font:700 24px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#F4F6F7;margin-bottom:4px">Ready when you are.</div>
+          <div style="font:400 13.5px 'IBM Plex Sans',sans-serif;color:#99A6AD">About 15 minutes, autosaved. <span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#B8BED6">{{ countdown }}</span></div>
+        </div>
+        <a href="CFP.dc.html" style="display:inline-flex;align-items:center;height:44px;padding:0 22px;border-radius:6px;background:#FF6B6B;color:#331313;font:500 15px 'IBM Plex Sans',sans-serif;text-decoration:none" style-hover="background:#E85B5B;color:#331313">Submit a proposal</a>
+      </div>
+    </section>
+  </sc-if>
+
+  <footer style="border-top:1px solid #E1E7E9;background:#FFFFFF">
+    <div style="max-width:1120px;margin:0 auto;padding:22px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:9px">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6.5" fill="#16232B"></rect><circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B"></circle><circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7"></circle><circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7"></circle><circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7"></circle></svg>
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6B7B84">AI Engineer 2026 runs on <span style="font:700 12.5px 'Bricolage Grotesque',sans-serif;color:#16232B;letter-spacing:-0.01em">Gather</span> · speaker &amp; session management</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <a href="#ask" style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6B7B84;text-decoration:none">Speaker guide</a>
+        <a href="#tracks" style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6B7B84;text-decoration:none">Code of conduct</a>
+        <a href="Submissions.dc.html" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#E04E4E;text-decoration:none">Organizer console →</a>
+      </div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;cfpState&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;open&quot;, &quot;closed&quot;], &quot;default&quot;: &quot;open&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Page state&quot;}}">
+class Component extends DCLogic {
+  state = { now: Date.now() };
+  componentDidMount() {
+    this._t = setInterval(() => this.setState({ now: Date.now() }), 60000);
+  }
+  componentWillUnmount() { clearInterval(this._t); }
+  renderVals() {
+    const open = (this.props.cfpState ?? 'open') === 'open';
+    const close = new Date('2026-09-15T23:59:00-07:00').getTime();
+    const ms = Math.max(0, close - this.state.now);
+    const d = Math.floor(ms / 86400000);
+    const h = Math.floor((ms % 86400000) / 3600000);
+    return { open, closed: !open, countdown: d + 'd ' + String(h).padStart(2, '0') + 'h left to submit' };
+  }
+}
+</script>
+</body>
+</html>

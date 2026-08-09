@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#F4F6F7;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:#E04E4E}a:hover{color:#C93E3E}button{cursor:pointer}::selection{background:#FFEAE6}input::placeholder,textarea::placeholder{color:#99A6AD}</style>
+</helmet>
+<div data-screen-label="Public CFP wizard" style="min-height:100vh;background:#F4F6F7;color:#16232B">
+  <div style="border-bottom:1px solid #E1E7E9;background:#FFFFFF">
+    <div style="max-width:860px;margin:0 auto;padding:0 20px;height:54px;display:flex;align-items:center;gap:10px">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-label="Gather"><rect width="24" height="24" rx="6.5" fill="#12142E"></rect><circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B"></circle><circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7"></circle><circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7"></circle><circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7"></circle></svg>
+      <a href="Event Landing.dc.html" style="font:700 15px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em;color:#16232B;text-decoration:none;white-space:nowrap">AI Engineer 2026</a>
+      <div style="flex:1"></div>
+      <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#6B7B84;white-space:nowrap">closes in 37d 05h</span>
+    </div>
+  </div>
+  <div style="max-width:860px;margin:0 auto;padding:26px 20px 80px">
+    <sc-if value="{{ working }}" hint-placeholder-val="{{ true }}">
+    <div style="border:1px solid #C6CDEA;background:#E9ECF7;border-radius:8px;padding:10px 14px;margin-bottom:22px;display:flex;gap:14px;flex-wrap:wrap">
+      <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">Submissions close <span style="font:500 12px 'IBM Plex Mono',monospace">15 Sep, 23:59 PT</span></span>
+      <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">Limit: <span style="font:500 12px 'IBM Plex Mono',monospace">3 per speaker</span>, drafts included</span>
+      <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">No account needed, your email is your identity</span>
+    </div>
+    <div style="display:grid;grid-template-columns:200px minmax(0,1fr);gap:32px">
+      <div>
+        <div style="position:sticky;top:20px">
+          <sc-for list="{{ steps }}" as="st" hint-placeholder-count="5">
+            <button onClick="{{ st.on }}" style="display:flex;align-items:center;gap:10px;background:none;border:none;padding:6px 0;width:100%;text-align:left">
+              <span style="width:18px;height:18px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;background:{{ st.dotBg }};border:1.5px solid {{ st.dotBd }};font:600 9.5px 'IBM Plex Sans',sans-serif;color:{{ st.dotFg }}">{{ st.mark }}</span>
+              <span style="font:{{ st.wt }} 13.5px 'IBM Plex Sans',sans-serif;color:{{ st.fg }};white-space:nowrap">{{ st.n }}</span>
+            </button>
+          </sc-for>
+          <div style="font:400 11px 'IBM Plex Mono',monospace;color:#E04E4E;margin-top:14px">autosaved {{ savedAt }}</div>
+        </div>
+      </div>
+      <div style="min-width:0">
+        <sc-if value="{{ hasErrors }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid #F3C7C2;background:#FBE8E6;border-radius:8px;padding:12px 14px;margin-bottom:16px">
+            <div style="font:600 13px 'IBM Plex Sans',sans-serif;color:#D8432B;margin-bottom:4px">Almost there. {{ errCount }} required answers are missing:</div>
+            <sc-for list="{{ errors }}" as="er" hint-placeholder-count="1">
+              <button onClick="{{ er.on }}" style="display:block;background:none;border:none;padding:2px 0;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#D8432B;text-decoration:underline;text-align:left">{{ er.t }}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ p0 }}" hint-placeholder-val="{{ true }}">
+          <h1 style="font:700 30px/36px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:0 0 10px">Speak at AI Engineer 2026</h1>
+          <p style="font:400 14.5px/22px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin:0 0 18px;max-width:560px">{{ welcomeMsg }}</p>
+          <div style="border:1px solid #E1E7E9;border-radius:8px;background:#FFFFFF;padding:14px 16px;margin-bottom:18px;max-width:560px">
+            <div style="font:600 12.5px 'IBM Plex Sans',sans-serif;color:#16232B;margin-bottom:6px">What you will need · about 15 minutes</div>
+            <div style="font:400 12.5px/19px 'IBM Plex Sans',sans-serif;color:#6B7B84">A title under 80 characters · an abstract of 150 to 400 words · your track and format · a short third-person bio. Headshot can wait until acceptance.</div>
+          </div>
+          <button onClick="{{ togTerms }}" style="display:flex;align-items:flex-start;gap:9px;background:none;border:none;padding:0;margin-bottom:18px;text-align:left;max-width:560px">
+            <span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ tBd }};background:{{ tBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:#FFFFFF;flex:none;margin-top:2px">{{ tCk }}</span>
+            <span style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#3E4E58">I agree to the speaker terms: recording consent is asked separately after acceptance, and my talk contains no vendor pitch.</span>
+          </button>
+        </sc-if>
+
+        <sc-if value="{{ p1 }}" hint-placeholder-val="{{ false }}">
+          <h2 style="font:600 20px 'IBM Plex Sans',sans-serif;color:#16232B;margin:0 0 4px">You</h2>
+          <p style="font:400 13px 'IBM Plex Sans',sans-serif;color:#6B7B84;margin:0 0 18px">Your email is the identity for this submission. We send a magic link, never a password.</p>
+          <div style="max-width:420px">
+            <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Email address <span style="color:#D8432B">*</span></div>
+            <input value="{{ email }}" onChange="{{ onEmail }}" placeholder="you@company.com" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:6px;border:1px solid {{ emailBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+            <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#99A6AD;margin-top:6px">Already started? The same email resumes your draft on any device.</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ p2 }}" hint-placeholder-val="{{ false }}">
+          <h2 style="font:600 20px 'IBM Plex Sans',sans-serif;color:#16232B;margin:0 0 18px">Your proposal</h2>
+          <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Title <span style="color:#D8432B">*</span></div>
+              <input value="{{ title }}" onChange="{{ onTitle }}" placeholder="Say what the talk delivers" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:6px;border:1px solid {{ titleBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+              <div style="font:400 11.5px 'IBM Plex Mono',monospace;color:#99A6AD;margin-top:5px">{{ titleCount }}</div>
+            </div>
+            <div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Abstract <span style="color:#D8432B">*</span></div>
+              <textarea value="{{ abstract }}" onChange="{{ onAbstract }}" rows="7" placeholder="150 to 400 words on what attendees walk away with" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid {{ absBd }};background:#FFFFFF;font:400 13.5px/21px 'IBM Plex Sans',sans-serif;color:#16232B;resize:vertical;outline-color:#E04E4E"></textarea>
+              <div style="font:400 11.5px 'IBM Plex Mono',monospace;color:#99A6AD;margin-top:5px">{{ wordCount }} words</div>
+            </div>
+            <div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:7px">Track <span style="color:#D8432B">*</span></div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap">
+                <sc-for list="{{ tracks }}" as="tr" hint-placeholder-count="6">
+                  <button onClick="{{ tr.on }}" style="height:32px;padding:0 13px;border-radius:6px;border:1px solid {{ tr.bd }};background:{{ tr.bg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ tr.fg }};white-space:nowrap">{{ tr.n }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <sc-if value="{{ askFramework }}" hint-placeholder-val="{{ false }}">
+              <div style="border-left:2px solid #E04E4E;background:#FFEAE6;border-radius:0 6px 6px 0;padding:12px 14px">
+                <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Because you picked Agents: which framework does your demo use?</div>
+                <input value="{{ framework }}" onChange="{{ onFramework }}" placeholder="e.g. LangGraph, custom, none" style="width:100%;box-sizing:border-box;height:34px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+              </div>
+            </sc-if>
+            <div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:7px">Format <span style="color:#D8432B">*</span></div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap">
+                <sc-for list="{{ formats }}" as="fo" hint-placeholder-count="3">
+                  <button onClick="{{ fo.on }}" style="height:32px;padding:0 13px;border-radius:6px;border:1px solid {{ fo.bd }};background:{{ fo.bg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ fo.fg }};white-space:nowrap">{{ fo.n }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ p3 }}" hint-placeholder-val="{{ false }}">
+          <h2 style="font:600 20px 'IBM Plex Sans',sans-serif;color:#16232B;margin:0 0 4px">Speakers</h2>
+          <p style="font:400 13px 'IBM Plex Sans',sans-serif;color:#6B7B84;margin:0 0 18px">Between 1 and 4 speakers. Co-speakers get their own portal invite on acceptance.</p>
+          <div style="max-width:560px;display:flex;flex-direction:column;gap:14px">
+            <div style="border:1px solid #E1E7E9;border-radius:8px;background:#FFFFFF;padding:14px 16px">
+              <div style="font:600 12px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.06em;color:#99A6AD;margin-bottom:10px">SPEAKER 1 · YOU</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                <div><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Full name <span style="color:#D8432B">*</span></div><input value="{{ name }}" onChange="{{ onName }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid {{ nameBd }};background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E"></div>
+                <div><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Company</div><input value="{{ company }}" onChange="{{ onCompany }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E"></div>
+              </div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Bio <span style="color:#D8432B">*</span> <span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#99A6AD">50 to 100 words, third person</span></div>
+              <textarea value="{{ bio }}" onChange="{{ onBio }}" rows="3" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid {{ bioBd }};background:#FFFFFF;font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#16232B;resize:vertical;outline-color:#E04E4E"></textarea>
+            </div>
+            <sc-if value="{{ hasCo }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px solid #E1E7E9;border-radius:8px;background:#FFFFFF;padding:14px 16px">
+                <div style="display:flex;align-items:center;margin-bottom:10px"><span style="font:600 12px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.06em;color:#99A6AD;flex:1">SPEAKER 2 · CO-SPEAKER</span><button onClick="{{ rmCo }}" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:#6B7B84;padding:0">Remove</button></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                  <input value="{{ coName }}" onChange="{{ onCoName }}" placeholder="Full name" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+                  <input value="{{ coEmail }}" onChange="{{ onCoEmail }}" placeholder="Email for their portal invite" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ noCo }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ addCo }}" style="height:36px;border-radius:6px;border:1px dashed #C8D2D5;background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:#6B7B84">+ Add a co-speaker</button>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ p4 }}" hint-placeholder-val="{{ false }}">
+          <h2 style="font:600 20px 'IBM Plex Sans',sans-serif;color:#16232B;margin:0 0 4px">Review and submit</h2>
+          <p style="font:400 13px 'IBM Plex Sans',sans-serif;color:#6B7B84;margin:0 0 18px">You can edit everything until the deadline, even after submitting.</p>
+          <div style="max-width:560px;border:1px solid #E1E7E9;border-radius:8px;background:#FFFFFF;overflow:hidden">
+            <sc-for list="{{ summary }}" as="sm" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:130px 1fr;gap:12px;padding:10px 16px;border-bottom:1px solid #E1E7E9">
+                <span style="font:400 12px 'IBM Plex Sans',sans-serif;color:#6B7B84">{{ sm.k }}</span>
+                <span style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:{{ sm.fg }}">{{ sm.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;gap:10px;margin-top:24px;max-width:560px">
+          <sc-if value="{{ canBack }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ back }}" style="height:44px;padding:0 18px;border-radius:8px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 14px 'IBM Plex Sans',sans-serif;color:#3E4E58">Back</button>
+          </sc-if>
+          <div style="flex:1"></div>
+          <button onClick="{{ next }}" style="height:44px;padding:0 22px;border-radius:8px;border:none;background:#FF6B6B;color:#331313;font:600 14.5px 'IBM Plex Sans',sans-serif;white-space:nowrap" style-hover="background:#E85B5B;color:#331313">{{ nextLabel }}</button>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ doneV }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:560px;margin:40px auto 0;text-align:center">
+        <div style="width:46px;height:46px;border-radius:50%;background:#E2F1EC;border:1px solid #C2E0D5;display:inline-flex;align-items:center;justify-content:center;font:600 19px 'IBM Plex Sans',sans-serif;color:#0E7A5F;margin-bottom:16px">✓</div>
+        <h1 style="font:700 28px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:0 0 8px">Proposal received</h1>
+        <div style="font:600 24px 'IBM Plex Mono',monospace;color:#E04E4E;letter-spacing:0.04em;margin-bottom:6px">{{ code }}</div>
+        <button onClick="{{ copyCode }}" style="height:28px;padding:0 11px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 12px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:20px">Copy code</button>
+        <div style="border:1px solid #E1E7E9;border-radius:8px;background:#FFFFFF;padding:16px;text-align:left;margin-bottom:16px">
+          <div style="font:400 13.5px/21px 'IBM Plex Sans',sans-serif;color:#3E4E58">A confirmation email is on its way to <span style="font-weight:600;color:#16232B">{{ email }}</span>. Reviews close 22 Sep, decisions go out by 29 Sep. Your status link shows every stage: submitted, in review, decision.</div>
+        </div>
+        <div style="display:flex;justify-content:center;gap:10px">
+          <button onClick="{{ again }}" style="height:38px;padding:0 15px;border-radius:8px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 13px 'IBM Plex Sans',sans-serif;color:#16232B">Submit another proposal</button>
+          <a href="Event Landing.dc.html" style="display:inline-flex;align-items:center;height:38px;padding:0 15px;border-radius:8px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 13px 'IBM Plex Sans',sans-serif;color:#16232B;text-decoration:none">Back to the event</a>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  <div style="position:fixed;left:16px;bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:10px;background:#FFFFFF;border:1px solid #E1E7E9;border-radius:8px;padding:10px 12px;box-shadow:0 12px 32px rgba(16,19,25,.16);max-width:420px">
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#16232B">{{ t.msg }}</span>
+        <button onClick="{{ t.onX }}" aria-label="Dismiss" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:#99A6AD;padding:0">✕</button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { step: 0, done: false, terms: false, email: '', title: '', abstract: '', track: '', framework: '', fmt: '', name: '', company: '', bio: '', co: false, coName: '', coEmail: '', errors: [], savedAt: '11:58', code: '', toasts: [] };
+  toast(msg) {
+    const id = Math.random().toString(36).slice(2);
+    this.setState(s => ({ toasts: [...s.toasts.slice(-2), { id, msg }] }));
+    setTimeout(() => this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), 6000);
+  }
+  stamp() { this.setState({ savedAt: new Date().toTimeString().slice(0, 5) }); }
+  set(k) { return (e) => { this.setState({ [k]: e.target.value, errors: [] }); this.stamp(); }; }
+  missing() {
+    const s = this.state, m = [];
+    if (!s.terms) m.push({ t: 'Agree to the speaker terms', step: 0 });
+    if (!s.email.includes('@')) m.push({ t: 'Your email address', step: 1 });
+    if (!s.title.trim()) m.push({ t: 'A title', step: 2 });
+    if (s.abstract.trim().split(/\s+/).filter(Boolean).length < 20) m.push({ t: 'An abstract of at least 150 words (short is fine in this demo, 20+)', step: 2 });
+    if (!s.track) m.push({ t: 'A track', step: 2 });
+    if (!s.fmt) m.push({ t: 'A format', step: 2 });
+    if (!s.name.trim()) m.push({ t: 'Your name', step: 3 });
+    if (!s.bio.trim()) m.push({ t: 'Your bio', step: 3 });
+    return m;
+  }
+  renderVals() {
+    const s = this.state;
+    const NAMES = ['Welcome', 'You', 'Proposal', 'Speakers', 'Review'];
+    const steps = NAMES.map((n, i) => {
+      const active = s.step === i, done = i < s.step;
+      return { n, on: () => this.setState({ step: i }), mark: done ? '✓' : String(i + 1), wt: active ? '600' : '400', fg: active ? '#E04E4E' : (done ? '#16232B' : '#6B7B84'), dotBg: done ? '#E04E4E' : '#FFFFFF', dotBd: done || active ? '#E04E4E' : '#C8D2D5', dotFg: done ? '#FFFFFF' : (active ? '#E04E4E' : '#99A6AD') };
+    });
+    const chip = (list, key) => list.map(n => ({ n, on: () => { this.setState({ [key]: n, errors: [] }); this.stamp(); }, bd: s[key] === n ? '#FFC9C0' : '#C8D2D5', bg: s[key] === n ? '#FFEAE6' : '#FFFFFF', fg: s[key] === n ? '#E04E4E' : '#3E4E58' }));
+    const errFor = (fieldOk) => fieldOk ? '#C8D2D5' : (s.errors.length ? '#D8432B' : '#C8D2D5');
+    const words = s.abstract.trim() ? s.abstract.trim().split(/\s+/).filter(Boolean).length : 0;
+    const tc = s.terms;
+    return {
+      working: !s.done, doneV: s.done,
+      steps, savedAt: s.savedAt,
+      p0: s.step === 0, p1: s.step === 1, p2: s.step === 2, p3: s.step === 3, p4: s.step === 4,
+      welcomeMsg: 'Tell us what you want to present. It takes about 15 minutes, autosaves as you type, and you can stop and come back any time before the deadline.',
+      togTerms: () => { this.setState(st => ({ terms: !st.terms, errors: [] })); this.stamp(); },
+      tCk: tc ? '✓' : '', tBg: tc ? '#E04E4E' : '#FFFFFF', tBd: tc ? '#E04E4E' : '#C8D2D5',
+      email: s.email, onEmail: this.set('email'), emailBd: errFor(s.email.includes('@')),
+      title: s.title, onTitle: (e) => { this.setState({ title: e.target.value.slice(0, 80), errors: [] }); this.stamp(); },
+      titleBd: errFor(!!s.title.trim()), titleCount: s.title.length + ' of 80 characters',
+      abstract: s.abstract, onAbstract: this.set('abstract'), absBd: errFor(words >= 20), wordCount: String(words),
+      tracks: chip(['Agents', 'Evals', 'Infrastructure', 'Retrieval', 'Multimodal', 'In production'], 'track'),
+      formats: chip(['30 min talk', '10 min lightning', '90 min workshop'], 'fmt'),
+      askFramework: s.track === 'Agents',
+      framework: s.framework, onFramework: this.set('framework'),
+      name: s.name, onName: this.set('name'), nameBd: errFor(!!s.name.trim()),
+      company: s.company, onCompany: this.set('company'),
+      bio: s.bio, onBio: this.set('bio'), bioBd: errFor(!!s.bio.trim()),
+      hasCo: s.co, noCo: !s.co,
+      addCo: () => this.setState({ co: true }),
+      rmCo: () => this.setState({ co: false, coName: '', coEmail: '' }),
+      coName: s.coName, onCoName: this.set('coName'),
+      coEmail: s.coEmail, onCoEmail: this.set('coEmail'),
+      summary: [
+        { k: 'Email', v: s.email || 'Missing', fg: s.email ? '#16232B' : '#D8432B' },
+        { k: 'Title', v: s.title || 'Missing', fg: s.title ? '#16232B' : '#D8432B' },
+        { k: 'Abstract', v: words ? words + ' words' : 'Missing', fg: words ? '#16232B' : '#D8432B' },
+        { k: 'Track · format', v: (s.track || 'No track') + ' · ' + (s.fmt || 'no format'), fg: s.track && s.fmt ? '#16232B' : '#D8432B' },
+        { k: 'Speakers', v: s.co && s.coName ? s.name + ' with ' + s.coName : (s.name || 'Missing'), fg: s.name ? '#16232B' : '#D8432B' },
+        { k: 'After submit', v: 'Editable until 15 Sep. Status link arrives by email.', fg: '#6B7B84' }
+      ],
+      hasErrors: s.errors.length > 0, errCount: s.errors.length,
+      errors: s.errors.map(er => ({ t: er.t, on: () => this.setState({ step: er.step }) })),
+      canBack: s.step > 0,
+      back: () => this.setState(st => ({ step: Math.max(0, st.step - 1) })),
+      next: () => {
+        if (s.step < 4) { this.setState(st => ({ step: st.step + 1 })); this.stamp(); return; }
+        const m = this.missing();
+        if (m.length) { this.setState({ errors: m, step: 4 }); return; }
+        this.setState({ done: true, code: 'A' + Math.random().toString(16).slice(2, 5).toUpperCase() });
+      },
+      nextLabel: s.step === 0 ? 'Start my proposal' : s.step >= 4 ? 'Submit my proposal' : 'Save and continue',
+      code: s.code,
+      copyCode: () => { try { navigator.clipboard.writeText(s.code); } catch (e) {} this.toast('Code copied. It is also in your confirmation email.'); },
+      again: () => this.setState({ done: false, step: 2, title: '', abstract: '', track: '', fmt: '', framework: '', errors: [] }),
+      toasts: s.toasts.map(t => ({ msg: t.msg, onX: () => this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

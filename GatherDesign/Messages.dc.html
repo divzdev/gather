@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--sg,#E04E4E)}a:hover{color:var(--sg,#C93E3E)}button{cursor:pointer}::selection{background:var(--sw,#FFEAE6)}input::placeholder,textarea::placeholder{color:var(--i4,#99A6AD)}</style>
+</helmet>
+<div ref="{{ setRoot }}" data-screen-label="Messages" style="display:grid;grid-template-columns:auto minmax(0,1fr);height:100vh;overflow:hidden;background:var(--pp,#F4F6F7);color:var(--ik,#16232B)">
+  <dc-import name="ConsoleRail" active="Messages" hint-size="216px,100%" style="height:100%;min-height:0"></dc-import>
+  <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <span style="display:flex;align-items:center;gap:8px;font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>AI Engineer 2026</span>
+      <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">/ Messages</span>
+      <div style="display:flex;gap:2px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);border-radius:999px;padding:2px;margin-left:10px">
+        <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="3">
+          <button onClick="{{ tb.on }}" style="height:26px;padding:0 12px;border-radius:999px;border:none;background:{{ tb.bg }};color:{{ tb.fg }};font:{{ tb.wt }} 12px 'IBM Plex Sans',sans-serif;white-space:nowrap;box-shadow:{{ tb.sh }}">{{ tb.n }}</button>
+        </sc-for>
+      </div>
+      <div style="flex:1"></div>
+      
+      <div style="position:relative">
+        <button onClick="{{ togUser }}" title="Account" aria-label="Account menu" style="width:28px;height:28px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);padding:0" style-hover="border:1px solid var(--ls,#C8D2D5)">SW</button>
+        <sc-if value="{{ popUser }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ closeUser }}" aria-label="Close" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:41"></button>
+          <div style="position:absolute;top:36px;right:0;width:248px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:12px;box-shadow:0 16px 40px rgba(13,16,32,.20);padding:6px;z-index:42">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 10px">
+              <span style="width:32px;height:32px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);flex:none">SW</span>
+              <span style="min-width:0"><span style="display:block;font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Sasha Whitfield</span><span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">program lead · demo org</span></span>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:8px 10px 6px">THEME</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 10px 10px">
+              <sc-for list="{{ accents }}" as="ac" hint-placeholder-count="5"><button onClick="{{ ac.on }}" title="{{ ac.n }}" aria-label="{{ ac.n }}" style="width:16px;height:16px;border-radius:50%;border:none;background:{{ ac.c }};box-shadow:{{ ac.ring }};padding:0;flex:none"></button></sc-for>
+              <div style="flex:1"></div>
+              <button onClick="{{ togTheme }}" title="{{ themeTitle }}" style="display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)">{{ themeGlyph }} {{ themeWord }}</button>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ profileGo }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);text-align:left" style-hover="background:var(--sk,#EDF1F2)">Your profile</button>
+            <a href="Settings.dc.html" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;text-decoration:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Workspace settings</a>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ signOut }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B);text-align:left" style-hover="background:var(--cnw,#FBE8E6)">Sign out</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px 28px 80px">
+
+      <sc-if value="{{ tabCompose }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+          <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Compose and send</h1>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">nothing sends until step 3, ever</span>
+        </div>
+        <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">Pick an audience, write once with variables, preview against a real speaker. Sending is always the explicit last step.</div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:14px 16px">
+              <div style="font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:10px">1 · RECIPIENTS</div>
+              <sc-for list="{{ segs }}" as="sg" hint-placeholder-count="4">
+                <button onClick="{{ sg.on }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;border:1px solid {{ sg.bd }};background:{{ sg.bg }};margin-bottom:6px;text-align:left">
+                  <span style="width:13px;height:13px;border-radius:50%;border:1.5px solid {{ sg.rb }};display:inline-flex;align-items:center;justify-content:center;flex:none"><span style="width:6px;height:6px;border-radius:50%;background:{{ sg.rd }}"></span></span>
+                  <span style="font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);flex:1">{{ sg.n }}</span>
+                  <span style="font:500 11.5px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">{{ sg.c }}</span>
+                </button>
+              </sc-for>
+              <button onClick="{{ togWho }}" style="background:none;border:none;padding:0;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E)">{{ whoLabel }}</button>
+              <sc-if value="{{ whoOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="font:400 12px/19px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin-top:8px;border-top:1px solid var(--ln,#E1E7E9);padding-top:8px">{{ whoList }}</div>
+              </sc-if>
+            </div>
+            <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:14px 16px">
+              <div style="font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:10px">2 · MESSAGE</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+                <sc-for list="{{ tpls }}" as="tp" hint-placeholder-count="4">
+                  <button onClick="{{ tp.on }}" style="height:28px;padding:0 11px;border-radius:6px;border:1px solid {{ tp.bd }};background:{{ tp.bg }};font:500 12px 'IBM Plex Sans',sans-serif;color:{{ tp.fg }};white-space:nowrap">{{ tp.n }}</button>
+                </sc-for>
+              </div>
+              <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Subject</div>
+              <input value="{{ subj }}" onChange="{{ onSubj }}" style="width:100%;box-sizing:border-box;height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E;margin-bottom:12px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Body</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">click a variable to insert it</span></div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">
+                <sc-for list="{{ vars }}" as="v" hint-placeholder-count="3">
+                  <button onClick="{{ v.on }}" style="padding:2px 8px;border-radius:99px;background:var(--sw,#FFEAE6);border:1px solid var(--sl,#FFC9C0);font:500 10.5px 'IBM Plex Mono',monospace;color:var(--sg,#E04E4E)">{{ v.n }}</button>
+                </sc-for>
+              </div>
+              <textarea value="{{ body }}" onChange="{{ onBody }}" rows="7" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+                <button onClick="{{ togIcs }}" style="display:flex;align-items:center;gap:8px;background:none;border:none;padding:0"><span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ icsBd }};background:{{ icsBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313)">{{ icsCk }}</span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Attach calendar invite (.ics) with add-to-calendar links</span></button>
+              </div>
+            </div>
+            <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:14px 16px">
+              <div style="font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:10px">3 · SEND</div>
+              <div style="font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:12px">This sends <span style="font:500 12px 'IBM Plex Mono',monospace;color:var(--ik,#16232B)">{{ segCount }}</span> emails using "{{ tplName }}". Delivery lands in the outbox with per-recipient status.</div>
+              <button onClick="{{ togCk }}" style="display:flex;align-items:center;gap:9px;background:none;border:none;padding:0;margin-bottom:14px;text-align:left">
+                <span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ ckBd }};background:{{ ckBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);flex:none">{{ ck }}</span>
+                <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">I have reviewed the recipient list</span>
+              </button>
+              <div style="display:flex;gap:8px">
+                <button onClick="{{ doSend }}" style="height:34px;padding:0 16px;border-radius:6px;border:none;background:{{ sendBg }};color:{{ sendFg }};font:600 13px 'IBM Plex Sans',sans-serif;white-space:nowrap">{{ sendLabel }}</button>
+                <button onClick="{{ sendTest }}" style="height:34px;padding:0 13px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap">Send a test to me</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style="position:sticky;top:0">
+              <div style="font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:8px">LIVE PREVIEW · AS MARTA DUARTE SEES IT</div>
+              <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:16px 18px">
+                <div style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);margin-bottom:4px">to: marta@vercel.com</div>
+                <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);border-bottom:1px solid var(--ln,#E1E7E9);padding-bottom:10px;margin-bottom:10px">{{ pvSubj }}</div>
+                <div style="font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:pre-line">{{ pvBody }}</div>
+                <sc-if value="{{ ics }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;align-items:center;gap:8px;border:1px solid var(--ln,#E1E7E9);border-radius:6px;padding:8px 10px;margin-top:12px"><span style="width:24px;height:24px;border-radius:5px;background:var(--sk,#EDF1F2);display:inline-flex;align-items:center;justify-content:center;font:500 8px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">ICS</span><span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">session.ics · Google Calendar · Outlook</span></div>
+                </sc-if>
+              </div>
+              <div style="font:400 11.5px/17px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);margin-top:8px">Variables fill from each real recipient. A variable with no value flags before send.</div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ tabOutbox }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+          <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Outbox</h1>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">every send, with delivery truth</span>
+        </div>
+        <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">{{ sumOut }}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+          <button onClick="{{ tAllM.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tAllM.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tAllM.ring }};text-align:left;cursor:pointer">
+            <span style="width:32px;height:32px;border-radius:9px;background:var(--ifw,#E9ECF7);color:var(--if,#47599F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="3" width="12" height="9" rx="2"></rect><path d="M2.2 4.2l5.3 4.2 5.3-4.2"></path></svg></span>
+            <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tAllM.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tAllM.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">All sends</span></span>
+          </button>
+          <button onClick="{{ tSent.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tSent.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tSent.ring }};text-align:left;cursor:pointer">
+            <span style="width:32px;height:32px;border-radius:9px;background:var(--okw,#E2F1EC);color:var(--ok,#0E7A5F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M4.8 7.8l1.8 1.8 3.6-4"></path></svg></span>
+            <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tSent.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tSent.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Delivered</span></span>
+          </button>
+          <button onClick="{{ tQd.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tQd.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tQd.ring }};text-align:left;cursor:pointer">
+            <span style="width:32px;height:32px;border-radius:9px;background:var(--pdw,#F9EDDF);color:var(--pd,#B96A1F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M7.5 4.3v3.4l2.3 1.4"></path></svg></span>
+            <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tQd.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tQd.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Queued</span></span>
+          </button>
+          <button onClick="{{ tBn.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tBn.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tBn.ring }};text-align:left;cursor:pointer">
+            <span style="width:32px;height:32px;border-radius:9px;background:var(--cnw,#FBE8E6);color:var(--cn,#D8432B);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><circle cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none"></circle></svg></span>
+            <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tBn.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tBn.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Bounced</span></span>
+          </button>
+        </div>
+        <sc-if value="{{ hasBounce }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:12px;background:var(--cnw,#FBE8E6);border:1px solid var(--cnl,#F3C7C2);border-radius:6px;padding:9px 12px;margin-bottom:14px">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--cn,#D8432B);flex:none"></span>
+            <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);flex:1"><span style="font-weight:600;color:var(--cn,#D8432B)">{{ bounceN }} bounced.</span> These speakers have not received their message. Bounces are silent failures in most tools.</span>
+            <button onClick="{{ resendAll }}" style="height:26px;padding:0 10px;border-radius:6px;background:none;border:1px solid var(--cnl,#F3C7C2);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B);white-space:nowrap">Resend failed</button>
+          </div>
+        </sc-if>
+        <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04)">
+          <div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(200px,1.4fr) 130px 90px 80px;gap:8px;align-items:center;padding:0 12px;height:34px;border-bottom:1px solid var(--ln,#E1E7E9)">
+            <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">RECIPIENT</span>
+            <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">SUBJECT</span>
+            <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">STATUS</span>
+            <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">SENT</span>
+            <span></span>
+          </div>
+          <sc-for list="{{ outbox }}" as="m" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(200px,1.4fr) 130px 90px 80px;gap:8px;align-items:center;padding:0 12px;height:38px;border-bottom:1px solid var(--ln,#E1E7E9)">
+              <span style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.to }}</span>
+              <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.subj }}</span>
+              <span style="justify-self:start;display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:4px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ m.fg }};background:{{ m.bg }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ m.fg }}"></span>{{ m.st }}</span>
+              <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ m.at }}</span>
+              <sc-if value="{{ m.canResend }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ m.onResend }}" style="height:24px;padding:0 9px;border-radius:5px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Resend</button>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ tabTpl }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:16px">
+          <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Templates</h1>
+          <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">one verb per template, previewed against a real speaker</span>
+        </div>
+        <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04)">
+          <sc-for list="{{ tplRows }}" as="tr" hint-placeholder-count="5">
+            <button onClick="{{ tr.on }}" style="width:100%;display:grid;grid-template-columns:minmax(140px,0.8fr) minmax(220px,1.6fr) 120px 90px;gap:8px;align-items:center;padding:0 14px;height:42px;border:none;border-bottom:1px solid var(--ln,#E1E7E9);background:none;text-align:left" style-hover="background:var(--sk,#EDF1F2)">
+              <span style="font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ tr.n }}</span>
+              <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tr.subj }}</span>
+              <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ tr.purpose }}</span>
+              <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ tr.used }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  <div style="position:fixed;left:16px;bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:8px;padding:10px 12px;box-shadow:0 12px 32px rgba(16,19,25,.16);max-width:440px">
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.msg }}</span>
+        <button onClick="{{ t.onX }}" aria-label="Dismiss" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:0">✕</button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  static ACCENTS = {
+    Coral: { dot: '#FF6B6B', l: { sg: '#E04E4E', sw: '#FFEAE6', sl: '#FFC9C0', bt: '#FF6B6B', bf: '#331313' }, d: { sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313' } },
+    Sunset: { dot: '#F2915B', l: { sg: '#BE5F1F', sw: '#FCEFE4', sl: '#F5CFB2', bt: '#F2915B', bf: '#331A0A' }, d: { sg: '#F5AA7E', sw: '#3A2414', sl: '#664028', bt: '#F2915B', bf: '#331A0A' } },
+    Sky: { dot: '#4A9BD8', l: { sg: '#2B77B3', sw: '#E7F1FA', sl: '#BFDCF1', bt: '#4A9BD8', bf: '#0D2333' }, d: { sg: '#7FBCE8', sw: '#152A3A', sl: '#2C4E66', bt: '#4A9BD8', bf: '#0D2333' } },
+    Slate: { dot: '#5A6BA8', l: { sg: '#4A5A99', sw: '#EAEDF7', sl: '#C8CFE9', bt: '#5A6BA8', bf: '#FFFFFF' }, d: { sg: '#98A6DA', sw: '#1F2542', sl: '#3A4370', bt: '#8B9AD0', bf: '#12162E' } },
+    Graphite: { dot: '#5F6B79', l: { sg: '#46535F', sw: '#ECEFF2', sl: '#C9D2DA', bt: '#4A5764', bf: '#FFFFFF' }, d: { sg: '#A9B6C2', sw: '#232B33', sl: '#3E4A56', bt: '#93A3B1', bf: '#111921' } }
+  };
+  static DARK = { pp: '#101013', cd: '#17171B', sk: '#1F1F24', ln: '#2A2A31', ls: '#3F3F49', ik: '#F2F2F0', i2: '#C9C9C6', i3: '#929290', i4: '#686865', sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313', cn: '#F0766A', cnw: '#3A1F1E', cnl: '#5E2E2B', pd: '#F0A468', pdw: '#332617', pdl: '#54402A', ok: '#57B899', okw: '#123029', okl: '#1F4A3E', if: '#8B9AD0', ifw: '#262833', ifl: '#3E4152' };
+  static SEGS = [
+    { n: 'Speakers with overdue tasks', c: 12, who: 'M. Duarte · J. Águilar · N. Vogel · K. Osei · W. Zhang · +7 more' },
+    { n: 'Accepted speakers', c: 61, who: 'M. Duarte · K. Osei · L. Fontaine · S. Petrova · D. Whitfield · +56 more' },
+    { n: 'Missing a headshot', c: 7, who: 'M. Duarte · J. Águilar · N. Vogel · W. Zhang · +3 more' },
+    { n: 'All reviewers', c: 9, who: 'K. Watanabe · S. Petrova · A. Diallo · +6 more' }
+  ];
+  static TPLS = {
+    'Task reminder': { subj: 'A quick nudge from {{event_name}}', body: 'Hi {{first_name}},\n\nOne thing still open on your speaker checklist: {{missing_item}}. It takes about two minutes in your portal.\n\nYour session "{{talk_title}}" is set for {{session_time}}.\n\nThanks,\nThe program team' },
+    'Acceptance': { subj: 'Your talk is in: {{event_name}}', body: 'Hi {{first_name}},\n\nGood news: "{{talk_title}}" is accepted. Your speaker portal has everything we need from you, and your session lands at {{session_time}}.\n\nSee you in San Francisco,\nThe program team' },
+    'Schedule change': { subj: 'Your session time changed', body: 'Hi {{first_name}},\n\n"{{talk_title}}" moved to {{session_time}}. The attached invite replaces the old one automatically.\n\nThe program team' },
+    'Custom': { subj: '', body: '' }
+  };
+  static VALS = { '{{first_name}}': 'Marta', '{{event_name}}': 'AI Engineer 2026', '{{talk_title}}': 'Opening keynote', '{{session_time}}': 'Tue 13 Oct, 09:05', '{{missing_item}}': 'your headshot' };
+  seedOutbox() {
+    return [
+      { id: 'o1', to: 'Sofia Petrova', subj: 'Your talk is in: AI Engineer 2026', st: 'delivered', at: '6 Aug 14:02' },
+      { id: 'o2', to: 'Kwame Osei', subj: 'A quick nudge from AI Engineer 2026', st: 'sent', at: '6 Aug 14:02' },
+      { id: 'o3', to: 'José Águilar', subj: 'Your talk is in: AI Engineer 2026', st: 'bounced', at: '6 Aug 14:02' },
+      { id: 'o4', to: 'Léa Fontaine', subj: 'Your session time changed', st: 'delivered', at: '5 Aug 09:41' },
+      { id: 'o5', to: 'Wei Zhang', subj: 'Your talk is in: AI Engineer 2026', st: 'bounced', at: '5 Aug 09:40' },
+      { id: 'o6', to: 'Dana Whitfield', subj: 'A quick nudge from AI Engineer 2026', st: 'delivered', at: '4 Aug 17:15' },
+      { id: 'o7', to: 'Ritika Sharma', subj: 'Your talk is in: AI Engineer 2026', st: 'queued', at: 'just now' }
+    ];
+  }
+  state = { theme: 'system', accent: 'Coral', tab: 'Compose', outFilter: null, seg: 0, whoOpen: false, tpl: 'Task reminder', subj: Component.TPLS['Task reminder'].subj, body: Component.TPLS['Task reminder'].body, ics: true, ck: false, busy: false, outbox: this.seedOutbox(), toasts: [] };
+  componentDidMount() {
+    try { const th = localStorage.getItem('gather.theme'); if (th) this.setState({ theme: th }); const ac = localStorage.getItem('gather.accent'); if (ac && Component.ACCENTS[ac]) this.setState({ accent: ac }); } catch (e) {}
+    this._mq = window.matchMedia('(prefers-color-scheme: dark)');
+    this._mqFn = () => this.forceUpdate();
+    this._mq.addEventListener('change', this._mqFn);
+    this.applyTheme();
+  }
+  componentDidUpdate() { this.applyTheme(); }
+  componentWillUnmount() { if (this._mq) this._mq.removeEventListener('change', this._mqFn); }
+  isDark() { return this.state.theme === 'dark' || (this.state.theme === 'system' && this._mq && this._mq.matches); }
+  applyTheme() {
+    if (!this.root) return;
+    const dark = this.isDark();
+    Object.entries(Component.DARK).forEach(([k, v]) => { dark ? this.root.style.setProperty('--' + k, v) : this.root.style.removeProperty('--' + k); });
+    const acc = (Component.ACCENTS[this.state.accent] || Component.ACCENTS.Coral)[dark ? 'd' : 'l'];
+    Object.entries(acc).forEach(([k, v]) => this.root.style.setProperty('--' + k, v));
+    this.root.style.colorScheme = dark ? 'dark' : 'light';
+  }
+  toast(msg) {
+    const id = Math.random().toString(36).slice(2);
+    this.setState(s => ({ toasts: [...s.toasts.slice(-2), { id, msg }] }));
+    setTimeout(() => this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), 6000);
+  }
+  fill(t) { let x = t; Object.entries(Component.VALS).forEach(([k, v]) => { x = x.split(k).join(v); }); return x; }
+  tileV(active, c, on) { return { c, on, bd: active ? 'var(--sg,#E04E4E)' : 'var(--ln,#E1E7E9)', ring: active ? '0 0 0 3px var(--sw,#FFEAE6)' : '0 1px 2px rgba(13,16,32,.04)', numFg: active ? 'var(--sg,#E04E4E)' : 'var(--ik,#16232B)' }; }
+  renderVals() {
+    const s = this.state, seg = Component.SEGS[s.seg];
+    const stM = { delivered: { fg: 'var(--ok,#0E7A5F)', bg: 'var(--okw,#E2F1EC)' }, sent: { fg: 'var(--ok,#0E7A5F)', bg: 'var(--okw,#E2F1EC)' }, queued: { fg: 'var(--if,#47599F)', bg: 'var(--ifw,#E9ECF7)' }, bounced: { fg: 'var(--cn,#D8432B)', bg: 'var(--cnw,#FBE8E6)' } };
+    const bounceN = s.outbox.filter(m => m.st === 'bounced').length;
+    return {
+      setRoot: (el) => { this.root = el; this.applyTheme(); },
+      tAllM: this.tileV(!s.outFilter, s.outbox.length, () => this.setState({ outFilter: null })),
+      tSent: this.tileV(s.outFilter === 'ok', s.outbox.filter(m => m.st === 'delivered' || m.st === 'sent').length, () => this.setState({ outFilter: 'ok' })),
+      tQd: this.tileV(s.outFilter === 'queued', s.outbox.filter(m => m.st === 'queued').length, () => this.setState({ outFilter: 'queued' })),
+      tBn: this.tileV(s.outFilter === 'bounced', bounceN, () => this.setState({ outFilter: 'bounced' })),
+      sumOut: s.outbox.length + ' sends logged · ' + s.outbox.filter(m => m.st === 'queued').length + ' queued · ' + bounceN + ' bounced',
+      tabs: ['Compose', 'Outbox', 'Templates'].map(n => { const on = s.tab === n; return { n: n === 'Outbox' ? 'Outbox · ' + s.outbox.length : n, on: () => this.setState({ tab: n }), bg: on ? 'var(--cd,#FFFFFF)' : 'none', fg: on ? 'var(--ik,#16232B)' : 'var(--i3,#6B7B84)', wt: on ? '600' : '500', sh: on ? '0 1px 2px rgba(16,19,25,.08)' : 'none' }; }),
+      tabCompose: s.tab === 'Compose', tabOutbox: s.tab === 'Outbox', tabTpl: s.tab === 'Templates',
+      segs: Component.SEGS.map((g, i) => { const on = s.seg === i; return { n: g.n, c: g.c, on: () => this.setState({ seg: i, ck: false }), bd: on ? 'var(--sl,#FFC9C0)' : 'var(--ln,#E1E7E9)', bg: on ? 'var(--sw,#FFEAE6)' : 'var(--cd,#FFFFFF)', rb: on ? 'var(--sg,#E04E4E)' : 'var(--ls,#C8D2D5)', rd: on ? 'var(--sg,#E04E4E)' : 'transparent' }; }),
+      whoOpen: s.whoOpen, togWho: () => this.setState(st => ({ whoOpen: !st.whoOpen })),
+      whoLabel: s.whoOpen ? 'Hide the exact list' : 'Show exactly who receives this',
+      whoList: seg.who,
+      tpls: Object.keys(Component.TPLS).map(n => { const on = s.tpl === n; return { n, on: () => this.setState({ tpl: n, subj: Component.TPLS[n].subj, body: Component.TPLS[n].body }), bd: on ? 'var(--sl,#FFC9C0)' : 'var(--ls,#C8D2D5)', bg: on ? 'var(--sw,#FFEAE6)' : 'none', fg: on ? 'var(--sg,#E04E4E)' : 'var(--i2,#3E4E58)' }; }),
+      subj: s.subj, onSubj: (e) => this.setState({ subj: e.target.value }),
+      body: s.body, onBody: (e) => this.setState({ body: e.target.value }),
+      vars: Object.keys(Component.VALS).map(n => ({ n, on: () => this.setState(st => ({ body: st.body + (st.body.endsWith(' ') || !st.body ? '' : ' ') + n })) })),
+      ics: s.ics, togIcs: () => this.setState(st => ({ ics: !st.ics })),
+      icsCk: s.ics ? '✓' : '', icsBg: s.ics ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', icsBd: s.ics ? 'var(--sg,#E04E4E)' : 'var(--ls,#C8D2D5)',
+      pvSubj: this.fill(s.subj) || 'No subject yet', pvBody: this.fill(s.body) || 'Pick a template or write fresh. The preview renders against Marta\u2019s real record.',
+      segCount: seg.c, tplName: s.tpl,
+      ck: s.ck ? '✓' : '', ckBg: s.ck ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', ckBd: s.ck ? 'var(--sg,#E04E4E)' : 'var(--ls,#C8D2D5)',
+      togCk: () => this.setState(st => ({ ck: !st.ck })),
+      sendBg: s.ck && !s.busy ? 'var(--bt,#FF6B6B)' : 'var(--sk,#EDF1F2)', sendFg: s.ck && !s.busy ? 'var(--bf,#331313)' : 'var(--i4,#99A6AD)',
+      sendLabel: s.busy ? 'Sending…' : 'Send ' + seg.c + ' messages',
+      doSend: () => {
+        if (!s.ck || s.busy) return;
+        this.setState({ busy: true });
+        setTimeout(() => {
+          this.setState(st => ({ busy: false, ck: false, tab: 'Outbox', outbox: [{ id: 'n' + Date.now(), to: seg.n + ' (' + seg.c + ')', subj: this.fill(st.subj), st: 'queued', at: 'just now' }, ...st.outbox] }));
+          this.toast(seg.c + ' messages queued. Delivery status lands per recipient in the outbox.');
+        }, 800);
+      },
+      sendTest: () => this.toast('Test sent to you. Variables filled from Marta\u2019s record.'),
+      outbox: s.outbox.filter(m => !s.outFilter || (s.outFilter === 'ok' ? (m.st === 'delivered' || m.st === 'sent') : m.st === s.outFilter)).map(m => ({ to: m.to, subj: m.subj, st: m.st.charAt(0).toUpperCase() + m.st.slice(1), fg: stM[m.st].fg, bg: stM[m.st].bg, at: m.at, canResend: m.st === 'bounced', onResend: () => { this.setState(st => ({ outbox: st.outbox.map(x => x.id === m.id ? { ...x, st: 'queued', at: 'just now' } : x) })); this.toast('Requeued for ' + m.to + '.'); } })),
+      hasBounce: bounceN > 0, bounceN,
+      resendAll: () => { this.setState(st => ({ outbox: st.outbox.map(x => x.st === 'bounced' ? { ...x, st: 'queued', at: 'just now' } : x) })); this.toast(bounceN + ' bounced messages requeued.'); },
+      tplRows: [
+        { n: 'Acceptance', subj: 'Your talk is in: {{event_name}}', purpose: 'decision', used: '61 sends' },
+        { n: 'Not this year', subj: 'About your {{event_name}} proposal', purpose: 'decision', used: '0 sends' },
+        { n: 'Task reminder', subj: 'A quick nudge from {{event_name}}', purpose: 'reminder', used: '38 sends' },
+        { n: 'Schedule change', subj: 'Your session time changed', purpose: 'schedule', used: '7 sends' },
+        { n: 'Waitlist', subj: 'You are on the waitlist', purpose: 'decision', used: '9 sends' }
+      ].map(t => ({ ...t, on: () => { this.setState({ tab: 'Compose', tpl: Component.TPLS[t.n] ? t.n : 'Custom', subj: t.subj, body: (Component.TPLS[t.n] || { body: 'Hi {{first_name}},\n\n' }).body }); } })),
+      popUser: !!this.state.userMenu,
+      togUser: () => this.setState(s2 => ({ userMenu: !s2.userMenu })),
+      closeUser: () => this.setState({ userMenu: false }),
+      profileGo: () => { this.setState({ userMenu: false }); this.toast('Your profile: name, avatar, and notification rules. Next screen to design.'); },
+      signOut: () => { this.setState({ userMenu: false }); this.toast('A real build signs you out here. The demo keeps you in.'); },
+      themeWord: (this.state.theme || 'system')[0].toUpperCase() + (this.state.theme || 'system').slice(1),
+      accents: Object.keys(Component.ACCENTS).map(n => ({ n, c: Component.ACCENTS[n].dot, on: () => { try { localStorage.setItem('gather.accent', n); } catch (e) {} this.setState({ accent: n }); }, ring: (this.state.accent || 'Coral') === n ? '0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ' + Component.ACCENTS[n].dot : 'inset 0 0 0 1px rgba(0,0,0,.12)' })),
+      togTheme: () => { const next = s.theme === 'system' ? 'light' : s.theme === 'light' ? 'dark' : 'system'; try { localStorage.setItem('gather.theme', next); } catch (e) {} this.setState({ theme: next }); },
+      themeGlyph: s.theme === 'system' ? '◐' : s.theme === 'light' ? '○' : '●',
+      themeTitle: 'Theme: ' + s.theme + ', click to change',
+      toasts: s.toasts.map(t => ({ msg: t.msg, onX: () => this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

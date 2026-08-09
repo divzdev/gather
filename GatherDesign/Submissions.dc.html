@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--sg,#E04E4E)}a:hover{color:var(--sg,#C93E3E)}input::placeholder{color:var(--i4,#99A6AD)}button{cursor:pointer}::selection{background:var(--sw,#FFEAE6)}</style>
+</helmet>
+<div ref="{{ setRoot }}" data-screen-label="Submissions console" style="display:grid;grid-template-columns:auto minmax(0,1fr);height:100vh;overflow:hidden;background:var(--pp,#F4F6F7);color:var(--ik,#16232B)">
+  <dc-import name="ConsoleRail" active="Submissions" hint-size="216px,100%" style="height:100%;min-height:0"></dc-import>
+
+  <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF);position:relative;z-index:30">
+      <button onClick="{{ togSwitch }}" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:6px;background:none;border:none;font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>AI Engineer 2026<span style="font:400 10px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">▼</span></button>
+      <sc-if value="{{ popSwitch }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ closePop }}" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:31" aria-label="Close"></button>
+        <div style="position:absolute;top:44px;left:12px;width:280px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:10px;box-shadow:0 12px 32px rgba(16,19,25,.16);padding:6px;z-index:32">
+          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);padding:8px 10px 4px">SWYX &amp; TEAM</div>
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;background:var(--sw,#FFEAE6)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok,#0E7A5F)"></span><div style="flex:1"><div style="font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">AI Engineer 2026</div><div style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">12–14 Oct · cfp open</div></div></div>
+          <button onClick="{{ otherEvent }}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;background:none;border:none;width:100%;text-align:left" style-hover="background:var(--sk,#EDF1F2)"><span style="width:7px;height:7px;border-radius:50%;background:var(--i4,#99A6AD)"></span><div style="flex:1"><div style="font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">AI Engineer Europe 2027</div><div style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">draft</div></div></button>
+        </div>
+      </sc-if>
+      <button onClick="{{ focusSearch }}" title="Command palette (demo: focuses the list filter)" style="display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:999px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);min-width:220px;text-align:left"><span style="flex:1">Search or jump to…</span><span style="font:500 10px 'IBM Plex Mono',monospace;border:1px solid var(--ls,#C8D2D5);border-radius:4px;padding:1px 5px;color:var(--i3,#6B7B84)">⌘K</span></button>
+      <div style="flex:1"></div>
+      <button onClick="{{ togDensity }}" title="{{ densTitle }}" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:none;border:none;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><rect x="1.5" y="2.2" width="12" height="1.8" rx="0.9"></rect><rect x="1.5" y="6.6" width="12" height="1.8" rx="0.9"></rect><rect x="1.5" y="11" width="12" height="1.8" rx="0.9"></rect></svg></button>
+      
+      <button onClick="{{ togHelp }}" title="Keyboard shortcuts (?)" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:none;border:none;font:600 13px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)">?</button>
+      <sc-if value="{{ popHelp }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ closePop }}" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:31" aria-label="Close"></button>
+        <div style="position:absolute;top:44px;right:52px;width:262px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:10px;box-shadow:0 12px 32px rgba(16,19,25,.16);padding:12px 14px;z-index:32">
+          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:8px">KEYBOARD</div>
+          <sc-for list="{{ keys }}" as="k" hint-placeholder-count="4">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0"><span style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">{{ k.d }}</span><span style="font:500 10.5px 'IBM Plex Mono',monospace;border:1px solid var(--ls,#C8D2D5);border-radius:4px;padding:1px 6px;color:var(--i3,#6B7B84)">{{ k.k }}</span></div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <div style="position:relative">
+        <button onClick="{{ togUser }}" title="Account" aria-label="Account menu" style="width:28px;height:28px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);padding:0" style-hover="border:1px solid var(--ls,#C8D2D5)">SW</button>
+        <sc-if value="{{ popUser }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ closeUser }}" aria-label="Close" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:41"></button>
+          <div style="position:absolute;top:36px;right:0;width:248px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:12px;box-shadow:0 16px 40px rgba(13,16,32,.20);padding:6px;z-index:42">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 10px">
+              <span style="width:32px;height:32px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);flex:none">SW</span>
+              <span style="min-width:0"><span style="display:block;font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Sasha Whitfield</span><span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">program lead · demo org</span></span>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:8px 10px 6px">THEME</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 10px 10px">
+              <sc-for list="{{ accents }}" as="ac" hint-placeholder-count="5"><button onClick="{{ ac.on }}" title="{{ ac.n }}" aria-label="{{ ac.n }}" style="width:16px;height:16px;border-radius:50%;border:none;background:{{ ac.c }};box-shadow:{{ ac.ring }};padding:0;flex:none"></button></sc-for>
+              <div style="flex:1"></div>
+              <button onClick="{{ togTheme }}" title="{{ themeTitle }}" style="display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)">{{ themeGlyph }} {{ themeWord }}</button>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ profileGo }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);text-align:left" style-hover="background:var(--sk,#EDF1F2)">Your profile</button>
+            <a href="Settings.dc.html" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;text-decoration:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Workspace settings</a>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ signOut }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B);text-align:left" style-hover="background:var(--cnw,#FBE8E6)">Sign out</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="height:32px;flex:none;display:flex;align-items:center;gap:16px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <button onClick="{{ hsAll }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">SUB 216</button><span style="color:var(--i4,#99A6AD)">·</span>
+      <button onClick="{{ hsUnrev }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">UNREVIEWED 38</button><span style="color:var(--i4,#99A6AD)">·</span>
+      <button onClick="{{ hsDecided }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">DECIDED 61</button><span style="color:var(--i4,#99A6AD)">·</span>
+      <a href="Tasks.dc.html" style="text-decoration:none;background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--pd,#B96A1F)" style-hover="color:var(--ik,#16232B)">OVERDUE TASKS 12</a><span style="color:var(--i4,#99A6AD)">·</span>
+      <a href="Agenda.dc.html" style="text-decoration:none;background:none;border:none;padding:0;font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--cn,#D8432B)" style-hover="color:var(--ik,#16232B)">⚠ 3 CONFLICTS</a>
+      <div style="flex:1"></div>
+      <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">CFP closes in 38d</span>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;position:relative;padding:20px 28px 80px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+        <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Submissions</h1>
+        <div style="flex:1"></div>
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">16 of 216 shown · seeded slice</span>
+      </div>
+      <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">38 unreviewed across the program · 9 decisions queued to send · CFP closes in 38 days</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+        <button onClick="{{ vAll.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ vAll.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ vAll.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--ifw,#E9ECF7);color:var(--if,#47599F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="currentColor"><rect x="1.5" y="2" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="6.3" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="10.6" width="8" height="2.4" rx="1.2"></rect></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ vAll.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ vAll.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">In the pipeline</span></span>
+        </button>
+        <button onClick="{{ vNeed.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ vNeed.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ vNeed.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--pdw,#F9EDDF);color:var(--pd,#B96A1F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><circle cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none"></circle></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ vNeed.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ vNeed.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Awaiting reviews</span></span>
+        </button>
+        <button onClick="{{ vReady.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ vReady.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ vReady.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--sw,#FFEAE6);color:var(--sg,#E04E4E);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="12" height="12" rx="3"></rect><path d="M4.6 7.8l2 2 3.8-4.2"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ vReady.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ vReady.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Ready to decide</span></span>
+        </button>
+        <button onClick="{{ vAcc.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ vAcc.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ vAcc.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--okw,#E2F1EC);color:var(--ok,#0E7A5F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M4.8 7.8l1.8 1.8 3.6-4"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ vAcc.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ vAcc.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Accepted</span></span>
+        </button>
+      </div>
+
+      <sc-if value="{{ banner }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:12px;background:var(--pdw,#F9EDDF);border:1px solid var(--pdl,#EFD3B6);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+          <span style="width:7px;height:7px;border-radius:50%;background:var(--pd,#B96A1F);flex:none"></span>
+          <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);flex:1"><span style="font-weight:600;color:var(--pd,#B96A1F)">9 decisions are set but not sent.</span> Emails only go out from Messages. Sending is always a separate, explicit step.</span>
+          <button onClick="{{ bannerGo }}" style="height:26px;padding:0 10px;border-radius:6px;background:none;border:1px solid var(--pdl,#EFD3B6);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F)">Review and send</button>
+          <button onClick="{{ bannerX }}" aria-label="Dismiss" style="background:none;border:none;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:2px">✕</button>
+        </div>
+      </sc-if>
+
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;position:relative;z-index:20">
+        <input ref="{{ setSearch }}" value="{{ q }}" onChange="{{ onQ }}" placeholder="Filter by title, speaker, or code. Press /" style="height:32px;width:280px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+        <div style="position:relative">
+          <button onClick="{{ togTrack }}" style="height:32px;padding:0 11px;border-radius:999px;background:var(--cd,#FFFFFF);border:1px solid var(--ls,#C8D2D5);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)"><span style="display:inline-flex;align-items:center;gap:6px"><svg width="11" height="11" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" style="flex:none"><path d="M1.5 2.5h12l-4.6 5.4v4.2l-2.8 1.4V7.9L1.5 2.5z"></path></svg>Track {{ trackCountLabel }} ▾</span></button>
+          <sc-if value="{{ popTrack }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ closePop }}" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:21" aria-label="Close"></button>
+            <div style="position:absolute;top:36px;left:0;width:210px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:10px;box-shadow:0 12px 32px rgba(16,19,25,.16);padding:6px;z-index:22">
+              <sc-for list="{{ trackOpts }}" as="t" hint-placeholder-count="6">
+                <button onClick="{{ t.on }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border-radius:6px;background:none;border:none;text-align:left" style-hover="background:var(--sk,#EDF1F2)"><span style="width:12px;height:12px;border-radius:4px;border:1px solid var(--ls,#C8D2D5);background:{{ t.ckBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313)">{{ t.ck }}</span><span style="width:8px;height:8px;border-radius:2px;background:{{ t.col }}"></span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.n }}</span></button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <div style="position:relative">
+          <button onClick="{{ togStatus }}" style="height:32px;padding:0 11px;border-radius:999px;background:var(--cd,#FFFFFF);border:1px solid var(--ls,#C8D2D5);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)"><span style="display:inline-flex;align-items:center;gap:6px"><svg width="11" height="11" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" style="flex:none"><path d="M1.5 2.5h12l-4.6 5.4v4.2l-2.8 1.4V7.9L1.5 2.5z"></path></svg>Status {{ statusCountLabel }} ▾</span></button>
+          <sc-if value="{{ popStatus }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ closePop }}" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:21" aria-label="Close"></button>
+            <div style="position:absolute;top:36px;left:0;width:190px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:10px;box-shadow:0 12px 32px rgba(16,19,25,.16);padding:6px;z-index:22">
+              <sc-for list="{{ statusOpts }}" as="t" hint-placeholder-count="5">
+                <button onClick="{{ t.on }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border-radius:6px;background:none;border:none;text-align:left" style-hover="background:var(--sk,#EDF1F2)"><span style="width:12px;height:12px;border-radius:4px;border:1px solid var(--ls,#C8D2D5);background:{{ t.ckBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313)">{{ t.ck }}</span><span style="width:6px;height:6px;border-radius:50%;background:{{ t.dot }}"></span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.n }}</span></button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <div style="flex:1"></div>
+        <button onClick="{{ exportCsv }}" style="height:32px;padding:0 12px;border-radius:999px;background:var(--cd,#FFFFFF);border:1px solid var(--ls,#C8D2D5);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Export CSV</button>
+      </div>
+
+      <sc-if value="{{ hasChips }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="1">
+            <button onClick="{{ c.on }}" style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:99px;background:var(--sw,#FFEAE6);border:1px solid var(--sl,#FFC9C0);font:500 11.5px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E)">{{ c.t }} ✕</button>
+          </sc-for>
+          <button onClick="{{ clearFilters }}" style="background:none;border:none;font:500 11.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);text-decoration:underline">Clear all</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ firstRun }}" hint-placeholder-val="{{ false }}">
+        <div style="border:1px solid var(--ln,#E1E7E9);border-radius:10px;background:var(--cd,#FFFFFF);padding:64px 24px;display:flex;flex-direction:column;align-items:center;text-align:center">
+          <svg width="26" height="26" viewBox="0 0 15 15" fill="var(--i3,#6B7B84)"><rect x="1.5" y="2" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="6.3" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="10.6" width="8" height="2.4" rx="1.2"></rect></svg>
+          <div style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin:14px 0 4px">No submissions yet</div>
+          <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:18px">When your call for papers is open, proposals land here.</div>
+          <a href="Event Landing.dc.html" style="display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:999px;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:500 13px 'IBM Plex Sans',sans-serif;text-decoration:none">Open the call for papers</a>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showTable }}" hint-placeholder-val="{{ true }}">
+      <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);overflow:visible">
+        <div style="display:grid;grid-template-columns:36px 54px minmax(220px,1fr) 190px 104px 92px 72px 44px 100px 56px;gap:8px;align-items:center;padding:0 12px;height:38px;border-bottom:1px solid var(--ln,#E1E7E9)">
+          <button onClick="{{ selAll }}" aria-label="Select all" style="width:14px;height:14px;border-radius:4px;border:1px solid var(--ls,#C8D2D5);background:{{ allCkBg }};display:flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);padding:0">{{ allCk }}</button>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">CODE</span>
+          <button onClick="{{ soTitle.on }}" title="Sort by title" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soTitle.fg }}" style-hover="color:var(--ik,#16232B)">TITLE<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soTitle.gc }};letter-spacing:0">{{ soTitle.g }}</span></button>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">SPEAKER</span>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">TRACK</span>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">FORMAT</span>
+          <button onClick="{{ soScore.on }}" title="Sort by score" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soScore.fg }}" style-hover="color:var(--ik,#16232B)">SCORE<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soScore.gc }};letter-spacing:0">{{ soScore.g }}</span></button>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">REV</span>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">STATUS</span>
+          <button onClick="{{ soDate.on }}" title="Sort by date" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soDate.fg }}" style-hover="color:var(--ik,#16232B)">DATE<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soDate.gc }};letter-spacing:0">{{ soDate.g }}</span></button>
+        </div>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="9">
+          <div onClick="{{ r.onOpen }}" onMouseEnter="{{ r.onEnter }}" onMouseLeave="{{ clearHover }}" style="display:grid;grid-template-columns:36px 54px minmax(220px,1fr) 190px 104px 92px 72px 44px 100px 56px;gap:8px;align-items:center;padding:0 12px;height:{{ rowH }};border-bottom:1px solid var(--ln,#E1E7E9);cursor:pointer;position:relative;background:{{ r.bg }};box-shadow:{{ r.ring }};opacity:{{ r.op }}">
+            <button onClick="{{ r.onChk }}" aria-label="Select row" style="width:14px;height:14px;border-radius:4px;border:1px solid {{ r.ckBd }};background:{{ r.ckBg }};display:flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);padding:0">{{ r.ck }}</button>
+            <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">{{ r.id }}</span>
+            <span style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px">{{ r.t }}</span>
+            <span style="display:flex;align-items:center;gap:8px;min-width:0"><span style="width:20px;height:20px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 8px 'IBM Plex Sans Condensed',sans-serif;color:var(--i3,#6B7B84);flex:none">{{ r.ini }}</span><span style="min-width:0"><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.spName }}</span><span style="display:block;font:400 10.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.spSub }}</span></span></span>
+            <span style="justify-self:start;padding:2px 8px;border-left:3px solid {{ r.trCol }};border-radius:4px;background:var(--sk,#EDF1F2);font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap">{{ r.tr }}</span>
+            <span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">{{ r.fmt }}</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="font:500 12px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);font-variant-numeric:tabular-nums;min-width:24px">{{ r.sc }}</span><span style="display:inline-flex;gap:2px"><span style="width:5px;height:3px;border-radius:1px;background:{{ r.s1 }}"></span><span style="width:5px;height:3px;border-radius:1px;background:{{ r.s2 }}"></span><span style="width:5px;height:3px;border-radius:1px;background:{{ r.s3 }}"></span><span style="width:5px;height:3px;border-radius:1px;background:{{ r.s4 }}"></span><span style="width:5px;height:3px;border-radius:1px;background:{{ r.s5 }}"></span></span></span>
+            <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">{{ r.rev }}</span>
+            <span style="justify-self:start;display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:4px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ r.stFg }};background:{{ r.stBg }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ r.stFg }}"></span>{{ r.st }}</span>
+            <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ r.dt }}</span>
+            <sc-if value="{{ r.showQ }}" hint-placeholder-val="{{ false }}">
+              <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;gap:4px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:6px;padding:3px;box-shadow:0 2px 6px rgba(16,19,25,.08)">
+                <button onClick="{{ r.onAcc }}" title="Accept (a)" style="width:24px;height:24px;border-radius:4px;border:none;background:var(--okw,#E2F1EC);color:var(--ok,#0E7A5F);font:600 11px 'IBM Plex Sans',sans-serif">✓</button>
+                <button onClick="{{ r.onRej }}" title="Reject (r)" style="width:24px;height:24px;border-radius:4px;border:none;background:var(--cnw,#FBE8E6);color:var(--cn,#D8432B);font:600 11px 'IBM Plex Sans',sans-serif">✕</button>
+                <button onClick="{{ r.onOpenBtn }}" title="Open (Enter)" style="width:24px;height:24px;border-radius:4px;border:none;background:var(--sk,#EDF1F2);color:var(--i2,#3E4E58);font:600 11px 'IBM Plex Sans',sans-serif">→</button>
+              </span>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:44px 24px;display:flex;flex-direction:column;align-items:center;text-align:center">
+            <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:4px">No submissions match these filters</div>
+            <button onClick="{{ clearFilters }}" style="background:none;border:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);text-decoration:underline">Clear filters</button>
+          </div>
+        </sc-if>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px">
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ countLine }}</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">j / k to move · x to select · Enter opens</span>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+        <div style="position:sticky;bottom:16px;display:flex;justify-content:center;margin-top:16px;z-index:25">
+          <div style="display:flex;align-items:center;gap:8px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:999px;padding:8px 12px;box-shadow:0 12px 32px rgba(16,19,25,.16)">
+            <span style="font:500 12px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);padding:0 6px">{{ selN }} selected</span>
+            <div style="width:1px;height:18px;background:var(--ln,#E1E7E9)"></div>
+            <button onClick="{{ bulkAcc }}" style="height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--okl,#C2E0D5);background:var(--okw,#E2F1EC);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ok,#0E7A5F)">Accept</button>
+            <button onClick="{{ bulkWait }}" style="height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--pdl,#EFD3B6);background:var(--pdw,#F9EDDF);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F)">Waitlist</button>
+            <button onClick="{{ bulkRej }}" style="height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--cnl,#F3C7C2);background:var(--cnw,#FBE8E6);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B)">Reject</button>
+            <button onClick="{{ bulkAssign }}" style="height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Assign reviewers</button>
+            <button onClick="{{ exportCsv }}" style="height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Export selected</button>
+            <button onClick="{{ clearSel }}" aria-label="Clear selection" style="width:28px;height:28px;border-radius:6px;border:none;background:none;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">✕</button>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{ closeDrawer }}" aria-label="Close" style="position:fixed;inset:0;background:rgba(20,17,12,.32);border:none;z-index:60;cursor:default"></button>
+    <div style="position:fixed;top:0;right:0;bottom:0;width:min(720px,94vw);background:var(--cd,#FFFFFF);border-left:1px solid var(--ln,#E1E7E9);box-shadow:0 12px 32px rgba(16,19,25,.24);z-index:61;display:flex;flex-direction:column">
+      <div style="padding:18px 24px 14px;border-bottom:1px solid var(--ln,#E1E7E9)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">{{ o.id }}</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:4px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ o.stFg }};background:{{ o.stBg }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ o.stFg }}"></span>{{ o.st }}</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">submitted {{ o.dt }}</span>
+          <div style="flex:1"></div>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">j / k for next</span>
+          <button onClick="{{ closeDrawer }}" aria-label="Close" style="width:28px;height:28px;border-radius:6px;border:none;background:none;font:500 14px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)" style-hover="background:var(--sk,#EDF1F2)">✕</button>
+        </div>
+        <div style="font:600 19px/25px 'IBM Plex Sans',sans-serif;letter-spacing:-0.01em;color:var(--ik,#16232B);margin-bottom:8px">{{ o.t }}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="padding:2px 8px;border-left:3px solid {{ o.trCol }};border-radius:4px;background:var(--sk,#EDF1F2);font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58)">{{ o.tr }}</span>
+          <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">{{ o.fmt }}</span>
+          <span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">· {{ o.lvl }}</span>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto;display:grid;grid-template-columns:1fr 250px;gap:26px;padding:20px 24px">
+        <div>
+          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:8px">ABSTRACT</div>
+          <p style="font:400 13.5px/21px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin:0 0 20px;white-space:pre-line">{{ o.ab }}</p>
+          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:8px">INTERNAL NOTES</div>
+          <div style="background:var(--pdw,#F9EDDF);border:1px solid var(--pdl,#EFD3B6);border-radius:8px;padding:12px 14px;margin-bottom:20px">
+            <div style="font:500 10.5px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F);margin-bottom:8px">Visible to organizers and reviewers only. Never to speakers</div>
+            <sc-for list="{{ o.notes }}" as="n" hint-placeholder-count="1">
+              <div style="margin-bottom:8px"><span style="font:600 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ n.a }}</span> <span style="font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ n.t }}</span><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">{{ n.x }}</div></div>
+            </sc-for>
+            <div style="display:flex;gap:6px">
+              <input value="{{ noteDraft }}" onChange="{{ onNoteDraft }}" placeholder="Add a note…" style="flex:1;height:28px;padding:0 9px;border-radius:6px;border:1px solid var(--pdl,#EFD3B6);background:var(--cd,#FFFFFF);font:400 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">
+              <button onClick="{{ addNote }}" style="height:28px;padding:0 10px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:500 11.5px 'IBM Plex Sans',sans-serif">Add note</button>
+            </div>
+          </div>
+          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:8px">ACTIVITY</div>
+          <sc-for list="{{ o.acts }}" as="a" hint-placeholder-count="3">
+            <div style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);padding:3px 0">{{ a.x }}</div>
+          </sc-for>
+        </div>
+        <div>
+          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:8px">SPEAKERS</div>
+          <sc-for list="{{ o.spList }}" as="s" hint-placeholder-count="1">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px"><span style="width:26px;height:26px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans Condensed',sans-serif;color:var(--i3,#6B7B84)">{{ s.ini }}</span><span><span style="display:block;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ s.n }}</span><span style="display:block;font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">{{ s.c }}</span></span></div>
+          </sc-for>
+          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin:16px 0 6px">COORDINATOR</div>
+          <select onChange="{{ onCoord }}" style="width:100%;height:30px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);color:var(--ik,#16232B);font:400 12.5px 'IBM Plex Sans',sans-serif;padding:0 8px">
+            <option>Unassigned</option><option>S. Whitfield</option><option>R. Tanaka</option><option>M. Osei</option>
+          </select>
+          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin:18px 0 8px">REVIEWS · {{ o.rev }}</div>
+          <sc-for list="{{ o.crits }}" as="c" hint-placeholder-count="3">
+            <div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">{{ c.n }}</span><span style="font:500 11.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B)">{{ c.v }}</span></div><div style="height:3px;border-radius:2px;background:var(--ln,#E1E7E9)"><div style="height:3px;border-radius:2px;background:var(--i2,#3E4E58);width:{{ c.w }}"></div></div></div>
+          </sc-for>
+          <sc-for list="{{ o.revs }}" as="rv" hint-placeholder-count="2">
+            <div style="border:1px solid var(--ln,#E1E7E9);border-radius:8px;padding:10px 12px;margin-top:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font:600 11.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ rv.n }}</span><span style="font:500 11.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B)">{{ rv.s }}</span></div><div style="font:400 11.5px/17px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">{{ rv.c }}</div></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:8px;padding:12px 24px;border-top:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+        <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-right:4px">DECISION</span>
+        <button onClick="{{ dAcc }}" style="height:30px;padding:0 13px;border-radius:999px;border:1px solid {{ o.accBd }};background:{{ o.accBg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ o.accFg }}">Accept <span style="font:500 10px 'IBM Plex Mono',monospace;opacity:.65">a</span></button>
+        <button onClick="{{ dWait }}" style="height:30px;padding:0 13px;border-radius:999px;border:1px solid {{ o.waitBd }};background:{{ o.waitBg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ o.waitFg }}">Waitlist <span style="font:500 10px 'IBM Plex Mono',monospace;opacity:.65">w</span></button>
+        <button onClick="{{ dRej }}" style="height:30px;padding:0 13px;border-radius:999px;border:1px solid {{ o.rejBd }};background:{{ o.rejBg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ o.rejFg }}">Reject <span style="font:500 10px 'IBM Plex Mono',monospace;opacity:.65">r</span></button>
+        <div style="flex:1"></div>
+        <span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Decisions queue an email. Nothing sends until you send it</span>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="position:fixed;left:16px;bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:8px;padding:10px 12px;box-shadow:0 12px 32px rgba(16,19,25,.16);max-width:420px">
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.msg }}</span>
+        <sc-if value="{{ t.canUndo }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ t.onUndo }}" style="background:none;border:none;font:600 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);padding:0">Undo</button>
+        </sc-if>
+        <button onClick="{{ t.onX }}" aria-label="Dismiss" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:0">✕</button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;pendingDecisionsBanner&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Demo states&quot;}, &quot;demoEmpty&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Demo states&quot;}}">
+class Component extends DCLogic {
+  static TR = { Agents: '#3E8896', Evals: '#A85788', Infrastructure: '#5A6BA8', Retrieval: '#7E5CB8', Multimodal: '#C4703A', 'In production': '#34526B' };
+  static SM = {
+    submitted: { l: 'Submitted', fg: 'var(--if,#47599F)', bg: 'var(--ifw,#E9ECF7)', dot: '#47599F' },
+    'in review': { l: 'In review', fg: 'var(--pd,#B96A1F)', bg: 'var(--pdw,#F9EDDF)', dot: '#B96A1F' },
+    accepted: { l: 'Accepted', fg: 'var(--ok,#0E7A5F)', bg: 'var(--okw,#E2F1EC)', dot: '#0E7A5F' },
+    waitlisted: { l: 'Waitlisted', fg: 'var(--pd,#B96A1F)', bg: 'var(--pdw,#F9EDDF)', dot: '#B96A1F' },
+    rejected: { l: 'Rejected', fg: 'var(--i3,#6B7B84)', bg: 'var(--sk,#EDF1F2)', dot: '#6B7B84' }
+  };
+  static ACCENTS = {
+    Coral: { dot: '#FF6B6B', l: { sg: '#E04E4E', sw: '#FFEAE6', sl: '#FFC9C0', bt: '#FF6B6B', bf: '#331313' }, d: { sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313' } },
+    Sunset: { dot: '#F2915B', l: { sg: '#BE5F1F', sw: '#FCEFE4', sl: '#F5CFB2', bt: '#F2915B', bf: '#331A0A' }, d: { sg: '#F5AA7E', sw: '#3A2414', sl: '#664028', bt: '#F2915B', bf: '#331A0A' } },
+    Sky: { dot: '#4A9BD8', l: { sg: '#2B77B3', sw: '#E7F1FA', sl: '#BFDCF1', bt: '#4A9BD8', bf: '#0D2333' }, d: { sg: '#7FBCE8', sw: '#152A3A', sl: '#2C4E66', bt: '#4A9BD8', bf: '#0D2333' } },
+    Slate: { dot: '#5A6BA8', l: { sg: '#4A5A99', sw: '#EAEDF7', sl: '#C8CFE9', bt: '#5A6BA8', bf: '#FFFFFF' }, d: { sg: '#98A6DA', sw: '#1F2542', sl: '#3A4370', bt: '#8B9AD0', bf: '#12162E' } },
+    Graphite: { dot: '#5F6B79', l: { sg: '#46535F', sw: '#ECEFF2', sl: '#C9D2DA', bt: '#4A5764', bf: '#FFFFFF' }, d: { sg: '#A9B6C2', sw: '#232B33', sl: '#3E4A56', bt: '#93A3B1', bf: '#111921' } }
+  };
+  static DARK = { pp: '#101013', cd: '#17171B', sk: '#1F1F24', ln: '#2A2A31', ls: '#3F3F49', ik: '#F2F2F0', i2: '#C9C9C6', i3: '#929290', i4: '#686865', sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313', cn: '#F0766A', cnw: '#3A1F1E', cnl: '#5E2E2B', pd: '#F0A468', pdw: '#332617', pdl: '#54402A', ok: '#57B899', okw: '#123029', okl: '#1F4A3E', if: '#8B9AD0', ifw: '#262833', ifl: '#3E4152' };
+  seed() {
+    return [
+      { id: 'A31F', t: "Building agents that don't fall over", sp: [{ n: 'Anna Rao', c: 'Anthropic' }], tr: 'Agents', fmt: '30 min · talk', sc: 4.6, rd: 5, rt: 5, st: 'accepted', dt: '2 Aug', dn: 802, lvl: 'Intermediate', ab: "Most agent demos work once. This talk is about the second time: recovery strategies, checkpointing, and the failure taxonomy we built after 40,000 production agent sessions.\nYou leave with a concrete playbook for retries, human handoff, and knowing when to just stop." },
+      { id: 'B207', t: 'Evals beyond vibes: rubric design at scale', sp: [{ n: 'Maya Chen', c: 'Scale AI' }], tr: 'Evals', fmt: '30 min · talk', sc: 4.2, rd: 4, rt: 5, st: 'in review', dt: '3 Aug', dn: 803, lvl: 'Intermediate', ab: 'How we replaced thumbs-up data with weighted rubrics across 40 task families, and what it changed about which models we ship.' },
+      { id: 'C114', t: 'Scaling retrieval to a billion documents', sp: [{ n: 'Jide Okafor', c: 'Notion' }], tr: 'Retrieval', fmt: '30 min · talk', sc: 3.8, rd: 5, rt: 5, st: 'waitlisted', dt: '1 Aug', dn: 801, lvl: 'Advanced', ab: 'Sharding, re-ranking budgets, and the query router that cut our p95 by 60%. Includes the two migrations that failed first.' },
+      { id: 'A98C', t: 'The second time your agent runs', sp: [{ n: 'Priya Natarajan', c: 'Stripe' }, { n: 'Sam Ortiz', c: 'Stripe' }], tr: 'Agents', fmt: '10 min · lightning', sc: 4.4, rd: 3, rt: 5, st: 'in review', dt: '4 Aug', dn: 804, lvl: 'Beginner', ab: 'Ten minutes on idempotency for agents: why rerunning a workflow should be boring, and the three primitives that make it so.' },
+      { id: 'D412', t: 'GPU economics for inference at the edge', sp: [{ n: 'Lars Bergström', c: 'Modal' }], tr: 'Infrastructure', fmt: '30 min · talk', sc: 4.1, rd: 5, rt: 5, st: 'accepted', dt: '30 Jul', dn: 730, lvl: 'Advanced', ab: 'A cost model you can steal: utilization curves, cold-start amortization, and when a smaller model on a bigger box wins.' },
+      { id: 'E930', t: 'Multimodal grounding in production support', sp: [{ n: 'José Águilar', c: 'Intercom' }], tr: 'Multimodal', fmt: '30 min · talk', sc: 3.9, rd: 2, rt: 5, st: 'in review', dt: '5 Aug', dn: 805, lvl: 'Intermediate', ab: 'Screenshots are the real language of support tickets. How we ground vision models against app state without hallucinating buttons.' },
+      { id: 'F177', t: 'A postmortem of our agent gateway outage', sp: [{ n: 'Dana Whitfield', c: 'Shopify' }], tr: 'In production', fmt: '30 min · talk', sc: 4.8, rd: 5, rt: 5, st: 'accepted', dt: '28 Jul', dn: 728, lvl: 'Intermediate', ab: 'Forty-one minutes of cascading tool-call retries took down checkout recommendations. The full timeline, the fix, and the guardrail budget we run now.' },
+      { id: 'B441', t: 'Prompt regression testing with golden traces', sp: [{ n: 'Kenji Watanabe', c: 'Linear' }], tr: 'Evals', fmt: '90 min · workshop', sc: 4.0, rd: 5, rt: 5, st: 'in review', dt: '2 Aug', dn: 802, lvl: 'Intermediate', ab: 'Hands-on: build a golden-trace suite for a real feature, wire it to CI, and learn where trace diffs lie to you.' },
+      { id: 'C519', t: 'Hybrid search is not dead', sp: [{ n: 'Amara Diallo', c: 'Elastic' }], tr: 'Retrieval', fmt: '10 min · lightning', sc: 3.4, rd: 4, rt: 5, st: 'rejected', dt: '29 Jul', dn: 729, lvl: 'Beginner', ab: 'BM25 still carries more of your relevance than you think. A quick tour of the failure cases embeddings alone will not save you from.' },
+      { id: 'A203', t: "Guardrails that don't lobotomize your agent", sp: [{ n: 'Nils Vogel', c: 'Zapier' }], tr: 'Agents', fmt: '30 min · talk', sc: 4.3, rd: 5, rt: 5, st: 'in review', dt: '6 Aug', dn: 806, lvl: 'Intermediate', ab: 'Permission scopes, action budgets, and staged autonomy: how to say no to an agent without making it useless.' },
+      { id: 'D688', t: 'Serverless fine-tuning pipelines', sp: [{ n: 'Ritika Sharma', c: 'Baseten' }], tr: 'Infrastructure', fmt: '30 min · talk', sc: 3.6, rd: 5, rt: 5, st: 'waitlisted', dt: '31 Jul', dn: 731, lvl: 'Advanced', ab: 'Queue-driven fine-tuning with spot GPUs: checkpoint strategy, preemption math, and the 3am page it saved us from.' },
+      { id: 'F045', t: 'Incident response when the model is the incident', sp: [{ n: 'Grace Liu', c: 'Datadog' }, { n: 'Tom Barra', c: 'Datadog' }], tr: 'In production', fmt: '30 min · talk', sc: 4.7, rd: 5, rt: 5, st: 'accepted', dt: '27 Jul', dn: 727, lvl: 'Intermediate', ab: 'Runbooks assume deterministic failures. Ours did not survive contact with a model regression. What we changed about on-call, rollbacks, and blame.' },
+      { id: 'E212', t: 'Vision agents for warehouse robotics', sp: [{ n: 'Owen McCarthy', c: 'Covariant' }], tr: 'Multimodal', fmt: '30 min · talk', sc: 3.2, rd: 3, rt: 5, st: 'rejected', dt: '3 Aug', dn: 803, lvl: 'Advanced', ab: 'Where VLMs help pick-and-place and where they absolutely do not. Field data from 14 sites.' },
+      { id: 'B356', t: 'Human preference data you can trust', sp: [{ n: 'Sofia Petrova', c: 'Cohere' }], tr: 'Evals', fmt: '30 min · talk', sc: 4.5, rd: 4, rt: 5, st: 'accepted', dt: '1 Aug', dn: 801, lvl: 'Intermediate', ab: 'Annotator drift, gaming, and the audit loop that caught both. Practical quality gates for preference pipelines.' },
+      { id: 'A560', t: 'Long-horizon planning without long context', sp: [{ n: 'Wei Zhang', c: 'Adept' }], tr: 'Agents', fmt: '30 min · talk', sc: null, rd: 0, rt: 5, st: 'submitted', dt: '7 Aug', dn: 807, lvl: 'Advanced', ab: 'External memory beats context stuffing for week-long agent tasks. Benchmarks and a reference architecture.' },
+      { id: 'C777', t: 'Chunking strategies: a field guide', sp: [{ n: 'Ben Adeyemi', c: 'Pinecone' }], tr: 'Retrieval', fmt: '10 min · lightning', sc: null, rd: 1, rt: 5, st: 'submitted', dt: '7 Aug', dn: 807, lvl: 'Beginner', ab: 'Eight chunking strategies, one eval harness, zero folklore. The results surprised us twice.' }
+    ];
+  }
+  state = { theme: 'system', accent: 'Coral', density: 'comfortable', q: '', view: 'All', fTracks: [], fStatus: [], sortK: 'date', sortD: -1, sel: [], focus: 0, openId: null, hover: null, pop: null, toasts: [], hideBanner: false, noteDraft: '', notes: { A31F: [{ a: 'S. Whitfield', t: '2 Aug 14:32', x: 'Keynote candidate if the live demo holds up. Check AV needs early.' }] }, rows: this.seed() };
+  componentDidMount() {
+    try {
+      const th = localStorage.getItem('gather.theme'); if (th) this.setState({ theme: th });
+      const de = localStorage.getItem('gather.density'); if (de) this.setState({ density: de });
+      const ac = localStorage.getItem('gather.accent'); if (ac && Component.ACCENTS[ac]) this.setState({ accent: ac });
+    } catch (e) {}
+    this._mq = window.matchMedia('(prefers-color-scheme: dark)');
+    this._mqFn = () => this.forceUpdate();
+    this._mq.addEventListener('change', this._mqFn);
+    this._kd = (e) => this.onKey(e);
+    window.addEventListener('keydown', this._kd);
+    this.applyTheme();
+  }
+  componentDidUpdate() { this.applyTheme(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._kd); if (this._mq) this._mq.removeEventListener('change', this._mqFn); }
+  isDark() { return this.state.theme === 'dark' || (this.state.theme === 'system' && this._mq && this._mq.matches); }
+  applyTheme() {
+    if (!this.root) return;
+    const dark = this.isDark();
+    Object.entries(Component.DARK).forEach(([k, v]) => { dark ? this.root.style.setProperty('--' + k, v) : this.root.style.removeProperty('--' + k); });
+    const acc = (Component.ACCENTS[this.state.accent] || Component.ACCENTS.Coral)[dark ? 'd' : 'l'];
+    Object.entries(acc).forEach(([k, v]) => this.root.style.setProperty('--' + k, v));
+    this.root.style.colorScheme = dark ? 'dark' : 'light';
+  }
+  filtered() {
+    const s = this.state, VQ = {
+      'All': () => true,
+      'Needs review': (r) => (r.st === 'submitted' || r.st === 'in review') && r.rd < r.rt,
+      'Ready to decide': (r) => r.st === 'in review' && r.rd === r.rt,
+      'Accepted': (r) => r.st === 'accepted'
+    };
+    let rows = this.state.rows.filter(VQ[s.view]);
+    if (s.q) { const q = s.q.toLowerCase(); rows = rows.filter(r => r.t.toLowerCase().includes(q) || r.id.toLowerCase().includes(q) || r.sp.some(p => p.n.toLowerCase().includes(q))); }
+    if (s.fTracks.length) rows = rows.filter(r => s.fTracks.includes(r.tr));
+    if (s.fStatus.length) rows = rows.filter(r => s.fStatus.includes(r.st));
+    const d = s.sortD, k = s.sortK;
+    rows = rows.slice().sort((a, b) => k === 'title' ? a.t.localeCompare(b.t) * d : k === 'score' ? ((a.sc ?? -1) - (b.sc ?? -1)) * d : (a.dn - b.dn) * d);
+    return rows;
+  }
+  toast(msg, revert) {
+    const id = Math.random().toString(36).slice(2);
+    this.setState(s => ({ toasts: [...s.toasts.slice(-2), { id, msg, revert }] }));
+    setTimeout(() => this.dismiss(id), revert ? 10000 : 6000);
+  }
+  dismiss(id) { this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })); }
+  decide(ids, st) {
+    if (!ids.length) return;
+    const prev = ids.map(id => ({ id, st: this.state.rows.find(r => r.id === id).st }));
+    this.setState(s => ({ rows: s.rows.map(r => ids.includes(r.id) ? { ...r, st } : r), sel: [] }));
+    const revert = () => this.setState(s => ({ rows: s.rows.map(r => { const p = prev.find(p => p.id === r.id); return p ? { ...r, st: p.st } : r; }) }));
+    this._undo = (this._undo || []).concat([revert]);
+    this.toast(ids.length + (ids.length > 1 ? ' submissions' : ' submission') + ' → ' + Component.SM[st].l.toLowerCase() + '. Email queued, not sent.', revert);
+  }
+  undoLast() { const u = (this._undo || []).pop(); if (u) { u(); this.toast('Undone.'); } }
+  onKey(e) {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); this.undoLast(); return; }
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') { if (e.key === 'Escape') e.target.blur(); return; }
+    const list = this.filtered(), s = this.state;
+    if (e.key === 'Escape') { if (s.pop) this.setState({ pop: null }); else if (s.openId) this.setState({ openId: null }); else if (s.sel.length) this.setState({ sel: [] }); return; }
+    if (e.key === '/') { e.preventDefault(); if (this.searchEl) this.searchEl.focus(); return; }
+    if (e.key === '?') { this.setState({ pop: s.pop === 'help' ? null : 'help' }); return; }
+    if (e.key === 'j' || e.key === 'k') {
+      const dir = e.key === 'j' ? 1 : -1;
+      if (s.openId) { const i = list.findIndex(r => r.id === s.openId); const ni = Math.min(list.length - 1, Math.max(0, i + dir)); if (list[ni]) this.setState({ openId: list[ni].id, focus: ni }); }
+      else this.setState({ focus: Math.min(list.length - 1, Math.max(0, s.focus + dir)) });
+      return;
+    }
+    const f = list[Math.min(s.focus, list.length - 1)];
+    if (!f) return;
+    if (e.key === 'x') { this.toggleSel(f.id); return; }
+    if (e.key === 'Enter') { this.setState({ openId: f.id }); return; }
+    const target = s.openId || f.id;
+    if (e.key === 'a') this.decide([target], 'accepted');
+    if (e.key === 'r') this.decide([target], 'rejected');
+    if (e.key === 'w') this.decide([target], 'waitlisted');
+  }
+  toggleSel(id) { this.setState(s => ({ sel: s.sel.includes(id) ? s.sel.filter(x => x !== id) : [...s.sel, id] })); }
+  csv() {
+    const list = this.filtered().filter(r => !this.state.sel.length || this.state.sel.includes(r.id));
+    const esc = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+    const lines = [['code', 'title', 'speakers', 'track', 'format', 'score', 'reviews', 'status', 'submitted'].join(',')];
+    list.forEach(r => lines.push([r.id, esc(r.t), esc(r.sp.map(p => p.n).join('; ')), r.tr, esc(r.fmt), r.sc ?? '', r.rd + '/' + r.rt, r.st, r.dt].join(',')));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+    a.download = 'submissions.csv'; a.click();
+    this.toast('Exported ' + list.length + ' rows with current columns, filters, and sort.');
+  }
+  renderVals() {
+    const s = this.state, SM = Component.SM, TR = Component.TR;
+    const list = this.filtered();
+    const firstRun = (this.props.demoEmpty ?? false) === true;
+    const focusIdx = Math.min(s.focus, list.length - 1);
+    const rows = list.map((r, i) => {
+      const st = SM[r.st], sel = s.sel.includes(r.id), filled = r.sc ? Math.round(r.sc) : 0;
+      const seg = (n) => n <= filled ? 'var(--i2,#3E4E58)' : 'var(--ln,#E1E7E9)';
+      return {
+        id: r.id, t: r.t, tr: r.tr, trCol: TR[r.tr], fmt: r.fmt, dt: r.dt,
+        spName: r.sp[0].n, spSub: r.sp.length > 1 ? 'with ' + r.sp[1].n : r.sp[0].c,
+        ini: r.sp[0].n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+        sc: r.sc ? r.sc.toFixed(1) : '–', s1: seg(1), s2: seg(2), s3: seg(3), s4: seg(4), s5: seg(5),
+        rev: r.rd + '/' + r.rt, st: st.l, stFg: st.fg, stBg: st.bg,
+        bg: sel ? 'var(--sw,#FFEAE6)' : (s.hover === r.id ? 'var(--sk,#EDF1F2)' : 'transparent'),
+        ring: i === focusIdx ? 'inset 2px 0 0 var(--sg,#E04E4E)' : 'none',
+        op: r.st === 'rejected' ? '0.6' : '1',
+        ck: sel ? '✓' : '', ckBg: sel ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', ckBd: sel ? 'var(--sg,#E04E4E)' : 'var(--ls,#C8D2D5)',
+        showQ: s.hover === r.id && !sel,
+        onEnter: () => this.setState({ hover: r.id }),
+        onChk: (e) => { e.stopPropagation(); this.toggleSel(r.id); },
+        onOpen: () => this.setState({ openId: r.id, focus: i }),
+        onOpenBtn: (e) => { e.stopPropagation(); this.setState({ openId: r.id, focus: i }); },
+        onAcc: (e) => { e.stopPropagation(); this.decide([r.id], 'accepted'); },
+        onRej: (e) => { e.stopPropagation(); this.decide([r.id], 'rejected'); }
+      };
+    });
+    const VC = { 'All': this.state.rows.length, 'Needs review': this.state.rows.filter(r => (r.st === 'submitted' || r.st === 'in review') && r.rd < r.rt).length, 'Ready to decide': this.state.rows.filter(r => r.st === 'in review' && r.rd === r.rt).length, 'Accepted': this.state.rows.filter(r => r.st === 'accepted').length };
+    const views = Object.keys(VC).map(n => ({ n, c: VC[n], on: () => this.setState({ view: n, focus: 0 }), bg: s.view === n ? 'var(--sw,#FFEAE6)' : 'transparent', bd: s.view === n ? 'var(--sl,#FFC9C0)' : 'transparent', fg: s.view === n ? 'var(--sg,#E04E4E)' : 'var(--i3,#6B7B84)' }));
+    const tile = (n) => ({ c: VC[n], on: () => this.setState({ view: n, focus: 0 }), bd: s.view === n ? 'var(--sg,#E04E4E)' : 'var(--ln,#E1E7E9)', ring: s.view === n ? '0 0 0 3px var(--sw,#FFEAE6)' : '0 1px 2px rgba(13,16,32,.04)', numFg: s.view === n ? 'var(--sg,#E04E4E)' : 'var(--ik,#16232B)' });
+    const trackOpts = Object.keys(TR).map(n => { const ck = s.fTracks.includes(n); return { n, col: TR[n], ck: ck ? '✓' : '', ckBg: ck ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', on: () => this.setState(st2 => ({ fTracks: ck ? st2.fTracks.filter(x => x !== n) : [...st2.fTracks, n] })) }; });
+    const statusOpts = Object.keys(SM).map(k => { const ck = s.fStatus.includes(k); return { n: SM[k].l, dot: SM[k].dot, ck: ck ? '✓' : '', ckBg: ck ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', on: () => this.setState(st2 => ({ fStatus: ck ? st2.fStatus.filter(x => x !== k) : [...st2.fStatus, k] })) }; });
+    const chips = [...s.fTracks.map(t => ({ t: 'Track: ' + t, on: () => this.setState(st2 => ({ fTracks: st2.fTracks.filter(x => x !== t) })) })), ...s.fStatus.map(t => ({ t: 'Status: ' + SM[t].l, on: () => this.setState(st2 => ({ fStatus: st2.fStatus.filter(x => x !== t) })) }))];
+    const or = s.openId ? this.state.rows.find(r => r.id === s.openId) : null;
+    let o = { id: '', t: '', tr: '', trCol: '#000', fmt: '', lvl: '', dt: '', st: '', stFg: '', stBg: '', ab: '', rev: '', spList: [], crits: [], revs: [], notes: [], acts: [], accBg: '', accFg: '', accBd: '', waitBg: '', waitFg: '', waitBd: '', rejBg: '', rejFg: '', rejBd: '' };
+    if (or) {
+      const st = SM[or.st], c1 = or.sc ? Math.min(5, or.sc + 0.2) : 0, c2 = or.sc ? Math.max(1, or.sc - 0.3) : 0, c3 = or.sc || 0;
+      const seg = (on, w, wl) => on ? { bg: 'var(--' + w + ')', fg: 'var(--bf,#331313)', bd: 'var(--' + w + ')' } : { bg: 'transparent', fg: 'var(--i2,#3E4E58)', bd: 'var(--ls,#C8D2D5)' };
+      const mk = (on, col) => on ? { bg: col.bg.replace('w,', ','), fg: 'var(--bf,#331313)' } : {};
+      const A = or.st === 'accepted', W = or.st === 'waitlisted', R = or.st === 'rejected';
+      o = {
+        id: or.id, t: or.t, tr: or.tr, trCol: TR[or.tr], fmt: or.fmt, lvl: or.lvl + ' level', dt: or.dt,
+        st: st.l, stFg: st.fg, stBg: st.bg, ab: or.ab, rev: or.rd + ' OF ' + or.rt + ' DONE',
+        spList: or.sp.map(p => ({ ini: p.n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(), n: p.n, c: p.c })),
+        crits: or.sc ? [{ n: 'Relevance', v: c1.toFixed(1), w: (c1 / 5 * 100) + '%' }, { n: 'Originality', v: c2.toFixed(1), w: (c2 / 5 * 100) + '%' }, { n: 'Speaker readiness', v: c3.toFixed(1), w: (c3 / 5 * 100) + '%' }] : [{ n: 'Not scored yet', v: '–', w: '0%' }],
+        revs: or.sc ? [{ n: 'K. Watanabe', s: c3.toFixed(1), c: 'Tight scope. The failure-mode section is the talk.' }, { n: 'S. Petrova', s: c2.toFixed(1), c: 'Strong speaker. Would trim the intro and go deeper on the fix.' }] : [],
+        notes: s.notes[or.id] || [],
+        acts: [{ x: or.dt + ' 09:12 · submitted via public CFP' }, { x: or.rd > 0 ? or.dt + ' 16:40 · review ' + or.rd + '/' + or.rt + ' completed' : 'Awaiting first review' }, { x: or.st !== 'submitted' && or.st !== 'in review' ? '7 Aug 11:03 · status → ' + st.l.toLowerCase() + ' · S. Whitfield' : 'No decision yet' }],
+        accBg: A ? 'var(--ok,#0E7A5F)' : 'transparent', accFg: A ? '#FFFFFF' : 'var(--ok,#0E7A5F)', accBd: A ? 'var(--ok,#0E7A5F)' : 'var(--okl,#C2E0D5)',
+        waitBg: W ? 'var(--pd,#B96A1F)' : 'transparent', waitFg: W ? '#FFFFFF' : 'var(--pd,#B96A1F)', waitBd: W ? 'var(--pd,#B96A1F)' : 'var(--pdl,#EFD3B6)',
+        rejBg: R ? 'var(--i3,#6B7B84)' : 'transparent', rejFg: R ? '#FFFFFF' : 'var(--i3,#6B7B84)', rejBd: R ? 'var(--i3,#6B7B84)' : 'var(--ls,#C8D2D5)'
+      };
+    }
+    const toasts = s.toasts.map(t => ({ msg: t.msg, canUndo: !!t.revert, onUndo: () => { t.revert(); this.dismiss(t.id); this.toast('Undone.'); }, onX: () => this.dismiss(t.id) }));
+    const allSel = list.length > 0 && list.every(r => s.sel.includes(r.id));
+    const arr = (k) => s.sortK === k ? (s.sortD === 1 ? '↑' : '↓') : '';
+    const so = (k) => ({ on: () => this.setSort(k), g: (this.state.sortK) === k ? ((this.state.sortD || 1) === 1 ? '↑' : '↓') : '↑↓', gc: (this.state.sortK) === k ? 'var(--sg,#E04E4E)' : 'var(--i4,#99A6AD)', fg: (this.state.sortK) === k ? 'var(--ik,#16232B)' : 'var(--i3,#6B7B84)' });
+
+    return {
+      setRoot: (el) => { this.root = el; this.applyTheme(); },
+      setSearch: (el) => { this.searchEl = el; },
+      rows, views, vAll: tile('All'), vNeed: tile('Needs review'), vReady: tile('Ready to decide'), vAcc: tile('Accepted'), trackOpts, statusOpts, chips, hasChips: chips.length > 0, toasts, o,
+      open: !!or, firstRun, showTable: !firstRun, empty: rows.length === 0 && !firstRun,
+      q: s.q, onQ: (e) => this.setState({ q: e.target.value, focus: 0 }),
+      rowH: s.density === 'compact' ? '36px' : '44px',
+      countLine: rows.length + ' of 216 matching',
+      trackCountLabel: s.fTracks.length ? '(' + s.fTracks.length + ')' : '', statusCountLabel: s.fStatus.length ? '(' + s.fStatus.length + ')' : '',
+      arrTitle: arr('title'), arrScore: arr('score'), arrDate: arr('date'),
+      soTitle: so('title'), soScore: so('score'), soDate: so('date'),
+      sortTitle: () => this.setSort('title'), sortScore: () => this.setSort('score'), sortDate: () => this.setSort('date'),
+      selN: s.sel.length, hasSel: s.sel.length > 0,
+      allCk: allSel ? '✓' : '', allCkBg: allSel ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)',
+      selAll: () => this.setState({ sel: allSel ? [] : list.map(r => r.id) }),
+      clearSel: () => this.setState({ sel: [] }),
+      bulkAcc: () => this.decide(s.sel, 'accepted'), bulkWait: () => this.decide(s.sel, 'waitlisted'), bulkRej: () => this.decide(s.sel, 'rejected'),
+      bulkAssign: () => this.toast('Reviewer assignment opens the balance-by-load proposal, designed with the Review screen.'),
+      exportCsv: () => this.csv(),
+      clearFilters: () => this.setState({ fTracks: [], fStatus: [], q: '', view: 'All' }),
+      banner: (this.props.pendingDecisionsBanner ?? true) && !s.hideBanner && !firstRun,
+      bannerX: () => this.setState({ hideBanner: true }),
+      bannerGo: () => this.toast('Compose &amp; send lives in Messages, the next screen to design.'.replace('&amp;', '&')),
+      navToast: () => this.toast('Next screen. It follows this page\u2019s pattern once you approve it.'),
+      togTrack: () => this.setState({ pop: s.pop === 'track' ? null : 'track' }),
+      togStatus: () => this.setState({ pop: s.pop === 'status' ? null : 'status' }),
+      togSwitch: () => this.setState({ pop: s.pop === 'switch' ? null : 'switch' }),
+      togHelp: () => this.setState({ pop: s.pop === 'help' ? null : 'help' }),
+      closePop: () => this.setState({ pop: null }),
+      popTrack: s.pop === 'track', popStatus: s.pop === 'status', popSwitch: s.pop === 'switch', popHelp: s.pop === 'help',
+      otherEvent: () => { this.setState({ pop: null }); this.toast('This demo seeds one event. Multi-event switching works exactly like this.'); },
+      focusSearch: () => { if (this.searchEl) this.searchEl.focus(); },
+      popUser: !!this.state.userMenu,
+      togUser: () => this.setState(s2 => ({ userMenu: !s2.userMenu })),
+      closeUser: () => this.setState({ userMenu: false }),
+      profileGo: () => { this.setState({ userMenu: false }); this.toast('Your profile: name, avatar, and notification rules. Next screen to design.'); },
+      signOut: () => { this.setState({ userMenu: false }); this.toast('A real build signs you out here. The demo keeps you in.'); },
+      themeWord: (this.state.theme || 'system')[0].toUpperCase() + (this.state.theme || 'system').slice(1),
+      accents: Object.keys(Component.ACCENTS).map(n => ({ n, c: Component.ACCENTS[n].dot, on: () => { try { localStorage.setItem('gather.accent', n); } catch (e) {} this.setState({ accent: n }); }, ring: (this.state.accent || 'Coral') === n ? '0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ' + Component.ACCENTS[n].dot : 'inset 0 0 0 1px rgba(0,0,0,.12)' })),
+      togTheme: () => { const next = s.theme === 'system' ? 'light' : s.theme === 'light' ? 'dark' : 'system'; try { localStorage.setItem('gather.theme', next); } catch (e) {} this.setState({ theme: next }); },
+      themeGlyph: s.theme === 'system' ? '◐' : s.theme === 'light' ? '○' : '●',
+      themeTitle: 'Theme: ' + s.theme + ', click to change',
+      togDensity: () => { const next = s.density === 'compact' ? 'comfortable' : 'compact'; try { localStorage.setItem('gather.density', next); } catch (e) {} this.setState({ density: next }); },
+      densTitle: 'Density: ' + s.density + ', click to toggle',
+      closeDrawer: () => this.setState({ openId: null }),
+      dAcc: () => this.decide([s.openId], 'accepted'), dWait: () => this.decide([s.openId], 'waitlisted'), dRej: () => this.decide([s.openId], 'rejected'),
+      onCoord: () => this.toast('Coordinator assigned. They now own this submission.'),
+      noteDraft: s.noteDraft, onNoteDraft: (e) => this.setState({ noteDraft: e.target.value }),
+      addNote: () => { if (!s.noteDraft.trim() || !or) return; this.setState(st2 => ({ notes: { ...st2.notes, [or.id]: [...(st2.notes[or.id] || []), { a: 'You', t: 'just now', x: st2.noteDraft.trim() }] }, noteDraft: '' })); },
+      hsAll: () => this.setState({ view: 'All', fTracks: [], fStatus: [], q: '' }),
+      hsUnrev: () => this.setState({ view: 'Needs review' }),
+      hsDecided: () => this.setState({ view: 'All', fStatus: ['accepted', 'waitlisted', 'rejected'] }),
+      keys: [{ d: 'Move through the list', k: 'j / k' }, { d: 'Select focused row', k: 'x' }, { d: 'Open focused row', k: 'Enter' }, { d: 'Accept / reject / waitlist', k: 'a r w' }, { d: 'Filter the list', k: '/' }, { d: 'Undo last change', k: '⌘Z' }, { d: 'Close / clear', k: 'Esc' }]
+    };
+  }
+  setSort(k) { this.setState(s => ({ sortK: k, sortD: s.sortK === k ? -s.sortD : (k === 'title' ? 1 : -1) })); }
+}
+</script>
+</body>
+</html>

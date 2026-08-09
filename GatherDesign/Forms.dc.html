@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--sg,#E04E4E)}a:hover{color:var(--sg,#C93E3E)}button{cursor:pointer}::selection{background:var(--sw,#FFEAE6)}input::placeholder,textarea::placeholder{color:var(--i4,#99A6AD)}</style>
+</helmet>
+<div ref="{{ setRoot }}" data-screen-label="Forms" style="display:grid;grid-template-columns:auto minmax(0,1fr);height:100vh;overflow:hidden;background:var(--pp,#F4F6F7);color:var(--ik,#16232B)">
+  <dc-import name="ConsoleRail" active="Forms" hint-size="216px,100%" style="height:100%;min-height:0"></dc-import>
+  <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <span style="display:flex;align-items:center;gap:8px;font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>AI Engineer 2026</span>
+      <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ crumb }}</span>
+      <div style="flex:1"></div>
+      <sc-if value="{{ inBuilder }}" hint-placeholder-val="{{ false }}">
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--sg,#E04E4E)">{{ savedStamp }}</span>
+        <button onClick="{{ preview }}" style="height:30px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap">View live form</button>
+        <button onClick="{{ backToList }}" style="height:30px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap">Back to forms</button>
+      </sc-if>
+      
+      <div style="position:relative">
+        <button onClick="{{ togUser }}" title="Account" aria-label="Account menu" style="width:28px;height:28px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);padding:0" style-hover="border:1px solid var(--ls,#C8D2D5)">SW</button>
+        <sc-if value="{{ popUser }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ closeUser }}" aria-label="Close" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:41"></button>
+          <div style="position:absolute;top:36px;right:0;width:248px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:12px;box-shadow:0 16px 40px rgba(13,16,32,.20);padding:6px;z-index:42">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 10px">
+              <span style="width:32px;height:32px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);flex:none">SW</span>
+              <span style="min-width:0"><span style="display:block;font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Sasha Whitfield</span><span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">program lead · demo org</span></span>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:8px 10px 6px">THEME</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 10px 10px">
+              <sc-for list="{{ accents }}" as="ac" hint-placeholder-count="5"><button onClick="{{ ac.on }}" title="{{ ac.n }}" aria-label="{{ ac.n }}" style="width:16px;height:16px;border-radius:50%;border:none;background:{{ ac.c }};box-shadow:{{ ac.ring }};padding:0;flex:none"></button></sc-for>
+              <div style="flex:1"></div>
+              <button onClick="{{ togTheme }}" title="{{ themeTitle }}" style="display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)">{{ themeGlyph }} {{ themeWord }}</button>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ profileGo }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);text-align:left" style-hover="background:var(--sk,#EDF1F2)">Your profile</button>
+            <a href="Settings.dc.html" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;text-decoration:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Workspace settings</a>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ signOut }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B);text-align:left" style-hover="background:var(--cnw,#FBE8E6)">Sign out</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{ inList }}" hint-placeholder-val="{{ true }}">
+      <div style="height:32px;flex:none;display:flex;align-items:center;gap:16px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+        <a href="Submissions.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">SUB 216</a><span style="color:var(--i4,#99A6AD)">·</span>
+        <a href="Review.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">UNREVIEWED 38</a><span style="color:var(--i4,#99A6AD)">·</span>
+        <a href="Tasks.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--pd,#B96A1F);text-decoration:none">OVERDUE TASKS 12</a><span style="color:var(--i4,#99A6AD)">·</span>
+        <a href="Agenda.dc.html" style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--cn,#D8432B);text-decoration:none">⚠ 3 CONFLICTS</a>
+        <div style="flex:1"></div>
+        <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">CFP closes in 38d</span>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:20px 28px 80px">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+          <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Forms</h1>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">one schema engine: CFP forms and portal task forms</span>
+          <div style="flex:1"></div>
+          <button onClick="{{ newForm }}" style="height:32px;padding:0 14px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12.5px 'IBM Plex Sans',sans-serif;white-space:nowrap">Create a form</button>
+        </div>
+        <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">{{ sumLine }}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+          <button onClick="{{ tAllF.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tAllF.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tAllF.ring }};text-align:left;cursor:pointer">
+            <span style="width:32px;height:32px;border-radius:9px;background:var(--ifw,#E9ECF7);color:var(--if,#47599F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 1.5h4.8l2.7 2.7v9.3H4z"></path><path d="M8.8 1.5v2.7h2.7"></path></svg></span>
+            <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tAllF.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tAllF.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">All forms</span></span>
+          </button>
+          <button onClick="{{ tOpenF.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tOpenF.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tOpenF.ring }};text-align:left;cursor:pointer">
+            <span style="width:32px;height:32px;border-radius:9px;background:var(--okw,#E2F1EC);color:var(--ok,#0E7A5F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M4.8 7.8l1.8 1.8 3.6-4"></path></svg></span>
+            <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tOpenF.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tOpenF.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Live and collecting</span></span>
+          </button>
+          <button onClick="{{ tDraftF.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tDraftF.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tDraftF.ring }};text-align:left;cursor:pointer">
+            <span style="width:32px;height:32px;border-radius:9px;background:var(--pdw,#F9EDDF);color:var(--pd,#B96A1F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><circle cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none"></circle></svg></span>
+            <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tDraftF.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tDraftF.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Drafts</span></span>
+          </button>
+          <button onClick="{{ tResp.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tResp.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tResp.ring }};text-align:left;cursor:pointer">
+            <span style="width:32px;height:32px;border-radius:9px;background:var(--sw,#FFEAE6);color:var(--sg,#E04E4E);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="currentColor"><rect x="1.5" y="2" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="6.3" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="10.6" width="8" height="2.4" rx="1.2"></rect></svg></span>
+            <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tResp.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tResp.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Responses so far</span></span>
+          </button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ formRows }}" as="f" hint-placeholder-count="3">
+            <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:14px 16px">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <span style="font:600 14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ f.n }}</span>
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:4px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ f.stFg }};background:{{ f.stBg }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ f.stFg }}"></span>{{ f.st }}</span>
+                <span style="padding:2px 8px;border-radius:4px;background:var(--sk,#EDF1F2);font:500 10.5px 'IBM Plex Sans Condensed',sans-serif;color:var(--i3,#6B7B84)">{{ f.kind }}</span>
+                <div style="flex:1"></div>
+                <button onClick="{{ f.onOpen }}" style="height:28px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap">Edit form</button>
+                <button onClick="{{ f.onCopy }}" style="height:28px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap">Duplicate</button>
+              </div>
+              <div style="display:flex;gap:16px;margin-top:8px">
+                <span style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">{{ f.meta }}</span>
+                <span style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ f.closes }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);margin-top:14px">A form locks its structure after the first submission: fields can be added and relabeled, never deleted or retyped.</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ inBuilder }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;min-height:0">
+        <div style="width:250px;flex:none;border-right:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF);overflow-y:auto;padding:14px 10px">
+          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);padding:0 8px 10px">FORM SETUP · {{ bName }}</div>
+          <sc-for list="{{ steps }}" as="st" hint-placeholder-count="6">
+            <button onClick="{{ st.on }}" style="width:100%;display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-radius:8px;border:none;background:{{ st.bg }};text-align:left;margin-bottom:2px">
+              <span style="width:16px;height:16px;border-radius:50%;flex:none;margin-top:1px;display:inline-flex;align-items:center;justify-content:center;background:{{ st.dotBg }};border:1px solid {{ st.dotBd }};font:600 9px 'IBM Plex Sans',sans-serif;color:{{ st.dotFg }}">{{ st.mark }}</span>
+              <span><span style="display:block;font:{{ st.wt }} 12.5px 'IBM Plex Sans',sans-serif;color:{{ st.fg }}">{{ st.n }}</span><span style="display:block;font:400 10.5px/14px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">{{ st.sub }}</span></span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="flex:1;overflow-y:auto;min-width:0;padding:20px 28px 80px">
+
+          <sc-if value="{{ s1 }}" hint-placeholder-val="{{ true }}">
+            <div style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:4px">What does this form collect?</div>
+            <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">You can change this until the first submission arrives.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:720px">
+              <sc-for list="{{ kinds }}" as="k" hint-placeholder-count="2">
+                <button onClick="{{ k.on }}" style="border:1.5px solid {{ k.bd }};border-radius:10px;background:{{ k.bg }};padding:18px;text-align:left">
+                  <div style="font:600 14.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:4px">{{ k.n }}</div>
+                  <div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">{{ k.d }}</div>
+                </button>
+              </sc-for>
+            </div>
+            <button onClick="{{ togPart }}" style="display:flex;align-items:center;gap:10px;border:1px solid {{ partBd }};border-radius:10px;background:{{ partBg }};padding:14px 16px;margin-top:12px;max-width:720px;width:100%;box-sizing:border-box;text-align:left">
+              <span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ partCkBd }};background:{{ partCkBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);flex:none">{{ partCk }}</span>
+              <span><span style="display:block;font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Collect participant details</span><span style="display:block;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">Adds a step for speaker and co-speaker contact information.</span></span>
+            </button>
+          </sc-if>
+
+          <sc-if value="{{ s2 }}" hint-placeholder-val="{{ false }}">
+            <div style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:16px">Welcome screen</div>
+            <div style="max-width:720px">
+              <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Welcome message</div>
+              <textarea value="{{ welcome }}" onChange="{{ onWelcome }}" rows="4" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
+              <button onClick="{{ togTerms }}" style="display:flex;align-items:center;gap:9px;background:none;border:none;padding:0;margin-top:12px;text-align:left">
+                <span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ termsBd }};background:{{ termsBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313)">{{ termsCk }}</span>
+                <span style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Require agreement to the speaker terms before starting</span>
+              </button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ s3 }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+              <div style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);flex:1">Submission questions</div>
+              <button onClick="{{ addField }}" style="height:30px;padding:0 12px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12px 'IBM Plex Sans',sans-serif;white-space:nowrap">Add a field</button>
+            </div>
+            <div style="max-width:720px;display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Section title</div><input value="{{ secTitle }}" onChange="{{ onSecTitle }}" style="width:100%;box-sizing:border-box;height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"></div>
+              <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Page heading <span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">15 char max</span></div><input value="{{ pageHead }}" onChange="{{ onPageHead }}" style="width:100%;box-sizing:border-box;height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"></div>
+            </div>
+            <div style="max-width:720px;display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ fields }}" as="fd" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:11px;border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:11px 14px">
+                  <span style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);cursor:grab">⠿</span>
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:7px"><span style="font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ fd.n }}</span><span style="color:var(--cn,#D8432B);font:500 12px 'IBM Plex Sans',sans-serif">{{ fd.req }}</span><sc-if value="{{ fd.locked }}" hint-placeholder-val="{{ false }}"><span style="padding:1px 7px;border-radius:99px;background:var(--sk,#EDF1F2);font:500 10px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">locked</span></sc-if><sc-if value="{{ fd.idb }}" hint-placeholder-val="{{ false }}"><span style="padding:1px 7px;border-radius:99px;background:var(--ifw,#E9ECF7);font:500 10px 'IBM Plex Sans',sans-serif;color:var(--if,#47599F)">identity-bearing</span></sc-if></div>
+                    <div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">{{ fd.meta }}</div>
+                  </div>
+                  <sc-if value="{{ fd.canX }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ fd.onX }}" aria-label="Remove field" style="width:26px;height:26px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">✕</button>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);margin-top:10px;max-width:720px">Blind review hides every identity-bearing field from reviewers automatically.</div>
+          </sc-if>
+
+          <sc-if value="{{ s4 }}" hint-placeholder-val="{{ false }}">
+            <div style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:16px">Participant roles</div>
+            <div style="max-width:720px;display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ roles }}" as="ro" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:12px;border:1px solid {{ ro.bd }};border-radius:8px;background:{{ ro.bg }};padding:12px 14px">
+                  <button onClick="{{ ro.onTog }}" aria-label="Toggle role" style="width:14px;height:14px;border-radius:4px;border:1px solid {{ ro.ckBd }};background:{{ ro.ckBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);padding:0;flex:none">{{ ro.ck }}</button>
+                  <span style="font:500 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);flex:1">{{ ro.n }}</span>
+                  <sc-if value="{{ ro.onSel }}" hint-placeholder-val="{{ true }}">
+                    <span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">min</span>
+                    <input value="{{ ro.min }}" onChange="{{ ro.onMin }}" style="width:44px;box-sizing:border-box;height:28px;padding:0 8px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);text-align:center;outline-color:#E04E4E">
+                    <span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">max</span>
+                    <input value="{{ ro.max }}" onChange="{{ ro.onMax }}" style="width:44px;box-sizing:border-box;height:28px;padding:0 8px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);text-align:center;outline-color:#E04E4E">
+                  </sc-if>
+                </div>
+              </sc-for>
+              <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:12px 14px">
+                <div style="font:600 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:8px">Contact fields per participant</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <span style="padding:3px 9px;border-radius:99px;background:var(--sk,#EDF1F2);font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">First name · locked</span>
+                  <span style="padding:3px 9px;border-radius:99px;background:var(--sk,#EDF1F2);font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">Last name · locked</span>
+                  <span style="padding:3px 9px;border-radius:99px;background:var(--sk,#EDF1F2);font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">Email · locked</span>
+                  <span style="padding:3px 9px;border-radius:99px;background:var(--sw,#FFEAE6);border:1px solid var(--sl,#FFC9C0);font:500 11px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E)">Bio · identity-bearing</span>
+                  <span style="padding:3px 9px;border-radius:99px;background:var(--sw,#FFEAE6);border:1px solid var(--sl,#FFC9C0);font:500 11px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E)">Headshot · identity-bearing</span>
+                  <span style="padding:3px 9px;border-radius:99px;background:var(--sk,#EDF1F2);font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">Phone · international</span>
+                </div>
+              </div>
+              <button onClick="{{ togConfirm }}" style="display:flex;align-items:center;gap:9px;background:none;border:none;padding:2px 0;text-align:left">
+                <span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ cfBd }};background:{{ cfBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313)">{{ cfCk }}</span>
+                <span style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Send each participant a confirmation email on submit</span>
+              </button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ s5 }}" hint-placeholder-val="{{ false }}">
+            <div style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:16px">Form settings</div>
+            <div style="max-width:720px;display:flex;flex-direction:column;gap:14px">
+              <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:14px 16px">
+                <div style="font:600 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:3px">Close date</div>
+                <div style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:10px">The form stops accepting new and edited submissions after this moment. The public page shows a live countdown.</div>
+                <div style="display:flex;gap:8px;align-items:center"><input value="{{ closeAt }}" onChange="{{ onCloseAt }}" style="width:240px;box-sizing:border-box;height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);outline-color:#E04E4E"><span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">PT · event timezone</span></div>
+              </div>
+              <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:14px 16px">
+                <div style="font:600 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:3px">Submission limit</div>
+                <div style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:10px">Per person, counted by email identity. Drafts count toward the limit.</div>
+                <div style="display:flex;gap:8px;align-items:center"><input value="{{ limit }}" onChange="{{ onLimit }}" style="width:64px;box-sizing:border-box;height:32px;padding:0 8px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);text-align:center;outline-color:#E04E4E"><span style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">submissions per speaker</span></div>
+              </div>
+              <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:14px 16px">
+                <div style="font:600 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:8px">Drafts</div>
+                <sc-for list="{{ draftOpts }}" as="dop" hint-placeholder-count="2">
+                  <button onClick="{{ dop.on }}" style="display:flex;align-items:center;gap:9px;background:none;border:none;padding:4px 0;text-align:left;width:100%">
+                    <span style="width:13px;height:13px;border-radius:50%;border:1.5px solid {{ dop.rb }};display:inline-flex;align-items:center;justify-content:center;flex:none"><span style="width:6px;height:6px;border-radius:50%;background:{{ dop.rd }}"></span></span>
+                    <span style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">{{ dop.n }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ s6 }}" hint-placeholder-val="{{ false }}">
+            <div style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:16px">Notifications</div>
+            <div style="max-width:720px;display:flex;flex-direction:column;gap:10px">
+              <button onClick="{{ togAdmin }}" style="display:flex;align-items:center;gap:9px;background:none;border:none;padding:0;text-align:left">
+                <span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ adBd }};background:{{ adBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313)">{{ adCk }}</span>
+                <span style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Alert the program team on every new submission, title only for blind rounds</span>
+              </button>
+              <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:12px 14px;display:flex;align-items:center;gap:12px">
+                <div style="flex:1"><div style="font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Reminder: 5 days before close</div><div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Sends to everyone with an unfinished draft</div></div>
+                <a href="Messages.dc.html" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);text-decoration:none">Edit template</a>
+              </div>
+              <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:12px 14px;display:flex;align-items:center;gap:12px">
+                <div style="flex:1"><div style="font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Reminder: 1 day before close</div><div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Sends to everyone with an unfinished draft</div></div>
+                <a href="Messages.dc.html" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);text-decoration:none">Edit template</a>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;gap:8px;margin-top:24px;max-width:720px">
+            <button onClick="{{ prevStep }}" style="height:34px;padding:0 14px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Back</button>
+            <div style="flex:1"></div>
+            <button onClick="{{ nextStep }}" style="height:34px;padding:0 16px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 13px 'IBM Plex Sans',sans-serif">{{ nextLabel }}</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  <div style="position:fixed;left:16px;bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:8px;padding:10px 12px;box-shadow:0 12px 32px rgba(16,19,25,.16);max-width:440px">
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.msg }}</span>
+        <button onClick="{{ t.onX }}" aria-label="Dismiss" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:0">✕</button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  static ACCENTS = {
+    Coral: { dot: '#FF6B6B', l: { sg: '#E04E4E', sw: '#FFEAE6', sl: '#FFC9C0', bt: '#FF6B6B', bf: '#331313' }, d: { sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313' } },
+    Sunset: { dot: '#F2915B', l: { sg: '#BE5F1F', sw: '#FCEFE4', sl: '#F5CFB2', bt: '#F2915B', bf: '#331A0A' }, d: { sg: '#F5AA7E', sw: '#3A2414', sl: '#664028', bt: '#F2915B', bf: '#331A0A' } },
+    Sky: { dot: '#4A9BD8', l: { sg: '#2B77B3', sw: '#E7F1FA', sl: '#BFDCF1', bt: '#4A9BD8', bf: '#0D2333' }, d: { sg: '#7FBCE8', sw: '#152A3A', sl: '#2C4E66', bt: '#4A9BD8', bf: '#0D2333' } },
+    Slate: { dot: '#5A6BA8', l: { sg: '#4A5A99', sw: '#EAEDF7', sl: '#C8CFE9', bt: '#5A6BA8', bf: '#FFFFFF' }, d: { sg: '#98A6DA', sw: '#1F2542', sl: '#3A4370', bt: '#8B9AD0', bf: '#12162E' } },
+    Graphite: { dot: '#5F6B79', l: { sg: '#46535F', sw: '#ECEFF2', sl: '#C9D2DA', bt: '#4A5764', bf: '#FFFFFF' }, d: { sg: '#A9B6C2', sw: '#232B33', sl: '#3E4A56', bt: '#93A3B1', bf: '#111921' } }
+  };
+  static DARK = { pp: '#101013', cd: '#17171B', sk: '#1F1F24', ln: '#2A2A31', ls: '#3F3F49', ik: '#F2F2F0', i2: '#C9C9C6', i3: '#929290', i4: '#686865', sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313', cn: '#F0766A', cnw: '#3A1F1E', cnl: '#5E2E2B', pd: '#F0A468', pdw: '#332617', pdl: '#54402A', ok: '#57B899', okw: '#123029', okl: '#1F4A3E', if: '#8B9AD0', ifw: '#262833', ifl: '#3E4152' };
+  state = {
+    theme: 'system', view: 'list', tab: 'All', step: 0, toasts: [],
+    forms: [
+      { id: 'f1', n: 'Call for papers 2026', st: 'open', kind: 'CFP · sessions + participants', meta: '216 submissions · 31 drafts', closes: 'closes 15 Sep, 23:59 PT' },
+      { id: 'f2', n: 'Lightning talk submissions', st: 'open', kind: 'CFP · abstracts', meta: '48 submissions · 6 drafts', closes: 'closes 15 Sep, 23:59 PT' },
+      { id: 'f3', n: 'AV requirements', st: 'draft', kind: 'Portal task form', meta: '0 submissions', closes: 'not open yet' }
+    ],
+    kind: 'Sessions', part: true, welcome: 'Tell us what you want to present. It takes about 15 minutes, autosaves as you type, and you can stop and come back any time before the deadline.', terms: true,
+    secTitle: 'Tell us about your talk', pageHead: 'Your proposal',
+    fields: [
+      { id: 'q1', n: 'Title', meta: 'Short text · 80 characters max', req: '*', locked: true, idb: false },
+      { id: 'q2', n: 'Abstract', meta: 'Long text · 150 to 400 words', req: '*', locked: true, idb: false },
+      { id: 'q3', n: 'Track', meta: 'Single select · 6 options', req: '*', locked: false, idb: false },
+      { id: 'q4', n: 'Format', meta: 'Single select · talk, lightning, workshop', req: '*', locked: false, idb: false },
+      { id: 'q5', n: 'Framework used in the demo', meta: 'Short text · shown only when Track is Agents', req: '', locked: false, idb: false },
+      { id: 'q6', n: 'Previous speaking video', meta: 'URL · optional', req: '', locked: false, idb: true }
+    ],
+    roles: [{ n: 'Speaker', on: true, min: '1', max: '4' }, { n: 'Chairperson', on: false, min: '0', max: '1' }, { n: 'Moderator', on: false, min: '0', max: '1' }],
+    confirm: true, closeAt: '2026-09-15 23:59', limit: '3', drafts: 0, admin: true, savedAt: '11:42'
+  };
+  componentDidMount() {
+    try { const th = localStorage.getItem('gather.theme'); if (th) this.setState({ theme: th }); const ac = localStorage.getItem('gather.accent'); if (ac && Component.ACCENTS[ac]) this.setState({ accent: ac }); } catch (e) {}
+    this._mq = window.matchMedia('(prefers-color-scheme: dark)');
+    this._mqFn = () => this.forceUpdate();
+    this._mq.addEventListener('change', this._mqFn);
+    this.applyTheme();
+  }
+  componentDidUpdate() { this.applyTheme(); }
+  componentWillUnmount() { if (this._mq) this._mq.removeEventListener('change', this._mqFn); }
+  isDark() { return this.state.theme === 'dark' || (this.state.theme === 'system' && this._mq && this._mq.matches); }
+  applyTheme() {
+    if (!this.root) return;
+    const dark = this.isDark();
+    Object.entries(Component.DARK).forEach(([k, v]) => { dark ? this.root.style.setProperty('--' + k, v) : this.root.style.removeProperty('--' + k); });
+    const acc = (Component.ACCENTS[this.state.accent] || Component.ACCENTS.Coral)[dark ? 'd' : 'l'];
+    Object.entries(acc).forEach(([k, v]) => this.root.style.setProperty('--' + k, v));
+    this.root.style.colorScheme = dark ? 'dark' : 'light';
+  }
+  toast(msg) {
+    const id = Math.random().toString(36).slice(2);
+    this.setState(s => ({ toasts: [...s.toasts.slice(-2), { id, msg }] }));
+    setTimeout(() => this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), 6000);
+  }
+  stamp() { this.setState({ savedAt: new Date().toTimeString().slice(0, 5) }); }
+  tileV(active, c, on) { return { c, on, bd: active ? 'var(--sg,#E04E4E)' : 'var(--ln,#E1E7E9)', ring: active ? '0 0 0 3px var(--sw,#FFEAE6)' : '0 1px 2px rgba(13,16,32,.04)', numFg: active ? 'var(--sg,#E04E4E)' : 'var(--ik,#16232B)' }; }
+  renderVals() {
+    const s = this.state;
+    const STEPS = [
+      { n: 'What you collect', sub: 'Sessions or abstracts' },
+      { n: 'Welcome screen', sub: 'Message and terms' },
+      { n: 'Submission questions', sub: 'The form itself' },
+      { n: 'Participants', sub: 'Roles and contact fields' },
+      { n: 'Form settings', sub: 'Deadline, limits, drafts' },
+      { n: 'Notifications', sub: 'Alerts and reminders' }
+    ];
+    const ck = (on) => ({ ck: on ? '✓' : '', ckBg: on ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', ckBd: on ? 'var(--sg,#E04E4E)' : 'var(--ls,#C8D2D5)' });
+    const stM = { open: { l: 'Open', fg: 'var(--ok,#0E7A5F)', bg: 'var(--okw,#E2F1EC)' }, draft: { l: 'Draft', fg: 'var(--if,#47599F)', bg: 'var(--ifw,#E9ECF7)' }, closed: { l: 'Closed', fg: 'var(--i3,#6B7B84)', bg: 'var(--sk,#EDF1F2)' } };
+    const tabs = ['All', 'Open', 'Draft'];
+    const counts = { All: s.forms.length, Open: s.forms.filter(f => f.st === 'open').length, Draft: s.forms.filter(f => f.st === 'draft').length };
+    const shown = s.forms.filter(f => s.tab === 'All' || stM[f.st].l === s.tab);
+    const pc = ck(s.part), tc = ck(s.terms), cc = ck(s.confirm), ac = ck(s.admin);
+    return {
+      setRoot: (el) => { this.root = el; this.applyTheme(); },
+      tAllF: this.tileV(s.tab === 'All', counts.All, () => this.setState({ tab: 'All' })),
+      tOpenF: this.tileV(s.tab === 'Open', counts.Open, () => this.setState({ tab: 'Open' })),
+      tDraftF: this.tileV(s.tab === 'Draft', counts.Draft, () => this.setState({ tab: 'Draft' })),
+      tResp: this.tileV(false, s.forms.reduce((a, f) => a + (parseInt(f.meta) || 0), 0), () => this.setState({ tab: 'All' })),
+      sumLine: counts.Open + ' forms live · ' + s.forms.reduce((a, f) => a + (parseInt(f.meta) || 0), 0) + ' submissions collected so far · every answer lands in Submissions automatically',
+      inList: s.view === 'list', inBuilder: s.view === 'builder',
+      crumb: s.view === 'list' ? '/ Forms' : '/ Forms / Call for papers 2026',
+      savedStamp: 'Saved ' + s.savedAt,
+      bName: 'CALL FOR PAPERS 2026',
+      listTabs: tabs.map(n => ({ n, c: counts[n], on: () => this.setState({ tab: n }), bg: s.tab === n ? 'var(--sw,#FFEAE6)' : 'transparent', bd: s.tab === n ? 'var(--sl,#FFC9C0)' : 'transparent', fg: s.tab === n ? 'var(--sg,#E04E4E)' : 'var(--i3,#6B7B84)' })),
+      formRows: shown.map(f => ({ n: f.n, st: stM[f.st].l, stFg: stM[f.st].fg, stBg: stM[f.st].bg, kind: f.kind, meta: f.meta, closes: f.closes, onOpen: () => this.setState({ view: 'builder', step: 0 }), onCopy: () => this.toast('Duplicated as a draft. Structure copies, submissions never do.') })),
+      newForm: () => { this.setState({ view: 'builder', step: 0 }); this.toast('New form started as a draft. Nothing is public until you open it.'); },
+      backToList: () => this.setState({ view: 'list' }),
+      preview: () => { window.location.href = 'CFP.dc.html'; },
+      steps: STEPS.map((st, i) => {
+        const active = s.step === i, done = i < s.step;
+        return { n: st.n, sub: st.sub, on: () => { this.setState({ step: i }); this.stamp(); }, bg: active ? 'var(--sw,#FFEAE6)' : 'none', fg: active ? 'var(--sg,#E04E4E)' : 'var(--ik,#16232B)', wt: active ? '600' : '500', mark: done ? '✓' : String(i + 1), dotBg: done ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', dotBd: done || active ? 'var(--sg,#E04E4E)' : 'var(--ls,#C8D2D5)', dotFg: done ? 'var(--bf,#331313)' : (active ? 'var(--sg,#E04E4E)' : 'var(--i3,#6B7B84)') };
+      }),
+      s1: s.step === 0, s2: s.step === 1, s3: s.step === 2, s4: s.step === 3, s5: s.step === 4, s6: s.step === 5,
+      kinds: [{ n: 'Full sessions', d: 'Complete proposals with format, duration, and scheduling details. Feeds the agenda directly.', k: 'Sessions' }, { n: 'Abstracts', d: 'Shorter first-round submissions, reviewed before full sessions are invited.', k: 'Abstracts' }].map(k => ({ n: k.n, d: k.d, on: () => { this.setState({ kind: k.k }); this.stamp(); }, bd: s.kind === k.k ? 'var(--sg,#E04E4E)' : 'var(--ln,#E1E7E9)', bg: s.kind === k.k ? 'var(--sw,#FFEAE6)' : 'var(--cd,#FFFFFF)' })),
+      togPart: () => { this.setState(st => ({ part: !st.part })); this.stamp(); },
+      partCk: pc.ck, partCkBg: pc.ckBg, partCkBd: pc.ckBd,
+      partBd: s.part ? 'var(--sl,#FFC9C0)' : 'var(--ln,#E1E7E9)', partBg: s.part ? 'var(--sw,#FFEAE6)' : 'var(--cd,#FFFFFF)',
+      welcome: s.welcome, onWelcome: (e) => { this.setState({ welcome: e.target.value }); this.stamp(); },
+      togTerms: () => { this.setState(st => ({ terms: !st.terms })); this.stamp(); },
+      termsCk: tc.ck, termsBg: tc.ckBg, termsBd: tc.ckBd,
+      secTitle: s.secTitle, onSecTitle: (e) => { this.setState({ secTitle: e.target.value }); this.stamp(); },
+      pageHead: s.pageHead, onPageHead: (e) => { this.setState({ pageHead: e.target.value.slice(0, 15) }); this.stamp(); },
+      fields: s.fields.map(fd => ({ ...fd, canX: !fd.locked, onX: () => { this.setState(st => ({ fields: st.fields.filter(x => x.id !== fd.id) })); this.toast('Field removed. After the first submission this becomes "hide", never delete.'); } })),
+      addField: () => { const id = 'q' + Math.random().toString(36).slice(2, 6); this.setState(st => ({ fields: [...st.fields, { id, n: 'New question', meta: 'Short text · click to configure', req: '', locked: false, idb: false }] })); this.stamp(); },
+      roles: s.roles.map((ro, i) => { const rc = ck(ro.on); return { n: ro.n, onSel: ro.on, min: ro.min, max: ro.max, ck: rc.ck, ckBg: rc.ckBg, ckBd: rc.ckBd, bd: ro.on ? 'var(--sl,#FFC9C0)' : 'var(--ln,#E1E7E9)', bg: ro.on ? 'var(--sw,#FFEAE6)' : 'var(--cd,#FFFFFF)', onTog: () => { this.setState(st => ({ roles: st.roles.map((x, j) => j === i ? { ...x, on: !x.on } : x) })); this.stamp(); }, onMin: (e) => { const v = e.target.value; this.setState(st => ({ roles: st.roles.map((x, j) => j === i ? { ...x, min: v } : x) })); }, onMax: (e) => { const v = e.target.value; this.setState(st => ({ roles: st.roles.map((x, j) => j === i ? { ...x, max: v } : x) })); } }; }),
+      togConfirm: () => { this.setState(st => ({ confirm: !st.confirm })); this.stamp(); },
+      cfCk: cc.ck, cfBg: cc.ckBg, cfBd: cc.ckBd,
+      closeAt: s.closeAt, onCloseAt: (e) => { this.setState({ closeAt: e.target.value }); this.stamp(); },
+      limit: s.limit, onLimit: (e) => { this.setState({ limit: e.target.value }); this.stamp(); },
+      draftOpts: ['Allow several saved drafts, counted toward the limit', 'One draft at a time per speaker'].map((n, i) => ({ n, on: () => { this.setState({ drafts: i }); this.stamp(); }, rb: s.drafts === i ? 'var(--sg,#E04E4E)' : 'var(--ls,#C8D2D5)', rd: s.drafts === i ? 'var(--sg,#E04E4E)' : 'transparent' })),
+      togAdmin: () => { this.setState(st => ({ admin: !st.admin })); this.stamp(); },
+      adCk: ac.ck, adBg: ac.ckBg, adBd: ac.ckBd,
+      prevStep: () => this.setState(st => ({ step: Math.max(0, st.step - 1), view: st.step === 0 ? 'list' : 'builder' })),
+      nextStep: () => { if (s.step >= 5) { this.setState({ view: 'list' }); this.toast('Form saved. It opens to the public the moment you flip it to open.'); } else { this.setState(st => ({ step: st.step + 1 })); this.stamp(); } },
+      nextLabel: s.step >= 5 ? 'Save and finish' : 'Save and continue',
+      popUser: !!this.state.userMenu,
+      togUser: () => this.setState(s2 => ({ userMenu: !s2.userMenu })),
+      closeUser: () => this.setState({ userMenu: false }),
+      profileGo: () => { this.setState({ userMenu: false }); this.toast('Your profile: name, avatar, and notification rules. Next screen to design.'); },
+      signOut: () => { this.setState({ userMenu: false }); this.toast('A real build signs you out here. The demo keeps you in.'); },
+      themeWord: (this.state.theme || 'system')[0].toUpperCase() + (this.state.theme || 'system').slice(1),
+      accents: Object.keys(Component.ACCENTS).map(n => ({ n, c: Component.ACCENTS[n].dot, on: () => { try { localStorage.setItem('gather.accent', n); } catch (e) {} this.setState({ accent: n }); }, ring: (this.state.accent || 'Coral') === n ? '0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ' + Component.ACCENTS[n].dot : 'inset 0 0 0 1px rgba(0,0,0,.12)' })),
+      togTheme: () => { const next = s.theme === 'system' ? 'light' : s.theme === 'light' ? 'dark' : 'system'; try { localStorage.setItem('gather.theme', next); } catch (e) {} this.setState({ theme: next }); },
+      themeGlyph: s.theme === 'system' ? '◐' : s.theme === 'light' ? '○' : '●',
+      themeTitle: 'Theme: ' + s.theme + ', click to change',
+      toasts: s.toasts.map(t => ({ msg: t.msg, onX: () => this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

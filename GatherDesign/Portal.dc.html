@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:var(--pp,#F4F6F7);font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--sg,#E04E4E)}a:hover{color:#C93E3E}button{cursor:pointer}::selection{background:var(--sw,#FFEAE6)}input::placeholder,textarea::placeholder{color:var(--i4,#99A6AD)}select{appearance:none;-webkit-appearance:none}</style>
+</helmet>
+<div ref="{{ setRoot }}" data-screen-label="Speaker portal" style="min-height:100vh;background:var(--pp,#F4F6F7);color:var(--ik,#16232B)">
+  <div style="border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+    <div style="max-width:1120px;margin:0 auto;padding:0 24px;height:62px;display:flex;align-items:center;gap:14px">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-label="Gather" style="flex:none"><rect width="24" height="24" rx="6.5" fill="#12142E"></rect><circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B"></circle><circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7"></circle><circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7"></circle><circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7"></circle></svg>
+      <span style="min-width:0">
+        <span style="display:block;font:600 14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap">AI Engineer 2026</span>
+        <span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);white-space:nowrap">12–14 OCT · FORT MASON, SF</span>
+      </span>
+      <div style="flex:1"></div>
+      <div style="display:flex;gap:2px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);border-radius:999px;padding:3px">
+        <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="3">
+          <button onClick="{{ tb.on }}" style="height:34px;padding:0 16px;border-radius:999px;border:none;background:{{ tb.bg }};box-shadow:{{ tb.sh }};font:{{ tb.wt }} 13px 'IBM Plex Sans',sans-serif;color:{{ tb.fg }};white-space:nowrap;display:flex;align-items:center;gap:7px">{{ tb.n }}<span style="display:{{ tb.badge }};min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--sw,#FFEAE6);color:var(--sg,#E04E4E);font:600 10px 'IBM Plex Mono',monospace;align-items:center;justify-content:center">{{ tb.c }}</span></button>
+        </sc-for>
+      </div>
+      <div style="flex:1"></div>
+      <div style="display:flex;gap:2px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);border-radius:999px;padding:3px">
+        <sc-for list="{{ themeSeg }}" as="th" hint-placeholder-count="3">
+          <button onClick="{{ th.on }}" title="{{ th.tt }}" style="width:26px;height:26px;border-radius:50%;border:none;background:{{ th.bg }};box-shadow:{{ th.sh }};color:var(--i2,#3E4E58);font:500 12px 'IBM Plex Sans',sans-serif;display:flex;align-items:center;justify-content:center;padding:0">{{ th.g }}</button>
+        </sc-for>
+      </div>
+      <button onClick="{{ togTz }}" style="height:32px;padding:0 13px;border-radius:99px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap" style-hover="background:var(--sk,#EDF1F2)">{{ tzLabel }}</button>
+      <span style="width:32px;height:32px;border-radius:50%;background:#12142E;display:inline-flex;align-items:center;justify-content:center;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;color:#EBEDF7;flex:none" title="Marta Duarte">MD</span>
+    </div>
+  </div>
+  <div style="max-width:1120px;margin:0 auto;padding:24px 24px 56px">
+
+    <sc-if value="{{ tHome }}" hint-placeholder-val="{{ true }}">
+      <div style="border:1px solid var(--heroBd,#E9DEDA);border-radius:18px;background:linear-gradient(120deg,var(--heroA,#FFEDE9) 0%,var(--heroB,#FDF6F3) 52%,var(--cd,#FFFFFF) 100%);box-shadow:0 1px 2px rgba(13,16,32,.04),0 10px 28px rgba(216,86,74,.06);padding:26px 28px 24px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--pd,#B96A1F)"><span style="width:7px;height:7px;border-radius:50%;background:#FF6B6B"></span>{{ heroEyebrow }}</div>
+        <h1 style="font:600 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:var(--ik,#16232B);margin:10px 0 8px">{{ greet }}, Marta.</h1>
+        <div style="font:400 14px/21px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);max-width:620px">{{ heroSub }}</div>
+        <div style="display:flex;margin-top:26px">
+          <sc-for list="{{ steps }}" as="sp2" hint-placeholder-count="5">
+            <div style="flex:{{ sp2.fx }};min-width:76px">
+              <div style="display:flex;align-items:center">
+                <span style="width:24px;height:24px;border-radius:50%;background:{{ sp2.db }};border:1.5px solid {{ sp2.bd }};color:{{ sp2.dc }};display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans',sans-serif;flex:none;box-sizing:border-box">{{ sp2.g }}</span>
+                <span style="display:{{ sp2.ln }};flex:1;height:2px;border-radius:2px;background:{{ sp2.lc }};margin:0 8px"></span>
+              </div>
+              <div style="font:600 12px 'IBM Plex Sans',sans-serif;color:{{ sp2.tf }};margin-top:8px;white-space:nowrap">{{ sp2.n }}</div>
+              <div style="font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);margin-top:2px;white-space:nowrap">{{ sp2.d }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);overflow:hidden">
+            <div style="display:flex;align-items:center;gap:9px;padding:16px 20px 12px">
+              <span style="font:600 15.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Waiting on you</span>
+              <span style="display:{{ homeBadge }};min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--pdw,#F9EDDF);color:var(--pd,#B96A1F);font:600 11px 'IBM Plex Mono',monospace;align-items:center;justify-content:center">{{ openN }}</span>
+              <div style="flex:1"></div>
+              <span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:0.06em;color:var(--i4,#99A6AD)">ALL EDITABLE UNTIL 5 OCT</span>
+            </div>
+            <sc-if value="{{ noneOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:22px 20px 26px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--ln,#E1E7E9)">
+                <span style="width:30px;height:30px;border-radius:50%;background:var(--okw,#E2F1EC);color:var(--ok,#0E7A5F);display:inline-flex;align-items:center;justify-content:center;font:600 13px 'IBM Plex Sans',sans-serif">✓</span>
+                <span style="font:400 13.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Nothing waiting on you. We email you if that changes, and rehearsal notes arrive the week before.</span>
+              </div>
+            </sc-if>
+            <sc-for list="{{ tasks }}" as="tk" hint-placeholder-count="3">
+              <div style="position:relative;display:flex;align-items:center;gap:14px;padding:14px 20px 14px 24px;border-top:1px solid var(--ln,#E1E7E9)">
+                <span style="position:absolute;left:10px;top:16px;bottom:16px;width:3px;border-radius:2px;background:{{ tk.bar }}"></span>
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ tk.n }}</div>
+                  <div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-top:2px">{{ tk.sub }}</div>
+                </div>
+                <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:{{ tk.dueFg }};white-space:nowrap">{{ tk.due }}</span>
+                <button onClick="{{ tk.onGo }}" style="height:38px;padding:0 18px;border-radius:999px;border:none;background:#FF6B6B;color:#331313;font:600 13px 'IBM Plex Sans',sans-serif;white-space:nowrap;flex:none" style-hover="background:#E85B5B">{{ tk.cta }}</button>
+              </div>
+            </sc-for>
+            <div style="border-top:1px solid var(--ln,#E1E7E9);background:var(--zn,#F7F9F9)">
+              <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--i4,#99A6AD);padding:12px 20px 4px">COMPLETED · {{ doneN }} OF 6</div>
+              <div style="padding:2px 0 10px">
+                <sc-for list="{{ doneTasks }}" as="dt" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;padding:5px 20px">
+                    <span style="font:600 11px 'IBM Plex Sans',sans-serif;color:var(--ok,#0E7A5F)">✓</span>
+                    <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);flex:1">{{ dt.n }}</span>
+                    <span style="font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ dt.at }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04);padding:15px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font:400 13.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);flex:1;min-width:220px">Anything else? The speaker guide covers AV, travel, and the venue.</span>
+            <div style="display:flex;gap:8px">
+              <button onClick="{{ guide }}" style="height:34px;padding:0 15px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Speaker guide</button>
+              <button onClick="{{ msgTeam }}" style="height:34px;padding:0 15px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Message the team</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:18px 20px 16px">
+            <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:10px">YOUR SESSION</div>
+            <div style="font:600 17px 'IBM Plex Sans',sans-serif;letter-spacing:-0.01em;color:var(--ik,#16232B)">Opening keynote</div>
+            <div style="font:400 12.5px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin:6px 0 2px">{{ sessTime }}</div>
+            <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);margin-bottom:14px">45 min · recorded · Q&amp;A after</div>
+            <div style="position:relative">
+              <button onClick="{{ togCal }}" style="width:100%;height:40px;border-radius:999px;border:none;background:#FF6B6B;color:#331313;font:600 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:#E85B5B">Add to calendar ▾</button>
+              <sc-if value="{{ calOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;top:44px;left:0;right:0;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:10px;box-shadow:0 12px 32px rgba(16,19,25,.16);padding:5px;z-index:10">
+                  <button onClick="{{ dlIcs }}" style="width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Download .ics</button>
+                  <button onClick="{{ calG }}" style="width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Google Calendar</button>
+                  <button onClick="{{ calO }}" style="width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Outlook</button>
+                </div>
+              </sc-if>
+            </div>
+            <div style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);margin-top:10px">If the time changes, the replacement invite swaps in. Never duplicates.</div>
+          </div>
+          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04);padding:16px 20px 8px">
+            <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:6px">KEY DATES</div>
+            <sc-for list="{{ keyDates }}" as="kd" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-top:{{ kd.bt }}">
+                <span style="width:42px;height:42px;border-radius:11px;background:{{ kd.cb }};border:1px solid {{ kd.cbd }};display:inline-flex;flex-direction:column;align-items:center;justify-content:center;flex:none">
+                  <span style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:{{ kd.cf }}">OCT</span>
+                  <span style="font:600 16px 'IBM Plex Sans',sans-serif;color:{{ kd.cf }};line-height:17px">{{ kd.day }}</span>
+                </span>
+                <span style="min-width:0">
+                  <span style="display:block;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ kd.n }}</span>
+                  <span style="display:block;font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);margin-top:1px">{{ kd.sub }}</span>
+                </span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04);padding:16px 20px;display:flex;align-items:center;gap:12px">
+            <span style="width:34px;height:34px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);flex:none">SW</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font:600 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Sasha Whitfield</span>
+              <span style="display:block;font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Program lead · replies within a day</span>
+            </span>
+            <button onClick="{{ msgTeam }}" style="height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Message</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tSubs }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start;margin-top:8px">
+        <div style="min-width:0">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+          <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">My submissions</h1>
+          <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">2 of 3 used</span>
+        </div>
+        <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:18px">Everything stays editable until the CFP closes on 15 Sep.</div>
+        <div style="position:relative;border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:16px 20px 16px 24px;margin-bottom:12px;overflow:hidden">
+          <span style="position:absolute;left:10px;top:18px;bottom:18px;width:3px;border-radius:2px;background:var(--ok,#0E7A5F)"></span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font:600 15px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Opening keynote</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:99px;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--ok,#0E7A5F);background:var(--okw,#E2F1EC)"><span style="width:5px;height:5px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>Accepted</span>
+          </div>
+          <div style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin-bottom:10px">A2C4 · In production · 45 min keynote · submitted 12 Jul</div>
+          <div style="font:400 12.5px/19px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:12px">Scheduled for Mon 13 Oct, 09:05, Main stage. Your checklist on the Home tab covers what happens next.</div>
+          <button onClick="{{ viewSub }}" style="height:32px;padding:0 15px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">View submission</button>
+        </div>
+        <div style="position:relative;border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:16px 20px 16px 24px;margin-bottom:12px;overflow:hidden">
+          <span style="position:absolute;left:10px;top:18px;bottom:18px;width:3px;border-radius:2px;background:var(--pd,#B96A1F)"></span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font:600 15px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Serving LLMs on spot fleets without tears</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:99px;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F);background:var(--pdw,#F9EDDF)"><span style="width:5px;height:5px;border-radius:50%;background:var(--pd,#B96A1F)"></span>In review</span>
+          </div>
+          <div style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin-bottom:10px">B7F1 · Infrastructure · 30 min talk · submitted 3 Aug</div>
+          <div style="font:400 12.5px/19px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:12px">Reviews close 22 Sep, decisions go out by 29 Sep. We email you the moment there is news.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a href="CFP.dc.html" style="display:inline-flex;align-items:center;height:32px;padding:0 15px;border-radius:999px;background:#FF6B6B;color:#331313;font:600 12.5px 'IBM Plex Sans',sans-serif;text-decoration:none" style-hover="background:#E85B5B">Edit until 15 Sep</a>
+            <button onClick="{{ withdraw }}" style="height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)" style-hover="background:var(--sk,#EDF1F2)">Withdraw</button>
+          </div>
+        </div>
+        <a href="CFP.dc.html" style="display:flex;align-items:center;justify-content:center;height:48px;border-radius:16px;border:1.5px dashed var(--ls,#C8D2D5);font:500 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);text-decoration:none" style-hover="border:1.5px dashed #FF6B6B;color:var(--sg,#E04E4E)">+ Submit another proposal · 1 slot left</a>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04);padding:16px 20px 8px">
+            <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:6px">CFP TIMELINE</div>
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 0"><span style="width:42px;height:42px;border-radius:11px;background:var(--sw,#FFEAE6);border:1px solid var(--sl,#FFC9C0);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;flex:none"><span style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--sg,#E04E4E)">SEP</span><span style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);line-height:17px">15</span></span><span style="min-width:0"><span style="display:block;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">CFP closes</span><span style="display:block;font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);margin-top:1px">edits lock at 23:59 PDT</span></span></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--sk,#EDF1F2)"><span style="width:42px;height:42px;border-radius:11px;background:var(--pp,#F4F6F7);border:1px solid var(--ln,#E1E7E9);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;flex:none"><span style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--ik,#16232B)">SEP</span><span style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);line-height:17px">22</span></span><span style="min-width:0"><span style="display:block;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Reviews wrap up</span><span style="display:block;font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);margin-top:1px">every proposal read 5 times</span></span></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--sk,#EDF1F2)"><span style="width:42px;height:42px;border-radius:11px;background:var(--pp,#F4F6F7);border:1px solid var(--ln,#E1E7E9);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;flex:none"><span style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--ik,#16232B)">SEP</span><span style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);line-height:17px">29</span></span><span style="min-width:0"><span style="display:block;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Decisions out</span><span style="display:block;font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);margin-top:1px">everyone hears by email</span></span></div>
+          </div>
+          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04);padding:16px 20px;display:flex;align-items:center;gap:12px">
+            <span style="width:34px;height:34px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);flex:none">SW</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font:600 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Sasha Whitfield</span>
+              <span style="display:block;font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Program lead · replies within a day</span>
+            </span>
+            <button onClick="{{ msgTeam }}" style="height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Message</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tProfile }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start;margin-top:8px">
+        <div style="min-width:0">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+          <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Profile</h1>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--sg,#E04E4E)">{{ pfStamp }}</span>
+        </div>
+        <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:18px">This is exactly what the public speaker page shows.</div>
+        <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:20px;margin-bottom:14px">
+          <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px">
+            <button onClick="{{ upShot }}" style="width:84px;height:84px;border-radius:50%;border:1.5px dashed var(--ls,#C8D2D5);background:var(--zn,#F7F9F9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex:none" style-hover="border:1.5px dashed #FF6B6B">
+              <span style="font:600 18px 'IBM Plex Sans Condensed',sans-serif;color:var(--i4,#99A6AD)">MD</span>
+              <span style="font:400 9.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">replace</span>
+            </button>
+            <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Salutation</div><select value="{{ pf.sal }}" onChange="{{ onSal }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 11px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:var(--sg,#E04E4E)"><option>None</option><option>Dr</option><option>Prof</option></select></div>
+              <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Pronouns</div><input value="{{ pf.pro }}" onChange="{{ onPro }}" placeholder="she/her" style="width:100%;box-sizing:border-box;height:36px;padding:0 11px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:var(--sg,#E04E4E)"></div>
+              <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Title</div><input value="{{ pf.title }}" onChange="{{ onTitle }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 11px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:var(--sg,#E04E4E)"></div>
+              <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Company</div><input value="{{ pf.co }}" onChange="{{ onCo }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 11px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:var(--sg,#E04E4E)"></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Bio · third person</span><span style="font:400 11px 'IBM Plex Mono',monospace;color:{{ bioCountFg }}">{{ bioCount }}</span></div>
+          <textarea value="{{ pf.bio }}" onChange="{{ onBio }}" rows="5" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:var(--sg,#E04E4E);margin-bottom:14px"></textarea>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Website</div><input value="{{ pf.web }}" onChange="{{ onWeb }}" placeholder="https://" style="width:100%;box-sizing:border-box;height:36px;padding:0 11px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);outline-color:var(--sg,#E04E4E)"></div>
+            <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">LinkedIn</div><input value="{{ pf.li }}" onChange="{{ onLi }}" placeholder="linkedin.com/in/…" style="width:100%;box-sizing:border-box;height:36px;padding:0 11px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);outline-color:var(--sg,#E04E4E)"></div>
+          </div>
+        </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04);padding:16px 20px">
+          <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin-bottom:10px">PREVIEW · PUBLIC SPEAKER CARD</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <span style="width:44px;height:44px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 12px 'IBM Plex Sans Condensed',sans-serif;color:var(--i3,#6B7B84);flex:none">MD</span>
+            <div style="min-width:0"><div style="font:600 14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ pvName }}</div><div style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">{{ pvRole }}</div></div>
+          </div>
+        </div>
+        <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04);padding:14px 20px">
+          <span style="font:400 12px/18px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">Saves as you type. Changes reach the public speaker page within a minute.</span>
+        </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:36px">
+      <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6.5" fill="#12142E"></rect><circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B"></circle><circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7"></circle><circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7"></circle><circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7"></circle></svg>
+      <span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Runs on Gather · your email is your login, no password</span>
+      <span style="color:var(--ls,#C8D2D5)">·</span>
+      <a href="Speakers.dc.html" style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);text-decoration:none" title="Demo affordance">organizer view →</a>
+    </div>
+  </div>
+  <div style="position:fixed;left:16px;bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:10px;padding:10px 12px;box-shadow:0 12px 32px rgba(16,19,25,.16);max-width:420px">
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.msg }}</span>
+        <sc-if value="{{ t.canUndo }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ t.onUndo }}" style="background:none;border:none;font:600 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);padding:0">Undo</button>
+        </sc-if>
+        <button onClick="{{ t.onX }}" aria-label="Dismiss" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:0">✕</button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;demoAllDone&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Demo states&quot;}, &quot;forceGreeting&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;Auto&quot;, &quot;Morning&quot;, &quot;Afternoon&quot;, &quot;Evening&quot;], &quot;default&quot;: &quot;Auto&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Demo states&quot;}}">
+class Component extends DCLogic {
+  state = { theme: 'system', tab: 'Home', tz: 'event', calOpen: false, done: [], toasts: [], pfStamp: '', pf: { sal: 'None', pro: 'she/her', title: 'VP of Infrastructure', co: 'Vercel', bio: 'Marta Duarte leads the inference platform group at Vercel, where her team serves models for some of the largest AI products in production. Before Vercel she ran capacity engineering at a CDN, which she claims was the same job with fewer GPUs.', web: '', li: 'linkedin.com/in/martaduarte' } };
+  static OPEN = [
+    { id: 'headshot', n: 'Headshot', sub: 'A square photo, at least 800px. Phone camera is fine.', od: 2, cta: 'Upload' },
+    { id: 'slides', n: 'Slides', sub: 'PDF or Keynote. A draft is fine, replace it any time.', od: 0, due: 'Due 5 Oct', cta: 'Upload' },
+    { id: 'consent', n: 'Recording consent', sub: 'One checkbox. Your talk goes on the event channel after.', od: 0, due: 'Due 5 Oct', cta: 'Confirm' }
+  ];
+  toast(msg, revert) {
+    const id = Math.random().toString(36).slice(2);
+    this.setState(s => ({ toasts: [...s.toasts.slice(-2), { id, msg, revert }] }));
+    setTimeout(() => this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), revert ? 10000 : 6000);
+  }
+  complete(t) {
+    this.setState(s => ({ done: [...s.done, t.id] }));
+    const revert = () => this.setState(s => ({ done: s.done.filter(x => x !== t.id) }));
+    this.toast((t.id === 'consent' ? 'Consent recorded. ' : 'Uploaded. ') + 'Your organizers will take it from here.', revert);
+  }
+  ics() {
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Gather//EN', 'BEGIN:VEVENT', 'UID:gather-s1@aiengineer2026', 'SEQUENCE:1', 'DTSTART;TZID=America/Los_Angeles:20261013T090500', 'DTEND;TZID=America/Los_Angeles:20261013T095000', 'SUMMARY:Opening keynote · AI Engineer 2026', 'LOCATION:Main stage · Fort Mason\\, San Francisco', 'DESCRIPTION:Your session. An updated invite replaces this one automatically.', 'END:VEVENT', 'END:VCALENDAR'];
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/calendar' }));
+    a.download = 'opening-keynote.ics'; a.click();
+    this.setState({ calOpen: false });
+    this.toast('Invite downloaded. If the time changes, the replacement swaps in, never duplicates.');
+  }
+  setPf(k) { return (e) => { const v = e.target.value; this.setState(s => ({ pf: { ...s.pf, [k]: k === 'bio' ? v.slice(0, 5000) : v }, pfStamp: 'saved just now' })); }; }
+  static DARK = { pp: '#101013', cd: '#17171B', sk: '#1F1F24', ln: '#2A2A31', ls: '#3F3F49', ik: '#F2F2F0', i2: '#C9C9C6', i3: '#929290', i4: '#686865', sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', ok: '#57B899', okw: '#123029', pd: '#F0A468', pdw: '#332617', cn: '#F0766A', zn: '#141416', heroA: '#241A1B', heroB: '#191719', heroBd: '#332826', stepLn: '#66302E' };
+  componentDidMount() {
+    try { const th = localStorage.getItem('gather.theme'); if (th) this.setState({ theme: th }); } catch (e) {}
+    this._mq = window.matchMedia('(prefers-color-scheme: dark)');
+    this._mqFn = () => this.forceUpdate();
+    this._mq.addEventListener('change', this._mqFn);
+    this.applyTheme();
+  }
+  componentDidUpdate() { this.applyTheme(); }
+  componentWillUnmount() { if (this._mq) this._mq.removeEventListener('change', this._mqFn); }
+  isDark() { return this.state.theme === 'dark' || (this.state.theme === 'system' && this._mq && this._mq.matches); }
+  applyTheme() {
+    if (!this.root) return;
+    const dark = this.isDark();
+    Object.entries(Component.DARK).forEach(([k, v]) => { dark ? this.root.style.setProperty('--' + k, v) : this.root.style.removeProperty('--' + k); });
+    this.root.style.colorScheme = dark ? 'dark' : 'light';
+  }
+  renderVals() {
+    const s = this.state;
+    const allDone = this.props.demoAllDone ?? false;
+    const doneIds = allDone ? Component.OPEN.map(t => t.id) : s.done;
+    const openTasks = Component.OPEN.filter(t => !doneIds.includes(t.id));
+    const openN = openTasks.length;
+    const doneCount = 3 + doneIds.length;
+    const doneList = [...doneIds.map(id => ({ n: Component.OPEN.find(t => t.id === id).n, at: allDone ? 'Done earlier' : 'Done just now' })), { n: 'Bio', at: 'Done 1 Aug' }, { n: 'Profile details', at: 'Done 1 Aug' }, { n: 'AV form', at: 'Done 3 Aug' }];
+    const days = Math.max(1, Math.ceil((new Date('2026-10-13T09:05:00-07:00').getTime() - Date.now()) / 86400000));
+    const fg = this.props.forceGreeting ?? 'Auto';
+    const h = new Date().getHours();
+    const greet = fg !== 'Auto' ? 'Good ' + fg.toLowerCase() : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    const overdue = openTasks.filter(t => t.od > 0);
+    const heroSub = openN === 0
+      ? 'Everything is in. Next up: your tech rehearsal on Thu 8 Oct · the keynote is in ' + days + ' days.'
+      : (openN === 1 ? 'One thing needs you before 5 Oct' : openN + ' things need you before 5 Oct')
+        + (overdue.length ? ' · the ' + overdue[0].n.toLowerCase() + ' is ' + overdue[0].od + ' days overdue' : '')
+        + ' · your keynote is in ' + days + ' days.';
+    const stepDefs = [
+      { n: 'Accepted', d: '28 Jul', st: 'done' },
+      { n: 'Profile', d: '1 Aug', st: 'done' },
+      { n: 'Assets', d: openN ? openN + ' open · due 5 Oct' : 'all in', st: openN ? 'current' : 'done', g: openN ? String(openN) : null },
+      { n: 'Rehearsal', d: 'Thu 8 Oct', st: openN ? 'future' : 'current', g: openN ? null : '→' },
+      { n: 'On stage', d: 'Mon 13 Oct · 09:05', st: 'future' }
+    ];
+    const steps = stepDefs.map((d2, i) => {
+      const done = d2.st === 'done', cur = d2.st === 'current';
+      return {
+        n: d2.n, d: d2.d,
+        g: done ? '✓' : (d2.g || ''),
+        db: done ? '#FF6B6B' : 'var(--cd,#FFFFFF)',
+        bd: done || cur ? '#FF6B6B' : 'var(--ls,#C8D2D5)',
+        dc: done ? '#331313' : cur ? 'var(--sg,#E04E4E)' : 'var(--i4,#99A6AD)',
+        tf: done || cur ? 'var(--ik,#16232B)' : 'var(--i3,#6B7B84)',
+        lc: done ? 'var(--stepLn,#FFB3AA)' : 'var(--ln,#E1E7E9)',
+        ln: i === stepDefs.length - 1 ? 'none' : 'block',
+        fx: i === stepDefs.length - 1 ? 'none' : '1'
+      };
+    });
+    const keyDates = [
+      { day: '5', n: 'Slides due', sub: 'Draft is fine · replace any time', hot: false },
+      { day: '8', n: 'Tech rehearsal', sub: '20 min video call · link by email', hot: false },
+      { day: '12', n: 'Speaker dinner', sub: '19:00 · Greens, Fort Mason', hot: false },
+      { day: '13', n: 'Your keynote', sub: '09:05 · Main stage', hot: true }
+    ].map((k, i) => ({ ...k, bt: i === 0 ? 'none' : '1px solid var(--sk,#EDF1F2)', cb: k.hot ? 'var(--sw,#FFEAE6)' : 'var(--pp,#F4F6F7)', cbd: k.hot ? 'var(--sl,#FFC9C0)' : 'var(--ln,#E1E7E9)', cf: k.hot ? 'var(--sg,#E04E4E)' : 'var(--ik,#16232B)' }));
+    const TABS = ['Home', 'My submissions', 'Profile'];
+    return {
+      setRoot: (el) => { this.root = el; this.applyTheme(); },
+      themeSeg: [['light', '○'], ['system', '◐'], ['dark', '●']].map(([n, g]) => { const on2 = s.theme === n; return { g, tt: n[0].toUpperCase() + n.slice(1) + ' theme', bg: on2 ? 'var(--cd,#FFFFFF)' : 'transparent', sh: on2 ? '0 1px 2px rgba(13,16,32,.10)' : 'none', on: () => { try { localStorage.setItem('gather.theme', n); } catch (e) {} this.setState({ theme: n }); } }; }),
+      tabs: TABS.map(n => ({
+        n, c: openN,
+        badge: n === 'Home' && openN > 0 ? 'inline-flex' : 'none',
+        on: () => this.setState({ tab: n }),
+        wt: s.tab === n ? '600' : '500',
+        fg: s.tab === n ? 'var(--ik,#16232B)' : 'var(--i3,#6B7B84)',
+        bg: s.tab === n ? 'var(--cd,#FFFFFF)' : 'transparent',
+        sh: s.tab === n ? '0 1px 2px rgba(13,16,32,.08)' : 'none'
+      })),
+      tHome: s.tab === 'Home', tSubs: s.tab === 'My submissions', tProfile: s.tab === 'Profile',
+      greet, heroSub, heroEyebrow: 'SPEAKER HOME · OPENING KEYNOTE · MON 13 OCT',
+      steps, keyDates, openN, homeBadge: openN > 0 ? 'inline-flex' : 'none', noneOpen: openN === 0,
+      tzLabel: s.tz === 'event' ? 'Times in PDT · show mine' : 'Times in your zone · show PDT',
+      togTz: () => { this.setState(st => ({ tz: st.tz === 'event' ? 'mine' : 'event' })); },
+      sessTime: s.tz === 'event' ? 'Mon 13 Oct · 09:05 to 09:50 PDT · Main stage' : 'Mon 13 Oct · 18:05 to 18:50 CEST · Main stage',
+      doneN: doneCount,
+      calOpen: s.calOpen, togCal: () => this.setState(st => ({ calOpen: !st.calOpen })),
+      dlIcs: () => this.ics(),
+      calG: () => { this.setState({ calOpen: false }); this.toast('Google Calendar opens with the session pre-filled.'); },
+      calO: () => { this.setState({ calOpen: false }); this.toast('Outlook opens with the session pre-filled.'); },
+      tasks: openTasks.map(t => ({
+        n: t.n, sub: t.sub, cta: t.cta,
+        bar: t.od > 0 ? 'var(--cn,#D8432B)' : 'var(--pd,#B96A1F)',
+        due: t.od > 0 ? 'Due ' + t.od + ' days ago' : t.due,
+        dueFg: t.od > 0 ? 'var(--cn,#D8432B)' : 'var(--i4,#99A6AD)',
+        onGo: () => this.complete(t)
+      })),
+      doneTasks: doneList,
+      guide: () => this.toast('The speaker guide is a resources page your organizers publish here.'),
+      msgTeam: () => this.toast('Messages go straight to the program team inbox. They reply here and by email.'),
+      viewSub: () => this.toast('Opens the read-only submission, exactly as reviewers saw it.'),
+      withdraw: () => this.toast('Withdrawing asks you to confirm, then tells the program team. Nothing is silent.'),
+      pfStamp: s.pfStamp, pf: s.pf,
+      onSal: this.setPf('sal'), onPro: this.setPf('pro'), onTitle: this.setPf('title'), onCo: this.setPf('co'), onBio: this.setPf('bio'), onWeb: this.setPf('web'), onLi: this.setPf('li'),
+      bioCount: s.pf.bio.length + '/5000', bioCountFg: s.pf.bio.length > 4700 ? 'var(--cn,#D8432B)' : 'var(--i4,#99A6AD)',
+      upShot: () => this.toast('Drop a square photo, 800px or larger. It versions itself; the old one stays in history.'),
+      pvName: (s.pf.sal !== 'None' ? s.pf.sal + ' ' : '') + 'Marta Duarte' + (s.pf.pro ? ' · ' + s.pf.pro : ''),
+      pvRole: (s.pf.title || 'Speaker') + (s.pf.co ? ', ' + s.pf.co : ''),
+      toasts: s.toasts.map(t => ({ msg: t.msg, canUndo: !!t.revert, onUndo: () => { t.revert(); this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })); }, onX: () => this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

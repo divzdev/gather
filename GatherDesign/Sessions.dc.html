@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--sg,#E04E4E)}a:hover{color:var(--sg,#C93E3E)}button{cursor:pointer}::selection{background:var(--sw,#FFEAE6)}input::placeholder,textarea::placeholder{color:var(--i4,#99A6AD)}select{appearance:none;-webkit-appearance:none}</style>
+</helmet>
+<div ref="{{ setRoot }}" data-screen-label="Sessions" style="display:grid;grid-template-columns:auto minmax(0,1fr);height:100vh;overflow:hidden;background:var(--pp,#F4F6F7);color:var(--ik,#16232B)">
+  <dc-import name="ConsoleRail" active="Sessions" hint-size="216px,100%" style="height:100%;min-height:0"></dc-import>
+  <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <span style="font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap">Sessions</span>
+      <div style="flex:1"></div>
+      
+      <div style="position:relative">
+        <button onClick="{{ togOpt }}" style="height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap">Options ▾</button>
+        <sc-if value="{{ optOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:38px;right:0;width:240px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:10px;box-shadow:0 12px 32px rgba(13,16,32,.18);padding:5px;z-index:40">
+            <button onClick="{{ doImport }}" style="width:100%;text-align:left;padding:8px 11px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Import from CSV…</button>
+            <button onClick="{{ doCsv }}" style="width:100%;text-align:left;padding:8px 11px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Export CSV · current view</button>
+            <button onClick="{{ doXlsx }}" style="width:100%;text-align:left;padding:8px 11px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Export XLSX · current view</button>
+            <button onClick="{{ doFiles }}" style="width:100%;text-align:left;padding:8px 11px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Download all files · zip</button>
+          </div>
+        </sc-if>
+      </div>
+      <button onClick="{{ openNew }}" style="height:32px;padding:0 15px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12.5px 'IBM Plex Sans',sans-serif;white-space:nowrap">Add a session</button>
+      <div style="position:relative">
+        <button onClick="{{ togUser }}" title="Account" aria-label="Account menu" style="width:28px;height:28px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);padding:0" style-hover="border:1px solid var(--ls,#C8D2D5)">SW</button>
+        <sc-if value="{{ popUser }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ closeUser }}" aria-label="Close" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:41"></button>
+          <div style="position:absolute;top:36px;right:0;width:248px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:12px;box-shadow:0 16px 40px rgba(13,16,32,.20);padding:6px;z-index:42">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 10px">
+              <span style="width:32px;height:32px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);flex:none">SW</span>
+              <span style="min-width:0"><span style="display:block;font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Sasha Whitfield</span><span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">program lead · demo org</span></span>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:8px 10px 6px">THEME</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 10px 10px">
+              <sc-for list="{{ accents }}" as="ac" hint-placeholder-count="5"><button onClick="{{ ac.on }}" title="{{ ac.n }}" aria-label="{{ ac.n }}" style="width:16px;height:16px;border-radius:50%;border:none;background:{{ ac.c }};box-shadow:{{ ac.ring }};padding:0;flex:none"></button></sc-for>
+              <div style="flex:1"></div>
+              <button onClick="{{ togTheme }}" title="{{ themeTitle }}" style="display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)">{{ themeGlyph }} {{ themeWord }}</button>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ profileGo }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);text-align:left" style-hover="background:var(--sk,#EDF1F2)">Your profile</button>
+            <a href="Settings.dc.html" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;text-decoration:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Workspace settings</a>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ signOut }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B);text-align:left" style-hover="background:var(--cnw,#FBE8E6)">Sign out</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+    <div style="height:32px;flex:none;display:flex;align-items:center;gap:16px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <a href="Submissions.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">SUB 216</a><span style="color:var(--i4,#99A6AD)">·</span>
+      <span style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--ik,#16232B)">SESSIONS {{ total }}</span><span style="color:var(--i4,#99A6AD)">·</span>
+      <a href="Agenda.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">SCHEDULED {{ schedN }}</a><span style="color:var(--i4,#99A6AD)">·</span>
+      <a href="Agenda.dc.html" style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--cn,#D8432B);text-decoration:none">⚠ 3 CONFLICTS</a>
+      <div style="flex:1"></div>
+      <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">a session = an accepted talk with logistics</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px 28px 80px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+        <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Sessions</h1>
+        <div style="flex:1"></div>
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">the program library · every queue in one place</span>
+      </div>
+      <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">{{ sumLine }}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+        <button onClick="{{ tAll.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tAll.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tAll.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--ifw,#E9ECF7);color:var(--if,#47599F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="currentColor"><rect x="1.5" y="2" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="6.3" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="10.6" width="8" height="2.4" rx="1.2"></rect></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tAll.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tAll.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">In the library</span></span>
+        </button>
+        <button onClick="{{ tAcc.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tAcc.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tAcc.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--okw,#E2F1EC);color:var(--ok,#0E7A5F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M4.8 7.8l1.8 1.8 3.6-4"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tAcc.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tAcc.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Accepted</span></span>
+        </button>
+        <button onClick="{{ tQu.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tQu.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tQu.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--sw,#FFEAE6);color:var(--sg,#E04E4E);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="12" height="12" rx="3"></rect><path d="M4.6 7.8l2 2 3.8-4.2"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tQu.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tQu.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">In the accept queue</span></span>
+        </button>
+        <button onClick="{{ tPe.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tPe.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tPe.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--pdw,#F9EDDF);color:var(--pd,#B96A1F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M7.5 4.3v3.4l2.3 1.4"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tPe.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tPe.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Pending decision</span></span>
+        </button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Filter by title or speaker" style="height:32px;width:250px;padding:0 12px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+        <div style="position:relative">
+          <button onClick="{{ togFPop }}" style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid {{ fBd }};background:{{ fBg }};font:500 12px 'IBM Plex Sans',sans-serif;color:{{ fFg }}" style-hover="background:var(--sk,#EDF1F2)"><svg width="11" height="11" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" style="flex:none"><path d="M1.5 2.5h12l-4.6 5.4v4.2l-2.8 1.4V7.9L1.5 2.5z"></path></svg>Filter{{ fCount }}</button>
+          <sc-if value="{{ fPopOn }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ closeFPop }}" aria-label="Close" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:21"></button>
+            <div style="position:absolute;top:38px;left:0;width:238px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:12px;box-shadow:0 12px 32px rgba(13,16,32,.18);padding:6px;z-index:22">
+              <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:7px 10px 3px">TRACK</div>
+              <sc-for list="{{ fTrackOpts }}" as="t" hint-placeholder-count="4">
+                <button onClick="{{ t.on }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:6px 10px;border-radius:6px;background:none;border:none;text-align:left" style-hover="background:var(--sk,#EDF1F2)"><span style="width:13px;height:13px;border-radius:4px;border:1px solid var(--ls,#C8D2D5);background:{{ t.ckBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);flex:none">{{ t.ck }}</span><span style="width:8px;height:8px;border-radius:2px;background:{{ t.col }};flex:none"></span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.n }}</span></button>
+              </sc-for>
+              <div style="height:1px;background:var(--ln,#E1E7E9);margin:5px 6px"></div>
+              <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:7px 10px 3px">FORMAT</div>
+              <sc-for list="{{ fFmtOpts }}" as="t" hint-placeholder-count="4">
+                <button onClick="{{ t.on }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:6px 10px;border-radius:6px;background:none;border:none;text-align:left" style-hover="background:var(--sk,#EDF1F2)"><span style="width:13px;height:13px;border-radius:4px;border:1px solid var(--ls,#C8D2D5);background:{{ t.ckBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);flex:none">{{ t.ck }}</span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.n }}</span></button>
+              </sc-for>
+              <div style="height:1px;background:var(--ln,#E1E7E9);margin:5px 6px"></div>
+              <button onClick="{{ clearF }}" style="width:100%;padding:7px 10px;border-radius:6px;border:none;background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);text-align:left" style-hover="background:var(--sw,#FFEAE6)">Clear filters</button>
+            </div>
+          </sc-if>
+        </div>
+        <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="8">
+          <button onClick="{{ tb.on }}" style="height:30px;padding:0 12px;border-radius:999px;background:{{ tb.bg }};border:1px solid {{ tb.bd }};font:500 12px 'IBM Plex Sans',sans-serif;color:{{ tb.fg }};white-space:nowrap">{{ tb.n }} <span style="font:500 10.5px 'IBM Plex Mono',monospace;opacity:.75">{{ tb.c }}</span></button>
+        </sc-for>
+      </div>
+      <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);overflow:hidden">
+        <div style="display:grid;grid-template-columns:64px minmax(220px,1.6fr) minmax(130px,1fr) 120px 110px minmax(170px,1.1fr) 118px;gap:8px;align-items:center;padding:0 14px;height:34px;border-bottom:1px solid var(--ln,#E1E7E9)">
+          <button onClick="{{ soCode.on }}" title="Sort by code" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soCode.fg }}" style-hover="color:var(--ik,#16232B)">CODE<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soCode.gc }};letter-spacing:0">{{ soCode.g }}</span></button>
+          <button onClick="{{ soTitle.on }}" title="Sort by title" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soTitle.fg }}" style-hover="color:var(--ik,#16232B)">TITLE<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soTitle.gc }};letter-spacing:0">{{ soTitle.g }}</span></button>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">SPEAKERS</span>
+          <button onClick="{{ soTrack.on }}" title="Sort by track" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soTrack.fg }}" style-hover="color:var(--ik,#16232B)">TRACK<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soTrack.gc }};letter-spacing:0">{{ soTrack.g }}</span></button>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">FORMAT</span>
+          <button onClick="{{ soSched.on }}" title="Sort by scheduled" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soSched.fg }}" style-hover="color:var(--ik,#16232B)">SCHEDULED<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soSched.gc }};letter-spacing:0">{{ soSched.g }}</span></button>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">STATUS</span>
+        </div>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="9">
+          <button onClick="{{ r.onOpen }}" style="width:100%;display:grid;grid-template-columns:64px minmax(220px,1.6fr) minmax(130px,1fr) 120px 110px minmax(170px,1.1fr) 118px;gap:8px;align-items:center;padding:0 14px;height:40px;border:none;border-bottom:1px solid var(--ln,#E1E7E9);background:none;text-align:left" style-hover="background:var(--sk,#EDF1F2)">
+            <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ r.id }}</span>
+            <span style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.t }}</span>
+            <span style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.sp }}</span>
+            <span style="justify-self:start;padding:2px 8px;border-left:3px solid {{ r.trCol }};border-radius:4px;background:var(--sk,#EDF1F2);font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap">{{ r.tr }}</span>
+            <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);white-space:nowrap">{{ r.fmt }}</span>
+            <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:{{ r.schedFg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.sched }}</span>
+            <span style="justify-self:start;display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:4px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ r.stFg }};background:{{ r.stBg }};white-space:nowrap"><span style="width:5px;height:5px;border-radius:50%;background:{{ r.stFg }}"></span>{{ r.st }}</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:36px 24px;text-align:center">
+            <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:4px">Nothing in this queue</div>
+            <button onClick="{{ clearF }}" style="background:none;border:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);text-decoration:underline">Clear filters</button>
+          </div>
+        </sc-if>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px">
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ countLine }}</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">click a row to edit · Esc closes</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ drawer }}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{ closeDrawer }}" aria-label="Close" style="position:fixed;inset:0;background:rgba(13,16,32,.38);border:none;z-index:60;cursor:default"></button>
+    <div style="position:fixed;top:0;right:0;bottom:0;width:min(560px,94vw);background:var(--cd,#FFFFFF);border-left:1px solid var(--ln,#E1E7E9);box-shadow:0 12px 32px rgba(13,16,32,.24);z-index:61;display:flex;flex-direction:column">
+      <div style="padding:16px 22px 0;border-bottom:1px solid var(--ln,#E1E7E9)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <span style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);flex:1">{{ dTitle }}</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--sg,#E04E4E)">{{ dStamp }}</span>
+          <button onClick="{{ closeDrawer }}" aria-label="Close" style="width:28px;height:28px;border-radius:6px;border:none;background:none;font:500 14px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">✕</button>
+        </div>
+        <div style="display:flex;gap:2px">
+          <button onClick="{{ tabDet }}" style="height:34px;padding:0 13px;border:none;background:none;font:{{ detWt }} 12.5px 'IBM Plex Sans',sans-serif;color:{{ detFg }};border-bottom:2px solid {{ detUl }}">Details</button>
+          <button onClick="{{ tabPar }}" style="height:34px;padding:0 13px;border:none;background:none;font:{{ parWt }} 12.5px 'IBM Plex Sans',sans-serif;color:{{ parFg }};border-bottom:2px solid {{ parUl }}">Participants · {{ partN }}</button>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:18px 22px">
+        <sc-if value="{{ onDet }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Title <span style="color:var(--cn,#D8432B)">*</span></span><span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ titleCount }}</span></div>
+              <input value="{{ f.t }}" onChange="{{ onT }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid {{ titleBd }};background:var(--cd,#FFFFFF);font:400 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Status</div>
+                <select value="{{ f.st }}" onChange="{{ onSt }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+                  <option value="accepted">Accepted</option><option value="acceptq">Accept queue</option><option value="pending">Pending</option><option value="declineq">Decline queue</option><option value="declined">Declined</option><option value="withdrawn">Withdrawn</option><option value="draft">Draft</option>
+                </select>
+              </div>
+              <div>
+                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Track</div>
+                <select value="{{ f.tr }}" onChange="{{ onTr }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+                  <option>Agents</option><option>Evals</option><option>Infrastructure</option><option>Retrieval</option><option>Multimodal</option><option>In production</option>
+                </select>
+              </div>
+              <div>
+                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Format</div>
+                <select value="{{ f.fmt }}" onChange="{{ onFmt }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+                  <option>30 min talk</option><option>10 min lightning</option><option>45 min keynote</option><option>60 min panel</option><option>90 min workshop</option>
+                </select>
+              </div>
+              <div>
+                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Capacity</div>
+                <input value="{{ f.cap }}" onChange="{{ onCap }}" placeholder="room default" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);outline-color:#E04E4E">
+              </div>
+              <div>
+                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Starts</div>
+                <input value="{{ f.starts }}" onChange="{{ onStarts }}" placeholder="Tue 13 Oct 14:00" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);outline-color:#E04E4E">
+              </div>
+              <div>
+                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Room</div>
+                <select value="{{ f.room }}" onChange="{{ onRoom }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+                  <option>Unassigned</option><option>Main stage</option><option>Room 2</option><option>Room 3</option><option>Workshop lab</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Description</div>
+              <textarea value="{{ f.desc }}" onChange="{{ onDesc }}" rows="5" placeholder="Shown on the public schedule and embeds" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
+            </div>
+            <div style="border:1px solid var(--ifl,#C6CDEA);background:var(--ifw,#E9ECF7);border-radius:8px;padding:10px 13px;font:400 12px/18px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Placing it on the grid sets starts and room. The agenda is the scheduling truth; these fields follow it.</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ onPar }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ parts }}" as="p" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:11px;border:1px solid var(--ln,#E1E7E9);border-radius:8px;padding:10px 13px">
+                <span style="width:26px;height:26px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans Condensed',sans-serif;color:var(--i3,#6B7B84);flex:none">{{ p.ini }}</span>
+                <span style="flex:1;min-width:0"><span style="display:block;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ p.n }}</span><span style="display:block;font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">{{ p.role }}</span></span>
+                <button onClick="{{ p.onX }}" aria-label="Remove" style="width:26px;height:26px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">✕</button>
+              </div>
+            </sc-for>
+            <div style="display:flex;gap:7px">
+              <input value="{{ partDraft }}" onChange="{{ onPartDraft }}" placeholder="Add by name, role defaults to Speaker" style="flex:1;box-sizing:border-box;height:34px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+              <button onClick="{{ addPart }}" style="height:34px;padding:0 13px;border-radius:6px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12px 'IBM Plex Sans',sans-serif">Add</button>
+            </div>
+            <div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Speaker role: 1 to 4 per session, from the CFP form rules. Each added person gets a portal on acceptance.</div>
+          </div>
+        </sc-if>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:8px;padding:12px 22px;border-top:1px solid var(--ln,#E1E7E9)">
+        <button onClick="{{ save }}" style="height:34px;padding:0 17px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 13px 'IBM Plex Sans',sans-serif">{{ saveLabel }}</button>
+        <button onClick="{{ closeDrawer }}" style="height:34px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Cancel</button>
+        <div style="flex:1"></div>
+        <sc-if value="{{ isEdit }}" hint-placeholder-val="{{ false }}">
+          <a href="Agenda.dc.html" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);text-decoration:none">See on agenda →</a>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ imp }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(13,16,32,.45);z-index:60;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div style="width:640px;max-width:100%;max-height:86vh;overflow-y:auto;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:14px;box-shadow:0 24px 64px rgba(13,16,32,.28);padding:20px 22px">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+          <h2 style="font:600 17px 'IBM Plex Sans',sans-serif;letter-spacing:-0.01em;color:var(--ik,#16232B);margin:0">Import sessions</h2>
+          <div style="flex:1"></div>
+          <button onClick="{{ impClose }}" aria-label="Close" style="background:none;border:none;font:500 14px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:2px;cursor:pointer">✕</button>
+        </div>
+        <div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:12px">Paste CSV or choose a file. The first row is the header. Nothing writes until you confirm below.</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <span style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.04em;color:var(--i3,#6B7B84)">COLUMNS</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i2,#3E4E58);background:var(--sk,#EDF1F2);border-radius:4px;padding:2px 7px">title *</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i2,#3E4E58);background:var(--sk,#EDF1F2);border-radius:4px;padding:2px 7px">speakers</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i2,#3E4E58);background:var(--sk,#EDF1F2);border-radius:4px;padding:2px 7px">track</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i2,#3E4E58);background:var(--sk,#EDF1F2);border-radius:4px;padding:2px 7px">format</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i2,#3E4E58);background:var(--sk,#EDF1F2);border-radius:4px;padding:2px 7px">room</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i2,#3E4E58);background:var(--sk,#EDF1F2);border-radius:4px;padding:2px 7px">starts</span>
+        </div>
+        <textarea value="{{ impRaw }}" onChange="{{ onImpRaw }}" rows="6" placeholder="title,speakers,track,format&#10;&quot;My session title&quot;,&quot;Ada Okoye; Sam Reyes&quot;,Agents,30 min talk" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--pp,#F4F6F7);font:400 12px/18px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
+        <div style="display:flex;align-items:center;gap:10px;margin:10px 0 14px">
+          <label style="height:30px;display:inline-flex;align-items:center;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);cursor:pointer">Choose a .csv file<input type="file" accept=".csv,text/csv" onChange="{{ impFile }}" style="display:none"></label>
+          <button onClick="{{ impExample }}" style="height:30px;padding:0 13px;border-radius:999px;border:none;background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);cursor:pointer">Paste an example</button>
+          <div style="flex:1"></div>
+          <span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Excel: save as CSV first</span>
+        </div>
+        <sc-if value="{{ impErrShow }}" hint-placeholder-val="{{ false }}">
+          <div style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B);background:var(--cnw,#FBE8E6);border:1px solid var(--cnl,#F3C7C2);border-radius:8px;padding:9px 12px;margin-bottom:12px">{{ impErr }}</div>
+        </sc-if>
+        <sc-if value="{{ impReady }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:10px;overflow:hidden;margin-bottom:14px">
+            <div style="display:grid;grid-template-columns:minmax(160px,1.4fr) minmax(120px,1fr) 110px 110px;gap:8px;padding:0 12px;height:30px;align-items:center;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--sk,#EDF1F2)">
+              <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">TITLE</span>
+              <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">SPEAKERS</span>
+              <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">TRACK</span>
+              <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">FORMAT</span>
+            </div>
+            <sc-for list="{{ impRows }}" as="ir" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:minmax(160px,1.4fr) minmax(120px,1fr) 110px 110px;gap:8px;padding:0 12px;height:34px;align-items:center;border-bottom:1px solid var(--ln,#E1E7E9)">
+                <span style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ir.t }}</span>
+                <span style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ir.sp }}</span>
+                <span style="display:inline-flex;align-items:center;gap:6px;min-width:0"><span style="width:8px;height:8px;border-radius:2px;background:{{ ir.trCol }};flex:none"></span><span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ir.tr }}</span></span>
+                <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ir.fmt }}</span>
+              </div>
+            </sc-for>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 12px">
+              <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ impCount }}</span>
+              <div style="flex:1"></div>
+              <span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">unknown tracks keep their name, shown uncolored</span>
+            </div>
+          </div>
+        </sc-if>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button onClick="{{ impGo }}" style="height:34px;padding:0 17px;border-radius:999px;border:none;background:{{ impGoBg }};color:{{ impGoFg }};font:600 13px 'IBM Plex Sans',sans-serif;cursor:pointer">{{ impLabel }}</button>
+          <button onClick="{{ impClose }}" style="height:34px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);cursor:pointer">Cancel</button>
+          <div style="flex:1"></div>
+          <span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">imports land as drafts, never as accepted</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <div style="position:fixed;left:16px;bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:8px;padding:10px 12px;box-shadow:0 12px 32px rgba(16,19,25,.16);max-width:440px">
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.msg }}</span>
+        <sc-if value="{{ t.canUndo }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ t.onUndo }}" style="background:none;border:none;font:600 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);padding:0">Undo</button>
+        </sc-if>
+        <button onClick="{{ t.onX }}" aria-label="Dismiss" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:0">✕</button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  static ACCENTS = {
+    Coral: { dot: '#FF6B6B', l: { sg: '#E04E4E', sw: '#FFEAE6', sl: '#FFC9C0', bt: '#FF6B6B', bf: '#331313' }, d: { sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313' } },
+    Sunset: { dot: '#F2915B', l: { sg: '#BE5F1F', sw: '#FCEFE4', sl: '#F5CFB2', bt: '#F2915B', bf: '#331A0A' }, d: { sg: '#F5AA7E', sw: '#3A2414', sl: '#664028', bt: '#F2915B', bf: '#331A0A' } },
+    Sky: { dot: '#4A9BD8', l: { sg: '#2B77B3', sw: '#E7F1FA', sl: '#BFDCF1', bt: '#4A9BD8', bf: '#0D2333' }, d: { sg: '#7FBCE8', sw: '#152A3A', sl: '#2C4E66', bt: '#4A9BD8', bf: '#0D2333' } },
+    Slate: { dot: '#5A6BA8', l: { sg: '#4A5A99', sw: '#EAEDF7', sl: '#C8CFE9', bt: '#5A6BA8', bf: '#FFFFFF' }, d: { sg: '#98A6DA', sw: '#1F2542', sl: '#3A4370', bt: '#8B9AD0', bf: '#12162E' } },
+    Graphite: { dot: '#5F6B79', l: { sg: '#46535F', sw: '#ECEFF2', sl: '#C9D2DA', bt: '#4A5764', bf: '#FFFFFF' }, d: { sg: '#A9B6C2', sw: '#232B33', sl: '#3E4A56', bt: '#93A3B1', bf: '#111921' } }
+  };
+  static DARK = { pp: '#101013', cd: '#17171B', sk: '#1F1F24', ln: '#2A2A31', ls: '#3F3F49', ik: '#F2F2F0', i2: '#C9C9C6', i3: '#929290', i4: '#686865', cn: '#F0766A', cnw: '#3A1F1E', cnl: '#5E2E2B', pd: '#F0A468', pdw: '#332617', pdl: '#54402A', ok: '#57B899', okw: '#123029', okl: '#1F4A3E', if: '#8B9AD0', ifw: '#262833', ifl: '#3E4152' };
+  static TR = { Agents: '#3E8896', Evals: '#A85788', Infrastructure: '#5A6BA8', Retrieval: '#7E5CB8', Multimodal: '#C4703A', 'In production': '#34526B' };
+  static ST = { accepted: { l: 'Accepted', fg: 'var(--ok,#0E7A5F)', bg: 'var(--okw,#E2F1EC)' }, acceptq: { l: 'Accept queue', fg: 'var(--if,#47599F)', bg: 'var(--ifw,#E9ECF7)' }, pending: { l: 'Pending', fg: 'var(--pd,#B96A1F)', bg: 'var(--pdw,#F9EDDF)' }, declineq: { l: 'Decline queue', fg: 'var(--pd,#B96A1F)', bg: 'var(--pdw,#F9EDDF)' }, declined: { l: 'Declined', fg: 'var(--i3,#6B7B84)', bg: 'var(--sk,#EDF1F2)' }, withdrawn: { l: 'Withdrawn', fg: 'var(--i3,#6B7B84)', bg: 'var(--sk,#EDF1F2)' }, draft: { l: 'Draft', fg: 'var(--if,#47599F)', bg: 'var(--ifw,#E9ECF7)' } };
+  seed() {
+    return [
+      { id: 'S-101', t: 'Opening keynote', sp: ['Marta Duarte'], tr: 'In production', fmt: '45 min keynote', st: 'accepted', starts: 'Tue 13 Oct 09:05', room: 'Main stage', cap: '1200', desc: 'The year agents went to work.' },
+      { id: 'S-102', t: 'Evals beyond vibes', sp: ['Sofia Petrova'], tr: 'Evals', fmt: '30 min talk', st: 'accepted', starts: 'Tue 13 Oct 10:00', room: 'Room 2', cap: '', desc: '' },
+      { id: 'S-103', t: 'Guardrail budgets', sp: ['Nils Vogel'], tr: 'Agents', fmt: '30 min talk', st: 'accepted', starts: 'Tue 13 Oct 10:15', room: 'Room 2', cap: '', desc: '' },
+      { id: 'S-104', t: 'A billion documents, one index', sp: ['Kwame Osei'], tr: 'Retrieval', fmt: '30 min talk', st: 'accepted', starts: 'Tue 13 Oct 10:30', room: 'Room 3', cap: '', desc: '' },
+      { id: 'S-105', t: 'Spot fleets without tears', sp: ['Lars Bergström'], tr: 'Infrastructure', fmt: '30 min talk', st: 'accepted', starts: 'Tue 13 Oct 11:00', room: 'Main stage', cap: '', desc: '' },
+      { id: 'S-106', t: 'Golden-trace regression workshop', sp: ['Keiko Watanabe'], tr: 'Evals', fmt: '90 min workshop', st: 'acceptq', starts: '', room: 'Unassigned', cap: '40', desc: '' },
+      { id: 'S-107', t: 'Long-horizon planning without long context', sp: ['Wei Zhang'], tr: 'Agents', fmt: '30 min talk', st: 'pending', starts: '', room: 'Unassigned', cap: '', desc: '' },
+      { id: 'S-108', t: 'Chunking strategies: a field guide', sp: ['Bola Adeyemi'], tr: 'Retrieval', fmt: '10 min lightning', st: 'pending', starts: '', room: 'Unassigned', cap: '', desc: '' },
+      { id: 'S-109', t: 'Voice agents that survive a noisy warehouse', sp: ['Owen McCarthy'], tr: 'Multimodal', fmt: '30 min talk', st: 'declineq', starts: '', room: 'Unassigned', cap: '', desc: '' },
+      { id: 'S-110', t: 'Prompt golf: a live tournament', sp: ['Dana Whitfield'], tr: 'In production', fmt: '60 min panel', st: 'withdrawn', starts: '', room: 'Unassigned', cap: '', desc: '' },
+      { id: 'S-111', t: 'Rollbacks for prompts: versioning the invisible', sp: ['Ritika Sharma'], tr: 'In production', fmt: '10 min lightning', st: 'declined', starts: '', room: 'Unassigned', cap: '', desc: '' },
+      { id: 'S-112', t: 'Untitled session', sp: [], tr: 'Agents', fmt: '30 min talk', st: 'draft', starts: '', room: 'Unassigned', cap: '', desc: '' }
+    ];
+  }
+  state = { theme: 'system', accent: 'Coral', rows: this.seed(), tab: 'All', q: '', optOpen: false, imp: null, drawer: false, editId: null, dTab: 'det', f: null, parts: [], partDraft: '', stamp: '', toasts: [] };
+  componentDidMount() {
+    try { const th = localStorage.getItem('gather.theme'); if (th) this.setState({ theme: th }); const ac = localStorage.getItem('gather.accent'); if (ac && Component.ACCENTS[ac]) this.setState({ accent: ac }); } catch (e) {}
+    this._mq = window.matchMedia('(prefers-color-scheme: dark)');
+    this._mqFn = () => this.forceUpdate();
+    this._mq.addEventListener('change', this._mqFn);
+    this._kd = (e) => { if (e.key === 'Escape') this.setState({ drawer: false, optOpen: false, imp: null }); };
+    window.addEventListener('keydown', this._kd);
+    this.applyTheme();
+  }
+  componentDidUpdate() { this.applyTheme(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._kd); if (this._mq) this._mq.removeEventListener('change', this._mqFn); }
+  isDark() { return this.state.theme === 'dark' || (this.state.theme === 'system' && this._mq && this._mq.matches); }
+  applyTheme() {
+    if (!this.root) return;
+    const dark = this.isDark();
+    Object.entries(Component.DARK).forEach(([k, v]) => { dark ? this.root.style.setProperty('--' + k, v) : this.root.style.removeProperty('--' + k); });
+    const acc = (Component.ACCENTS[this.state.accent] || Component.ACCENTS.Coral)[dark ? 'd' : 'l'];
+    Object.entries(acc).forEach(([k, v]) => this.root.style.setProperty('--' + k, v));
+    this.root.style.colorScheme = dark ? 'dark' : 'light';
+  }
+  toast(msg, revert) {
+    const id = Math.random().toString(36).slice(2);
+    this.setState(s => ({ toasts: [...s.toasts.slice(-2), { id, msg, revert }] }));
+    setTimeout(() => this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), revert ? 10000 : 6000);
+  }
+  filtered() {
+    const s = this.state;
+    let rows = s.rows;
+    if (s.tab !== 'All') rows = rows.filter(r => Component.ST[r.st].l === s.tab);
+    if (s.q) { const q = s.q.toLowerCase(); rows = rows.filter(r => r.t.toLowerCase().includes(q) || r.sp.join(' ').toLowerCase().includes(q)); }
+    if ((s.fTracks || []).length) rows = rows.filter(r => s.fTracks.includes(r.tr));
+    if ((s.fFmt || []).length) rows = rows.filter(r => s.fFmt.some(f => r.fmt.includes(f)));
+    const k = s.sortK || 'code', d = s.sortD || 1;
+    return rows.slice().sort((a, b) => k === 'title' ? a.t.localeCompare(b.t) * d : k === 'track' ? a.tr.localeCompare(b.tr) * d : k === 'sched' ? (((a.starts ? 0 : 1) - (b.starts ? 0 : 1)) || String(a.starts).localeCompare(String(b.starts)) * d) : a.id.localeCompare(b.id) * d);
+  }
+  setSort(k) { this.setState(s => ({ sortK: k, sortD: s.sortK === k ? -(s.sortD || 1) : 1 })); }
+  csv() {
+    const list = this.filtered();
+    const esc = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+    const lines = [['code', 'title', 'speakers', 'track', 'format', 'status', 'starts', 'room', 'capacity'].join(',')];
+    list.forEach(r => lines.push([r.id, esc(r.t), esc(r.sp.join('; ')), r.tr, esc(r.fmt), Component.ST[r.st].l, esc(r.starts), esc(r.room), r.cap].join(',')));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+    a.download = 'sessions.csv'; a.click();
+    this.setState({ optOpen: false });
+    this.toast('Exported ' + list.length + ' sessions with the current filters.');
+  }
+  blank() { return { t: '', st: 'draft', tr: 'Agents', fmt: '30 min talk', cap: '', starts: '', room: 'Unassigned', desc: '' }; }
+  parseCsv(text) {
+    const rows = []; let row = [], cell = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQ) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else inQ = false; } else cell += ch; }
+      else if (ch === '"') inQ = true;
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); cell = ''; if (row.some(c => c.trim() !== '')) rows.push(row); row = []; }
+      else cell += ch;
+    }
+    row.push(cell); if (row.some(c => c.trim() !== '')) rows.push(row);
+    return rows;
+  }
+  impParse(raw) {
+    if (!raw.trim()) return { rows: [], err: '' };
+    const grid = this.parseCsv(raw);
+    if (grid.length < 2) return { rows: [], err: 'Need a header row plus at least one data row.' };
+    const head = grid[0].map(h => h.trim().toLowerCase());
+    const col = (names) => head.findIndex(h => names.some(n => h.includes(n)));
+    const cT = col(['title', 'session', 'talk']), cS = col(['speaker', 'presenter']), cTr = col(['track', 'category']), cF = col(['format', 'type', 'duration']), cR = col(['room', 'venue']), cSt = col(['start', 'time', 'slot']);
+    if (cT < 0) return { rows: [], err: 'No title column found. The header needs one of: title, session, talk.' };
+    const rows = grid.slice(1).map((r) => ({
+      t: (r[cT] || '').trim() || 'Untitled session',
+      sp: cS >= 0 && r[cS] ? r[cS].split(/[;+]/).map(x => x.trim()).filter(Boolean) : [],
+      tr: cTr >= 0 && r[cTr] && r[cTr].trim() ? r[cTr].trim() : 'Agents',
+      fmt: cF >= 0 && r[cF] && r[cF].trim() ? r[cF].trim() : '30 min talk',
+      st: 'draft', starts: cSt >= 0 && r[cSt] ? r[cSt].trim() : '', room: cR >= 0 && r[cR] && r[cR].trim() ? r[cR].trim() : 'Unassigned', cap: '', desc: ''
+    }));
+    return { rows, err: '' };
+  }
+  tileV(active, c, on) { return { c, on, bd: active ? 'var(--sg,#E04E4E)' : 'var(--ln,#E1E7E9)', ring: active ? '0 0 0 3px var(--sw,#FFEAE6)' : '0 1px 2px rgba(13,16,32,.04)', numFg: active ? 'var(--sg,#E04E4E)' : 'var(--ik,#16232B)' }; }
+  renderVals() {
+    const s = this.state, ST = Component.ST;
+    const list = this.filtered();
+    const so = (k) => ({ on: () => this.setSort(k), g: (this.state.sortK) === k ? ((this.state.sortD || 1) === 1 ? '↑' : '↓') : '↑↓', gc: (this.state.sortK) === k ? 'var(--sg,#E04E4E)' : 'var(--i4,#99A6AD)', fg: (this.state.sortK) === k ? 'var(--ik,#16232B)' : 'var(--i3,#6B7B84)' });
+
+    const counts = { All: s.rows.length };
+    Object.values(ST).forEach(v => { counts[v.l] = 0; });
+    s.rows.forEach(r => { counts[ST[r.st].l]++; });
+    const tabs = ['All', 'Accepted', 'Accept queue', 'Pending', 'Decline queue', 'Declined', 'Withdrawn', 'Draft'].map(n => ({ n, c: counts[n] || 0, on: () => this.setState({ tab: n }), bg: s.tab === n ? 'var(--sw,#FFEAE6)' : 'var(--cd,#FFFFFF)', bd: s.tab === n ? 'var(--sl,#FFC9C0)' : 'var(--ln,#E1E7E9)', fg: s.tab === n ? 'var(--sg,#E04E4E)' : 'var(--i3,#6B7B84)' }));
+    const rows = list.map(r => ({
+      id: r.id, t: r.t, sp: r.sp.join(', ') || '·', tr: r.tr, trCol: Component.TR[r.tr], fmt: r.fmt,
+      sched: r.starts ? r.starts + ' · ' + r.room : 'not scheduled',
+      schedFg: r.starts ? 'var(--i2,#3E4E58)' : 'var(--i4,#99A6AD)',
+      st: ST[r.st].l, stFg: ST[r.st].fg, stBg: ST[r.st].bg,
+      onOpen: () => this.setState({ drawer: true, editId: r.id, dTab: 'det', f: { t: r.t, st: r.st, tr: r.tr, fmt: r.fmt, cap: r.cap, starts: r.starts, room: r.room, desc: r.desc }, parts: r.sp.map(n => ({ n, role: 'Speaker' })), stamp: '' })
+    }));
+    const f = s.f || this.blank();
+    const setF = (k) => (e) => { const v = e.target.value; this.setState(st => ({ f: { ...(st.f || this.blank()), [k]: k === 't' ? v.slice(0, 255) : v }, stamp: 'edited' })); };
+    return {
+      setRoot: (el) => { this.root = el; this.applyTheme(); },
+      tAll: this.tileV(s.tab === 'All', s.rows.length, () => this.setState({ tab: 'All' })),
+      tAcc: this.tileV(s.tab === 'Accepted', counts['Accepted'] || 0, () => this.setState({ tab: 'Accepted' })),
+      tQu: this.tileV(s.tab === 'Accept queue', counts['Accept queue'] || 0, () => this.setState({ tab: 'Accept queue' })),
+      tPe: this.tileV(s.tab === 'Pending', counts['Pending'] || 0, () => this.setState({ tab: 'Pending' })),
+      sumLine: s.rows.length + ' sessions in the library · ' + (counts['Accepted'] || 0) + ' accepted · ' + ((counts['Accept queue'] || 0) + (counts['Decline queue'] || 0)) + ' waiting in decision queues · ' + (counts['Draft'] || 0) + ' drafts',
+      total: s.rows.length, schedN: s.rows.filter(r => r.starts).length,
+      tabs, rows, empty: rows.length === 0,
+      q: s.q, onQ: (e) => this.setState({ q: e.target.value }),
+      clearF: () => this.setState({ q: '', tab: 'All' }),
+      countLine: rows.length + ' of ' + s.rows.length + ' sessions matching',
+      optOpen: s.optOpen, togOpt: () => this.setState(st => ({ optOpen: !st.optOpen })),
+      doImport: () => this.setState({ optOpen: false, imp: { raw: '', rows: [], err: '' } }),
+      imp: !!s.imp,
+      impRaw: s.imp ? s.imp.raw : '',
+      onImpRaw: (e) => { const raw = e.target.value; this.setState({ imp: { raw, ...this.impParse(raw) } }); },
+      impFile: (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { const raw = String(rd.result || ''); this.setState({ imp: { raw, ...this.impParse(raw) } }); }; rd.readAsText(f); },
+      impExample: () => { const raw = 'title,speakers,track,format,room,starts\n"Serving 70B models on spot fleets","Lars Bergström",Infrastructure,30 min talk,Room 2,Wed 14 Oct 11:30\n"Evals for voice agents","Ana Silva; Tom Reed",Evals,10 min lightning,,\n"Latency budgets in the real world","Kwame Osei",In production,30 min talk,Main stage,'; this.setState({ imp: { raw, ...this.impParse(raw) } }); },
+      impErr: s.imp ? s.imp.err : '', impErrShow: !!(s.imp && s.imp.err),
+      impRows: s.imp ? s.imp.rows.slice(0, 5).map(r => ({ t: r.t, sp: r.sp.join(', ') || '·', tr: r.tr, trCol: Component.TR[r.tr] || 'var(--ls,#C8D2D5)', fmt: r.fmt })) : [],
+      impCount: s.imp ? (s.imp.rows.length > 5 ? 'first 5 of ' + s.imp.rows.length + ' shown' : s.imp.rows.length + (s.imp.rows.length === 1 ? ' row ready' : ' rows ready')) : '',
+      impReady: !!(s.imp && s.imp.rows.length),
+      impGoBg: s.imp && s.imp.rows.length ? 'var(--bt,#FF6B6B)' : 'var(--sk,#EDF1F2)',
+      impGoFg: s.imp && s.imp.rows.length ? 'var(--bf,#331313)' : 'var(--i4,#99A6AD)',
+      impLabel: s.imp && s.imp.rows.length ? 'Import ' + s.imp.rows.length + ' as drafts' : 'Import as drafts',
+      impClose: () => this.setState({ imp: null }),
+      impGo: () => {
+        const rows = (s.imp && s.imp.rows) || []; if (!rows.length) return;
+        this.setState(st => ({ rows: [...rows.map((r, i) => ({ ...r, id: 'S-' + (900 + st.rows.length + i) })), ...st.rows], imp: null, tab: 'Draft' }));
+        this.toast(rows.length + (rows.length === 1 ? ' session' : ' sessions') + ' imported as drafts. Review from the Draft queue.');
+      },
+      doCsv: () => this.csv(),
+      doXlsx: () => { this.setState({ optOpen: false }); this.toast('For Excel sheets: save as CSV, then use Import CSV. Native XLSX lands with the backend.'); },
+      doFiles: () => { this.setState({ optOpen: false }); this.toast('Bundles every uploaded file for the current filter into one zip, foldered by speaker.'); },
+      openNew: () => this.setState({ drawer: true, editId: null, dTab: 'det', f: this.blank(), parts: [], stamp: '' }),
+      drawer: s.drawer, closeDrawer: () => this.setState({ drawer: false }),
+      dTitle: s.editId ? 'Edit ' + s.editId : 'New session',
+      dStamp: s.stamp, isEdit: !!s.editId,
+      onDet: s.dTab === 'det', onPar: s.dTab === 'par',
+      tabDet: () => this.setState({ dTab: 'det' }), tabPar: () => this.setState({ dTab: 'par' }),
+      detWt: s.dTab === 'det' ? '600' : '400', detFg: s.dTab === 'det' ? 'var(--ik,#16232B)' : 'var(--i3,#6B7B84)', detUl: s.dTab === 'det' ? 'var(--sg,#E04E4E)' : 'transparent',
+      parWt: s.dTab === 'par' ? '600' : '400', parFg: s.dTab === 'par' ? 'var(--ik,#16232B)' : 'var(--i3,#6B7B84)', parUl: s.dTab === 'par' ? 'var(--sg,#E04E4E)' : 'transparent',
+      partN: s.parts.length,
+      f, titleCount: (f.t || '').length + '/255',
+      titleBd: 'var(--ls,#C8D2D5)',
+      onT: setF('t'), onSt: setF('st'), onTr: setF('tr'), onFmt: setF('fmt'), onCap: setF('cap'), onStarts: setF('starts'), onRoom: setF('room'), onDesc: setF('desc'),
+      parts: s.parts.map((p, i) => ({ n: p.n, role: p.role, ini: p.n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(), onX: () => this.setState(st => ({ parts: st.parts.filter((_, j) => j !== i) })) })),
+      partDraft: s.partDraft, onPartDraft: (e) => this.setState({ partDraft: e.target.value }),
+      addPart: () => { if (!s.partDraft.trim()) return; if (s.parts.length >= 4) { this.toast('Speaker role allows at most 4 per session, set on the CFP form.'); return; } this.setState(st => ({ parts: [...st.parts, { n: st.partDraft.trim(), role: 'Speaker' }], partDraft: '' })); },
+      save: () => {
+        if (!f.t.trim()) { this.toast('A title is required. Everything else can wait.'); return; }
+        const sp = s.parts.map(p => p.n);
+        if (s.editId) {
+          this.setState(st => ({ rows: st.rows.map(r => r.id === st.editId ? { ...r, t: f.t, st: f.st, tr: f.tr, fmt: f.fmt, cap: f.cap, starts: f.starts, room: f.room, desc: f.desc, sp } : r), drawer: false }));
+          this.toast('Saved ' + s.editId + '. The agenda and public schedule follow.');
+        } else {
+          const id = 'S-' + (113 + Math.floor(Math.random() * 80));
+          this.setState(st => ({ rows: [{ id, t: f.t, st: f.st, tr: f.tr, fmt: f.fmt, cap: f.cap, starts: f.starts, room: f.room, desc: f.desc, sp }, ...st.rows], drawer: false, tab: 'All' }));
+          this.toast(id + ' created as ' + Component.ST[f.st].l + '.');
+        }
+      },
+      saveLabel: s.editId ? 'Save changes' : 'Create session',
+      popUser: !!this.state.userMenu,
+      togUser: () => this.setState(s2 => ({ userMenu: !s2.userMenu })),
+      closeUser: () => this.setState({ userMenu: false }),
+      profileGo: () => { this.setState({ userMenu: false }); this.toast('Your profile: name, avatar, and notification rules. Next screen to design.'); },
+      signOut: () => { this.setState({ userMenu: false }); this.toast('A real build signs you out here. The demo keeps you in.'); },
+      themeWord: (this.state.theme || 'system')[0].toUpperCase() + (this.state.theme || 'system').slice(1),
+      soCode: so('code'), soTitle: so('title'), soTrack: so('track'), soSched: so('sched'),
+      fPopOn: !!s.fPop, togFPop: () => this.setState(s2 => ({ fPop: !s2.fPop })), closeFPop: () => this.setState({ fPop: false }),
+      fCount: ((s.fTracks || []).length + (s.fFmt || []).length) ? ' · ' + ((s.fTracks || []).length + (s.fFmt || []).length) : '',
+      fBd: ((s.fTracks || []).length + (s.fFmt || []).length) ? 'var(--sl,#FFC9C0)' : 'var(--ls,#C8D2D5)',
+      fBg: ((s.fTracks || []).length + (s.fFmt || []).length) ? 'var(--sw,#FFEAE6)' : 'var(--cd,#FFFFFF)',
+      fFg: ((s.fTracks || []).length + (s.fFmt || []).length) ? 'var(--sg,#E04E4E)' : 'var(--i2,#3E4E58)',
+      fTrackOpts: Object.keys(Component.TR).map(n => { const on = (s.fTracks || []).includes(n); return { n, col: Component.TR[n], ck: on ? '✓' : '', ckBg: on ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', on: () => this.setState(s2 => ({ fTracks: on ? (s2.fTracks || []).filter(x => x !== n) : [...(s2.fTracks || []), n] })) }; }),
+      fFmtOpts: ['talk', 'lightning', 'workshop', 'keynote', 'panel'].map(n => { const on = (s.fFmt || []).includes(n); return { n: n[0].toUpperCase() + n.slice(1), ck: on ? '✓' : '', ckBg: on ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', on: () => this.setState(s2 => ({ fFmt: on ? (s2.fFmt || []).filter(x => x !== n) : [...(s2.fFmt || []), n] })) }; }),
+      clearF: () => this.setState({ fTracks: [], fFmt: [], fPop: false }),
+      accents: Object.keys(Component.ACCENTS).map(n => ({ n, c: Component.ACCENTS[n].dot, on: () => { try { localStorage.setItem('gather.accent', n); } catch (e) {} this.setState({ accent: n }); }, ring: (this.state.accent || 'Coral') === n ? '0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ' + Component.ACCENTS[n].dot : 'inset 0 0 0 1px rgba(0,0,0,.12)' })),
+      togTheme: () => { const next = s.theme === 'system' ? 'light' : s.theme === 'light' ? 'dark' : 'system'; try { localStorage.setItem('gather.theme', next); } catch (e) {} this.setState({ theme: next }); },
+      themeGlyph: s.theme === 'system' ? '◐' : s.theme === 'light' ? '○' : '●',
+      themeTitle: 'Theme: ' + s.theme + ', click to change',
+      toasts: s.toasts.map(t => ({ msg: t.msg, canUndo: !!t.revert, onUndo: () => { t.revert(); this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })); }, onX: () => this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

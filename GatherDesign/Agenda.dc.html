@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--sg,#E04E4E)}a:hover{color:var(--sg,#C93E3E)}button{cursor:pointer}::selection{background:var(--sw,#FFEAE6)}input::placeholder,textarea::placeholder{color:var(--i4,#99A6AD)}</style>
+</helmet>
+<div ref="{{ setRoot }}" data-screen-label="Agenda builder" style="display:grid;grid-template-columns:auto minmax(0,1fr);height:100vh;overflow:hidden;background:var(--pp,#F4F6F7);color:var(--ik,#16232B)">
+  <dc-import name="ConsoleRail" active="Agenda" hint-size="216px,100%" style="height:100%;min-height:0"></dc-import>
+  <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <span style="display:flex;align-items:center;gap:8px;font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>AI Engineer 2026</span>
+      <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">/ Agenda · draft</span>
+      <div style="flex:1"></div>
+      <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">drag to place · double-click adds · Delete unschedules · ⌘Z undo</span>
+      
+      <div style="position:relative">
+        <button onClick="{{ togUser }}" title="Account" aria-label="Account menu" style="width:28px;height:28px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);padding:0" style-hover="border:1px solid var(--ls,#C8D2D5)">SW</button>
+        <sc-if value="{{ popUser }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ closeUser }}" aria-label="Close" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:41"></button>
+          <div style="position:absolute;top:36px;right:0;width:248px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:12px;box-shadow:0 16px 40px rgba(13,16,32,.20);padding:6px;z-index:42">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 10px">
+              <span style="width:32px;height:32px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);flex:none">SW</span>
+              <span style="min-width:0"><span style="display:block;font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Sasha Whitfield</span><span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">program lead · demo org</span></span>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:8px 10px 6px">THEME</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 10px 10px">
+              <sc-for list="{{ accents }}" as="ac" hint-placeholder-count="5"><button onClick="{{ ac.on }}" title="{{ ac.n }}" aria-label="{{ ac.n }}" style="width:16px;height:16px;border-radius:50%;border:none;background:{{ ac.c }};box-shadow:{{ ac.ring }};padding:0;flex:none"></button></sc-for>
+              <div style="flex:1"></div>
+              <button onClick="{{ togTheme }}" title="{{ themeTitle }}" style="display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)">{{ themeGlyph }} {{ themeWord }}</button>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ profileGo }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);text-align:left" style-hover="background:var(--sk,#EDF1F2)">Your profile</button>
+            <a href="Settings.dc.html" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;text-decoration:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Workspace settings</a>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ signOut }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B);text-align:left" style-hover="background:var(--cnw,#FBE8E6)">Sign out</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+    <div style="min-height:44px;flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:5px 14px;box-sizing:border-box;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <div style="display:flex;gap:2px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);border-radius:999px;padding:2px">
+        <sc-for list="{{ days }}" as="d" hint-placeholder-count="3">
+          <button onClick="{{ d.on }}" style="height:26px;padding:0 12px;border-radius:999px;border:none;background:{{ d.bg }};color:{{ d.fg }};font:{{ d.wt }} 12px 'IBM Plex Sans',sans-serif;box-shadow:{{ d.sh }};white-space:nowrap">{{ d.n }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:2px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);border-radius:999px;padding:2px">
+        <button style="height:26px;padding:0 11px;border-radius:999px;border:none;background:var(--cd,#FFFFFF);color:var(--ik,#16232B);font:600 12px 'IBM Plex Sans',sans-serif;box-shadow:0 1px 2px rgba(16,19,25,.08)">Grid</button>
+        <button onClick="{{ viewToast }}" style="height:26px;padding:0 11px;border-radius:999px;border:none;background:none;color:var(--i3,#6B7B84);font:500 12px 'IBM Plex Sans',sans-serif">Track</button>
+        <button onClick="{{ viewToast }}" style="height:26px;padding:0 11px;border-radius:999px;border:none;background:none;color:var(--i3,#6B7B84);font:500 12px 'IBM Plex Sans',sans-serif">List</button>
+        <button onClick="{{ viewToast }}" style="height:26px;padding:0 11px;border-radius:999px;border:none;background:none;color:var(--i3,#6B7B84);font:500 12px 'IBM Plex Sans',sans-serif">Week</button>
+      </div>
+      <div style="flex:1"></div>
+      <sc-if value="{{ hasConf }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ openConf }}" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:6px;background:var(--cnw,#FBE8E6);border:1px solid var(--cnl,#F3C7C2);font:600 11.5px 'IBM Plex Mono',monospace;color:var(--cn,#D8432B);white-space:nowrap">⚠ {{ confLabel }}</button>
+      </sc-if>
+      <sc-if value="{{ noConf }}" hint-placeholder-val="{{ false }}">
+        <span style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:6px;background:var(--okw,#E2F1EC);border:1px solid var(--okl,#C2E0D5);font:600 11.5px 'IBM Plex Mono',monospace;color:var(--ok,#0E7A5F)">NO CONFLICTS</span>
+      </sc-if>
+      <button onClick="{{ newSess }}" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);color:var(--ik,#16232B);font:500 12.5px 'IBM Plex Sans',sans-serif;white-space:nowrap" style-hover="background:var(--sk,#EDF1F2)">+ New session</button>
+      <button onClick="{{ openPub }}" style="display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 14px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12.5px 'IBM Plex Sans',sans-serif;white-space:nowrap">Publish schedule <span style="font:500 10.5px 'IBM Plex Mono',monospace;background:rgba(255,255,255,.22);border-radius:99px;padding:1px 6px">{{ dirty }}</span></button>
+    </div>
+    <div style="flex:1;display:flex;min-height:0">
+      <div ref="{{ setTray }}" style="width:240px;flex:none;border-right:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF);display:flex;flex-direction:column;min-height:0">
+        <div style="padding:12px 14px 8px;display:flex;align-items:baseline;gap:8px"><span style="font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">UNSCHEDULED</span><span style="font:500 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ trayN }}</span></div>
+        <div style="padding:0 12px 10px"><input value="{{ q }}" onChange="{{ onQ }}" placeholder="Search the tray" style="width:100%;box-sizing:border-box;height:28px;padding:0 9px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"></div>
+        <div style="flex:1;overflow-y:auto;padding:0 12px 16px;display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ tray }}" as="u" hint-placeholder-count="4">
+            <div onMouseDown="{{ u.onDown }}" style="border:1px solid var(--ln,#E1E7E9);border-left:3px solid {{ u.col }};border-radius:6px;background:var(--cd,#FFFFFF);padding:9px 11px;cursor:grab;opacity:{{ u.op }}" style-hover="border:1px solid var(--ls,#C8D2D5);border-left:3px solid {{ u.col }}">
+              <div style="font:500 12px/16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ u.t }}</div>
+              <div style="font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);margin-top:3px">{{ u.meta }}</div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ trayEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:8px 2px">Everything is placed. Drag a session here to unschedule it.</div>
+          </sc-if>
+        </div>
+      </div>
+      <div style="flex:1;overflow:auto;min-width:0;background:var(--pp,#F4F6F7)">
+        <div style="position:sticky;top:0;z-index:6;display:grid;grid-template-columns:56px repeat(4,1fr);background:var(--cd,#FFFFFF);border-bottom:1px solid var(--ln,#E1E7E9);min-width:700px;box-sizing:border-box">
+          <div style="height:32px"></div>
+          <div style="height:32px;display:flex;align-items:center;padding:0 10px;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);border-left:1px solid var(--ln,#E1E7E9)">MAIN STAGE</div>
+          <div style="height:32px;display:flex;align-items:center;padding:0 10px;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);border-left:1px solid var(--ln,#E1E7E9)">ROOM 2</div>
+          <div style="height:32px;display:flex;align-items:center;padding:0 10px;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);border-left:1px solid var(--ln,#E1E7E9)">ROOM 3</div>
+          <div style="height:32px;display:flex;align-items:center;padding:0 10px;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);border-left:1px solid var(--ln,#E1E7E9)">WORKSHOP LAB</div>
+        </div>
+        <div ref="{{ setGrid }}" onDoubleClick="{{ gridDbl }}" style="position:relative;height:720px;min-width:700px;box-sizing:border-box;background-image:repeating-linear-gradient(to bottom,var(--ls,#C8D2D5) 0 1px,transparent 1px 90px),repeating-linear-gradient(to bottom,var(--ln,#E1E7E9) 0 1px,transparent 1px 45px)">
+          <sc-for list="{{ hours }}" as="h" hint-placeholder-count="8">
+            <div style="position:absolute;left:0;width:56px;top:{{ h.top }};padding-top:3px;text-align:center;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ h.label }}</div>
+          </sc-for>
+          <div style="position:absolute;top:0;bottom:0;left:56px;width:1px;background:var(--ln,#E1E7E9)"></div>
+          <div style="position:absolute;top:0;bottom:0;left:calc(56px + (100% - 56px) * 0.25);width:1px;background:var(--ln,#E1E7E9)"></div>
+          <div style="position:absolute;top:0;bottom:0;left:calc(56px + (100% - 56px) * 0.5);width:1px;background:var(--ln,#E1E7E9)"></div>
+          <div style="position:absolute;top:0;bottom:0;left:calc(56px + (100% - 56px) * 0.75);width:1px;background:var(--ln,#E1E7E9)"></div>
+          <div style="position:absolute;left:56px;right:0;top:270px;height:67px;background:var(--sk,#EDF1F2);border-top:1px solid var(--ln,#E1E7E9);border-bottom:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--i4,#99A6AD)">LUNCH · 12:00–12:45</div>
+          <sc-for list="{{ ribbons }}" as="rb" hint-placeholder-count="1">
+            <div style="position:absolute;left:{{ rb.left }};width:{{ rb.w }};top:{{ rb.top }};height:{{ rb.h }};background:repeating-linear-gradient(-45deg,rgba(216,67,43,.13) 0 6px,rgba(216,67,43,.04) 6px 12px);border-top:2px solid var(--cn,#D8432B);border-bottom:2px solid var(--cn,#D8432B);pointer-events:none;z-index:1"></div>
+          </sc-for>
+          <sc-for list="{{ cards }}" as="c" hint-placeholder-count="8">
+            <div onMouseDown="{{ c.onDown }}" onClick="{{ c.onClick }}" style="position:absolute;left:{{ c.left }};width:{{ c.w }};top:{{ c.top }};height:{{ c.h }};border-radius:8px;background:var(--cd,#FFFFFF);border:{{ c.bd }};border-left:3px solid {{ c.col }};box-shadow:{{ c.sh }};padding:5px 9px;cursor:grab;overflow:hidden;box-sizing:border-box;opacity:{{ c.op }};z-index:2">
+              <div style="font:400 10px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);white-space:nowrap">{{ c.time }}</div>
+              <div style="font:500 12px/15px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.t }}</div>
+              <div style="display:{{ c.spDisp }};font:400 10.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);white-space:nowrap">{{ c.sp }}</div>
+            </div>
+          </sc-for>
+          <sc-for list="{{ ghostCards }}" as="g" hint-placeholder-count="0">
+            <div style="position:absolute;left:{{ g.left }};width:{{ g.w }};top:{{ g.top }};height:{{ g.h }};border-radius:6px;border:1.5px dashed var(--sg,#E04E4E);background:var(--sw,#FFEAE6);padding:5px 9px;box-sizing:border-box;overflow:hidden;z-index:4">
+              <div style="font:500 9.5px 'IBM Plex Mono',monospace;color:var(--sg,#E04E4E);white-space:nowrap">✦ {{ g.time }}</div>
+              <div style="font:500 11.5px/14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ g.t }}</div>
+              <div style="display:flex;gap:5px;margin-top:4px">
+                <button onClick="{{ g.onAcc }}" style="height:20px;padding:0 9px;border-radius:4px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 10.5px 'IBM Plex Sans',sans-serif">Accept</button>
+                <button onClick="{{ g.onRej }}" style="height:20px;padding:0 9px;border-radius:4px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);color:var(--i2,#3E4E58);font:500 10.5px 'IBM Plex Sans',sans-serif">Reject</button>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ dropOn }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:{{ drop.left }};width:{{ drop.w }};top:{{ drop.top }};height:{{ drop.h }};border-radius:6px;background:{{ drop.bg }};border:1.5px dashed {{ drop.bd }};box-sizing:border-box;pointer-events:none;z-index:5"></div>
+            <div style="position:absolute;left:{{ drop.left }};top:{{ drop.labTop }};padding:2px 8px;border-radius:4px;background:var(--cd,#FFFFFF);border:1px solid {{ drop.bd }};font:500 10px 'IBM Plex Mono',monospace;color:{{ drop.labFg }};white-space:nowrap;pointer-events:none;z-index:5;box-shadow:0 2px 6px rgba(16,19,25,.12)">{{ drop.label }}</div>
+          </sc-if>
+        </div>
+      </div>
+      <div style="width:280px;flex:none;border-left:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF);display:flex;flex-direction:column;min-height:0">
+        <sc-if value="{{ agentOn }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;gap:8px"><span style="font:500 12px 'IBM Plex Mono',monospace;color:var(--sg,#E04E4E)">✦</span><span style="font:600 12px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i2,#3E4E58)">SCHEDULE AGENT</span></div>
+          <div style="padding:14px 16px;overflow-y:auto;flex:1">
+            <textarea value="{{ aiQ }}" onChange="{{ onAiQ }}" rows="4" placeholder="Keep Petrova's two sessions on different days. Put beginner content in the morning. Leave 16:00 free on day 2." style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
+            <sc-if value="{{ hasChips }}" hint-placeholder-val="{{ false }}">
+              <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);margin:12px 0 6px">UNDERSTOOD AS</div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px">
+                <sc-for list="{{ chips }}" as="ch" hint-placeholder-count="2">
+                  <button onClick="{{ ch.onX }}" title="Remove this constraint" style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;background:var(--sw,#FFEAE6);border:1px solid var(--sl,#FFC9C0);font:500 11px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);text-align:left">{{ ch.t }} ✕</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <button onClick="{{ runAi }}" style="margin-top:12px;width:100%;height:32px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12.5px 'IBM Plex Sans',sans-serif">Draft the empty slots</button>
+            <sc-if value="{{ ran }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:14px;border:1px solid var(--sl,#FFC9C0);background:var(--sw,#FFEAE6);border-radius:8px;padding:12px 13px">
+                <div style="font:500 11px 'IBM Plex Mono',monospace;color:var(--sg,#E04E4E);margin-bottom:7px">✦ PROPOSED · 3 PLACEMENTS</div>
+                <div style="font:400 12px/18px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:pre-line">{{ aiText }}</div>
+                <div style="display:flex;gap:7px;margin-top:11px">
+                  <button onClick="{{ acceptAll }}" style="height:28px;padding:0 12px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12px 'IBM Plex Sans',sans-serif">Accept all</button>
+                  <button onClick="{{ discard }}" style="height:28px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);color:var(--i2,#3E4E58);font:500 12px 'IBM Plex Sans',sans-serif">Discard</button>
+                </div>
+              </div>
+              <div style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);margin-top:9px">Ghost cards on the grid accept one by one. Accepting is a single undo.</div>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{ confOn }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;gap:8px">
+            <span style="font:600 12px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--cn,#D8432B);flex:1">CONFLICT INSPECTOR</span>
+            <button onClick="{{ closeConf }}" style="background:none;border:none;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">✕</button>
+          </div>
+          <div style="padding:12px 16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ confItems }}" as="cf" hint-placeholder-count="2">
+              <div style="border:1px solid var(--cnl,#F3C7C2);border-radius:8px;padding:11px 12px;background:var(--cd,#FFFFFF)">
+                <div style="font:500 11px 'IBM Plex Mono',monospace;color:var(--cn,#D8432B);margin-bottom:4px">{{ cf.kind }}</div>
+                <div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">{{ cf.label }}</div>
+                <div style="display:flex;gap:6px;margin-top:9px">
+                  <button onClick="{{ cf.onGoto }}" style="height:26px;padding:0 10px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Select</button>
+                  <button onClick="{{ cf.onIgnore }}" style="height:26px;padding:0 10px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">Ignore</button>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noConfItems }}" hint-placeholder-val="{{ false }}">
+              <div style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ok,#0E7A5F)">Nothing broken. Every placement is clean.</div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ pub }}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{ closePub }}" aria-label="Close" style="position:fixed;inset:0;background:rgba(13,16,32,.4);border:none;z-index:70;cursor:default"></button>
+    <div style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:440px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:10px;box-shadow:0 12px 32px rgba(16,19,25,.24);z-index:71;padding:20px 22px">
+      <div style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:8px">Publish schedule</div>
+      <div style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:14px">This publishes <span style="font:500 12px 'IBM Plex Mono',monospace">{{ dirty }}</span> unpublished changes to the public schedule, the embeds, and Accelevents. 7 speakers have changed times and receive an updated calendar invite.</div>
+      <button onClick="{{ togCk }}" style="display:flex;align-items:center;gap:9px;background:none;border:none;padding:0;margin-bottom:16px;text-align:left">
+        <span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ ckBd }};background:{{ ckBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);flex:none">{{ ck }}</span>
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">I have reviewed the change list and the notification recipients</span>
+      </button>
+      <div style="display:flex;justify-content:space-between">
+        <button onClick="{{ closePub }}" style="height:32px;padding:0 13px;border-radius:6px;border:none;background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">Cancel</button>
+        <button onClick="{{ doPub }}" style="height:32px;padding:0 15px;border-radius:6px;border:none;background:{{ pubBg }};color:{{ pubFg }};font:600 12.5px 'IBM Plex Sans',sans-serif">{{ pubLabel }}</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ compOn }}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{ compX }}" aria-label="Close" style="position:fixed;inset:0;background:rgba(20,17,12,.32);border:none;z-index:70;cursor:default"></button>
+    <div style="position:fixed;top:0;right:0;bottom:0;width:min(600px,94vw);background:var(--cd,#FFFFFF);border-left:1px solid var(--ln,#E1E7E9);box-shadow:0 12px 32px rgba(16,19,25,.24);z-index:71;display:flex;flex-direction:column">
+      <div style="padding:18px 24px 14px;border-bottom:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;gap:10px">
+        <span style="font:600 19px 'IBM Plex Sans',sans-serif;letter-spacing:-0.01em;color:var(--ik,#16232B);flex:1">New session</span>
+        <span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:0.06em;color:var(--i4,#99A6AD)">DRAFT · NOT PUBLISHED</span>
+        <button onClick="{{ compX }}" aria-label="Close" style="width:28px;height:28px;border-radius:6px;border:none;background:none;font:500 14px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)" style-hover="background:var(--sk,#EDF1F2)">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:20px 24px">
+        <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Title</div>
+        <input ref="{{ setCompT }}" value="{{ cT }}" onChange="{{ onCT }}" placeholder="e.g. Serving LLMs on spot fleets" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Speaker</div><input value="{{ cSp }}" onChange="{{ onCSp }}" placeholder="Name, or TBC" style="width:100%;box-sizing:border-box;height:38px;padding:0 10px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"></div>
+          <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Day</div><select value="{{ cDay }}" onChange="{{ onCDay }}" style="width:100%;box-sizing:border-box;height:38px;padding:0 10px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"><option value="1">Day 1 · Mon 12 Oct</option><option value="2">Day 2 · Tue 13 Oct</option><option value="3">Day 3 · Wed 14 Oct</option></select></div>
+        </div>
+        <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Track</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:5px">
+          <sc-for list="{{ trOpts }}" as="t" hint-placeholder-count="6">
+            <button onClick="{{ t.on }}" style="display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:999px;border:1px solid {{ t.bd }};background:{{ t.bg }};font:{{ t.wt }} 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)"><span style="width:9px;height:9px;border-radius:3px;background:{{ t.col }};flex:none"></span>{{ t.n }}</button>
+          </sc-for>
+        </div>
+        <div style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);margin-bottom:14px">The track sets the card color on the agenda and the public schedule.</div>
+        <div style="display:grid;grid-template-columns:1.2fr 1fr 1.2fr;gap:12px;margin-bottom:14px">
+          <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Room</div><select value="{{ cRoom }}" onChange="{{ onCRoom }}" style="width:100%;box-sizing:border-box;height:38px;padding:0 10px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"><option value="0">Main stage</option><option value="1">Room 2</option><option value="2">Room 3</option><option value="3">Workshop lab</option></select></div>
+          <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Starts</div><select value="{{ cStart }}" onChange="{{ onCStart }}" style="width:100%;box-sizing:border-box;height:38px;padding:0 10px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"><sc-for list="{{ startOpts }}" as="so" hint-placeholder-count="8"><option value="{{ so.v }}">{{ so.l }}</option></sc-for></select></div>
+          <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Length</div><select value="{{ cDur }}" onChange="{{ onCDur }}" style="width:100%;box-sizing:border-box;height:38px;padding:0 10px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"><option value="10">10 min · lightning</option><option value="15">15 min</option><option value="30">30 min · talk</option><option value="45">45 min · keynote</option><option value="60">60 min · panel</option><option value="90">90 min · workshop</option></select></div>
+        </div>
+        <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Notes for the run of show</div>
+        <textarea value="{{ cNo }}" onChange="{{ onCNo }}" rows="3" placeholder="AV needs, intro notes, anything the day-of team should know" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
+        <sc-if value="{{ cWarnOn }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:flex-start;gap:8px;background:var(--cnw,#FBE8E6);border:1px solid var(--cnl,#F3C7C2);border-radius:8px;padding:9px 12px;margin-top:12px">
+            <span style="font:600 11px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B)">⚠</span>
+            <span style="font:400 11.5px/16px 'IBM Plex Mono',monospace;color:var(--cn,#D8432B)">{{ cWarn }} · you can still add it</span>
+          </div>
+        </sc-if>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:8px;padding:12px 24px;border-top:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ cWhen }}</span>
+        <button onClick="{{ compX }}" style="height:36px;padding:0 15px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)">Cancel</button>
+        <button onClick="{{ compAdd }}" style="height:36px;padding:0 18px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 13px 'IBM Plex Sans',sans-serif">Add to agenda</button>
+      </div>
+    </div>
+  </sc-if>
+  <div style="position:fixed;left:16px;bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:8px;padding:10px 12px;box-shadow:0 12px 32px rgba(16,19,25,.16);max-width:440px">
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.msg }}</span>
+        <sc-if value="{{ t.canUndo }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ t.onUndo }}" style="background:none;border:none;font:600 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);padding:0">Undo</button>
+        </sc-if>
+        <button onClick="{{ t.onX }}" aria-label="Dismiss" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:0">✕</button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  static TR = { Agents: '#3E8896', Evals: '#A85788', Infrastructure: '#5A6BA8', Retrieval: '#7E5CB8', Multimodal: '#C4703A', 'In production': '#34526B' };
+  static ACCENTS = {
+    Coral: { dot: '#FF6B6B', l: { sg: '#E04E4E', sw: '#FFEAE6', sl: '#FFC9C0', bt: '#FF6B6B', bf: '#331313' }, d: { sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313' } },
+    Sunset: { dot: '#F2915B', l: { sg: '#BE5F1F', sw: '#FCEFE4', sl: '#F5CFB2', bt: '#F2915B', bf: '#331A0A' }, d: { sg: '#F5AA7E', sw: '#3A2414', sl: '#664028', bt: '#F2915B', bf: '#331A0A' } },
+    Sky: { dot: '#4A9BD8', l: { sg: '#2B77B3', sw: '#E7F1FA', sl: '#BFDCF1', bt: '#4A9BD8', bf: '#0D2333' }, d: { sg: '#7FBCE8', sw: '#152A3A', sl: '#2C4E66', bt: '#4A9BD8', bf: '#0D2333' } },
+    Slate: { dot: '#5A6BA8', l: { sg: '#4A5A99', sw: '#EAEDF7', sl: '#C8CFE9', bt: '#5A6BA8', bf: '#FFFFFF' }, d: { sg: '#98A6DA', sw: '#1F2542', sl: '#3A4370', bt: '#8B9AD0', bf: '#12162E' } },
+    Graphite: { dot: '#5F6B79', l: { sg: '#46535F', sw: '#ECEFF2', sl: '#C9D2DA', bt: '#4A5764', bf: '#FFFFFF' }, d: { sg: '#A9B6C2', sw: '#232B33', sl: '#3E4A56', bt: '#93A3B1', bf: '#111921' } }
+  };
+  static DARK = { pp: '#101013', cd: '#17171B', sk: '#1F1F24', ln: '#2A2A31', ls: '#3F3F49', ik: '#F2F2F0', i2: '#C9C9C6', i3: '#929290', i4: '#686865', sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313', cn: '#F0766A', cnw: '#3A1F1E', cnl: '#5E2E2B', pd: '#F0A468', pdw: '#332617', pdl: '#54402A', ok: '#57B899', okw: '#123029', okl: '#1F4A3E', if: '#8B9AD0', ifw: '#262833', ifl: '#3E4152' };
+  MH = 1.5;
+  seed() {
+    return [
+      { id: 's1', t: 'Opening keynote', tr: 'In production', sp: 'M. Duarte', dur: 45, day: 2, room: 0, start: 5 },
+      { id: 's2', t: 'Evals beyond vibes', tr: 'Evals', sp: 'S. Petrova', dur: 30, day: 2, room: 1, start: 60 },
+      { id: 's3', t: 'Guardrail budgets', tr: 'Agents', sp: 'N. Vogel', dur: 30, day: 2, room: 1, start: 75 },
+      { id: 's4', t: 'A billion documents, one index', tr: 'Retrieval', sp: 'K. Osei', dur: 45, day: 2, room: 2, start: 90 },
+      { id: 's5', t: 'Spot fleets without tears', tr: 'Infrastructure', sp: 'L. Bergström', dur: 30, day: 2, room: 0, start: 120 },
+      { id: 's6', t: 'The retriever that lied', tr: 'Evals', sp: 'M. Chen', dur: 30, day: 2, room: 3, start: 150 },
+      { id: 's7', t: 'Vision agents in the warehouse', tr: 'Multimodal', sp: 'O. McCarthy', dur: 30, day: 2, room: 3, start: 165 },
+      { id: 's8', t: 'Postmortem: the agent gateway outage', tr: 'In production', sp: 'D. Whitfield', dur: 30, day: 2, room: 0, start: 240 },
+      { id: 's9', t: 'Preference pipelines in practice', tr: 'Evals', sp: 'S. Petrova', dur: 30, day: 2, room: 3, start: 75 },
+      { id: 's10', t: 'Serverless fine-tuning', tr: 'Infrastructure', sp: 'R. Sharma', dur: 60, day: 2, room: 1, start: 360 },
+      { id: 's11', t: 'Agents day openers', tr: 'Agents', sp: 'A. Rao', dur: 45, day: 1, room: 0, start: 5 },
+      { id: 's12', t: 'Hybrid search field notes', tr: 'Retrieval', sp: 'A. Diallo', dur: 30, day: 1, room: 2, start: 90 },
+      { id: 's13', t: 'Closing panel: what broke this year', tr: 'In production', sp: 'G. Liu', dur: 60, day: 3, room: 0, start: 390 },
+      { id: 's14', t: 'Lightning round', tr: 'Agents', sp: 'various', dur: 45, day: 3, room: 1, start: 60 }
+    ];
+  }
+  seedTray() {
+    return [
+      { id: 'u1', t: 'Long-horizon planning without long context', tr: 'Agents', sp: 'W. Zhang', dur: 30 },
+      { id: 'u2', t: 'Chunking strategies: a field guide', tr: 'Retrieval', sp: 'B. Adeyemi', dur: 10 },
+      { id: 'u3', t: 'Human preference data you can trust', tr: 'Evals', sp: 'S. Petrova', dur: 30 },
+      { id: 'u4', t: 'Golden-trace regression workshop', tr: 'Evals', sp: 'K. Watanabe', dur: 90 }
+    ];
+  }
+  state = { theme: 'system', accent: 'Coral', sessions: this.seed(), tray: this.seedTray(), day: 2, q: '', dr: null, sel: null, toasts: [], pub: false, ck: false, busy: false, dirty: 3, comp: null, panel: 'agent', aiQ: '', chips: [], aiText: '', ghosts: [], ran: false, ignored: [] };
+  componentDidMount() {
+    try { const th = localStorage.getItem('gather.theme'); if (th) this.setState({ theme: th }); const ac = localStorage.getItem('gather.accent'); if (ac && Component.ACCENTS[ac]) this.setState({ accent: ac }); } catch (e) {}
+    this._mq = window.matchMedia('(prefers-color-scheme: dark)');
+    this._mqFn = () => this.forceUpdate();
+    this._mq.addEventListener('change', this._mqFn);
+    this._mm = (e) => this.onMove(e);
+    this._mu = (e) => this.onUp(e);
+    this._kd = (e) => this.onKey(e);
+    window.addEventListener('mousemove', this._mm);
+    window.addEventListener('mouseup', this._mu);
+    window.addEventListener('keydown', this._kd);
+    this.applyTheme();
+  }
+  componentDidUpdate() { this.applyTheme(); }
+  componentWillUnmount() {
+    window.removeEventListener('mousemove', this._mm);
+    window.removeEventListener('mouseup', this._mu);
+    window.removeEventListener('keydown', this._kd);
+    if (this._mq) this._mq.removeEventListener('change', this._mqFn);
+  }
+  isDark() { return this.state.theme === 'dark' || (this.state.theme === 'system' && this._mq && this._mq.matches); }
+  applyTheme() {
+    if (!this.root) return;
+    const dark = this.isDark();
+    Object.entries(Component.DARK).forEach(([k, v]) => { dark ? this.root.style.setProperty('--' + k, v) : this.root.style.removeProperty('--' + k); });
+    const acc = (Component.ACCENTS[this.state.accent] || Component.ACCENTS.Coral)[dark ? 'd' : 'l'];
+    Object.entries(acc).forEach(([k, v]) => this.root.style.setProperty('--' + k, v));
+    this.root.style.colorScheme = dark ? 'dark' : 'light';
+  }
+  fmt(m) { const t = 540 + m; return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); }
+  overlaps(a, b) { return a.start < b.start + b.dur && b.start < a.start + a.dur; }
+  conflicts(extra) {
+    const day = this.state.day;
+    const list = this.state.sessions.filter(x => x.day === day && x.room != null).concat(extra ? [extra] : []);
+    const pairs = [];
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+      const a = list[i], b = list[j];
+      if (a.id === b.id) continue;
+      if (!this.overlaps(a, b)) continue;
+      if (a.room === b.room) pairs.push({ a, b, kind: 'ROOM DOUBLE-BOOKED', label: (a.room === 0 ? 'Main stage' : a.room === 3 ? 'Workshop lab' : 'Room ' + (a.room + 1)) + ' busy ' + this.fmt(Math.max(a.start, b.start)) + '–' + this.fmt(Math.min(a.start + a.dur, b.start + b.dur)) + ': "' + a.t + '" and "' + b.t + '"' });
+      else if (a.sp === b.sp && a.sp !== 'various') pairs.push({ a, b, kind: 'SPEAKER IN TWO PLACES', label: a.sp + ' speaks in two rooms at ' + this.fmt(Math.max(a.start, b.start)) });
+    }
+    return pairs.filter(p => !this.state.ignored.includes([p.a.id, p.b.id].sort().join('|')));
+  }
+  toast(msg, revert) {
+    const id = Math.random().toString(36).slice(2);
+    this.setState(s => ({ toasts: [...s.toasts.slice(-2), { id, msg, revert }] }));
+    setTimeout(() => this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), revert ? 10000 : 6000);
+  }
+  pushUndo(fn) { this._undo = (this._undo || []).concat([fn]); }
+  undoLast() { const u = (this._undo || []).pop(); if (u) { u(); this.toast('Undone.'); } }
+  gridPos(e) {
+    if (!this.gridEl) return null;
+    const r = this.gridEl.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    if (x < 0 || x > r.width || y < 0 || y > r.height) return null;
+    const colW = (r.width - 56) / 4;
+    const room = Math.max(0, Math.min(3, Math.floor((x - 56) / colW)));
+    return { room, y };
+  }
+  onMove(e) {
+    if (!this._drag) return;
+    const d = this._drag;
+    const p = this.gridPos(e);
+    let overTray = false;
+    if (this.trayEl) { const tr = this.trayEl.getBoundingClientRect(); overTray = e.clientX >= tr.left && e.clientX <= tr.right && e.clientY >= tr.top && e.clientY <= tr.bottom; }
+    if (!p) { this.setState({ dr: d.fromTray || !overTray ? null : { tray: true } }); this._cand = overTray && !d.fromTray ? { tray: true } : null; return; }
+    let start = Math.round((p.y - d.offY) / this.MH / 5) * 5;
+    start = Math.max(0, Math.min(480 - d.dur, start));
+    const cand = { id: d.id, room: p.room, start, dur: d.dur };
+    const conf = this.conflicts({ ...cand, sp: d.sp, t: d.t, day: this.state.day, id: '__cand__' }).filter(c => c.a.id === '__cand__' || c.b.id === '__cand__');
+    this._cand = { room: p.room, start, conf: conf.length ? conf[0].label : null };
+    this.setState({ dr: this._cand });
+  }
+  onUp() {
+    if (!this._drag) return;
+    const d = this._drag, c = this._cand;
+    this._drag = null; this._cand = null;
+    this.setState({ dr: null });
+    if (!c) return;
+    if (c.tray && !d.fromTray) { this.unschedule(d.id); return; }
+    if (c.room == null) return;
+    if (d.fromTray) {
+      const item = this.state.tray.find(x => x.id === d.id);
+      if (!item) return;
+      this.setState(s => ({ tray: s.tray.filter(x => x.id !== d.id), sessions: [...s.sessions, { ...item, day: s.day, room: c.room, start: c.start }], dirty: s.dirty + 1 }));
+      this.pushUndo(() => this.setState(s => ({ sessions: s.sessions.filter(x => x.id !== d.id), tray: [...s.tray, item], dirty: Math.max(0, s.dirty - 1) })));
+    } else {
+      const prev = this.state.sessions.find(x => x.id === d.id);
+      const was = { room: prev.room, start: prev.start };
+      this.setState(s => ({ sessions: s.sessions.map(x => x.id === d.id ? { ...x, room: c.room, start: c.start } : x), dirty: s.dirty + 1 }));
+      this.pushUndo(() => this.setState(s => ({ sessions: s.sessions.map(x => x.id === d.id ? { ...x, ...was } : x), dirty: Math.max(0, s.dirty - 1) })));
+    }
+    const undoRef = () => this.undoLast();
+    if (c.conf) this.toast('Placed with a conflict. ' + c.conf + '.', undoRef);
+  }
+  unschedule(id) {
+    const item = this.state.sessions.find(x => x.id === id);
+    if (!item) return;
+    const bare = { id: item.id, t: item.t, tr: item.tr, sp: item.sp, dur: item.dur };
+    this.setState(s => ({ sessions: s.sessions.filter(x => x.id !== id), tray: [...s.tray, bare], sel: null, dirty: s.dirty + 1 }));
+    this.pushUndo(() => this.setState(s => ({ tray: s.tray.filter(x => x.id !== id), sessions: [...s.sessions, item], dirty: Math.max(0, s.dirty - 1) })));
+    this.toast('"' + item.t + '" returned to the tray.', () => this.undoLast());
+  }
+  startDrag(e, item, fromTray) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    let offY = 12;
+    if (!fromTray && this.gridEl) { const r = this.gridEl.getBoundingClientRect(); offY = e.clientY - r.top - item.start * this.MH; }
+    this._drag = { id: item.id, fromTray, dur: item.dur, sp: item.sp, t: item.t, offY: Math.max(4, offY) };
+  }
+  onKey(e) {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); this.undoLast(); return; }
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.key === 'Escape') {
+      if (this.state.comp) { this.setState({ comp: null }); }
+      else if (this._drag) { this._drag = null; this._cand = null; this.setState({ dr: null }); }
+      else if (this.state.pub) this.setState({ pub: false });
+      else if (this.state.sel) this.setState({ sel: null });
+      return;
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && this.state.sel) this.unschedule(this.state.sel);
+  }
+  openComp(pre) {
+    this.setState(s2 => ({ comp: { t: '', sp: '', tr: 'Agents', notes: '', day: s2.day, room: 0, start: 120, dur: 30, ...(pre || {}) }, sel: null }));
+    setTimeout(() => { if (this.compT) this.compT.focus(); }, 80);
+  }
+  compConf() {
+    const c = this.state.comp; if (!c) return null;
+    const rn = (r) => r === 0 ? 'Main stage' : r === 3 ? 'Workshop lab' : 'Room ' + (r + 1);
+    const cand = { start: c.start, dur: c.dur };
+    const list = this.state.sessions.filter(x => x.day === c.day && x.room != null);
+    for (const b of list) {
+      if (!this.overlaps(cand, b)) continue;
+      if (b.room === c.room) return rn(c.room) + ' is busy ' + this.fmt(Math.max(c.start, b.start)) + '–' + this.fmt(Math.min(c.start + c.dur, b.start + b.dur)) + ': "' + b.t + '"';
+      if (c.sp && c.sp.trim() && b.sp === c.sp.trim() && b.sp !== 'various') return c.sp.trim() + ' already speaks at ' + this.fmt(b.start) + ' in ' + rn(b.room);
+    }
+    return null;
+  }
+  addComp() {
+    const c = this.state.comp; if (!c) return;
+    if (!c.t.trim()) { this.toast('Give the session a title. Everything else has a default.'); return; }
+    const conf = this.compConf();
+    const sess = { id: 'n' + Math.random().toString(36).slice(2, 7), t: c.t.trim(), sp: c.sp.trim() || 'TBC', tr: c.tr, dur: c.dur, day: c.day, room: c.room, start: Math.max(0, Math.min(480 - c.dur, c.start)), notes: c.notes.trim() };
+    this.setState(s2 => ({ sessions: [...s2.sessions, sess], comp: null, day: c.day, sel: sess.id, dirty: s2.dirty + 1 }));
+    this.pushUndo(() => this.setState(s2 => ({ sessions: s2.sessions.filter(x => x.id !== sess.id), dirty: Math.max(0, s2.dirty - 1), sel: null })));
+    this.toast('"' + sess.t + '" added, day ' + c.day + ' at ' + this.fmt(sess.start) + (conf ? '. Placed with a conflict.' : '.'), () => this.undoLast());
+  }
+  renderVals() {
+    const s = this.state, TR = Component.TR, MH = this.MH;
+    const colL = (r) => 'calc(56px + (100% - 56px) * ' + (r * 0.25) + ' + 4px)';
+    const colW = 'calc((100% - 56px) * 0.25 - 8px)';
+    const cmp = s.comp || { t: '', sp: '', tr: 'Agents', notes: '', day: s.day, room: 0, start: 120, dur: 30 };
+    const cSet = (k, num) => (e) => { const v = num ? parseInt(e.target.value, 10) : e.target.value; this.setState(s2 => ({ comp: s2.comp ? { ...s2.comp, [k]: v } : s2.comp })); };
+    const roomName = (r) => r === 0 ? 'Main stage' : r === 3 ? 'Workshop lab' : 'Room ' + (r + 1);
+    const startOpts = Array.from({ length: 31 }, (_, i) => ({ v: i * 15, l: this.fmt(i * 15) }));
+    const compWarn = this.compConf();
+    const confPairs = this.conflicts(null);
+    const confIds = new Set(); confPairs.forEach(p => { confIds.add(p.a.id); confIds.add(p.b.id); });
+    const dayList = s.sessions.filter(x => x.day === s.day && x.room != null);
+    const laneMap = {};
+    [0, 1, 2, 3].forEach(rm => {
+      const rs = dayList.filter(x => x.room === rm).sort((a, b) => a.start - b.start || b.dur - a.dur);
+      let lanes = [], cluster = [], clusterEnd = -1;
+      const flush = () => { const n = Math.max(1, lanes.length); cluster.forEach(y => { laneMap[y.id].n = n; }); cluster = []; lanes = []; };
+      rs.forEach(x => {
+        if (cluster.length && x.start >= clusterEnd) flush();
+        let li = lanes.findIndex(end => end <= x.start);
+        if (li === -1) { lanes.push(x.start + x.dur); li = lanes.length - 1; } else { lanes[li] = x.start + x.dur; }
+        laneMap[x.id] = { lane: li };
+        cluster.push(x); clusterEnd = Math.max(clusterEnd, x.start + x.dur);
+      });
+      flush();
+    });
+    const cards = dayList.map(c => {
+      const lm = laneMap[c.id] || { lane: 0, n: 1 };
+      const frac = 0.25 / lm.n;
+      const leftFrac = c.room * 0.25 + frac * lm.lane;
+      return ({
+      id: c.id, t: c.t, sp: c.sp, spDisp: c.dur * MH >= 56 && lm.n === 1 ? 'block' : 'none', col: TR[c.tr],
+      time: lm.n > 1 ? this.fmt(c.start) : this.fmt(c.start) + '–' + this.fmt(c.start + c.dur) + ' · ' + c.dur + ' min',
+      left: 'calc(56px + (100% - 56px) * ' + leftFrac + ' + 3px)', w: 'calc((100% - 56px) * ' + frac + ' - 6px)', top: (c.start * MH) + 'px', h: Math.max(24, c.dur * MH - 2) + 'px',
+      bd: confIds.has(c.id) ? '1.5px solid var(--cn,#D8432B)' : (s.sel === c.id ? '1.5px solid var(--sg,#E04E4E)' : '1px solid var(--ln,#E1E7E9)'),
+      sh: s.sel === c.id ? '0 4px 12px rgba(16,19,25,.14)' : '0 1px 2px rgba(13,16,32,.06)',
+      op: this._drag && this._drag.id === c.id ? '0.35' : '1',
+      onDown: (e) => this.startDrag(e, c, false),
+      onClick: (e) => { e.stopPropagation(); this.setState({ sel: s.sel === c.id ? null : c.id }); }
+    }); });
+    const ribbons = [];
+    confPairs.forEach(p => { if (p.a.room === p.b.room) { const t = Math.max(p.a.start, p.b.start), b = Math.min(p.a.start + p.a.dur, p.b.start + p.b.dur); ribbons.push({ left: colL(p.a.room), w: colW, top: (t * MH) + 'px', h: Math.max(6, (b - t) * MH) + 'px' }); } });
+    const ghostCards = s.ghosts.map(g => ({
+      t: g.t, time: this.fmt(g.start) + ' · ' + g.dur + ' MIN',
+      left: colL(g.room), w: colW, top: (g.start * MH) + 'px', h: Math.max(44, g.dur * MH - 2) + 'px',
+      onAcc: () => this.acceptGhost(g.ref), onRej: () => this.setState(st => ({ ghosts: st.ghosts.filter(x => x.ref !== g.ref) }))
+    }));
+    const q = s.q.toLowerCase();
+    const tray = s.tray.filter(u => !q || u.t.toLowerCase().includes(q) || u.sp.toLowerCase().includes(q)).map(u => ({
+      t: u.t, col: TR[u.tr], meta: u.tr + ' · ' + u.sp + ' · ' + u.dur + ' min',
+      op: this._drag && this._drag.id === u.id ? '0.35' : '1',
+      onDown: (e) => this.startDrag(e, u, true)
+    }));
+    const dr = s.dr && s.dr.room != null ? s.dr : null;
+    const days = [1, 2, 3].map(n => ({ n: 'Day ' + n, on: () => this.setState({ day: n, sel: null, ghosts: n === 2 ? s.ghosts : [] }), bg: s.day === n ? 'var(--cd,#FFFFFF)' : 'none', fg: s.day === n ? 'var(--ik,#16232B)' : 'var(--i3,#6B7B84)', wt: s.day === n ? '600' : '500', sh: s.day === n ? '0 1px 2px rgba(16,19,25,.08)' : 'none' }));
+    return {
+      setRoot: (el) => { this.root = el; this.applyTheme(); },
+      setGrid: (el) => { this.gridEl = el; },
+      setCompT: (el) => { this.compT = el; },
+      newSess: () => this.openComp(),
+      gridDbl: (e) => { if (this.state.comp || this._drag) return; const p = this.gridPos(e); if (!p) return; this.openComp({ room: p.room, start: Math.max(0, Math.min(450, Math.round(p.y / MH / 15) * 15)) }); },
+      compOn: !!s.comp,
+      compX: () => this.setState({ comp: null }),
+      compAdd: () => this.addComp(),
+      trOpts: Object.keys(Component.TR).map(n => ({ n, col: Component.TR[n], on: () => this.setState(s2 => ({ comp: s2.comp ? { ...s2.comp, tr: n } : s2.comp })), bd: cmp.tr === n ? Component.TR[n] : 'var(--ls,#C8D2D5)', bg: cmp.tr === n ? 'var(--sk,#EDF1F2)' : 'var(--cd,#FFFFFF)', wt: cmp.tr === n ? '600' : '400' })),
+      cT: cmp.t, onCT: cSet('t'), cSp: cmp.sp, onCSp: cSet('sp'), cTr: cmp.tr, onCTr: cSet('tr'), cNo: cmp.notes, onCNo: cSet('notes'),
+      cDay: cmp.day, onCDay: cSet('day', true), cRoom: cmp.room, onCRoom: cSet('room', true), cStart: cmp.start, onCStart: cSet('start', true), cDur: cmp.dur, onCDur: cSet('dur', true),
+      startOpts, cWarn: compWarn || '', cWarnOn: !!s.comp && !!compWarn,
+      cWhen: 'Day ' + cmp.day + ' · ' + this.fmt(cmp.start) + '–' + this.fmt(Math.min(480, cmp.start + cmp.dur)) + ' · ' + roomName(cmp.room),
+      setTray: (el) => { this.trayEl = el; },
+      days, cards, ribbons, ghostCards, tray, trayN: s.tray.length, trayEmpty: tray.length === 0,
+      q: s.q, onQ: (e) => this.setState({ q: e.target.value }),
+      hours: Array.from({ length: 8 }, (_, i) => ({ label: this.fmt(i * 60), top: (i * 60 * MH) + 'px' })),
+      dropOn: !!dr,
+      drop: dr ? { left: colL(dr.room), w: colW, top: (dr.start * MH) + 'px', h: Math.max(24, (this._drag ? this._drag.dur : 30) * MH - 2) + 'px', bg: dr.conf ? 'rgba(216,67,43,.12)' : 'var(--sw,#FFEAE6)', bd: dr.conf ? 'var(--cn,#D8432B)' : 'var(--sg,#E04E4E)', label: dr.conf ? dr.conf : this.fmt(dr.start) + ' · drop to place', labFg: dr.conf ? 'var(--cn,#D8432B)' : 'var(--sg,#E04E4E)', labTop: (dr.start * MH - 24) + 'px' } : { left: 0, w: 0, top: 0, h: 0, bg: '', bd: '', label: '', labFg: '', labTop: 0 },
+      hasConf: confPairs.length > 0, noConf: confPairs.length === 0, confCount: confPairs.length,
+      confLabel: confPairs.length === 1 ? '1 CONFLICT' : confPairs.length + ' CONFLICTS',
+      openConf: () => this.setState({ panel: 'conflicts' }), closeConf: () => this.setState({ panel: 'agent' }),
+      agentOn: s.panel === 'agent', confOn: s.panel === 'conflicts',
+      confItems: confPairs.map(p => ({ kind: p.kind, label: p.label, onGoto: () => this.setState({ sel: p.a.id }), onIgnore: () => this.setState(st => ({ ignored: [...st.ignored, [p.a.id, p.b.id].sort().join('|')] })) })),
+      noConfItems: confPairs.length === 0,
+      dirty: s.dirty,
+      pub: s.pub, openPub: () => this.setState({ pub: true, ck: false }), closePub: () => this.setState({ pub: false }),
+      ck: s.ck ? '✓' : '', ckBg: s.ck ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', ckBd: s.ck ? 'var(--sg,#E04E4E)' : 'var(--ls,#C8D2D5)',
+      togCk: () => this.setState(st => ({ ck: !st.ck })),
+      pubBg: s.ck ? 'var(--bt,#FF6B6B)' : 'var(--sk,#EDF1F2)', pubFg: s.ck ? 'var(--bf,#331313)' : 'var(--i4,#99A6AD)',
+      pubLabel: s.busy ? 'Publishing…' : 'Publish schedule',
+      doPub: () => { if (!s.ck || s.busy) return; this.setState({ busy: true }); setTimeout(() => { this.setState({ busy: false, pub: false, dirty: 0 }); this.toast('Schedule published. 7 speakers notified with a fresh calendar invite.'); }, 700); },
+      aiQ: s.aiQ, onAiQ: (e) => this.setState({ aiQ: e.target.value }),
+      chips: s.chips.map((c, i) => ({ t: c, onX: () => this.setState(st => ({ chips: st.chips.filter((_, j) => j !== i) })) })),
+      hasChips: s.chips.length > 0, ran: s.ran,
+      aiText: s.aiText,
+      runAi: () => this.runAi(),
+      acceptAll: () => this.acceptAll(),
+      discard: () => this.setState({ ghosts: [], ran: false, aiText: '' }),
+      viewToast: () => this.toast('Track, list, and week views ship with the full build. Grid is live.'),
+      popUser: !!this.state.userMenu,
+      togUser: () => this.setState(s2 => ({ userMenu: !s2.userMenu })),
+      closeUser: () => this.setState({ userMenu: false }),
+      profileGo: () => { this.setState({ userMenu: false }); this.toast('Your profile: name, avatar, and notification rules. Next screen to design.'); },
+      signOut: () => { this.setState({ userMenu: false }); this.toast('A real build signs you out here. The demo keeps you in.'); },
+      themeWord: (this.state.theme || 'system')[0].toUpperCase() + (this.state.theme || 'system').slice(1),
+      accents: Object.keys(Component.ACCENTS).map(n => ({ n, c: Component.ACCENTS[n].dot, on: () => { try { localStorage.setItem('gather.accent', n); } catch (e) {} this.setState({ accent: n }); }, ring: (this.state.accent || 'Coral') === n ? '0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ' + Component.ACCENTS[n].dot : 'inset 0 0 0 1px rgba(0,0,0,.12)' })),
+      togTheme: () => { const next = s.theme === 'system' ? 'light' : s.theme === 'light' ? 'dark' : 'system'; try { localStorage.setItem('gather.theme', next); } catch (e) {} this.setState({ theme: next }); },
+      themeGlyph: s.theme === 'system' ? '◐' : s.theme === 'light' ? '○' : '●',
+      themeTitle: 'Theme: ' + s.theme + ', click to change',
+      toasts: s.toasts.map(t => ({ msg: t.msg, canUndo: !!t.revert, onUndo: () => { t.revert(); this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })); }, onX: () => this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })) }))
+    };
+  }
+  runAi() {
+    const text = this.state.aiQ.trim() || "Keep Petrova's two sessions apart. Beginner content in the morning. Leave 16:00 free on day 2.";
+    const chips = text.split(/[.\n]/).map(x => x.trim()).filter(Boolean).slice(0, 4);
+    const free = { u4: { room: 3, start: 225 }, u1: { room: 2, start: 150 }, u3: { room: 1, start: 255 } };
+    const ghosts = this.state.tray.filter(u => free[u.id]).map(u => ({ ref: u.id, t: u.t, dur: u.dur, ...free[u.id] }));
+    const placedNames = ghosts.map(g => '"' + g.t + '"').join(', ');
+    this.setState({
+      day: 2, chips, ghosts, ran: true,
+      aiText: 'Placed ' + ghosts.length + ' of ' + this.state.tray.length + ' tray sessions on day 2: ' + placedNames + '.\nKept Petrova\u2019s sessions in separate slots, put the workshop in the lab right after lunch, and left 16:00 clear.\nCould not place "Chunking strategies": no clean 10-minute gap remains before lunch.'
+    });
+  }
+  acceptGhost(ref) {
+    const g = this.state.ghosts.find(x => x.ref === ref);
+    const item = this.state.tray.find(x => x.id === ref);
+    if (!g || !item) return;
+    this.setState(s => ({ tray: s.tray.filter(x => x.id !== ref), sessions: [...s.sessions, { ...item, day: 2, room: g.room, start: g.start }], ghosts: s.ghosts.filter(x => x.ref !== ref), dirty: s.dirty + 1 }));
+    this.pushUndo(() => this.setState(s => ({ sessions: s.sessions.filter(x => x.id !== ref), tray: [...s.tray, item], dirty: Math.max(0, s.dirty - 1) })));
+    this.toast('Accepted "' + item.t + '".', () => this.undoLast());
+  }
+  acceptAll() {
+    const snapshot = { tray: this.state.tray, sessions: this.state.sessions, dirty: this.state.dirty };
+    const ghosts = this.state.ghosts;
+    if (!ghosts.length) return;
+    this.setState(s => {
+      let tray = s.tray, sessions = s.sessions;
+      ghosts.forEach(g => { const item = tray.find(x => x.id === g.ref); if (item) { tray = tray.filter(x => x.id !== g.ref); sessions = [...sessions, { ...item, day: 2, room: g.room, start: g.start }]; } });
+      return { tray, sessions, ghosts: [], dirty: s.dirty + ghosts.length };
+    });
+    this.pushUndo(() => this.setState({ tray: snapshot.tray, sessions: snapshot.sessions, dirty: snapshot.dirty }));
+    this.toast(ghosts.length + ' placements accepted as one change. ⌘Z reverts the whole batch.', () => this.undoLast());
+  }
+}
+</script>
+</body>
+</html>

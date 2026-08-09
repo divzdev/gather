@@ -8,7 +8,10 @@ const config = [
   ...nextTypescript,
   {
     // Generated from the OpenAPI schema by `make types` — never hand-edited.
-    ignores: [".next/**", "node_modules/**", "src/lib/api-types.ts"],
+    // Generated: api-types.ts from the OpenAPI schema, design/ from the
+    // .dc.html prototypes. Linting them would pressure edits to generated
+    // output instead of to the source.
+    ignores: [".next/**", "node_modules/**", "src/lib/api-types.ts", "src/components/design/**"],
   },
 ];
 

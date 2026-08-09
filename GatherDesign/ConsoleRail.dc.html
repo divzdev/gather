@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+</helmet>
+<aside style="height:100vh;max-height:100%;width:{{ railW }};transition:width .16s ease;border-right:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF);display:flex;flex-direction:column;overflow:visible;box-sizing:border-box">
+  <sc-if value="{{ exp }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:center;gap:6px;margin:12px 8px 6px 12px">
+      <a href="Gather Landing.dc.html" title="Gather home" style="text-decoration:none;flex:1;min-width:0;border-radius:12px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);padding:11px 12px;display:flex;align-items:center;gap:10px">
+        <svg width="30" height="30" viewBox="0 0 24 24" aria-label="Gather" style="flex:none"><rect width="24" height="24" rx="6.5" fill="#12142E"></rect><circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B"></circle><circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7"></circle><circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7"></circle><circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7"></circle></svg>
+        <span style="flex:1;min-width:0">
+          <span style="display:block;font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">AI Engineer 2026</span>
+          <span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);white-space:nowrap">12–14 Oct · SF</span>
+        </span>
+        <span style="font:400 10px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">▾</span>
+      </a>
+      <button onClick="{{ togRail }}" title="Collapse sidebar" aria-label="Collapse sidebar" style="width:26px;height:26px;border-radius:7px;border:none;background:none;color:var(--i3,#6B7B84);display:flex;align-items:center;justify-content:center;padding:0;flex:none" style-hover="background:var(--sk,#EDF1F2);color:var(--ik,#16232B)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="2" width="12" height="11" rx="2.5"></rect><path d="M5.7 2v11"></path><path d="M10.9 5.6L9 7.5l1.9 1.9"></path></svg></button>
+    </div>
+  </sc-if>
+  <sc-if value="{{ col }}" hint-placeholder-val="{{ false }}">
+    <div style="position:relative;display:flex;justify-content:center;margin:12px 0 6px">
+      <button onClick="{{ togRail }}" onMouseEnter="{{ lgIn }}" onMouseLeave="{{ lgOut }}" aria-label="Open sidebar" style="width:40px;height:40px;border-radius:10px;border:none;background:{{ lgBg }};display:flex;align-items:center;justify-content:center;padding:0">
+        <sc-if value="{{ lgHov }}" hint-placeholder-val="{{ false }}">
+          <svg width="17" height="17" viewBox="0 0 15 15" fill="none" stroke="var(--i2,#3E4E58)" stroke-width="1.3"><rect x="1.5" y="2" width="12" height="11" rx="2.5"></rect><path d="M5.7 2v11"></path><path d="M8.9 5.6l1.9 1.9-1.9 1.9"></path></svg>
+        </sc-if>
+        <sc-if value="{{ lgIdle }}" hint-placeholder-val="{{ true }}">
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-label="Gather"><rect width="24" height="24" rx="6.5" fill="#12142E"></rect><circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B"></circle><circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7"></circle><circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7"></circle><circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7"></circle></svg>
+        </sc-if>
+      </button>
+      <sc-if value="{{ lgHov }}" hint-placeholder-val="{{ false }}">
+        <span style="position:absolute;left:56px;top:50%;transform:translateY(-50%);background:var(--ik,#16232B);color:var(--cd,#FFFFFF);font:500 11px 'IBM Plex Sans',sans-serif;padding:5px 10px;border-radius:7px;white-space:nowrap;box-shadow:0 4px 14px rgba(13,16,32,.22);z-index:120;pointer-events:none">Open sidebar</span>
+      </sc-if>
+    </div>
+  </sc-if>
+  <nav style="padding:{{ navPad }};display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden">
+    <a href="Overview.dc.html" title="Overview" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ ov.bg }};color:{{ ov.fg }};font:{{ ov.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor" style="flex:none"><rect x="1" y="1" width="5.5" height="5.5" rx="1.5"></rect><rect x="8.5" y="1" width="5.5" height="5.5" rx="1.5"></rect><rect x="1" y="8.5" width="5.5" height="5.5" rx="1.5"></rect><rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1.5"></rect></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Overview</span><span style="display:{{ ov.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <div style="display:{{ eyeD }};font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:16px 13px 6px">PROGRAM</div>
+    <div style="display:{{ divD }};height:1px;background:var(--ln,#E1E7E9);margin:9px 12px"></div>
+    <a href="Submissions.dc.html" title="Submissions" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ su.bg }};color:{{ su.fg }};font:{{ su.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor" style="flex:none"><rect x="1.5" y="2" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="6.3" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="10.6" width="8" height="2.4" rx="1.2"></rect></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Submissions</span><span style="font:500 10.5px 'IBM Plex Mono',monospace;background:var(--sk,#EDF1F2);color:var(--i3,#6B7B84);border-radius:99px;padding:2px 7px">38</span><span style="display:{{ su.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <a href="Sessions.dc.html" title="Sessions" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ se.bg }};color:{{ se.fg }};font:{{ se.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none"><rect x="1.5" y="4.5" width="9.5" height="9" rx="1.8"></rect><path d="M4.5 4.5V3.2A1.7 1.7 0 0 1 6.2 1.5h5.6a1.7 1.7 0 0 1 1.7 1.7v5.6a1.7 1.7 0 0 1-1.7 1.7h-1.3"></path></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sessions</span><span style="font:500 10.5px 'IBM Plex Mono',monospace;background:var(--sk,#EDF1F2);color:var(--i3,#6B7B84);border-radius:99px;padding:2px 7px">61</span><span style="display:{{ se.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <a href="Review.dc.html" title="Review" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ rv.bg }};color:{{ rv.fg }};font:{{ rv.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none"><circle cx="7.5" cy="7.5" r="6"></circle><circle cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none"></circle></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Review</span><span style="font:500 10.5px 'IBM Plex Mono',monospace;background:var(--sk,#EDF1F2);color:var(--i3,#6B7B84);border-radius:99px;padding:2px 7px">6</span><span style="display:{{ rv.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <a href="Speakers.dc.html" title="Speakers" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ sp.bg }};color:{{ sp.fg }};font:{{ sp.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none"><circle cx="7.5" cy="4.6" r="2.6"></circle><rect x="2.4" y="9.4" width="10.2" height="4.4" rx="2.2"></rect></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Speakers</span><span style="display:{{ sp.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <a href="Agenda.dc.html" title="Agenda" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ ag.bg }};color:{{ ag.fg }};font:{{ ag.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none"><rect x="1.5" y="1.5" width="12" height="12" rx="2"></rect><rect x="4" y="6" width="3.4" height="5" rx="0.8" fill="currentColor" stroke="none"></rect><rect x="8.6" y="3.8" width="3.4" height="3.4" rx="0.8" fill="currentColor" stroke="none"></rect></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Agenda</span><span style="font:500 10.5px 'IBM Plex Mono',monospace;background:var(--cnw,#FBE8E6);color:var(--cn,#D8432B);border-radius:99px;padding:2px 7px">3</span><span style="display:{{ ag.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <div style="display:{{ eyeD }};font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:16px 13px 6px">OPERATIONS</div>
+    <div style="display:{{ divD }};height:1px;background:var(--ln,#E1E7E9);margin:9px 12px"></div>
+    <a href="Tasks.dc.html" title="Tasks" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ tk.bg }};color:{{ tk.fg }};font:{{ tk.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none"><rect x="1.5" y="1.5" width="12" height="12" rx="2"></rect><path d="M4.6 7.8l2 2 3.8-4.2" fill="none"></path></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Tasks</span><span style="font:500 10.5px 'IBM Plex Mono',monospace;background:var(--pdw,#F9EDDF);color:var(--pd,#B96A1F);border-radius:99px;padding:2px 7px">12</span><span style="display:{{ tk.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <a href="Messages.dc.html" title="Messages" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ ms.bg }};color:{{ ms.fg }};font:{{ ms.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none"><rect x="1.5" y="3" width="12" height="9" rx="2"></rect><rect x="4" y="6.2" width="7" height="1.6" rx="0.8" fill="currentColor" stroke="none"></rect></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Messages</span><span style="display:{{ ms.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <a href="Portal.dc.html" title="Speaker portal" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ pt.bg }};color:{{ pt.fg }};font:{{ pt.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none"><rect x="3.5" y="1.5" width="8" height="12" rx="2"></rect><rect x="6.4" y="10.4" width="2.2" height="1.4" rx="0.7" fill="currentColor" stroke="none"></rect></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Speaker portal</span><span style="display:{{ pt.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <div style="display:{{ eyeD }};font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:16px 13px 6px">SETUP</div>
+    <div style="display:{{ divD }};height:1px;background:var(--ln,#E1E7E9);margin:9px 12px"></div>
+    <a href="Forms.dc.html" title="Forms &amp; pages" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ fm.bg }};color:{{ fm.fg }};font:{{ fm.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none"><rect x="2.5" y="1.5" width="10" height="12" rx="2"></rect><rect x="5" y="4.4" width="5" height="1.4" rx="0.7" fill="currentColor" stroke="none"></rect><rect x="5" y="7.2" width="5" height="1.4" rx="0.7" fill="currentColor" stroke="none"></rect></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Forms &amp; pages</span><span style="display:{{ fm.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <a href="Embeds.dc.html" title="Publishing" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ pb.bg }};color:{{ pb.fg }};font:{{ pb.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none"><path d="M5 4L1.8 7.5 5 11"></path><path d="M10 4l3.2 3.5L10 11"></path></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Publishing</span><span style="display:{{ pb.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+    <a href="Settings.dc.html" title="Settings" style="text-decoration:none;display:flex;align-items:center;gap:10px;height:38px;padding:{{ iPad }};justify-content:{{ iJus }};border-radius:99px;background:{{ st.bg }};color:{{ st.fg }};font:{{ st.wt }} 13.5px 'IBM Plex Sans',sans-serif" style-hover="background:var(--sk,#EDF1F2)"><svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor" style="flex:none"><circle cx="7.5" cy="7.5" r="2.4"></circle><circle cx="7.5" cy="1.9" r="1.3"></circle><circle cx="7.5" cy="13.1" r="1.3"></circle><circle cx="1.9" cy="7.5" r="1.3"></circle><circle cx="13.1" cy="7.5" r="1.3"></circle></svg><span style="display:{{ lblD }};flex:1;min-width:0;align-items:center;gap:10px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Settings</span><span style="display:{{ st.dot }};width:6px;height:6px;border-radius:50%;background:var(--sg,#E04E4E)"></span></span></a>
+  </nav>
+  <sc-if value="{{ exp }}" hint-placeholder-val="{{ true }}">
+    <div style="border-top:1px solid var(--ln,#E1E7E9);padding:12px 14px;display:flex;align-items:center;gap:10px">
+      <span style="width:28px;height:28px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);flex:none">SW</span>
+      <span style="flex:1;min-width:0">
+        <span style="display:block;font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Sasha W</span>
+        <span style="display:block;font:400 10.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Program lead</span>
+      </span>
+      <span style="font:500 9px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);border:1px solid var(--ls,#C8D2D5);border-radius:99px;padding:2px 7px">DEMO</span>
+    </div>
+  </sc-if>
+  <sc-if value="{{ col }}" hint-placeholder-val="{{ false }}">
+    <div style="border-top:1px solid var(--ln,#E1E7E9);padding:12px 0;display:flex;justify-content:center" title="Sasha W · Program lead">
+      <span style="width:28px;height:28px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58)">SW</span>
+    </div>
+  </sc-if>
+</aside>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 216, &quot;height&quot;: 780}, &quot;active&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;Overview&quot;, &quot;Submissions&quot;, &quot;Sessions&quot;, &quot;Review&quot;, &quot;Speakers&quot;, &quot;Agenda&quot;, &quot;Tasks&quot;, &quot;Messages&quot;, &quot;Portal&quot;, &quot;Forms&quot;, &quot;Publishing&quot;, &quot;Settings&quot;], &quot;default&quot;: &quot;Overview&quot;, &quot;tsType&quot;: &quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { collapsed: false, lgHov: false };
+  componentDidMount() {
+    try { if (localStorage.getItem('gather.rail') === '1') this.setState({ collapsed: true }); } catch (e) {}
+  }
+  renderVals() {
+    const a = this.props.active ?? 'Overview';
+    const c = this.state.collapsed;
+    const mk = (name) => name === a
+      ? { bg: 'var(--sw,#FFEAE6)', fg: 'var(--sg,#E04E4E)', wt: '600', dot: c ? 'none' : 'inline-block' }
+      : { bg: 'none', fg: 'var(--i2,#3E4E58)', wt: '500', dot: 'none' };
+    return {
+      ov: mk('Overview'), su: mk('Submissions'), se: mk('Sessions'), rv: mk('Review'), sp: mk('Speakers'), ag: mk('Agenda'), tk: mk('Tasks'), ms: mk('Messages'), pt: mk('Portal'), fm: mk('Forms'), pb: mk('Publishing'), st: mk('Settings'),
+      exp: !c, col: c,
+      railW: c ? '64px' : '216px',
+      navPad: c ? '4px 12px 14px' : '4px 10px 14px',
+      iPad: c ? '0' : '0 13px',
+      iJus: c ? 'center' : 'flex-start',
+      lblD: c ? 'none' : 'flex',
+      eyeD: c ? 'none' : 'block',
+      divD: c ? 'block' : 'none',
+      lgHov: this.state.lgHov, lgIdle: !this.state.lgHov,
+      lgBg: this.state.lgHov ? 'var(--sk,#EDF1F2)' : 'none',
+      lgIn: () => this.setState({ lgHov: true }),
+      lgOut: () => this.setState({ lgHov: false }),
+      togRail: () => {
+        const next = !c;
+        try { localStorage.setItem('gather.rail', next ? '1' : '0'); } catch (e) {}
+        this.setState({ collapsed: next, lgHov: false });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

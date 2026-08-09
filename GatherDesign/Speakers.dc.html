@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--sg,#E04E4E)}a:hover{color:var(--sg,#C93E3E)}button{cursor:pointer}::selection{background:var(--sw,#FFEAE6)}input::placeholder{color:var(--i4,#99A6AD)}</style>
+</helmet>
+<div ref="{{ setRoot }}" data-screen-label="Speakers" style="display:grid;grid-template-columns:auto minmax(0,1fr);height:100vh;overflow:hidden;background:var(--pp,#F4F6F7);color:var(--ik,#16232B)">
+  <dc-import name="ConsoleRail" active="Speakers" hint-size="216px,100%" style="height:100%;min-height:0"></dc-import>
+  <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <span style="display:flex;align-items:center;gap:8px;font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>AI Engineer 2026</span>
+      <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">/ Speakers</span>
+      <div style="flex:1"></div>
+      
+      <div style="position:relative">
+        <button onClick="{{ togUser }}" title="Account" aria-label="Account menu" style="width:28px;height:28px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);padding:0" style-hover="border:1px solid var(--ls,#C8D2D5)">SW</button>
+        <sc-if value="{{ popUser }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ closeUser }}" aria-label="Close" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:41"></button>
+          <div style="position:absolute;top:36px;right:0;width:248px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:12px;box-shadow:0 16px 40px rgba(13,16,32,.20);padding:6px;z-index:42">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 10px">
+              <span style="width:32px;height:32px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);flex:none">SW</span>
+              <span style="min-width:0"><span style="display:block;font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Sasha Whitfield</span><span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">program lead · demo org</span></span>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:8px 10px 6px">THEME</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 10px 10px">
+              <sc-for list="{{ accents }}" as="ac" hint-placeholder-count="5"><button onClick="{{ ac.on }}" title="{{ ac.n }}" aria-label="{{ ac.n }}" style="width:16px;height:16px;border-radius:50%;border:none;background:{{ ac.c }};box-shadow:{{ ac.ring }};padding:0;flex:none"></button></sc-for>
+              <div style="flex:1"></div>
+              <button onClick="{{ togTheme }}" title="{{ themeTitle }}" style="display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)">{{ themeGlyph }} {{ themeWord }}</button>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ profileGo }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);text-align:left" style-hover="background:var(--sk,#EDF1F2)">Your profile</button>
+            <a href="Settings.dc.html" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;text-decoration:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Workspace settings</a>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ signOut }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B);text-align:left" style-hover="background:var(--cnw,#FBE8E6)">Sign out</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+    <div style="height:32px;flex:none;display:flex;align-items:center;gap:16px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <a href="Submissions.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">SUB 216</a><span style="color:var(--i4,#99A6AD)">·</span>
+      <a href="Review.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">UNREVIEWED 38</a><span style="color:var(--i4,#99A6AD)">·</span>
+      <a href="Tasks.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--pd,#B96A1F);text-decoration:none">OVERDUE TASKS 12</a><span style="color:var(--i4,#99A6AD)">·</span>
+      <a href="Agenda.dc.html" style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--cn,#D8432B);text-decoration:none">⚠ 3 CONFLICTS</a>
+      <div style="flex:1"></div>
+      <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">CFP closes in 38d</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;position:relative;padding:20px 28px 80px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+        <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Speakers</h1>
+        <div style="flex:1"></div>
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">10 confirmed or invited · missing items first</span>
+      </div>
+      <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">{{ sumLine }}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+        <button onClick="{{ tAllS.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tAllS.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tAllS.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--ifw,#E9ECF7);color:var(--if,#47599F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="4.8" r="2.5"></circle><path d="M2.8 12.8c.6-2.5 2.4-3.9 4.7-3.9s4.1 1.4 4.7 3.9"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tAllS.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tAllS.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">On the roster</span></span>
+        </button>
+        <button onClick="{{ tMiss.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tMiss.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tMiss.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--sw,#FFEAE6);color:var(--sg,#E04E4E);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><circle cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none"></circle></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tMiss.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tMiss.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Missing something</span></span>
+        </button>
+        <button onClick="{{ tOdS.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tOdS.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tOdS.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--pdw,#F9EDDF);color:var(--pd,#B96A1F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M7.5 4.3v3.4l2.3 1.4"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tOdS.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tOdS.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Overdue items</span></span>
+        </button>
+        <button onClick="{{ tDoneS.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tDoneS.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tDoneS.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--okw,#E2F1EC);color:var(--ok,#0E7A5F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M4.8 7.8l1.8 1.8 3.6-4"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tDoneS.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tDoneS.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Complete</span></span>
+        </button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <input ref="{{ setSearch }}" value="{{ q }}" onChange="{{ onQ }}" placeholder="Filter by name or company. Press /" style="height:32px;width:260px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+        <div style="position:relative">
+          <button onClick="{{ togFPop }}" style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid {{ fBd }};background:{{ fBg }};font:500 12px 'IBM Plex Sans',sans-serif;color:{{ fFg }}" style-hover="background:var(--sk,#EDF1F2)"><svg width="11" height="11" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" style="flex:none"><path d="M1.5 2.5h12l-4.6 5.4v4.2l-2.8 1.4V7.9L1.5 2.5z"></path></svg>Filter{{ fCount }}</button>
+          <sc-if value="{{ fPopOn }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ closeFPop }}" aria-label="Close" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:21"></button>
+            <div style="position:absolute;top:38px;left:0;width:238px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:12px;box-shadow:0 12px 32px rgba(13,16,32,.18);padding:6px;z-index:22">
+              <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:7px 10px 3px">STATUS</div>
+              <sc-for list="{{ fStatusOpts }}" as="t" hint-placeholder-count="4">
+                <button onClick="{{ t.on }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:6px 10px;border-radius:6px;background:none;border:none;text-align:left" style-hover="background:var(--sk,#EDF1F2)"><span style="width:13px;height:13px;border-radius:4px;border:1px solid var(--ls,#C8D2D5);background:{{ t.ckBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);flex:none">{{ t.ck }}</span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.n }}</span></button>
+              </sc-for>
+              <div style="height:1px;background:var(--ln,#E1E7E9);margin:5px 6px"></div>
+              <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:7px 10px 3px">MISSING ITEM</div>
+              <sc-for list="{{ fMissOpts }}" as="t" hint-placeholder-count="4">
+                <button onClick="{{ t.on }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:6px 10px;border-radius:6px;background:none;border:none;text-align:left" style-hover="background:var(--sk,#EDF1F2)"><span style="width:13px;height:13px;border-radius:4px;border:1px solid var(--ls,#C8D2D5);background:{{ t.ckBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);flex:none">{{ t.ck }}</span><span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.n }}</span></button>
+              </sc-for>
+              <div style="height:1px;background:var(--ln,#E1E7E9);margin:5px 6px"></div>
+              <button onClick="{{ clearF }}" style="width:100%;padding:7px 10px;border-radius:6px;border:none;background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);text-align:left" style-hover="background:var(--sw,#FFEAE6)">Clear filters</button>
+            </div>
+          </sc-if>
+        </div>
+        <sc-for list="{{ views }}" as="v" hint-placeholder-count="4">
+          <button onClick="{{ v.on }}" style="height:32px;padding:0 11px;border-radius:999px;background:{{ v.bg }};border:1px solid {{ v.bd }};font:500 12px 'IBM Plex Sans',sans-serif;color:{{ v.fg }};white-space:nowrap">{{ v.n }} <span style="font:500 10.5px 'IBM Plex Mono',monospace;opacity:.7">{{ v.c }}</span></button>
+        </sc-for>
+        <div style="width:1px;height:20px;background:var(--ln,#E1E7E9)"></div>
+        <sc-for list="{{ missChips }}" as="mc" hint-placeholder-count="3">
+          <button onClick="{{ mc.on }}" style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:99px;background:{{ mc.bg }};border:1px solid {{ mc.bd }};font:500 11px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F);white-space:nowrap">{{ mc.t }}</button>
+        </sc-for>
+        <div style="flex:1"></div>
+        <button onClick="{{ exportCsv }}" style="height:32px;padding:0 12px;border-radius:999px;background:var(--cd,#FFFFFF);border:1px solid var(--ls,#C8D2D5);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Export CSV</button>
+      </div>
+      <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04)">
+        <div style="display:grid;grid-template-columns:36px minmax(180px,1.2fr) 110px 60px 150px minmax(160px,1fr) 90px 92px;gap:8px;align-items:center;padding:0 12px;height:34px;border-bottom:1px solid var(--ln,#E1E7E9)">
+          <button onClick="{{ selAll }}" aria-label="Select all" style="width:14px;height:14px;border-radius:4px;border:1px solid var(--ls,#C8D2D5);background:{{ allCkBg }};display:flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);padding:0">{{ allCk }}</button>
+          <button onClick="{{ soName.on }}" title="Sort by speaker" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soName.fg }}" style-hover="color:var(--ik,#16232B)">SPEAKER<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soName.gc }};letter-spacing:0">{{ soName.g }}</span></button>
+          <button onClick="{{ soCompany.on }}" title="Sort by company" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soCompany.fg }}" style-hover="color:var(--ik,#16232B)">COMPANY<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soCompany.gc }};letter-spacing:0">{{ soCompany.g }}</span></button>
+          <button onClick="{{ soSess.on }}" title="Sort by sess" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soSess.fg }}" style-hover="color:var(--ik,#16232B)">SESS<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soSess.gc }};letter-spacing:0">{{ soSess.g }}</span></button>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">TASKS</span>
+          <button onClick="{{ soMissing.on }}" title="Sort by missing" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;text-align:left;cursor:pointer;font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:{{ soMissing.fg }}" style-hover="color:var(--ik,#16232B)">MISSING<span style="font:500 9.5px 'IBM Plex Mono',monospace;color:{{ soMissing.gc }};letter-spacing:0">{{ soMissing.g }}</span></button>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">PORTAL</span>
+          <span style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i3,#6B7B84)">STATUS</span>
+        </div>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+          <div onClick="{{ r.onOpen }}" onMouseEnter="{{ r.onEnter }}" onMouseLeave="{{ clearHover }}" style="display:grid;grid-template-columns:36px minmax(180px,1.2fr) 110px 60px 150px minmax(160px,1fr) 90px 92px;gap:8px;align-items:center;padding:0 12px;height:{{ rowH }};border-bottom:1px solid var(--ln,#E1E7E9);cursor:pointer;background:{{ r.bg }};box-shadow:{{ r.ring }}">
+            <button onClick="{{ r.onChk }}" aria-label="Select row" style="width:14px;height:14px;border-radius:4px;border:1px solid {{ r.ckBd }};background:{{ r.ckBg }};display:flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313);padding:0">{{ r.ck }}</button>
+            <span style="display:flex;align-items:center;gap:8px;min-width:0"><span style="width:22px;height:22px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 8.5px 'IBM Plex Sans Condensed',sans-serif;color:var(--i3,#6B7B84);flex:none">{{ r.ini }}</span><span style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.n }}</span></span>
+            <span style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.c }}</span>
+            <span style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">{{ r.sess }}</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="font:500 11.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B)">{{ r.frac }}</span><span style="display:inline-flex;gap:2px"><span style="width:5px;height:3px;border-radius:1px;background:{{ r.b1 }}"></span><span style="width:5px;height:3px;border-radius:1px;background:{{ r.b2 }}"></span><span style="width:5px;height:3px;border-radius:1px;background:{{ r.b3 }}"></span><span style="width:5px;height:3px;border-radius:1px;background:{{ r.b4 }}"></span><span style="width:5px;height:3px;border-radius:1px;background:{{ r.b5 }}"></span><span style="width:5px;height:3px;border-radius:1px;background:{{ r.b6 }}"></span></span></span>
+            <span style="display:flex;gap:4px;flex-wrap:wrap;min-width:0;overflow:hidden">
+              <sc-for list="{{ r.miss }}" as="m" hint-placeholder-count="0">
+                <span style="padding:1px 7px;border-radius:4px;background:var(--pdw,#F9EDDF);border:1px solid var(--pdl,#EFD3B6);font:500 10px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F);white-space:nowrap">{{ m.t }}</span>
+              </sc-for>
+              <sc-if value="{{ r.clean }}" hint-placeholder-val="{{ false }}">
+                <span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--ok,#0E7A5F)">✓ complete</span>
+              </sc-if>
+            </span>
+            <span style="font:400 11px 'IBM Plex Mono',monospace;color:{{ r.seenFg }}">{{ r.seen }}</span>
+            <span style="justify-self:start;display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:4px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ r.stFg }};background:{{ r.stBg }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ r.stFg }}"></span>{{ r.st }}</span>
+          </div>
+        </sc-for>
+        <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:40px 24px;text-align:center">
+            <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:4px">No speakers match these filters</div>
+            <button onClick="{{ clearFilters }}" style="background:none;border:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);text-decoration:underline">Clear filters</button>
+          </div>
+        </sc-if>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px">
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ countLine }}</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">j / k to move · x selects · Enter opens</span>
+        </div>
+      </div>
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+        <div style="position:sticky;bottom:16px;display:flex;justify-content:center;margin-top:16px;z-index:25">
+          <div style="display:flex;align-items:center;gap:8px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:10px;padding:8px 10px;box-shadow:0 12px 32px rgba(16,19,25,.16)">
+            <span style="font:500 12px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);padding:0 6px">{{ selN }} selected</span>
+            <div style="width:1px;height:18px;background:var(--ln,#E1E7E9)"></div>
+            <button onClick="{{ bulkNudge }}" style="height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--pdl,#EFD3B6);background:var(--pdw,#F9EDDF);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F)">Nudge</button>
+            <button onClick="{{ bulkLink }}" style="height:28px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Send portal link</button>
+            <button onClick="{{ bulkTask }}" style="height:28px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Assign task</button>
+            <button onClick="{{ exportCsv }}" style="height:28px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Export selected</button>
+            <button onClick="{{ clearSel }}" aria-label="Clear selection" style="width:28px;height:28px;border-radius:6px;border:none;background:none;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">✕</button>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{ closeDrawer }}" aria-label="Close" style="position:fixed;inset:0;background:rgba(13,16,32,.35);border:none;z-index:60;cursor:default"></button>
+    <div style="position:fixed;top:0;right:0;bottom:0;width:min(640px,94vw);background:var(--cd,#FFFFFF);border-left:1px solid var(--ln,#E1E7E9);box-shadow:0 12px 32px rgba(16,19,25,.24);z-index:61;display:flex;flex-direction:column">
+      <div style="padding:18px 24px 0;border-bottom:1px solid var(--ln,#E1E7E9)">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <span style="width:44px;height:44px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 13px 'IBM Plex Sans Condensed',sans-serif;color:var(--i3,#6B7B84)">{{ o.ini }}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font:600 17px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ o.n }}</div>
+            <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">{{ o.c }} · {{ o.email }}</div>
+          </div>
+          <a href="Portal.dc.html" style="display:inline-flex;align-items:center;height:30px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);text-decoration:none;white-space:nowrap">Open portal as speaker</a>
+          <button onClick="{{ closeDrawer }}" aria-label="Close" style="width:28px;height:28px;border-radius:6px;border:none;background:none;font:500 14px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">✕</button>
+        </div>
+        <div style="display:flex;gap:2px">
+          <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="4">
+            <button onClick="{{ tb.on }}" style="height:34px;padding:0 13px;border:none;background:none;font:{{ tb.wt }} 12.5px 'IBM Plex Sans',sans-serif;color:{{ tb.fg }};border-bottom:2px solid {{ tb.ul }}">{{ tb.n }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:20px 24px">
+        <sc-if value="{{ tabTasks }}" hint-placeholder-val="{{ true }}">
+          <sc-for list="{{ o.tasks }}" as="tk" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:12px;border:1px solid var(--ln,#E1E7E9);border-left:3px solid {{ tk.bar }};border-radius:8px;padding:11px 14px;margin-bottom:8px">
+              <div style="flex:1"><div style="font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ tk.n }}</div><div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">{{ tk.sub }}</div></div>
+              <span style="font:400 11px 'IBM Plex Mono',monospace;color:{{ tk.dueFg }}">{{ tk.due }}</span>
+              <sc-if value="{{ tk.canDo }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ tk.onDone }}" style="height:26px;padding:0 10px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Mark complete</button>
+              </sc-if>
+            </div>
+          </sc-for>
+        </sc-if>
+        <sc-if value="{{ tabSessions }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid var(--ln,#E1E7E9);border-left:3px solid #3E8896;border-radius:8px;padding:12px 14px;margin-bottom:8px">
+            <div style="font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:3px">{{ o.sessT }}</div>
+            <div style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">{{ o.sessMeta }}</div>
+            <a href="Agenda.dc.html" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);text-decoration:none;display:inline-block;margin-top:8px">See it on the agenda →</a>
+          </div>
+        </sc-if>
+        <sc-if value="{{ tabFiles }}" hint-placeholder-val="{{ false }}">
+          <sc-for list="{{ o.files }}" as="f" hint-placeholder-count="2">
+            <div style="display:flex;align-items:center;gap:12px;border:1px solid var(--ln,#E1E7E9);border-radius:8px;padding:11px 14px;margin-bottom:8px">
+              <span style="width:28px;height:28px;border-radius:6px;background:var(--sk,#EDF1F2);display:inline-flex;align-items:center;justify-content:center;font:500 9px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">{{ f.ext }}</span>
+              <div style="flex:1"><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ f.n }}</div><div style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ f.meta }}</div></div>
+              <span style="font:500 10.5px 'IBM Plex Mono',monospace;background:var(--sk,#EDF1F2);border-radius:99px;padding:1px 7px;color:var(--i3,#6B7B84)">{{ f.v }}</span>
+            </div>
+          </sc-for>
+          <sc-if value="{{ o.noFiles }}" hint-placeholder-val="{{ false }}">
+            <div style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Nothing uploaded yet. Their portal has the drop zone.</div>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{ tabNotes }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--pdw,#F9EDDF);border:1px solid var(--pdl,#EFD3B6);border-radius:8px;padding:12px 14px">
+            <div style="font:500 10.5px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F);margin-bottom:8px">Internal. Never speaker-visible.</div>
+            <sc-for list="{{ o.notes }}" as="nn" hint-placeholder-count="1">
+              <div style="margin-bottom:8px"><span style="font:600 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ nn.a }}</span> <span style="font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ nn.t }}</span><div style="font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">{{ nn.x }}</div></div>
+            </sc-for>
+            <div style="display:flex;gap:6px">
+              <input value="{{ noteDraft }}" onChange="{{ onNoteDraft }}" placeholder="Add a note…" style="flex:1;height:28px;padding:0 9px;border-radius:6px;border:1px solid var(--pdl,#EFD3B6);background:var(--cd,#FFFFFF);font:400 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">
+              <button onClick="{{ addNote }}" style="height:28px;padding:0 10px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 11.5px 'IBM Plex Sans',sans-serif">Add note</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+      <div style="flex:none;display:flex;align-items:center;gap:8px;padding:12px 24px;border-top:1px solid var(--ln,#E1E7E9)">
+        <button onClick="{{ dNudge }}" style="height:30px;padding:0 13px;border-radius:6px;border:1px solid var(--pdl,#EFD3B6);background:var(--pdw,#F9EDDF);font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F)">Nudge about {{ o.missN }} missing items</button>
+        <div style="flex:1"></div>
+        <span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">j / k moves through the list</span>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="position:fixed;left:16px;bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:8px;padding:10px 12px;box-shadow:0 12px 32px rgba(16,19,25,.16);max-width:440px">
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.msg }}</span>
+        <sc-if value="{{ t.canUndo }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ t.onUndo }}" style="background:none;border:none;font:600 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);padding:0">Undo</button>
+        </sc-if>
+        <button onClick="{{ t.onX }}" aria-label="Dismiss" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:0">✕</button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  static ACCENTS = {
+    Coral: { dot: '#FF6B6B', l: { sg: '#E04E4E', sw: '#FFEAE6', sl: '#FFC9C0', bt: '#FF6B6B', bf: '#331313' }, d: { sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313' } },
+    Sunset: { dot: '#F2915B', l: { sg: '#BE5F1F', sw: '#FCEFE4', sl: '#F5CFB2', bt: '#F2915B', bf: '#331A0A' }, d: { sg: '#F5AA7E', sw: '#3A2414', sl: '#664028', bt: '#F2915B', bf: '#331A0A' } },
+    Sky: { dot: '#4A9BD8', l: { sg: '#2B77B3', sw: '#E7F1FA', sl: '#BFDCF1', bt: '#4A9BD8', bf: '#0D2333' }, d: { sg: '#7FBCE8', sw: '#152A3A', sl: '#2C4E66', bt: '#4A9BD8', bf: '#0D2333' } },
+    Slate: { dot: '#5A6BA8', l: { sg: '#4A5A99', sw: '#EAEDF7', sl: '#C8CFE9', bt: '#5A6BA8', bf: '#FFFFFF' }, d: { sg: '#98A6DA', sw: '#1F2542', sl: '#3A4370', bt: '#8B9AD0', bf: '#12162E' } },
+    Graphite: { dot: '#5F6B79', l: { sg: '#46535F', sw: '#ECEFF2', sl: '#C9D2DA', bt: '#4A5764', bf: '#FFFFFF' }, d: { sg: '#A9B6C2', sw: '#232B33', sl: '#3E4A56', bt: '#93A3B1', bf: '#111921' } }
+  };
+  static DARK = { pp: '#101013', cd: '#17171B', sk: '#1F1F24', ln: '#2A2A31', ls: '#3F3F49', ik: '#F2F2F0', i2: '#C9C9C6', i3: '#929290', i4: '#686865', sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313', cn: '#F0766A', cnw: '#3A1F1E', cnl: '#5E2E2B', pd: '#F0A468', pdw: '#332617', pdl: '#54402A', ok: '#57B899', okw: '#123029', okl: '#1F4A3E', if: '#8B9AD0', ifw: '#262833', ifl: '#3E4152' };
+  seed() {
+    return [
+      { id: 'p1', n: 'Marta Duarte', c: 'Vercel', email: 'marta@vercel.com', sess: 1, done: 4, total: 6, miss: ['headshot', 'slides'], od: 3, seen: '2d ago', st: 'confirmed', sessT: 'Opening keynote', sessMeta: 'Tue 13 Oct · 09:05–09:50 · Main stage', files: [{ n: 'bio.md', ext: 'MD', meta: '1.2 KB · 1 Aug', v: 'v2' }] },
+      { id: 'p2', n: 'Kwame Osei', c: 'Turbopuffer', email: 'kwame@turbopuffer.com', sess: 1, done: 5, total: 6, miss: ['recording consent'], od: 1, seen: '5h ago', st: 'confirmed', sessT: 'A billion documents, one index', sessMeta: 'Tue 13 Oct · 10:30–11:15 · Room 3', files: [{ n: 'headshot.png', ext: 'PNG', meta: '2.4 MB · 3 Aug', v: 'v3' }, { n: 'slides-draft.pdf', ext: 'PDF', meta: '8.1 MB · 6 Aug', v: 'v1' }] },
+      { id: 'p3', n: 'Léa Fontaine', c: 'Mistral', email: 'lea@mistral.ai', sess: 2, done: 6, total: 6, miss: [], od: 0, seen: '1h ago', st: 'confirmed', sessT: 'Serving open weights at scale', sessMeta: 'Wed 14 Oct · 11:00–11:30 · Main stage', files: [{ n: 'headshot.jpg', ext: 'JPG', meta: '1.8 MB · 28 Jul', v: 'v1' }] },
+      { id: 'p4', n: 'José Águilar', c: 'Intercom', email: 'jose@intercom.com', sess: 1, done: 2, total: 6, miss: ['headshot', 'bio', 'slides'], od: 5, seen: 'never', st: 'invited', sessT: 'Multimodal grounding in support', sessMeta: 'Not scheduled yet', files: [] },
+      { id: 'p5', n: 'Sofia Petrova', c: 'Cohere', email: 'sofia@cohere.com', sess: 2, done: 6, total: 6, miss: [], od: 0, seen: '3d ago', st: 'confirmed', sessT: 'Evals beyond vibes', sessMeta: 'Tue 13 Oct · 10:00–10:30 · Room 2', files: [{ n: 'headshot.png', ext: 'PNG', meta: '3.1 MB · 30 Jul', v: 'v2' }] },
+      { id: 'p6', n: 'Nils Vogel', c: 'Zapier', email: 'nils@zapier.com', sess: 1, done: 3, total: 6, miss: ['headshot', 'AV form'], od: 2, seen: '6d ago', st: 'confirmed', sessT: 'Guardrail budgets', sessMeta: 'Tue 13 Oct · 10:15–10:45 · Room 2', files: [] },
+      { id: 'p7', n: 'Wei Zhang', c: 'Adept', email: 'wei@adept.ai', sess: 0, done: 1, total: 5, miss: ['bio', 'headshot'], od: 0, seen: 'never', st: 'invited', sessT: 'Long-horizon planning', sessMeta: 'Not scheduled yet', files: [] },
+      { id: 'p8', n: 'Dana Whitfield', c: 'Shopify', email: 'dana@shopify.com', sess: 1, done: 5, total: 6, miss: ['slides'], od: 0, seen: '12h ago', st: 'confirmed', sessT: 'Postmortem: the agent gateway outage', sessMeta: 'Tue 13 Oct · 13:00–13:30 · Main stage', files: [{ n: 'headshot.png', ext: 'PNG', meta: '2.0 MB · 27 Jul', v: 'v1' }] },
+      { id: 'p9', n: 'Ritika Sharma', c: 'Baseten', email: 'ritika@baseten.co', sess: 1, done: 4, total: 6, miss: ['dietary needs'], od: 0, seen: '1d ago', st: 'confirmed', sessT: 'Serverless fine-tuning', sessMeta: 'Tue 13 Oct · 15:00–16:00 · Room 2', files: [{ n: 'headshot.jpg', ext: 'JPG', meta: '1.1 MB · 2 Aug', v: 'v1' }] },
+      { id: 'p10', n: 'Owen McCarthy', c: 'Covariant', email: 'owen@covariant.ai', sess: 1, done: 6, total: 6, miss: [], od: 0, seen: '4d ago', st: 'confirmed', sessT: 'Vision agents in the warehouse', sessMeta: 'Tue 13 Oct · 11:45–12:15 · Workshop lab', files: [{ n: 'headshot.png', ext: 'PNG', meta: '2.9 MB · 25 Jul', v: 'v2' }] }
+    ];
+  }
+  state = { theme: 'system', accent: 'Coral', q: '', view: 'Missing something', sel: [], focus: 0, hover: null, openId: null, tab: 'Tasks', toasts: [], noteDraft: '', notes: { p4: [{ a: 'S. Whitfield', t: '5 Aug 10:02', x: 'Great talk, silent portal. Try his co-organizer if the nudge fails.' }] }, doneOverride: {} };
+  componentDidMount() {
+    try { const th = localStorage.getItem('gather.theme'); if (th) this.setState({ theme: th }); const ac = localStorage.getItem('gather.accent'); if (ac && Component.ACCENTS[ac]) this.setState({ accent: ac }); } catch (e) {}
+    this._mq = window.matchMedia('(prefers-color-scheme: dark)');
+    this._mqFn = () => this.forceUpdate();
+    this._mq.addEventListener('change', this._mqFn);
+    this._kd = (e) => this.onKey(e);
+    window.addEventListener('keydown', this._kd);
+    this.applyTheme();
+  }
+  componentDidUpdate() { this.applyTheme(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._kd); if (this._mq) this._mq.removeEventListener('change', this._mqFn); }
+  isDark() { return this.state.theme === 'dark' || (this.state.theme === 'system' && this._mq && this._mq.matches); }
+  applyTheme() {
+    if (!this.root) return;
+    const dark = this.isDark();
+    Object.entries(Component.DARK).forEach(([k, v]) => { dark ? this.root.style.setProperty('--' + k, v) : this.root.style.removeProperty('--' + k); });
+    const acc = (Component.ACCENTS[this.state.accent] || Component.ACCENTS.Coral)[dark ? 'd' : 'l'];
+    Object.entries(acc).forEach(([k, v]) => this.root.style.setProperty('--' + k, v));
+    this.root.style.colorScheme = dark ? 'dark' : 'light';
+  }
+  toast(msg, revert) {
+    const id = Math.random().toString(36).slice(2);
+    this.setState(s => ({ toasts: [...s.toasts.slice(-2), { id, msg, revert }] }));
+    setTimeout(() => this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), revert ? 10000 : 6000);
+  }
+  filtered() {
+    const s = this.state;
+    const V = { 'All': () => true, 'Missing something': (r) => r.miss.length > 0, 'Overdue': (r) => r.od > 0, 'Complete': (r) => r.miss.length === 0 };
+    let rows = this.seed().filter(V[s.view]);
+    if (s.q) { const q = s.q.toLowerCase(); rows = rows.filter(r => r.n.toLowerCase().includes(q) || r.c.toLowerCase().includes(q)); }
+    if ((s.fStatus || []).length) rows = rows.filter(r => s.fStatus.includes(r.st));
+    if ((s.fMiss || []).length) rows = rows.filter(r => r.miss.some(m => s.fMiss.includes(m)));
+    const k = s.sortK || 'urgency', d = s.sortD || -1;
+    return rows.slice().sort((a, b) => k === 'name' ? a.n.localeCompare(b.n) * d : k === 'company' ? a.c.localeCompare(b.c) * d : k === 'sess' ? (a.sess - b.sess) * d : k === 'missing' ? (a.miss.length - b.miss.length) * d : (b.od - a.od || b.miss.length - a.miss.length));
+  }
+  setSort(k) { this.setState(s => ({ sortK: k, sortD: s.sortK === k ? -(s.sortD || ((k === 'name' || k === 'company') ? 1 : -1)) : ((k === 'name' || k === 'company') ? 1 : -1) })); }
+  onKey(e) {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') { if (e.key === 'Escape') e.target.blur(); return; }
+    const list = this.filtered(), s = this.state;
+    if (e.key === 'Escape') { if (s.openId) this.setState({ openId: null }); else if (s.sel.length) this.setState({ sel: [] }); return; }
+    if (e.key === '/') { e.preventDefault(); if (this.searchEl) this.searchEl.focus(); return; }
+    if (e.key === 'j' || e.key === 'k') {
+      const d = e.key === 'j' ? 1 : -1;
+      if (s.openId) { const i = list.findIndex(r => r.id === s.openId); const ni = Math.min(list.length - 1, Math.max(0, i + d)); if (list[ni]) this.setState({ openId: list[ni].id, focus: ni }); }
+      else this.setState({ focus: Math.min(list.length - 1, Math.max(0, s.focus + d)) });
+      return;
+    }
+    const f = list[Math.min(s.focus, list.length - 1)];
+    if (!f) return;
+    if (e.key === 'x') this.setState(st => ({ sel: st.sel.includes(f.id) ? st.sel.filter(x => x !== f.id) : [...st.sel, f.id] }));
+    if (e.key === 'Enter') this.setState({ openId: f.id });
+  }
+  csv() {
+    const list = this.filtered().filter(r => !this.state.sel.length || this.state.sel.includes(r.id));
+    const esc = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+    const lines = [['name', 'company', 'email', 'sessions', 'tasks_done', 'tasks_total', 'missing', 'portal_last_seen', 'status'].join(',')];
+    list.forEach(r => lines.push([esc(r.n), esc(r.c), r.email, r.sess, r.done, r.total, esc(r.miss.join('; ')), r.seen, r.st].join(',')));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+    a.download = 'speakers.csv'; a.click();
+    this.toast('Exported ' + list.length + ' speakers with current filters.');
+  }
+  taskList(r) {
+    const done = { headshot: false, bio: false, slides: false, 'recording consent': false, 'AV form': false, 'dietary needs': false };
+    const overrides = this.state.doneOverride[r.id] || [];
+    const missing = r.miss.filter(m => !overrides.includes(m));
+    const rows = [];
+    missing.forEach(m => rows.push({ n: m.charAt(0).toUpperCase() + m.slice(1), sub: m === 'headshot' ? 'Square photo, 800px or larger' : m === 'slides' ? 'PDF or Keynote' : m === 'bio' ? '50–100 words, third person' : 'One tap in the portal', bar: r.od > 0 ? 'var(--cn,#D8432B)' : 'var(--pd,#B96A1F)', due: r.od > 0 ? r.od + 'd over' : 'due 5 Oct', dueFg: r.od > 0 ? 'var(--cn,#D8432B)' : 'var(--i4,#99A6AD)', canDo: true, onDone: (e) => { e.stopPropagation(); this.completeTask(r.id, m); } }));
+    const doneN = r.total - missing.length;
+    for (let i = 0; i < doneN; i++) rows.push({ n: ['Recording consent', 'Bio', 'Profile', 'Headshot', 'Slides', 'AV form'][i] || 'Task', sub: 'Done', bar: 'var(--ok,#0E7A5F)', due: '✓', dueFg: 'var(--ok,#0E7A5F)', canDo: false, onDone: () => {} });
+    return rows.slice(0, 6);
+  }
+  completeTask(pid, m) {
+    this.setState(s => ({ doneOverride: { ...s.doneOverride, [pid]: [...(s.doneOverride[pid] || []), m] } }));
+    const revert = () => this.setState(s => ({ doneOverride: { ...s.doneOverride, [pid]: (s.doneOverride[pid] || []).filter(x => x !== m) } }));
+    this.toast('Marked "' + m + '" complete on their behalf.', revert);
+  }
+  tileV(active, c, on) { return { c, on, bd: active ? 'var(--sg,#E04E4E)' : 'var(--ln,#E1E7E9)', ring: active ? '0 0 0 3px var(--sw,#FFEAE6)' : '0 1px 2px rgba(13,16,32,.04)', numFg: active ? 'var(--sg,#E04E4E)' : 'var(--ik,#16232B)' }; }
+  renderVals() {
+    const s = this.state, list = this.filtered();
+    const so = (k) => ({ on: () => this.setSort(k), g: (this.state.sortK) === k ? ((this.state.sortD || 1) === 1 ? '↑' : '↓') : '↑↓', gc: (this.state.sortK) === k ? 'var(--sg,#E04E4E)' : 'var(--i4,#99A6AD)', fg: (this.state.sortK) === k ? 'var(--ik,#16232B)' : 'var(--i3,#6B7B84)' });
+
+    const focusIdx = Math.min(s.focus, list.length - 1);
+    const stM = { confirmed: { fg: 'var(--ok,#0E7A5F)', bg: 'var(--okw,#E2F1EC)', l: 'Confirmed' }, invited: { fg: 'var(--if,#47599F)', bg: 'var(--ifw,#E9ECF7)', l: 'Invited' } };
+    const rows = list.map((r, i) => {
+      const sel = s.sel.includes(r.id);
+      const overrides = s.doneOverride[r.id] || [];
+      const missNow = r.miss.filter(m => !overrides.includes(m));
+      const doneNow = r.done + overrides.length;
+      const seg = (n) => n <= doneNow ? 'var(--ok,#0E7A5F)' : 'var(--ln,#E1E7E9)';
+      return {
+        id: r.id, n: r.n, c: r.c, sess: String(r.sess),
+        ini: r.n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+        frac: doneNow + '/' + r.total, b1: seg(1), b2: seg(2), b3: seg(3), b4: seg(4), b5: seg(5), b6: seg(6),
+        miss: missNow.map(m => ({ t: r.od > 0 ? m + ' · ' + r.od + 'd' : m })),
+        clean: missNow.length === 0,
+        seen: r.seen, seenFg: r.seen === 'never' ? 'var(--cn,#D8432B)' : 'var(--i4,#99A6AD)',
+        st: stM[r.st].l, stFg: stM[r.st].fg, stBg: stM[r.st].bg,
+        bg: sel ? 'var(--sw,#FFEAE6)' : (s.hover === r.id ? 'var(--sk,#EDF1F2)' : 'transparent'),
+        ring: i === focusIdx ? 'inset 2px 0 0 var(--sg,#E04E4E)' : 'none',
+        ck: sel ? '✓' : '', ckBg: sel ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', ckBd: sel ? 'var(--sg,#E04E4E)' : 'var(--ls,#C8D2D5)',
+        onChk: (e) => { e.stopPropagation(); this.setState(st => ({ sel: st.sel.includes(r.id) ? st.sel.filter(x => x !== r.id) : [...st.sel, r.id] })); },
+        onOpen: () => this.setState({ openId: r.id, focus: i, tab: 'Tasks' }),
+        onEnter: () => this.setState({ hover: r.id })
+      };
+    });
+    const VC = { 'Missing something': this.seed().filter(r => r.miss.length > 0).length, 'Overdue': this.seed().filter(r => r.od > 0).length, 'Complete': this.seed().filter(r => r.miss.length === 0).length, 'All': this.seed().length };
+    const views = Object.keys(VC).map(n => ({ n, c: VC[n], on: () => this.setState({ view: n, focus: 0 }), bg: s.view === n ? 'var(--sw,#FFEAE6)' : 'transparent', bd: s.view === n ? 'var(--sl,#FFC9C0)' : 'transparent', fg: s.view === n ? 'var(--sg,#E04E4E)' : 'var(--i3,#6B7B84)' }));
+    const missCounts = {};
+    this.seed().forEach(r => r.miss.forEach(m => { missCounts[m] = (missCounts[m] || 0) + 1; }));
+    const missChips = Object.keys(missCounts).slice(0, 4).map(m => ({ t: m + ' ' + missCounts[m], bg: 'var(--pdw,#F9EDDF)', bd: 'var(--pdl,#EFD3B6)', on: () => this.setState({ q: m === 'dietary needs' ? 'ritika' : '', view: 'Missing something' }) }));
+    const or = s.openId ? this.seed().find(r => r.id === s.openId) : null;
+    const overrides = or ? (s.doneOverride[or.id] || []) : [];
+    const o = or ? {
+      n: or.n, c: or.c, email: or.email, ini: or.n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+      tasks: this.taskList(or), sessT: or.sessT, sessMeta: or.sessMeta,
+      files: or.files, noFiles: or.files.length === 0,
+      notes: s.notes[or.id] || [], missN: or.miss.filter(m => !overrides.includes(m)).length
+    } : { n: '', c: '', email: '', ini: '', tasks: [], sessT: '', sessMeta: '', files: [], noFiles: false, notes: [], missN: 0 };
+    const tabs = ['Tasks', 'Sessions', 'Files', 'Notes'].map(n => ({ n, on: () => this.setState({ tab: n }), wt: s.tab === n ? '600' : '400', fg: s.tab === n ? 'var(--ik,#16232B)' : 'var(--i3,#6B7B84)', ul: s.tab === n ? 'var(--sg,#E04E4E)' : 'transparent' }));
+    const allSel = list.length > 0 && list.every(r => s.sel.includes(r.id));
+    return {
+      setRoot: (el) => { this.root = el; this.applyTheme(); },
+      tAllS: this.tileV(s.view === 'All', VC['All'], () => this.setState({ view: 'All', focus: 0 })),
+      tMiss: this.tileV(s.view === 'Missing something', VC['Missing something'], () => this.setState({ view: 'Missing something', focus: 0 })),
+      tOdS: this.tileV(s.view === 'Overdue', VC['Overdue'], () => this.setState({ view: 'Overdue', focus: 0 })),
+      tDoneS: this.tileV(s.view === 'Complete', VC['Complete'], () => this.setState({ view: 'Complete', focus: 0 })),
+      sumLine: VC['Missing something'] + ' of ' + VC['All'] + ' still owe something · ' + VC['Overdue'] + ' with overdue items · nudges send from Messages',
+      setSearch: (el) => { this.searchEl = el; },
+      rows, views, missChips, tabs, o,
+      open: !!or, empty: rows.length === 0,
+      q: s.q, onQ: (e) => this.setState({ q: e.target.value, focus: 0 }),
+      rowH: '40px',
+      countLine: rows.length + ' of 84 confirmed speakers matching',
+      selN: s.sel.length, hasSel: s.sel.length > 0,
+      allCk: allSel ? '✓' : '', allCkBg: allSel ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)',
+      selAll: () => this.setState({ sel: allSel ? [] : list.map(r => r.id) }),
+      clearSel: () => this.setState({ sel: [] }),
+      clearFilters: () => this.setState({ q: '', view: 'All' }),
+      clearHover: () => this.setState({ hover: null }),
+      exportCsv: () => this.csv(),
+      bulkNudge: () => { this.toast(s.sel.length + ' nudges queued. They send from Messages, never silently.'); this.setState({ sel: [] }); },
+      bulkLink: () => { this.toast('Portal magic links queued for ' + s.sel.length + ' speakers.'); this.setState({ sel: [] }); },
+      bulkTask: () => this.toast('Task templates apply from Tasks. Relative due dates survive the event moving.'),
+      dNudge: () => this.toast('Nudge queued about ' + o.missN + ' missing items. Escalates on its own if ignored.'),
+      noteDraft: s.noteDraft, onNoteDraft: (e) => this.setState({ noteDraft: e.target.value }),
+      addNote: () => { if (!s.noteDraft.trim() || !or) return; this.setState(st => ({ notes: { ...st.notes, [or.id]: [...(st.notes[or.id] || []), { a: 'You', t: 'just now', x: st.noteDraft.trim() }] }, noteDraft: '' })); },
+      closeDrawer: () => this.setState({ openId: null }),
+      tabTasks: s.tab === 'Tasks', tabSessions: s.tab === 'Sessions', tabFiles: s.tab === 'Files', tabNotes: s.tab === 'Notes',
+      popUser: !!this.state.userMenu,
+      togUser: () => this.setState(s2 => ({ userMenu: !s2.userMenu })),
+      closeUser: () => this.setState({ userMenu: false }),
+      profileGo: () => { this.setState({ userMenu: false }); this.toast('Your profile: name, avatar, and notification rules. Next screen to design.'); },
+      signOut: () => { this.setState({ userMenu: false }); this.toast('A real build signs you out here. The demo keeps you in.'); },
+      themeWord: (this.state.theme || 'system')[0].toUpperCase() + (this.state.theme || 'system').slice(1),
+      soName: so('name'), soCompany: so('company'), soSess: so('sess'), soMissing: so('missing'),
+      fPopOn: !!s.fPop, togFPop: () => this.setState(s2 => ({ fPop: !s2.fPop })), closeFPop: () => this.setState({ fPop: false }),
+      fCount: ((s.fStatus || []).length + (s.fMiss || []).length) ? ' · ' + ((s.fStatus || []).length + (s.fMiss || []).length) : '',
+      fBd: ((s.fStatus || []).length + (s.fMiss || []).length) ? 'var(--sl,#FFC9C0)' : 'var(--ls,#C8D2D5)',
+      fBg: ((s.fStatus || []).length + (s.fMiss || []).length) ? 'var(--sw,#FFEAE6)' : 'var(--cd,#FFFFFF)',
+      fFg: ((s.fStatus || []).length + (s.fMiss || []).length) ? 'var(--sg,#E04E4E)' : 'var(--i2,#3E4E58)',
+      fStatusOpts: [['confirmed', 'Confirmed'], ['invited', 'Invited']].map(([v, n]) => { const on = (s.fStatus || []).includes(v); return { n, ck: on ? '✓' : '', ckBg: on ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', on: () => this.setState(s2 => ({ fStatus: on ? (s2.fStatus || []).filter(x => x !== v) : [...(s2.fStatus || []), v] })) }; }),
+      fMissOpts: ['headshot', 'slides', 'bio', 'recording consent', 'av form'].map(v => { const on = (s.fMiss || []).includes(v); return { n: v[0].toUpperCase() + v.slice(1), ck: on ? '✓' : '', ckBg: on ? 'var(--sg,#E04E4E)' : 'var(--cd,#FFFFFF)', on: () => this.setState(s2 => ({ fMiss: on ? (s2.fMiss || []).filter(x => x !== v) : [...(s2.fMiss || []), v] })) }; }),
+      clearF: () => this.setState({ fStatus: [], fMiss: [], fPop: false }),
+      accents: Object.keys(Component.ACCENTS).map(n => ({ n, c: Component.ACCENTS[n].dot, on: () => { try { localStorage.setItem('gather.accent', n); } catch (e) {} this.setState({ accent: n }); }, ring: (this.state.accent || 'Coral') === n ? '0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ' + Component.ACCENTS[n].dot : 'inset 0 0 0 1px rgba(0,0,0,.12)' })),
+      togTheme: () => { const next = s.theme === 'system' ? 'light' : s.theme === 'light' ? 'dark' : 'system'; try { localStorage.setItem('gather.theme', next); } catch (e) {} this.setState({ theme: next }); },
+      themeGlyph: s.theme === 'system' ? '◐' : s.theme === 'light' ? '○' : '●',
+      themeTitle: 'Theme: ' + s.theme + ', click to change',
+      toasts: s.toasts.map(t => ({ msg: t.msg, canUndo: !!t.revert, onUndo: () => { t.revert(); this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })); }, onX: () => this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

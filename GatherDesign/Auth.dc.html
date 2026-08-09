@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<title>Sign in · Gather</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#F4F6F7;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#E04E4E}a:hover{color:#C93E3E}
+input::placeholder{color:#99A6AD}
+::selection{background:#FF6B6B;color:#331313}
+@keyframes riseIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes drift{from{transform:translateY(0)}to{transform:translateY(-9px)}}
+@keyframes glowPulse{from{opacity:.5}to{opacity:.95}}
+</style>
+</helmet>
+<div data-screen-label="Auth" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));min-height:100vh;background:#F4F6F7">
+
+  <div style="display:flex;flex-direction:column;padding:28px clamp(24px,5vw,72px);min-width:0">
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="Gather Landing.dc.html" style="display:flex;align-items:center;gap:10px;text-decoration:none">
+        <img src="assets/gather-mark.svg" alt="Gather" width="30" height="30" style="display:block;border-radius:8px">
+        <span style="font:700 20px 'Bricolage Grotesque',sans-serif;color:#16232B;letter-spacing:-0.01em">Gather</span>
+      </a>
+      <div style="flex:1"></div>
+      <a href="Gather Landing.dc.html" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#6B7B84;text-decoration:none" style-hover="color:#16232B">← Back to gather.events</a>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;max-width:400px;width:100%;margin:0 auto;padding:48px 0;animation:riseIn .6s cubic-bezier(.2,.7,.2,1) both">
+      <sc-if value="{{ doneView }}" hint-placeholder-val="{{ false }}">
+        <div style="width:52px;height:52px;border-radius:14px;background:#E2F1EC;color:#0E7A5F;display:flex;align-items:center;justify-content:center;margin-bottom:20px"><svg width="22" height="22" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M4.8 7.8l1.8 1.8 3.6-4"></path></svg></div>
+        <h1 style="font:600 30px/1.15 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:0 0 10px">{{ doneTitle }}</h1>
+        <p style="font:400 14.5px/1.6 'IBM Plex Sans',sans-serif;color:#3E4E58;margin:0 0 26px">{{ doneBody }}</p>
+        <sc-if value="{{ doneConsole }}" hint-placeholder-val="{{ true }}">
+          <a href="Overview.dc.html" style="font:600 14.5px 'IBM Plex Sans',sans-serif;color:#331313;background:#FF6B6B;text-decoration:none;height:46px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px" style-hover="background:#FF8E8E">Open the console →</a>
+        </sc-if>
+        <button onClick="{{ resetFlow }}" style="margin-top:14px;background:none;border:none;padding:0;font:500 13px 'IBM Plex Sans',sans-serif;color:#6B7B84;cursor:pointer;text-align:center" style-hover="color:#16232B">{{ doneBack }}</button>
+      </sc-if>
+
+      <sc-if value="{{ formView }}" hint-placeholder-val="{{ true }}">
+        <h1 style="font:600 32px/1.12 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:0 0 8px">{{ title }}</h1>
+        <p style="font:400 14.5px/1.6 'IBM Plex Sans',sans-serif;color:#6B7B84;margin:0 0 26px">{{ subtitle }}</p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+          <button onClick="{{ ssoGoogle }}" style="height:44px;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:999px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;cursor:pointer" style-hover="background:#EDF1F2">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.1h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.1 3.7-8.6z"></path><path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.1 0-5.8-2.1-6.8-5l-3.9 3c2 3.9 6 6.6 10.7 6.6z"></path><path fill="#FBBC05" d="M5.2 14.4c-.2-.7-.4-1.5-.4-2.4s.2-1.7.4-2.4l-3.9-3C.5 8.2 0 10 0 12s.5 3.8 1.3 5.4l3.9-3z"></path><path fill="#EA4335" d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.3-3.2C17.9 1.1 15.2 0 12 0 7.3 0 3.3 2.7 1.3 6.6l3.9 3c1-2.9 3.7-4.9 6.8-4.9z"></path></svg>
+            Continue with Google
+          </button>
+          <button onClick="{{ ssoGithub }}" style="height:44px;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:999px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;cursor:pointer" style-hover="background:#EDF1F2">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="#16232B"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.5 7.5 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path></svg>
+            Continue with GitHub
+          </button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <span style="flex:1;height:1px;background:#E1E7E9"></span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:#99A6AD">OR WITH EMAIL</span>
+          <span style="flex:1;height:1px;background:#E1E7E9"></span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+            <div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Your name</div>
+              <input value="{{ name }}" onChange="{{ onName }}" placeholder="Sasha Whitfield" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+            </div>
+            <div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Event or organization</div>
+              <input value="{{ org }}" onChange="{{ onOrg }}" placeholder="AI Engineer 2026" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+            </div>
+          </sc-if>
+          <div>
+            <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Work email</div>
+            <input value="{{ email }}" onChange="{{ onEmail }}" placeholder="you@conference.dev" type="email" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid {{ emailBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+          </div>
+          <div>
+            <div style="display:flex;align-items:baseline;margin-bottom:6px">
+              <span style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">Password</span>
+              <div style="flex:1"></div>
+              <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ forgot }}" style="background:none;border:none;padding:0;font:400 12px 'IBM Plex Sans',sans-serif;color:#6B7B84;cursor:pointer" style-hover="color:#E04E4E">Forgot it?</button>
+              </sc-if>
+            </div>
+            <div style="position:relative">
+              <input value="{{ pw }}" onChange="{{ onPw }}" type="{{ pwType }}" placeholder="{{ pwPlaceholder }}" style="width:100%;box-sizing:border-box;height:44px;padding:0 74px 0 14px;border-radius:9px;border:1px solid {{ pwBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+              <button onClick="{{ togPw }}" style="position:absolute;right:8px;top:8px;height:28px;padding:0 10px;border-radius:999px;border:none;background:#EDF1F2;font:500 11px 'IBM Plex Sans',sans-serif;color:#3E4E58;cursor:pointer" style-hover="background:#E1E7E9">{{ pwToggle }}</button>
+            </div>
+          </div>
+          <sc-if value="{{ hasErr }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#D8432B;background:#FBE8E6;border:1px solid #F3C7C2;border-radius:8px;padding:9px 12px"><span style="width:6px;height:6px;border-radius:50%;background:#D8432B;flex:none"></span>{{ err }}</div>
+          </sc-if>
+          <button onClick="{{ submit }}" style="height:46px;border-radius:999px;border:none;background:#FF6B6B;color:#331313;font:600 14.5px 'IBM Plex Sans',sans-serif;cursor:pointer;box-shadow:0 8px 24px rgba(255,107,107,.28)" style-hover="background:#FF8E8E">{{ cta }}</button>
+          <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ magic }}" style="height:42px;border-radius:999px;border:1px solid #C8D2D5;background:none;font:500 13px 'IBM Plex Sans',sans-serif;color:#3E4E58;cursor:pointer" style-hover="background:#EDF1F2">Email me a magic link instead</button>
+          </sc-if>
+          <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+            <div style="font:400 11.5px/1.6 'IBM Plex Sans',sans-serif;color:#99A6AD;text-align:center">Free while in beta. No credit card. By continuing you agree to the <a href="#terms" style="color:#6B7B84">terms</a> and <a href="#privacy" style="color:#6B7B84">privacy policy</a>.</div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font:400 13px 'IBM Plex Sans',sans-serif;color:#6B7B84">{{ switchLabel }}</span>
+      <button onClick="{{ switchMode }}" style="background:none;border:none;padding:0;font:600 13px 'IBM Plex Sans',sans-serif;color:#E04E4E;cursor:pointer" style-hover="color:#C93E3E">{{ switchCta }}</button>
+      <div style="flex:1"></div>
+      <span style="font:400 11px 'IBM Plex Mono',monospace;color:#99A6AD">open source · MIT</span>
+    </div>
+  </div>
+
+  <div style="position:relative;background:#08080A;overflow:clip;display:flex;flex-direction:column;justify-content:center;padding:64px clamp(28px,4.5vw,64px);min-height:520px;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.022) 0 1px,transparent 1px 120px)">
+    <div style="position:absolute;left:50%;top:-260px;width:900px;height:640px;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(255,107,107,.15),rgba(255,107,107,0) 70%);pointer-events:none;animation:glowPulse 7s ease-in-out infinite alternate"></div>
+    <div style="position:relative;max-width:480px">
+      <div style="font:500 11.5px 'IBM Plex Mono',monospace;letter-spacing:.22em;color:#FF8E8E;margin-bottom:18px">CFP · REVIEW · SPEAKER OPS · AGENDA</div>
+      <div style="font:600 clamp(30px,3.2vw,44px)/1.12 'Bricolage Grotesque',sans-serif;letter-spacing:-0.022em;color:#F2F2F0;margin-bottom:18px;text-wrap:balance">216 submissions. 84 speakers. Zero 3 a.m. spreadsheets.</div>
+      <p style="font:400 15px/1.65 'IBM Plex Sans',sans-serif;color:#A3A3A0;margin:0 0 34px;text-wrap:pretty">Sign in and pick up where the program left off: the review queue knows your place, the agenda knows every conflict, and the outbox tells the truth.</p>
+      <div style="position:relative;background:#141417;border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:18px 20px;rotate:-1.2deg;box-shadow:0 24px 60px rgba(0,0,0,.45);max-width:400px">
+        <div style="font:400 13px/1.65 'IBM Plex Sans',sans-serif;color:#C9C9C6;margin-bottom:8px">"The Tuesday before the conference used to be my least favorite day of the year. Now it is just Tuesday."</div>
+        <div style="font:500 11px 'IBM Plex Mono',monospace;color:#FF8E8E">A program chair, after round 2 closed on time</div>
+        <div style="position:absolute;right:-20px;bottom:-30px;rotate:2deg;background:#17171B;border:1px solid #123029;border-radius:12px;padding:10px 14px;box-shadow:0 18px 44px rgba(0,0,0,.55);animation:drift 6s ease-in-out infinite alternate">
+          <div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#57B899;margin-bottom:2px">WHILE YOU WERE OUT</div>
+          <div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#C9C9C6">4 headshots arrived · 0 conflicts · 12 reviews in</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1280, &quot;height&quot;: 800}, &quot;defaultMode&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;login&quot;, &quot;register&quot;], &quot;default&quot;: &quot;login&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Demo&quot;}}">
+class Component extends DCLogic {
+  state = { mode: 'login', name: '', org: '', email: '', pw: '', showPw: false, err: '', done: null };
+  componentDidMount() { if (this.props.defaultMode === 'register') this.setState({ mode: 'register' }); }
+  valid() {
+    const s = this.state;
+    if (s.mode === 'register' && !s.name.trim()) return 'Your name is missing.';
+    if (s.mode === 'register' && !s.org.trim()) return 'Give your event or organization a name.';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.email.trim())) return 'That email does not look complete.';
+    if (s.pw.length < 8) return 'Password needs at least 8 characters.';
+    return '';
+  }
+  renderVals() {
+    const s = this.state, login = s.mode === 'login';
+    return {
+      isLogin: login, isRegister: !login,
+      formView: !s.done, doneView: !!s.done,
+      title: login ? 'Welcome back' : 'Create your workspace',
+      subtitle: login ? 'The program moved while you were away. Catch up.' : 'One workspace per event. Reviewers and co-organizers join by invite.',
+      name: s.name, onName: (e) => this.setState({ name: e.target.value, err: '' }),
+      org: s.org, onOrg: (e) => this.setState({ org: e.target.value, err: '' }),
+      email: s.email, onEmail: (e) => this.setState({ email: e.target.value, err: '' }),
+      pw: s.pw, onPw: (e) => this.setState({ pw: e.target.value, err: '' }),
+      pwType: s.showPw ? 'text' : 'password',
+      pwToggle: s.showPw ? 'Hide' : 'Show',
+      togPw: () => this.setState(st => ({ showPw: !st.showPw })),
+      pwPlaceholder: login ? 'Your password' : 'At least 8 characters',
+      emailBd: s.err && s.err.includes('email') ? '#D8432B' : '#C8D2D5',
+      pwBd: s.err && s.err.includes('Password') ? '#D8432B' : '#C8D2D5',
+      hasErr: !!s.err, err: s.err,
+      cta: login ? 'Sign in' : 'Create workspace',
+      submit: () => {
+        const err = this.valid();
+        if (err) { this.setState({ err }); return; }
+        this.setState({ done: login ? 'in' : 'new', err: '' });
+      },
+      magic: () => {
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.email.trim())) { this.setState({ err: 'Type your email first, then we can send the link.' }); return; }
+        this.setState({ done: 'magic', err: '' });
+      },
+      forgot: () => this.setState({ done: 'magic', err: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.email.trim()) ? '' : '' }),
+      ssoGoogle: () => this.setState({ done: 'in' }),
+      ssoGithub: () => this.setState({ done: 'in' }),
+      doneTitle: s.done === 'magic' ? 'Check your inbox' : s.done === 'new' ? 'Workspace ready' : 'Signed in',
+      doneBody: s.done === 'magic' ? 'The link signs you in on this device and expires in 15 minutes. No password to remember, ever.' : s.done === 'new' ? (s.org.trim() || 'Your event') + ' now has a home: CFP form, review rounds, speaker portal, and an agenda that refuses to double-book.' : 'Picking up where the program left off.',
+      doneConsole: s.done !== 'magic',
+      doneBack: s.done === 'magic' ? '← Use a password instead' : '← Not you? Switch account',
+      resetFlow: () => this.setState({ done: null, err: '' }),
+      switchLabel: login ? 'New to Gather?' : 'Already have a workspace?',
+      switchCta: login ? 'Create a workspace' : 'Sign in',
+      switchMode: () => this.setState({ mode: login ? 'register' : 'login', err: '', done: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

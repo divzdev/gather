@@ -72,8 +72,13 @@ tmp/
 .uploads/
 .next/
 
-tools/
-
 # --- Local-only working notes and tooling (never committed) ---
+tools/evals/
 .local/
-GatherDesign/
+
+# Design sources: the .dc.html prototypes are the input to tools/dc2tsx.py, so
+# they ship — a generated component nobody can regenerate is dead weight. The
+# 127M of design-tool image uploads do not.
+GatherDesign/*
+!GatherDesign/*.dc.html
+GatherDesign/* v1.dc.html

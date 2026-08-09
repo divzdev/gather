@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="icon" href="assets/gather-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--sg,#E04E4E)}a:hover{color:var(--sg,#C93E3E)}button{cursor:pointer}::selection{background:var(--sw,#FFEAE6)}</style>
+</helmet>
+<div ref="{{ setRoot }}" data-screen-label="Task dashboard" style="display:grid;grid-template-columns:auto minmax(0,1fr);height:100vh;overflow:hidden;background:var(--pp,#F4F6F7);color:var(--ik,#16232B)">
+  <dc-import name="ConsoleRail" active="Tasks" hint-size="216px,100%" style="height:100%;min-height:0"></dc-import>
+  <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <span style="display:flex;align-items:center;gap:8px;font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>AI Engineer 2026</span>
+      <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">/ Tasks</span>
+      <div style="flex:1"></div>
+      <button onClick="{{ nudgeAll }}" style="height:30px;padding:0 13px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12px 'IBM Plex Sans',sans-serif;white-space:nowrap">Nudge all overdue</button>
+      
+      <div style="position:relative">
+        <button onClick="{{ togUser }}" title="Account" aria-label="Account menu" style="width:28px;height:28px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);padding:0" style-hover="border:1px solid var(--ls,#C8D2D5)">SW</button>
+        <sc-if value="{{ popUser }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ closeUser }}" aria-label="Close" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:41"></button>
+          <div style="position:absolute;top:36px;right:0;width:248px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:12px;box-shadow:0 16px 40px rgba(13,16,32,.20);padding:6px;z-index:42">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 10px">
+              <span style="width:32px;height:32px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);flex:none">SW</span>
+              <span style="min-width:0"><span style="display:block;font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Sasha Whitfield</span><span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">program lead · demo org</span></span>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <div style="font:600 9.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i4,#99A6AD);padding:8px 10px 6px">THEME</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 10px 10px">
+              <sc-for list="{{ accents }}" as="ac" hint-placeholder-count="5"><button onClick="{{ ac.on }}" title="{{ ac.n }}" aria-label="{{ ac.n }}" style="width:16px;height:16px;border-radius:50%;border:none;background:{{ ac.c }};box-shadow:{{ ac.ring }};padding:0;flex:none"></button></sc-for>
+              <div style="flex:1"></div>
+              <button onClick="{{ togTheme }}" title="{{ themeTitle }}" style="display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)" style-hover="background:var(--sk,#EDF1F2)">{{ themeGlyph }} {{ themeWord }}</button>
+            </div>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ profileGo }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);text-align:left" style-hover="background:var(--sk,#EDF1F2)">Your profile</button>
+            <a href="Settings.dc.html" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;padding:8px 10px;border-radius:7px;text-decoration:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Workspace settings</a>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:4px 6px"></div>
+            <button onClick="{{ signOut }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--cn,#D8432B);text-align:left" style-hover="background:var(--cnw,#FBE8E6)">Sign out</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+    <div style="height:32px;flex:none;display:flex;align-items:center;gap:16px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
+      <a href="Submissions.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">SUB 216</a><span style="color:var(--i4,#99A6AD)">·</span>
+      <a href="Review.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">UNREVIEWED 38</a><span style="color:var(--i4,#99A6AD)">·</span>
+      <span style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--pd,#B96A1F)">OVERDUE TASKS {{ odCount }}</span><span style="color:var(--i4,#99A6AD)">·</span>
+      <a href="Agenda.dc.html" style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--cn,#D8432B);text-decoration:none">⚠ 3 CONFLICTS</a>
+      <div style="flex:1"></div>
+      <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">CFP closes in 38d</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px 28px 80px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+        <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Tasks</h1>
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">who owes you what, latest first</span>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:2px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);border-radius:999px;padding:2px">
+          <button onClick="{{ byTask }}" style="height:26px;padding:0 12px;border-radius:999px;border:none;background:{{ vTaskBg }};color:{{ vTaskFg }};font:{{ vTaskWt }} 12px 'IBM Plex Sans',sans-serif;white-space:nowrap;box-shadow:{{ vTaskSh }}">By task</button>
+          <button onClick="{{ bySpeaker }}" style="height:26px;padding:0 12px;border-radius:999px;border:none;background:{{ vSpBg }};color:{{ vSpFg }};font:{{ vSpWt }} 12px 'IBM Plex Sans',sans-serif;white-space:nowrap;box-shadow:{{ vSpSh }}">By speaker</button>
+        </div>
+      </div>
+      <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">{{ sumLine }}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+        <button onClick="{{ tOpen.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tOpen.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tOpen.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--ifw,#E9ECF7);color:var(--if,#47599F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="currentColor"><rect x="1.5" y="2" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="6.3" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="10.6" width="8" height="2.4" rx="1.2"></rect></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tOpen.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tOpen.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Open items</span></span>
+        </button>
+        <button onClick="{{ tOdT.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tOdT.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tOdT.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--pdw,#F9EDDF);color:var(--pd,#B96A1F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M7.5 4.3v3.4l2.3 1.4"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tOdT.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tOdT.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Overdue</span></span>
+        </button>
+        <button onClick="{{ tSpk.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tSpk.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tSpk.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--sw,#FFEAE6);color:var(--sg,#E04E4E);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="4.8" r="2.5"></circle><path d="M2.8 12.8c.6-2.5 2.4-3.9 4.7-3.9s4.1 1.4 4.7 3.9"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tSpk.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tSpk.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Speakers waiting</span></span>
+        </button>
+        <button onClick="{{ tDoneT.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tDoneT.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tDoneT.ring }};text-align:left;cursor:pointer">
+          <span style="width:32px;height:32px;border-radius:9px;background:var(--okw,#E2F1EC);color:var(--ok,#0E7A5F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M4.8 7.8l1.8 1.8 3.6-4"></path></svg></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tDoneT.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tDoneT.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Done this week</span></span>
+        </button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+        <sc-for list="{{ summary }}" as="sm" hint-placeholder-count="5">
+          <button onClick="{{ sm.on }}" style="display:flex;flex-direction:column;gap:6px;min-width:150px;padding:10px 13px;border-radius:8px;background:{{ sm.bg }};border:1px solid {{ sm.bd }};text-align:left">
+            <span style="display:flex;justify-content:space-between;gap:10px"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ sm.n }}</span><span style="font:500 11px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84)">{{ sm.frac }}</span></span>
+            <span style="display:block;height:3px;border-radius:2px;background:var(--ln,#E1E7E9)"><span style="display:block;height:3px;border-radius:2px;background:{{ sm.fill }};width:{{ sm.w }}"></span></span>
+          </button>
+        </sc-for>
+      </div>
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+        <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);margin-bottom:12px;overflow:hidden">
+          <button onClick="{{ g.onTog }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 14px;background:none;border:none;text-align:left">
+            <span style="font:400 10px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">{{ g.chev }}</span>
+            <span style="font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ g.n }}</span>
+            <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ g.meta }}</span>
+            <div style="flex:1"></div>
+            <sc-if value="{{ g.hasOd }}" hint-placeholder-val="{{ false }}">
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:4px;background:var(--cnw,#FBE8E6);font:500 10.5px 'IBM Plex Mono',monospace;color:var(--cn,#D8432B)">{{ g.odLabel }}</span>
+            </sc-if>
+          </button>
+          <sc-if value="{{ g.open }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--ln,#E1E7E9);border-left:3px solid {{ r.bar }}">
+                <span style="width:24px;height:24px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:inline-flex;align-items:center;justify-content:center;font:600 8.5px 'IBM Plex Sans Condensed',sans-serif;color:var(--i3,#6B7B84);flex:none">{{ r.ini }}</span>
+                <div style="flex:1;min-width:0"><div style="font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ r.n }} <span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">· {{ r.c }}</span></div><div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">{{ r.sub }}</div></div>
+                <span style="font:400 11px 'IBM Plex Mono',monospace;color:{{ r.dueFg }};white-space:nowrap">{{ r.due }}</span>
+                <button onClick="{{ r.onNudge }}" style="height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--pdl,#EFD3B6);background:var(--pdw,#F9EDDF);font:500 11.5px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F);white-space:nowrap">Nudge</button>
+                <button onClick="{{ r.onDone }}" style="height:26px;padding:0 10px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 11.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap">Mark complete</button>
+              </div>
+            </sc-for>
+          </sc-if>
+        </div>
+      </sc-for>
+      <sc-if value="{{ allClear }}" hint-placeholder-val="{{ false }}">
+        <div style="border:1px solid var(--okl,#C2E0D5);border-radius:8px;background:var(--okw,#E2F1EC);padding:16px;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ok,#0E7A5F)">Nothing outstanding in this view. 84 speakers, zero open tasks here.</div>
+      </sc-if>
+    </div>
+  </div>
+  <div style="position:fixed;left:16px;bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:8px;padding:10px 12px;box-shadow:0 12px 32px rgba(16,19,25,.16);max-width:440px">
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ t.msg }}</span>
+        <sc-if value="{{ t.canUndo }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ t.onUndo }}" style="background:none;border:none;font:600 12px 'IBM Plex Sans',sans-serif;color:var(--sg,#E04E4E);padding:0">Undo</button>
+        </sc-if>
+        <button onClick="{{ t.onX }}" aria-label="Dismiss" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:0">✕</button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  static ACCENTS = {
+    Coral: { dot: '#FF6B6B', l: { sg: '#E04E4E', sw: '#FFEAE6', sl: '#FFC9C0', bt: '#FF6B6B', bf: '#331313' }, d: { sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313' } },
+    Sunset: { dot: '#F2915B', l: { sg: '#BE5F1F', sw: '#FCEFE4', sl: '#F5CFB2', bt: '#F2915B', bf: '#331A0A' }, d: { sg: '#F5AA7E', sw: '#3A2414', sl: '#664028', bt: '#F2915B', bf: '#331A0A' } },
+    Sky: { dot: '#4A9BD8', l: { sg: '#2B77B3', sw: '#E7F1FA', sl: '#BFDCF1', bt: '#4A9BD8', bf: '#0D2333' }, d: { sg: '#7FBCE8', sw: '#152A3A', sl: '#2C4E66', bt: '#4A9BD8', bf: '#0D2333' } },
+    Slate: { dot: '#5A6BA8', l: { sg: '#4A5A99', sw: '#EAEDF7', sl: '#C8CFE9', bt: '#5A6BA8', bf: '#FFFFFF' }, d: { sg: '#98A6DA', sw: '#1F2542', sl: '#3A4370', bt: '#8B9AD0', bf: '#12162E' } },
+    Graphite: { dot: '#5F6B79', l: { sg: '#46535F', sw: '#ECEFF2', sl: '#C9D2DA', bt: '#4A5764', bf: '#FFFFFF' }, d: { sg: '#A9B6C2', sw: '#232B33', sl: '#3E4A56', bt: '#93A3B1', bf: '#111921' } }
+  };
+  static DARK = { pp: '#101013', cd: '#17171B', sk: '#1F1F24', ln: '#2A2A31', ls: '#3F3F49', ik: '#F2F2F0', i2: '#C9C9C6', i3: '#929290', i4: '#686865', sg: '#FF8E8E', sw: '#3A1D1D', sl: '#66302E', bt: '#FF6B6B', bf: '#331313', cn: '#F0766A', cnw: '#3A1F1E', cnl: '#5E2E2B', pd: '#F0A468', pdw: '#332617', pdl: '#54402A', ok: '#57B899', okw: '#123029', okl: '#1F4A3E', if: '#8B9AD0', ifw: '#262833', ifl: '#3E4152' };
+  seed() {
+    return [
+      { id: 't1', type: 'Headshot', n: 'Marta Duarte', c: 'Vercel', sub: 'Square photo, at least 800px', od: 3 },
+      { id: 't2', type: 'Headshot', n: 'José Águilar', c: 'Intercom', sub: 'Square photo, at least 800px', od: 5 },
+      { id: 't3', type: 'Headshot', n: 'Nils Vogel', c: 'Zapier', sub: 'Square photo, at least 800px', od: 2 },
+      { id: 't4', type: 'Headshot', n: 'Wei Zhang', c: 'Adept', sub: 'Square photo, at least 800px', od: 0 },
+      { id: 't5', type: 'Slides', n: 'Marta Duarte', c: 'Vercel', sub: 'PDF or Keynote, draft is fine', od: 3 },
+      { id: 't6', type: 'Slides', n: 'José Águilar', c: 'Intercom', sub: 'PDF or Keynote, draft is fine', od: 5 },
+      { id: 't7', type: 'Slides', n: 'Dana Whitfield', c: 'Shopify', sub: 'PDF or Keynote, draft is fine', od: 0 },
+      { id: 't8', type: 'Bio', n: 'José Águilar', c: 'Intercom', sub: '50–100 words, third person', od: 5 },
+      { id: 't9', type: 'Bio', n: 'Wei Zhang', c: 'Adept', sub: '50–100 words, third person', od: 0 },
+      { id: 't10', type: 'Recording consent', n: 'Kwame Osei', c: 'Turbopuffer', sub: 'One tap in the portal', od: 1 },
+      { id: 't11', type: 'AV form', n: 'Nils Vogel', c: 'Zapier', sub: 'Mics, adapters, demo machine', od: 2 },
+      { id: 't12', type: 'Dietary needs', n: 'Ritika Sharma', c: 'Baseten', sub: 'For the speaker dinner', od: 0 }
+    ];
+  }
+  static TOTALS = { 'Headshot': 84, 'Slides': 84, 'Bio': 84, 'Recording consent': 84, 'AV form': 84, 'Dietary needs': 84 };
+  state = { theme: 'system', accent: 'Coral', view: 'task', closed: [], doneIds: [], filter: null, toasts: [] };
+  componentDidMount() {
+    try { const th = localStorage.getItem('gather.theme'); if (th) this.setState({ theme: th }); const ac = localStorage.getItem('gather.accent'); if (ac && Component.ACCENTS[ac]) this.setState({ accent: ac }); } catch (e) {}
+    this._mq = window.matchMedia('(prefers-color-scheme: dark)');
+    this._mqFn = () => this.forceUpdate();
+    this._mq.addEventListener('change', this._mqFn);
+    this.applyTheme();
+  }
+  componentDidUpdate() { this.applyTheme(); }
+  componentWillUnmount() { if (this._mq) this._mq.removeEventListener('change', this._mqFn); }
+  isDark() { return this.state.theme === 'dark' || (this.state.theme === 'system' && this._mq && this._mq.matches); }
+  applyTheme() {
+    if (!this.root) return;
+    const dark = this.isDark();
+    Object.entries(Component.DARK).forEach(([k, v]) => { dark ? this.root.style.setProperty('--' + k, v) : this.root.style.removeProperty('--' + k); });
+    const acc = (Component.ACCENTS[this.state.accent] || Component.ACCENTS.Coral)[dark ? 'd' : 'l'];
+    Object.entries(acc).forEach(([k, v]) => this.root.style.setProperty('--' + k, v));
+    this.root.style.colorScheme = dark ? 'dark' : 'light';
+  }
+  toast(msg, revert) {
+    const id = Math.random().toString(36).slice(2);
+    this.setState(s => ({ toasts: [...s.toasts.slice(-2), { id, msg, revert }] }));
+    setTimeout(() => this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), revert ? 10000 : 6000);
+  }
+  openTasks() { return this.seed().filter(t => !this.state.doneIds.includes(t.id) && (!this.state.filter || (this.state.filter === '__od' ? t.od > 0 : t.type === this.state.filter))); }
+  tileV(active, c, on) { return { c, on, bd: active ? 'var(--sg,#E04E4E)' : 'var(--ln,#E1E7E9)', ring: active ? '0 0 0 3px var(--sw,#FFEAE6)' : '0 1px 2px rgba(13,16,32,.04)', numFg: active ? 'var(--sg,#E04E4E)' : 'var(--ik,#16232B)' }; }
+  complete(t) {
+    this.setState(s => ({ doneIds: [...s.doneIds, t.id] }));
+    const revert = () => this.setState(s => ({ doneIds: s.doneIds.filter(x => x !== t.id) }));
+    this.toast('Marked "' + t.type + '" complete for ' + t.n + '.', revert);
+  }
+  row(t) {
+    return {
+      n: t.n, c: t.c, sub: t.sub, ini: t.n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+      bar: t.od > 0 ? 'var(--cn,#D8432B)' : 'var(--pd,#B96A1F)',
+      due: t.od > 0 ? t.od + (t.od > 1 ? ' days over' : ' day over') : 'due 5 Oct',
+      dueFg: t.od > 0 ? 'var(--cn,#D8432B)' : 'var(--i4,#99A6AD)',
+      onNudge: () => this.toast('Nudge queued for ' + t.n + ' about "' + t.type + '". Escalates on its own.'),
+      onDone: () => this.complete(t)
+    };
+  }
+  renderVals() {
+    const s = this.state, open = this.openTasks();
+    const allOpen = this.seed().filter(t => !s.doneIds.includes(t.id));
+    const types = Object.keys(Component.TOTALS);
+    const summary = types.map(ty => {
+      const missing = allOpen.filter(t => t.type === ty).length;
+      const done = Component.TOTALS[ty] - missing;
+      const active = s.filter === ty;
+      return {
+        n: ty, frac: done + '/' + Component.TOTALS[ty], w: Math.round(done / Component.TOTALS[ty] * 100) + '%',
+        fill: missing ? 'var(--pd,#B96A1F)' : 'var(--ok,#0E7A5F)',
+        bg: active ? 'var(--sw,#FFEAE6)' : 'var(--cd,#FFFFFF)', bd: active ? 'var(--sl,#FFC9C0)' : 'var(--ln,#E1E7E9)',
+        on: () => this.setState(st => ({ filter: st.filter === ty ? null : ty }))
+      };
+    });
+    let groups;
+    const sortOd = (a, b) => b.od - a.od;
+    if (s.view === 'task') {
+      const tys = types.filter(ty => open.some(t => t.type === ty));
+      groups = tys.map(ty => {
+        const rows = open.filter(t => t.type === ty).sort(sortOd);
+        const odN = rows.filter(r => r.od > 0).length;
+        const isOpen = !s.closed.includes(ty);
+        return { n: ty, meta: rows.length + ' outstanding', hasOd: odN > 0, odLabel: odN + ' overdue', open: isOpen, chev: isOpen ? '▾' : '▸', onTog: () => this.setState(st => ({ closed: st.closed.includes(ty) ? st.closed.filter(x => x !== ty) : [...st.closed, ty] })), rows: rows.map(t => this.row(t)) };
+      }).sort((a, b) => (b.hasOd ? 1 : 0) - (a.hasOd ? 1 : 0));
+    } else {
+      const names = [...new Set(open.map(t => t.n))];
+      groups = names.map(n => {
+        const rows = open.filter(t => t.n === n).sort(sortOd);
+        const odN = rows.filter(r => r.od > 0).length;
+        const isOpen = !s.closed.includes(n);
+        return { n, meta: rows.length + ' owed · ' + rows[0].c, hasOd: odN > 0, odLabel: odN + ' overdue', open: isOpen, chev: isOpen ? '▾' : '▸', onTog: () => this.setState(st => ({ closed: st.closed.includes(n) ? st.closed.filter(x => x !== n) : [...st.closed, n] })), rows: rows.map(t => ({ ...this.row(t), n: t.type, c: t.n.split(' ')[0] })) };
+      }).sort((a, b) => (b.hasOd ? 1 : 0) - (a.hasOd ? 1 : 0));
+    }
+    const seg = (on) => on ? { bg: 'var(--cd,#FFFFFF)', fg: 'var(--ik,#16232B)', wt: '600', sh: '0 1px 2px rgba(16,19,25,.08)' } : { bg: 'none', fg: 'var(--i3,#6B7B84)', wt: '500', sh: 'none' };
+    const a = seg(s.view === 'task'), b = seg(s.view === 'speaker');
+    return {
+      setRoot: (el) => { this.root = el; this.applyTheme(); },
+      tOpen: this.tileV(!s.filter && s.view === 'task', allOpen.length, () => this.setState({ filter: null, view: 'task' })),
+      tOdT: this.tileV(s.filter === '__od', allOpen.filter(t => t.od > 0).length, () => this.setState({ filter: '__od' })),
+      tSpk: this.tileV(!s.filter && s.view === 'speaker', [...new Set(allOpen.map(t => t.n))].length, () => this.setState({ view: 'speaker', filter: null })),
+      tDoneT: this.tileV(false, 6 + s.doneIds.length, () => this.setState({ filter: null })),
+      sumLine: allOpen.length + ' open items across ' + [...new Set(allOpen.map(t => t.n))].length + ' speakers · ' + allOpen.filter(t => t.od > 0).length + ' overdue · ' + (6 + s.doneIds.length) + ' done this week',
+      summary, groups, allClear: groups.length === 0,
+      odCount: allOpen.filter(t => t.od > 0).length,
+      byTask: () => this.setState({ view: 'task' }), bySpeaker: () => this.setState({ view: 'speaker' }),
+      vTaskBg: a.bg, vTaskFg: a.fg, vTaskWt: a.wt, vTaskSh: a.sh,
+      vSpBg: b.bg, vSpFg: b.fg, vSpWt: b.wt, vSpSh: b.sh,
+      nudgeAll: () => this.toast(allOpen.filter(t => t.od > 0).length + ' nudges queued for overdue tasks. They send from Messages, never silently.'),
+      popUser: !!this.state.userMenu,
+      togUser: () => this.setState(s2 => ({ userMenu: !s2.userMenu })),
+      closeUser: () => this.setState({ userMenu: false }),
+      profileGo: () => { this.setState({ userMenu: false }); this.toast('Your profile: name, avatar, and notification rules. Next screen to design.'); },
+      signOut: () => { this.setState({ userMenu: false }); this.toast('A real build signs you out here. The demo keeps you in.'); },
+      themeWord: (this.state.theme || 'system')[0].toUpperCase() + (this.state.theme || 'system').slice(1),
+      accents: Object.keys(Component.ACCENTS).map(n => ({ n, c: Component.ACCENTS[n].dot, on: () => { try { localStorage.setItem('gather.accent', n); } catch (e) {} this.setState({ accent: n }); }, ring: (this.state.accent || 'Coral') === n ? '0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ' + Component.ACCENTS[n].dot : 'inset 0 0 0 1px rgba(0,0,0,.12)' })),
+      togTheme: () => { const next = s.theme === 'system' ? 'light' : s.theme === 'light' ? 'dark' : 'system'; try { localStorage.setItem('gather.theme', next); } catch (e) {} this.setState({ theme: next }); },
+      themeGlyph: s.theme === 'system' ? '◐' : s.theme === 'light' ? '○' : '●',
+      themeTitle: 'Theme: ' + s.theme + ', click to change',
+      toasts: s.toasts.map(t => ({ msg: t.msg, canUndo: !!t.revert, onUndo: () => { t.revert(); this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })); }, onX: () => this.setState(st => ({ toasts: st.toasts.filter(x => x.id !== t.id) })) }))
+    };
+  }
+}
+</script>
+</body>
+</html>
