@@ -1,0 +1,145 @@
+"use client";
+
+/** Controller for the generated console rail.
+ *
+ * The prototype's own logic, ported: the active item is tinted with the accent,
+ * collapsing swaps a set of measurements, and the collapsed flag survives a
+ * reload under the same localStorage key the prototype used.
+ */
+
+import { useQuery } from "@tanstack/react-query";
+import { useState, useSyncExternalStore } from "react";
+
+import { ConsoleRail, type ConsoleRailData } from "@/components/design/ConsoleRail";
+import { authed, getEventId } from "@/lib/session";
+
+const RAIL_KEY = "gather.rail";
+
+/** Collapsed state lives in localStorage, so it is read through an external
+ *  store rather than an effect: the server renders expanded and the client
+ *  corrects on hydration without a second render pass. */
+const listeners = new Set<() => void>();
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener("storage", listener);
+  };
+}
+
+function setCollapsed(next: boolean): void {
+  window.localStorage.setItem(RAIL_KEY, next ? "1" : "0");
+  for (const listener of listeners) listener();
+}
+
+type NavName =
+  | "Overview"
+  | "Submissions"
+  | "Sessions"
+  | "Review"
+  | "Speakers"
+  | "Agenda"
+  | "Tasks"
+  | "Messages"
+  | "Portal"
+  | "Forms"
+  | "Publishing"
+  | "Settings";
+
+export function Rail({ active, style }: { active: NavName; style?: React.CSSProperties }) {
+  const collapsed = useSyncExternalStore(
+    subscribe,
+    () => window.localStorage.getItem(RAIL_KEY) === "1",
+    () => false,
+  );
+  const [logoHover, setLogoHover] = useState(false);
+  const eventId = typeof window === "undefined" ? null : getEventId();
+
+  // The rail is on every console screen, so its counts are one shared query.
+  const { data: counts } = useQuery({
+    queryKey: ["rail-counts", eventId],
+    enabled: eventId !== null,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const page = await authed<{ data: { status: string }[]; meta: { total: number } }>(
+        `/events/${eventId}/submissions?per_page=200`,
+      );
+      return {
+        submissions: page.meta.total,
+        unreviewed: page.data.filter((row) => row.status === "submitted").length,
+        accepted: page.data.filter((row) => row.status === "accepted").length,
+      };
+    },
+  });
+
+  // A count of zero takes the badge out of the rail rather than showing "0".
+  const badge = (value: number | undefined) => ({
+    text: value === undefined || value === 0 ? "" : String(value),
+    display: value === undefined || value === 0 ? "none" : "inline-block",
+  });
+  const submissions = badge(counts?.submissions);
+  const sessions = badge(counts?.accepted);
+  const review = badge(counts?.unreviewed);
+
+  const item = (name: NavName) =>
+    name === active
+      ? {
+          bg: "var(--sw,#FFEAE6)",
+          fg: "var(--sg,#E04E4E)",
+          wt: "600",
+          dot: collapsed ? "none" : "inline-block",
+        }
+      : { bg: "none", fg: "var(--i2,#3E4E58)", wt: "500", dot: "none" };
+
+  const data: ConsoleRailData = {
+    ov: item("Overview"),
+    su: item("Submissions"),
+    se: item("Sessions"),
+    rv: item("Review"),
+    sp: item("Speakers"),
+    ag: item("Agenda"),
+    tk: item("Tasks"),
+    ms: item("Messages"),
+    pt: item("Portal"),
+    fm: item("Forms"),
+    pb: item("Publishing"),
+    st: item("Settings"),
+    subBadge: submissions.text,
+    subBadgeD: submissions.display,
+    seBadge: sessions.text,
+    seBadgeD: sessions.display,
+    rvBadge: review.text,
+    rvBadgeD: review.display,
+    // Agenda conflicts and speaker tasks are not built yet; no badge until they are.
+    agBadge: "",
+    agBadgeD: "none",
+    tkBadge: "",
+    tkBadgeD: "none",
+    exp: !collapsed,
+    col: collapsed,
+    railW: collapsed ? "64px" : "216px",
+    navPad: collapsed ? "4px 12px 14px" : "4px 10px 14px",
+    iPad: collapsed ? "0" : "0 13px",
+    iJus: collapsed ? "center" : "flex-start",
+    lblD: collapsed ? "none" : "flex",
+    eyeD: collapsed ? "none" : "block",
+    divD: collapsed ? "block" : "none",
+    lgHov: logoHover,
+    lgIdle: !logoHover,
+    lgBg: logoHover ? "var(--sk,#EDF1F2)" : "none",
+    lgIn: () => setLogoHover(true),
+    lgOut: () => setLogoHover(false),
+    togRail: () => {
+      setCollapsed(!collapsed);
+      setLogoHover(false);
+    },
+  };
+
+  return (
+    <div style={style}>
+      <ConsoleRail d={data} />
+    </div>
+  );
+}

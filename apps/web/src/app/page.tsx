@@ -5,5 +5,5 @@ export const metadata = {
 };
 
 export default function Page() {
-  return <GatherLanding />;
+  return <GatherLanding d={{ showAnnounce: true, showStats: true }} />;
 }

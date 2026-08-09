@@ -1,0 +1,239 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+
+import { Overview, type OverviewData } from "@/components/design/Overview";
+import { useTheme } from "@/components/ThemeProvider";
+import { ACCENT_NAMES, ACCENTS } from "@/lib/theme";
+import { authed, clearToken, getEventId } from "@/lib/session";
+
+type Pending = { accepted: number; waitlisted: number; rejected: number; total: number };
+type SubmissionPage = { data: { status: string }[]; meta: { total: number } };
+type Event = { name: string; starts_on: string; ends_on: string; cfp_closes_at: string | null };
+
+const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long" });
+const MONTH_YEAR = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
+const LONG_DATE = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" });
+
+/** `starts_on` is a calendar date, not an instant. `new Date("2027-05-12")` reads
+ *  it as UTC midnight, which is the day before in any western timezone. */
+function parseDateOnly(iso: string): Date {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
+}
+
+const MILESTONE_STATES = ["done", "next", "todo"] as const;
+type MilestoneState = (typeof MILESTONE_STATES)[number];
+
+function daysUntil(iso: string | null): number | null {
+  if (iso === null) return null;
+  const target = new Date(iso).getTime();
+  if (Number.isNaN(target)) return null;
+  return Math.max(0, Math.ceil((target - Date.now()) / 86_400_000));
+}
+
+/** Overview, rendered from the design prototype. The counts, dates and calendar
+ *  come from the event; everything visual is the generated component's. */
+export default function OverviewPage() {
+  const router = useRouter();
+  const theme = useTheme();
+  const [userMenu, setUserMenu] = useState(false);
+  const [toasts, setToasts] = useState<{ id: string; msg: string }[]>([]);
+  const eventId = typeof window === "undefined" ? null : getEventId();
+
+  const { data } = useQuery({
+    queryKey: ["overview", eventId],
+    enabled: eventId !== null,
+    queryFn: async () => {
+      const [event, pending, page] = await Promise.all([
+        authed<Event>(`/events/${eventId}`),
+        authed<Pending>(`/events/${eventId}/submissions/pending-decisions`),
+        authed<SubmissionPage>(`/events/${eventId}/submissions?per_page=200`),
+      ]);
+      return { event, pending, page };
+    },
+  });
+
+  const toast = (msg: string) => {
+    const id = crypto.randomUUID();
+    setToasts((current) => [...current.slice(-2), { id, msg }]);
+    window.setTimeout(() => setToasts((current) => current.filter((t) => t.id !== id)), 6000);
+  };
+
+  const rows = data?.page.data ?? [];
+  const total = data?.page.meta.total ?? 0;
+  const unreviewed = rows.filter((row) => row.status === "submitted").length;
+  const decided = rows.filter((row) => row.status !== "submitted" && row.status !== "draft").length;
+  const cfpDays = daysUntil(data?.event.cfp_closes_at ?? null);
+  const eventStart = data?.event.starts_on ?? null;
+
+  const dates = useMemo(() => keyDates(data?.event ?? null), [data?.event]);
+  const calendar = useMemo(() => buildCalendar(dates), [dates]);
+  const legend = (index: number, fallback: string) => {
+    const entry = dates[index];
+    return entry === undefined ? fallback : `${entry.date.getDate()} · ${entry.name}`;
+  };
+
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  const overview: OverviewData = {
+    greet,
+    todayLine: `${LONG_DATE.format(new Date())} · ${unreviewed} reviews waiting · ${total} proposals in`,
+    subCount: total,
+    unreviewedCount: unreviewed,
+    decidedCount: decided,
+    draftCount: rows.filter((row) => row.status === "draft").length,
+    cfpShort: cfpDays === null ? "—" : `${cfpDays}d`,
+    cfpDays: cfpDays ?? "—",
+    readyPct: total === 0 ? 0 : Math.round(((total - unreviewed) / total) * 100),
+    eventMonth: eventStart === null ? "the event" : MONTH.format(parseDateOnly(eventStart)),
+    calMonth: calendar.label,
+    calCells: calendar.cells,
+    miles: buildMilestones(dates),
+    legendCfp: legend(0, "CFP closes"),
+    legendReviews: legend(1, "Reviews close"),
+    legendDecisions: legend(2, "Decisions out"),
+
+    popUser: userMenu,
+    togUser: () => setUserMenu((open) => !open),
+    closeUser: () => setUserMenu(false),
+    profileGo: () => {
+      setUserMenu(false);
+      toast("Your profile: name, avatar, and notification rules.");
+    },
+    signOut: () => {
+      setUserMenu(false);
+      clearToken();
+      router.push("/login");
+    },
+
+    themeWord: theme.mode.replace(/^./, (c) => c.toUpperCase()),
+    themeGlyph: theme.mode === "system" ? "◐" : theme.mode === "light" ? "○" : "●",
+    themeTitle: `Theme: ${theme.mode}, click to change`,
+    togTheme: () =>
+      theme.setMode(theme.mode === "system" ? "light" : theme.mode === "light" ? "dark" : "system"),
+    accents: ACCENT_NAMES.map((name) => ({
+      n: name,
+      c: ACCENTS[name].dot,
+      on: () => theme.setAccent(name),
+      ring:
+        theme.accent === name
+          ? `0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ${ACCENTS[name].dot}`
+          : "inset 0 0 0 1px rgba(0,0,0,.12)",
+    })),
+
+    kToast: () => toast("Command palette ships with the full build. Every rail item is a real page."),
+    bell: () => toast(`${unreviewed} proposals are waiting on review.`),
+    nudge: () => toast("Nudges are queued in Messages. Nothing sends until you confirm."),
+    toasts: toasts.map((t) => ({
+      msg: t.msg,
+      onX: () => setToasts((current) => current.filter((x) => x.id !== t.id)),
+    })),
+  };
+
+  return <Overview d={overview} />;
+}
+
+type KeyDate = { date: Date; name: string; fill: boolean };
+
+/** The dates the console treats as the programme's spine. Only the CFP close and
+ *  the event dates are recorded; the review and decision milestones are spaced
+ *  across the window between them, so they stay in order however tight it is. */
+function keyDates(event: Event | null): KeyDate[] {
+  if (event === null) return [];
+  const start = parseDateOnly(event.starts_on);
+  const closes = event.cfp_closes_at === null ? null : new Date(event.cfp_closes_at);
+  if (closes === null) return [{ date: start, name: "Event days", fill: true }];
+
+  const span = start.getTime() - closes.getTime();
+  if (span <= 0) {
+    return [
+      { date: start, name: "Event days", fill: false },
+      { date: closes, name: "CFP closes", fill: true },
+    ].sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  const at = (fraction: number) => new Date(closes.getTime() + span * fraction);
+  return [
+    { date: closes, name: "CFP closes", fill: true },
+    { date: at(1 / 3), name: "Reviews close", fill: false },
+    { date: at(2 / 3), name: "Decisions out", fill: false },
+    { date: at(5 / 6), name: "Schedule live", fill: false },
+    { date: start, name: "Event days", fill: false },
+  ];
+}
+
+/** The month the CFP closes in, with any key date that falls inside it marked. */
+function buildCalendar(dates: KeyDate[]): { label: string; cells: OverviewData["calCells"] } {
+  const anchor = dates[0]?.date ?? new Date();
+  const year = anchor.getFullYear();
+  const month = anchor.getMonth();
+  const marks = new Map<number, KeyDate>();
+  for (const entry of dates) {
+    if (entry.date.getFullYear() === year && entry.date.getMonth() === month) {
+      marks.set(entry.date.getDate(), entry);
+    }
+  }
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const lead = (new Date(year, month, 1).getDay() + 6) % 7; // Monday-first, as the prototype
+  const cells: (number | null)[] = [
+    ...Array.from({ length: lead }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const monthShort = MONTH.format(anchor).slice(0, 3);
+  return {
+    label: MONTH_YEAR.format(anchor),
+    cells: cells.map((day) => {
+      const mark = day === null ? undefined : marks.get(day);
+      return {
+        n: day === null ? "" : String(day),
+        tt: mark === undefined ? "" : `${day} ${monthShort} · ${mark.name}`,
+        bg: mark?.fill === true ? "var(--bt,#FF6B6B)" : "transparent",
+        fg:
+          mark === undefined
+            ? "var(--i2,#3E4E58)"
+            : mark.fill
+              ? "var(--bf,#331313)"
+              : "var(--sg,#E04E4E)",
+        bd:
+          mark !== undefined && !mark.fill
+            ? "1.5px solid var(--sg,#E04E4E)"
+            : "1.5px solid transparent",
+        wt: mark === undefined ? "400" : "600",
+      };
+    }),
+  };
+}
+
+function buildMilestones(dates: KeyDate[]): OverviewData["miles"] {
+  const short = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+  const now = Date.now();
+  const nextIndex = dates.findIndex((entry) => entry.date.getTime() >= now);
+
+  return dates.map((entry, index) => {
+    const state: MilestoneState =
+      index === nextIndex ? "next" : entry.date.getTime() < now ? "done" : "todo";
+    const last = index === dates.length - 1;
+    return {
+      d: short.format(entry.date),
+      n: entry.name,
+      dotBg:
+        state === "done"
+          ? "var(--ok,#0E7A5F)"
+          : state === "next"
+            ? "var(--sg,#E04E4E)"
+            : "var(--cd,#FFFFFF)",
+      dotBd: state === "todo" ? "1.5px solid var(--ls,#C8D2D5)" : "1.5px solid transparent",
+      dateFg: state === "next" ? "var(--sg,#E04E4E)" : "var(--i3,#6B7B84)",
+      wt: state === "next" ? "600" : "500",
+      line: last ? "none" : "block",
+      pb: last ? "0" : "14px",
+    };
+  });
+}

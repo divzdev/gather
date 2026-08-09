@@ -41,7 +41,9 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         httponly=True,
         secure=settings.is_production,
         samesite="lax",
-        path="/v1/auth",
+        # The browser reaches the API through the web app at /api/v1, so the
+        # cookie has to be scoped to a path that survives the rewrite.
+        path="/",
     )
 
 
@@ -91,7 +93,7 @@ async def logout(
 ) -> None:
     if gather_refresh is not None:
         await service.revoke(session, refresh_token=gather_refresh)
-    response.delete_cookie(REFRESH_COOKIE, path="/v1/auth")
+    response.delete_cookie(REFRESH_COOKIE, path="/")
 
 
 @router.post("/magic-link", status_code=status.HTTP_204_NO_CONTENT)

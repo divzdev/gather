@@ -6,8 +6,9 @@
  * how the two halves drift.
  */
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8051/v1";
+/** Same-origin by default: next.config.ts rewrites /api/v1 to the API service,
+ *  which keeps the refresh cookie in play and makes CORS unnecessary. */
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 
 /** Mirrors the API error envelope: {error: {code, message, details, field}}. */
 export type ApiErrorBody = {

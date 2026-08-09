@@ -26,16 +26,18 @@ async def test_login_returns_a_token_and_sets_the_refresh_cookie(
     assert "gather_refresh" in response.cookies
 
 
-async def test_refresh_cookie_is_httponly_and_scoped_to_auth(
+async def test_refresh_cookie_is_httponly_and_root_scoped(
     client: AsyncClient, staff_user: User
 ) -> None:
+    """Root path, not /v1/auth: the browser reaches the API through the web app's
+    /api/v1 rewrite, so a cookie scoped to /v1/auth would never be sent back."""
     response = await client.post(
         "/v1/auth/login", json={"email": staff_user.email, "password": PASSWORD}
     )
     header = response.headers["set-cookie"]
 
     assert "HttpOnly" in header
-    assert "Path=/v1/auth" in header
+    assert "Path=/" in header
     assert "SameSite=lax" in header.replace("Samesite", "SameSite")
 
 
