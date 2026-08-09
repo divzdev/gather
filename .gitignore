@@ -81,4 +81,6 @@ tools/evals/
 # 127M of design-tool image uploads do not.
 GatherDesign/*
 !GatherDesign/*.dc.html
+!GatherDesign/assets/
+!GatherDesign/assets/**
 GatherDesign/* v1.dc.html

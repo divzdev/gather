@@ -332,6 +332,11 @@ class Converter(HTMLParser):
                     classes.append(value)
                 continue
 
+            # Design assets are copied into the app's public directory, so the
+            # prototype's relative path has to become an absolute one.
+            if name == "src" and value.startswith("assets/"):
+                rendered.append(attr_literal("src", f"/design/{value[len('assets/'):]}"))
+                continue
             if name == "href" and value in ROUTES:
                 rendered.append(attr_literal("href", ROUTES[value]))
                 continue
