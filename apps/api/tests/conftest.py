@@ -1,0 +1,163 @@
+from __future__ import annotations
+
+import os
+import uuid
+from collections.abc import AsyncGenerator
+from datetime import date
+
+import asyncpg
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.models import Base, Event, EventStatus, Organization, User
+
+# Tests never touch the development database.
+DEV_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql+asyncpg://gather:gather@localhost:5441/gather",
+)
+TEST_DB = "gather_test"
+_ADMIN_DSN = DEV_URL.replace("postgresql+asyncpg://", "postgresql://").rsplit("/", 1)[0]
+TEST_URL = f"{DEV_URL.rsplit('/', 1)[0]}/{TEST_DB}"
+
+
+async def _ensure_test_database() -> None:
+    conn = await asyncpg.connect(f"{_ADMIN_DSN}/postgres")
+    try:
+        exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", TEST_DB)
+        if not exists:
+            # Identifier cannot be parameterised; TEST_DB is a module constant.
+            await conn.execute(f'CREATE DATABASE "{TEST_DB}"')
+    finally:
+        await conn.close()
+
+    conn = await asyncpg.connect(f"{_ADMIN_DSN}/{TEST_DB}")
+    try:
+        await conn.execute("CREATE EXTENSION IF NOT EXISTS citext")
+    finally:
+        await conn.close()
+
+
+@pytest.fixture(scope="session")
+async def engine() -> AsyncGenerator[object, None]:
+    await _ensure_test_database()
+    eng = create_async_engine(TEST_URL, pool_pre_ping=True)
+    async with eng.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    yield eng
+    await eng.dispose()
+
+
+@pytest.fixture
+async def session(engine: object) -> AsyncGenerator[AsyncSession, None]:
+    factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)  # type: ignore[arg-type]
+    async with factory() as s:
+        yield s
+        await s.rollback()
+
+
+@pytest.fixture
+async def client(engine: object) -> AsyncGenerator[AsyncClient, None]:
+    """Drives the real app: real Postgres, real Redis, real dependency graph.
+
+    Only the session factory is redirected at the test database — nothing else is
+    stubbed, so the tests exercise the wiring a request actually goes through.
+    """
+    from httpx import ASGITransport
+
+    from app.core import db as db_module
+    from app.main import create_app
+
+    factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)  # type: ignore[arg-type]
+
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        async with factory() as s:
+            try:
+                yield s
+            except Exception:
+                await s.rollback()
+                raise
+            else:
+                await s.commit()
+
+    app = create_app()
+    app.dependency_overrides[db_module.get_db] = override_get_db
+
+    async with app.router.lifespan_context(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as c:
+            yield c
+
+
+@pytest.fixture(autouse=True)
+async def _clear_rate_limits() -> AsyncGenerator[None, None]:
+    """Rate-limit counters live in Redis and would leak between tests."""
+    import redis.asyncio as aioredis
+
+    from app.core.config import get_settings
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    keys = [k async for k in redis.scan_iter("ratelimit:*")]
+    if keys:
+        await redis.delete(*keys)
+    yield
+    await redis.aclose()
+
+
+@pytest.fixture
+async def staff_user(session: AsyncSession) -> User:
+    from app.core.security import hash_password
+    from app.core.tenancy import tenancy_disabled
+
+    with tenancy_disabled():
+        user = User(
+            email=f"organizer-{uuid.uuid4().hex[:8]}@example.com",
+            name="Ada Organizer",
+            password_hash=hash_password("correct horse battery staple"),
+        )
+        session.add(user)
+        await session.commit()
+    return user
+
+
+@pytest.fixture
+async def two_orgs(session: AsyncSession) -> tuple[Organization, Organization]:
+    """Two organizations, one event each. The fixture every leak test builds on."""
+    from app.core.tenancy import tenancy_disabled
+
+    suffix = uuid.uuid4().hex[:8]
+    with tenancy_disabled():
+        org_a = Organization(name="Alpha Conf", slug=f"alpha-{suffix}")
+        org_b = Organization(name="Beta Conf", slug=f"beta-{suffix}")
+        session.add_all([org_a, org_b])
+        await session.flush()
+
+        session.add_all(
+            [
+                Event(
+                    org_id=org_a.id,
+                    name="Alpha 2026",
+                    slug="alpha-2026",
+                    timezone="America/Los_Angeles",
+                    starts_on=date(2026, 9, 1),
+                    ends_on=date(2026, 9, 3),
+                    status=EventStatus.CFP_OPEN,
+                ),
+                Event(
+                    org_id=org_b.id,
+                    name="Beta 2026",
+                    slug="beta-2026",
+                    timezone="Europe/Berlin",
+                    starts_on=date(2026, 10, 1),
+                    ends_on=date(2026, 10, 2),
+                    status=EventStatus.CFP_OPEN,
+                ),
+            ]
+        )
+        # Committed, not flushed: the API client runs on its own session and would
+        # not otherwise see this data.
+        await session.commit()
+
+    return org_a, org_b

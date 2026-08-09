@@ -1,0 +1,21 @@
+name: gather
+# gather is an npm-workspaces monorepo (apps/web = Next.js, apps/api = FastAPI),
+# which Portico's auto-detection can't infer — so the services are declared here.
+#
+# Postgres and Redis are not Portico services: they run in Docker (docker-compose.yml,
+# Postgres 5441 / Redis 6379). Start them with `make up` before `portico`.
+services:
+  - name: web
+    kind: node
+    cwd: apps/web
+    runtime: Next.js
+    default: true
+    install: false   # deps are hoisted by the root `npm install`
+    command: ../../node_modules/.bin/next dev -H 127.0.0.1 -p $PORT
+  - name: api
+    kind: python
+    cwd: apps/api
+    runtime: FastAPI/ASGI
+    port: 8051   # 8050 is lifeos, 8100 is ordel, 8001 is reportism
+    install: false   # uses apps/api/.venv, created by `make setup` (uv sync)
+    command: $PORTICO_PYTHON -m uvicorn app.main:app --reload --host 127.0.0.1 --port $PORT

@@ -1,0 +1,38 @@
+# Local dependencies only. The apps run on the host for fast reload.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: gather-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gather
+      POSTGRES_USER: gather
+      POSTGRES_PASSWORD: gather
+    ports:
+      # Host 5441: 5433 is ordel, 5440 is lifeos, 5432 is the native Postgres.
+      # Container stays on 5432 internally.
+      - "5441:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gather -d gather"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: gather-redis
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
