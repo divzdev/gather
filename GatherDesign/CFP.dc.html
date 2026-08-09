@@ -167,12 +167,15 @@
     <sc-if value="{{ doneV }}" hint-placeholder-val="{{ false }}">
       <div style="max-width:560px;margin:40px auto 0;text-align:center">
         <div style="width:46px;height:46px;border-radius:50%;background:#E2F1EC;border:1px solid #C2E0D5;display:inline-flex;align-items:center;justify-content:center;font:600 19px 'IBM Plex Sans',sans-serif;color:#0E7A5F;margin-bottom:16px">✓</div>
-        <h1 style="font:700 28px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:0 0 8px">Proposal received</h1>
+        <h1 style="font:700 28px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:0 0 8px">{{ doneTitle }}</h1>
+        <p style="font:400 14.5px/22px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin:0 0 16px;max-width:520px">{{ doneNote }}</p>
+        <sc-if value="{{ hasCode }}">
         <div style="font:600 24px 'IBM Plex Mono',monospace;color:#E04E4E;letter-spacing:0.04em;margin-bottom:6px">{{ code }}</div>
         <button onClick="{{ copyCode }}" style="height:28px;padding:0 11px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 12px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:20px">Copy code</button>
         <div style="border:1px solid #E1E7E9;border-radius:8px;background:#FFFFFF;padding:16px;text-align:left;margin-bottom:16px">
           <div style="font:400 13.5px/21px 'IBM Plex Sans',sans-serif;color:#3E4E58">A confirmation email is on its way to <span style="font-weight:600;color:#16232B">{{ email }}</span>. Reviews close 22 Sep, decisions go out by 29 Sep. Your status link shows every stage: submitted, in review, decision.</div>
         </div>
+        </sc-if>
         <div style="display:flex;justify-content:center;gap:10px">
           <button onClick="{{ again }}" style="height:38px;padding:0 15px;border-radius:8px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 13px 'IBM Plex Sans',sans-serif;color:#16232B">Submit another proposal</button>
           <a href="Event Landing.dc.html" style="display:inline-flex;align-items:center;height:38px;padding:0 15px;border-radius:8px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 13px 'IBM Plex Sans',sans-serif;color:#16232B;text-decoration:none">Back to the event</a>

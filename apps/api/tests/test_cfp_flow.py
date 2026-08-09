@@ -692,3 +692,25 @@ async def test_submission_status_is_submitted_after_submit(
     )
 
     assert response.json()["status"] == SubmissionStatus.SUBMITTED.value
+
+
+async def test_closing_the_cfp_from_settings_shuts_the_public_form(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """The window is checked against the form, which carries its own dates, so
+    an event-level change that did not reach the form left the settings field a
+    silent no-op: the organizer closed the call and the portal stayed open."""
+    headers, event, _form = cfp
+
+    patched = await client.patch(
+        f"/v1/events/{event.id}",
+        json={"cfp_closes_at": "2020-01-01T00:00:00Z"},
+        headers=headers,
+    )
+    assert patched.status_code == 200
+
+    public = await client.get(f"/v1/public/events/{event.slug}/cfp-form")
+
+    assert public.status_code == 200
+    assert public.json()["is_open"] is False
+    assert public.json()["closed_reason"] is not None

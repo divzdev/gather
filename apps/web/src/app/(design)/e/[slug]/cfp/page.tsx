@@ -199,9 +199,20 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     bd: chosen ? "#E04E4E" : "#C8D2D5",
   });
 
+  // A closed call shows the confirmation panel's shape with the server's reason,
+  // rather than a wizard that cannot submit. The server clock decides; the
+  // client only reports it.
+  const closed = form !== undefined && !form.is_open;
+
   const screen: CfpData = {
-    working: code === null,
-    doneV: code !== null,
+    working: code === null && !closed,
+    doneV: code !== null || closed,
+    hasCode: code !== null,
+    doneTitle: code !== null ? "Proposal received" : "Submissions are closed",
+    doneNote:
+      code !== null
+        ? "Keep your code — it is how you check the status of this proposal."
+        : (form?.closed_reason ?? "This call for papers is not accepting proposals."),
     code: code ?? "",
     copyCode: () => {
       if (code !== null) void navigator.clipboard.writeText(code);
