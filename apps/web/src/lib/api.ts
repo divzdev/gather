@@ -6,9 +6,17 @@
  * how the two halves drift.
  */
 
-/** Same-origin by default: next.config.ts rewrites /api/v1 to the API service,
- *  which keeps the refresh cookie in play and makes CORS unnecessary. */
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
+/** Same-origin in the browser: next.config.ts rewrites /api/v1 to the API
+ *  service, which keeps the refresh cookie in play and makes CORS unnecessary.
+ *
+ *  Server components have no origin to resolve a relative URL against, and the
+ *  rewrite lives in the very server doing the rendering — so they call the API
+ *  directly. Public pages are server-rendered, so getting this wrong 500s the
+ *  entire public surface. */
+export const API_BASE_URL =
+  typeof window === "undefined"
+    ? `${process.env.API_ORIGIN ?? "http://127.0.0.1:8051"}/v1`
+    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1");
 
 /** Mirrors the API error envelope: {error: {code, message, details, field}}. */
 export type ApiErrorBody = {
