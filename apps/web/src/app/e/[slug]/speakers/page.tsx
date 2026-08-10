@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { API_BASE_URL } from "@/lib/api";
+
 import { NotPublished, PublicShell, getPublic, type EventInfo } from "../public";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +9,7 @@ export const dynamic = "force-dynamic";
 type Speaker = {
   id: string; name: string; company: string | null; job_title: string | null;
   bio: string | null; sessions: { id: string; slug: string; title: string }[];
+  headshot_file_id: string | null;
 };
 type Payload = { event: EventInfo; speakers: Speaker[] };
 
@@ -47,17 +50,35 @@ export default async function Speakers({ params }: { params: Promise<{ slug: str
             style={{ background: "var(--cd)", border: "1px solid var(--ln)", borderRadius: 14, padding: 18 }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-              <span
-                aria-hidden
-                style={{
-                  width: 44, height: 44, borderRadius: "50%", flex: "none",
-                  background: "var(--sw)", color: "var(--sg)",
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  font: "600 14px var(--font-plex-condensed), sans-serif",
-                }}
-              >
-                {initials(person.name)}
-              </span>
+              {person.headshot_file_id === null || person.headshot_file_id === undefined ? (
+                <span
+                  aria-hidden
+                  style={{
+                    width: 44, height: 44, borderRadius: "50%", flex: "none",
+                    background: "var(--sw)", color: "var(--sg)",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    font: "600 14px var(--font-plex-condensed), sans-serif",
+                  }}
+                >
+                  {initials(person.name)}
+                </span>
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element --
+                   next/image wants a configured loader and a known host; this is
+                   our own API serving a 44px avatar, and the route already sets
+                   an immutable cache header. */
+                <img
+                  src={`${API_BASE_URL}/public/events/${slug}/speakers/${person.headshot_file_id}/photo`}
+                  alt=""
+                  width={44}
+                  height={44}
+                  loading="lazy"
+                  style={{
+                    width: 44, height: 44, borderRadius: "50%", flex: "none",
+                    objectFit: "cover", background: "var(--sw)",
+                  }}
+                />
+              )}
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: "block", font: "600 15px var(--font-plex-sans)", color: "var(--ik)" }}>
                   {person.name}

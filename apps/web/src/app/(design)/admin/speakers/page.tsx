@@ -22,6 +22,18 @@ type Roster = {
   status: string;
   submission_count: number;
   portal_last_seen_at: string | null;
+  headshot_file_id: string | null;
+};
+
+type SpeakerFile = {
+  id: string;
+  filename: string;
+  content_type: string;
+  byte_size: number;
+  version: number;
+  uploaded_at: string;
+  label: string;
+  is_headshot: boolean;
 };
 
 const STATUS: Record<string, { label: string; fg: string; bg: string }> = {
@@ -79,6 +91,14 @@ export default function SpeakersPage() {
     queryKey: ["roster", eventId],
     enabled: eventId !== null,
     queryFn: () => authed<Roster[]>(`/events/${eventId}/speakers`),
+  });
+
+  // Only for the speaker whose drawer is open: fetching a file list per row
+  // would be eighty requests to render a table.
+  const { data: files } = useQuery({
+    queryKey: ["speaker-files", eventId, openId],
+    enabled: eventId !== null && openId !== null,
+    queryFn: () => authed<SpeakerFile[]>(`/events/${eventId}/speakers/${openId}/files`),
   });
 
   const setStatus = useMutation({
@@ -350,7 +370,36 @@ export default function SpeakersPage() {
       sessMeta: open?.bio ?? "No bio yet.",
       // Tasks and files need the deliverables feature, which is not built.
       tasks: [],
-      files: [],
+      files: (files ?? []).map((entry) => ({
+        ext: entry.filename.split(".").pop()?.slice(0, 4).toUpperCase() ?? "FILE",
+        // The design's row has no action slot, and the prototype cannot be
+        // regenerated safely right now (the re-export drops five props), so the
+        // name itself is the control. `n` is a ReactNode, so this is within the
+        // contract rather than around it.
+        n: (
+          <button
+            onClick={() => {
+              void download(
+                `/events/${eventId}/files/${entry.id}/download`,
+                entry.filename,
+              ).catch((error: Error) => toast(error.message));
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              font: "500 12.5px var(--font-plex-sans), sans-serif",
+              color: "var(--sg,#E04E4E)",
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+          >
+            {entry.label}
+          </button>
+        ),
+        meta: `${entry.filename} · ${Math.max(1, Math.round(entry.byte_size / 1024))} KB · ${DAY.format(new Date(entry.uploaded_at))}`,
+        v: `v${entry.version}`,
+      })),
       noFiles: true,
       notes: openId === null ? [] : (notes[openId] ?? []),
     },

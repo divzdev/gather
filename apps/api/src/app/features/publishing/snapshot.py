@@ -141,6 +141,9 @@ async def build(session: AsyncSession, event: Event) -> dict[str, Any]:
                 "company": p.company,
                 "job_title": p.job_title,
                 "bio": p.bio,
+                # The snapshot is the only thing public pages read, so a gallery
+                # without this shows initials in a grey circle forever.
+                "headshot_file_id": None if p.headshot_file_id is None else str(p.headshot_file_id),
                 "links": p.links,
                 "sessions": [
                     {"id": str(s.id), "slug": s.slug, "title": s.title}

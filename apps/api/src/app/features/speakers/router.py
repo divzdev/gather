@@ -11,6 +11,7 @@ from __future__ import annotations
 import csv
 import io
 import uuid
+from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile
@@ -25,10 +26,14 @@ from app.models import (
     Role,
     Speaker,
     SpeakerStatus,
+    SpeakerTask,
     Submission,
     SubmissionSpeaker,
+    TaskFile,
+    TaskTemplate,
     User,
 )
+from app.models.file import File as FileRecord
 
 router = APIRouter(
     prefix="/v1/events/{event_id}/speakers",
@@ -57,6 +62,9 @@ class SpeakerRead(BaseModel):
     status: SpeakerStatus
     submission_count: int
     portal_last_seen_at: Any = None
+    #: The roster could not show a face without this. Uploading worked, storing
+    #: worked, and nothing on the staff side ever returned it.
+    headshot_file_id: uuid.UUID | None = None
 
 
 class SpeakerCreate(BaseModel):
@@ -126,6 +134,7 @@ async def _roster(session: DbSession) -> list[SpeakerRead]:
             job_title=speaker.job_title,
             pronouns=speaker.pronouns,
             bio=speaker.bio,
+            headshot_file_id=speaker.headshot_file_id,
             status=link.status,
             submission_count=int(counts.get(speaker.id, 0)),
             portal_last_seen_at=link.portal_last_seen_at,
@@ -308,4 +317,80 @@ async def export_speakers(session: DbSession, _: User = Depends(require_role(*RE
         content=buffer.getvalue(),
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="speakers.csv"'},
+    )
+
+
+class SpeakerFile(BaseModel):
+    """One uploaded file, with enough to show and open it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    filename: str
+    content_type: str
+    byte_size: int
+    version: int
+    uploaded_at: datetime
+    #: "Headshot" for the profile photo, otherwise the task that asked for it —
+    #: so a deck is labelled by what it answers, not by its filename.
+    label: str
+    is_headshot: bool
+
+
+@router.get("/{event_speaker_id}/files", response_model=list[SpeakerFile])
+async def speaker_files(
+    event_speaker_id: uuid.UUID,
+    session: DbSession,
+    _: User = Depends(require_role(*READ)),
+) -> list[SpeakerFile]:
+    """Everything this speaker has sent in: the headshot and every deliverable.
+
+    Collected in two different ways — the profile photo sits on the speaker,
+    task uploads hang off the task — and an organiser chasing a missing deck
+    should not have to know that. One list, newest first.
+    """
+    link = await session.get(EventSpeaker, event_speaker_id)
+    if link is None:
+        raise NotFoundError(f"No speaker on this event with id {event_speaker_id}.")
+    person = await session.get(Speaker, link.speaker_id)
+    if person is None:  # pragma: no cover - the foreign key guarantees this
+        raise NotFoundError("That speaker no longer exists.")
+
+    rows: list[SpeakerFile] = []
+
+    if person.headshot_file_id is not None:
+        # Files are org-scoped, so a headshot carried over from another event is
+        # still readable here — which is the point of the shared speaker record.
+        headshot = await session.get(FileRecord, person.headshot_file_id)
+        if headshot is not None:
+            rows.append(_speaker_file(headshot, label="Headshot", is_headshot=True))
+
+    uploads = (
+        (
+            await session.execute(
+                select(FileRecord, TaskTemplate.name)
+                .join(TaskFile, TaskFile.file_id == FileRecord.id)
+                .join(SpeakerTask, SpeakerTask.id == TaskFile.speaker_task_id)
+                .join(TaskTemplate, TaskTemplate.id == SpeakerTask.task_template_id)
+                .where(SpeakerTask.speaker_id == person.id)
+                .order_by(FileRecord.created_at.desc())
+            )
+        )
+        .tuples()
+        .all()
+    )
+    rows.extend(_speaker_file(record, label=name, is_headshot=False) for record, name in uploads)
+    return rows
+
+
+def _speaker_file(record: FileRecord, *, label: str, is_headshot: bool) -> SpeakerFile:
+    return SpeakerFile(
+        id=record.id,
+        filename=record.filename,
+        content_type=record.content_type,
+        byte_size=record.byte_size,
+        version=record.version,
+        uploaded_at=record.created_at,
+        label=label,
+        is_headshot=is_headshot,
     )

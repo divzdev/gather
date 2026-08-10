@@ -8,15 +8,18 @@ identical times and speakers wherever it appears.
 
 from __future__ import annotations
 
+import uuid
 from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Query, Request, Response
 
+from app.core import storage
 from app.core.deps import DbSession, PublicEvent
 from app.core.errors import NotFoundError
 from app.features.publishing import embed, ics, snapshot
+from app.models.file import File as FileRecord
 
 router = APIRouter(prefix="/v1/public/events/{event_slug}", tags=["public"])
 
@@ -182,6 +185,42 @@ async def gallery(event: PublicEvent, session: DbSession) -> dict[str, Any]:
             for p in data["speakers"]
         ],
     }
+
+
+@router.get("/speakers/{file_id}/photo")
+async def speaker_photo(file_id: uuid.UUID, event: PublicEvent, session: DbSession) -> Response:
+    """A published speaker's headshot, to anyone.
+
+    Deliberately narrow. It serves a file only when the latest published
+    snapshot names it as a speaker's headshot, so knowing a file id is not
+    enough to read a slide deck or anyone else's upload — the snapshot is the
+    allow-list, which is the same rule every other public surface follows.
+    """
+    published = await snapshot.latest(session)
+    if published is None:
+        raise NotFoundError("Nothing is published for this event yet.")
+
+    allowed = {
+        person.get("headshot_file_id")
+        for person in published.snapshot.get("speakers", [])
+        if person.get("headshot_file_id")
+    }
+    if str(file_id) not in allowed:
+        raise NotFoundError("No published photo with that id.")
+
+    record = await session.get(FileRecord, file_id)
+    if record is None:  # pragma: no cover - the snapshot named it a moment ago
+        raise NotFoundError("No published photo with that id.")
+
+    return Response(
+        content=await storage.read(record.s3_key),
+        media_type=record.content_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{record.filename}"',
+            # Immutable: replacing a headshot writes a new row at a new id.
+            "Cache-Control": "public, max-age=31536000, immutable",
+        },
+    )
 
 
 @router.get("/embed.js", response_class=Response)
