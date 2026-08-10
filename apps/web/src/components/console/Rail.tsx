@@ -14,6 +14,16 @@ import { useProgramStats } from "@/components/console/stats";
 
 const RAIL_KEY = "gather.rail";
 
+const SHORT = new Intl.DateTimeFormat("en-GB", { day: "numeric" });
+const MONTH = new Intl.DateTimeFormat("en-GB", { month: "short" });
+
+/** A calendar date, not an instant: `new Date("2027-05-12")` is the day before
+ *  in any western timezone. */
+function parseDate(iso: string): Date {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
+}
+
 /** Collapsed state lives in localStorage, so it is read through an external
  *  store rather than an effect: the server renders expanded and the client
  *  corrects on hydration without a second render pass. */
@@ -55,6 +65,11 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
   );
   const [logoHover, setLogoHover] = useState(false);
   const { stats } = useProgramStats();
+  const event = stats.event;
+  const dates =
+    event === null
+      ? "—"
+      : `${SHORT.format(parseDate(event.starts_on))}–${SHORT.format(parseDate(event.ends_on))}`;
 
   // A count of zero takes the badge out of the rail rather than showing "0".
   const badge = (value: number) => ({
@@ -76,6 +91,10 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
       : { bg: "none", fg: "var(--i2,#3E4E58)", wt: "500", dot: "none" };
 
   const data: ConsoleRailData = {
+    // The rail named a fixture event on every screen it appeared on.
+    eventName: event?.name ?? "Loading…",
+    eventDates: dates,
+    eventPlace: event === null ? "" : MONTH.format(parseDate(event.starts_on)),
     ov: item("Overview"),
     su: item("Submissions"),
     se: item("Sessions"),

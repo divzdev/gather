@@ -6,7 +6,7 @@ import { useMemo, useRef, useState } from "react";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Submissions, type SubmissionsData } from "@/components/design/Submissions";
-import { authed } from "@/lib/session";
+import { authed, setEventId } from "@/lib/session";
 
 type Speaker = { name: string; organisation: string | null };
 type Submission = {
@@ -80,6 +80,11 @@ export default function SubmissionsPage() {
   const [hideBanner, setHideBanner] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [notes, setNotes] = useState<Record<string, { a: string; t: string; x: string }[]>>({});
+
+  const { data: events } = useQuery({
+    queryKey: ["my-events"],
+    queryFn: () => authed<{ id: string; name: string; status: string; starts_on: string }[]>("/events"),
+  });
 
   const { data, isPending } = useQuery({
     queryKey: ["submissions", eventId],
@@ -488,10 +493,20 @@ export default function SubmissionsPage() {
     popStatus: popover === "status",
     popSwitch: popover === "switch",
     popHelp: popover === "help",
-    otherEvent: () => {
-      setPopover(null);
-      toast("This workspace has one event seeded. Switching works the same way.");
-    },
+    events: (events ?? []).map((entry) => {
+      const current = entry.id === eventId;
+      return {
+        n: entry.name,
+        meta: `${entry.starts_on} · ${entry.status.replace("_", " ")}`,
+        dot: current ? "var(--ok,#0E7A5F)" : "var(--i4,#99A6AD)",
+        bg: current ? "var(--sw,#FFEAE6)" : "none",
+        on: () => {
+          // A stale event id left every screen showing zeros with no way back.
+          setEventId(entry.id);
+          window.location.reload();
+        },
+      };
+    }),
 
     hsAll: () => setView("All"),
     hsUnrev: () => setView("Needs review"),
