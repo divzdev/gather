@@ -22,6 +22,7 @@ from app.models import (
     EventStatus,
     Form,
     FormKind,
+    FormStatus,
     Organization,
     OrgMember,
     Role,
@@ -796,3 +797,37 @@ async def test_more_co_speakers_than_the_form_allows_is_refused(
 
     assert response.status_code == 422
     assert response.json()["error"]["field"] == "co_speakers"
+
+
+async def test_a_draft_form_does_not_replace_the_live_call_for_papers(
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """Starting a second form in the builder must not take the public CFP down.
+
+    The public route took the newest CFP form of any status, so creating one
+    swapped the live form for an empty untitled draft while the organiser was
+    still deciding what to put on it.
+    """
+    headers, event, form = cfp
+    with tenancy_disabled():
+        stored = await session.get(Form, form.id)
+        assert stored is not None
+        stored.status = FormStatus.OPEN
+        await session.commit()
+
+    created = await client.post(
+        f"/v1/events/{event.id}/forms",
+        headers=headers,
+        json={
+            "name": "Untitled form",
+            "kind": "cfp",
+            "schema": {"sections": [], "logic": [], "settings": {}},
+        },
+    )
+    assert created.status_code == 201
+
+    public = await client.get(f"/v1/public/events/{event.slug}/cfp-form")
+
+    assert public.status_code == 200
+    assert public.json()["form_name"] != "Untitled form"
+    assert public.json()["schema"]["sections"] != []

@@ -9,6 +9,31 @@ test.beforeAll(async ({ request }) => {
   test.skip(health === null || !health.ok(), `API not reachable at ${API}.`);
 });
 
+/** Forms created by these tests are deleted afterwards. They accumulate
+ *  otherwise, and the public CFP route serves the newest published one, so a
+ *  stray "Untitled form" becomes the call for papers a visitor sees. */
+const created: string[] = [];
+
+test.afterAll(async ({ request }) => {
+  if (created.length === 0) return;
+  const login = await request.post(`${API}/v1/auth/demo-login`, {
+    data: { role: "organizer" },
+  });
+  if (!login.ok()) return;
+  const { access_token } = (await login.json()) as { access_token: string };
+  const headers = { Authorization: `Bearer ${access_token}` };
+
+  const events = await request.get(`${API}/v1/events`, { headers });
+  const [event] = (await events.json()) as { id: string }[];
+  if (event === undefined) return;
+
+  for (const id of created) {
+    await request
+      .delete(`${API}/v1/events/${event.id}/forms/${id}`, { headers })
+      .catch(() => null);
+  }
+});
+
 async function signIn(page: Page) {
   await page.goto("/login");
   await page.getByRole("button", { name: /^Organizer$/i }).click();
@@ -19,6 +44,17 @@ async function signIn(page: Page) {
 async function newForm(page: Page): Promise<void> {
   await signIn(page);
   await page.goto("/admin/forms");
+  // Remember what the builder creates so afterAll can take it away again.
+  page.on("response", (response) => {
+    if (response.request().method() === "POST" && response.url().endsWith("/forms")) {
+      void response
+        .json()
+        .then((body: { id?: string }) => {
+          if (body.id !== undefined) created.push(body.id);
+        })
+        .catch(() => undefined);
+    }
+  });
   await page.getByRole("button", { name: /create a form/i }).first().click();
   // The wizard opens on step one; the questions live on step three.
   await expect(page.getByRole("button", { name: /submission questions/i })).toBeVisible({

@@ -24,15 +24,32 @@ from app.features.submissions.schemas import (
     SubmitRequest,
     SubmittedResponse,
 )
-from app.models import Event, Form, FormKind, Submission
+from app.models import Event, Form, FormKind, FormStatus, Submission
 
 router = APIRouter(prefix="/v1/public/events/{event_slug}", tags=["public"])
 
 
 async def _cfp_form(session: DbSession, event: Event) -> Form:
-    form = await session.scalar(
-        select(Form).where(Form.kind == FormKind.CFP).order_by(Form.created_at.desc())
+    """The form the public sees: the newest one that is not still a draft.
+
+    Taking the newest of *any* status meant starting a second form in the
+    builder silently replaced the live call for papers with an empty untitled
+    one — while the organiser was still deciding what to put on it. A draft is
+    by definition not published, so it is not served.
+    """
+    published = (
+        select(Form)
+        .where(Form.kind == FormKind.CFP, Form.status != FormStatus.DRAFT)
+        .order_by(Form.created_at.desc())
     )
+    form = await session.scalar(published)
+    if form is None:
+        # Nothing published yet. Fall back to the newest draft so a brand-new
+        # event shows its form rather than a 404, which is the state every event
+        # starts in.
+        form = await session.scalar(
+            select(Form).where(Form.kind == FormKind.CFP).order_by(Form.created_at.desc())
+        )
     if form is None:
         raise NotFoundError("This event is not accepting proposals yet.")
     return form
