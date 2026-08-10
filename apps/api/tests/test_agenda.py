@@ -11,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenancy import tenancy_disabled
@@ -19,6 +20,7 @@ from app.models import (
     EventDay,
     EventSpeaker,
     Form,
+    Message,
     Room,
     Session,
     SessionSpeaker,
@@ -404,3 +406,123 @@ async def test_a_dismissed_conflict_no_longer_blocks_publishing(
     )
 
     assert response.status_code == 201
+
+
+async def _approve_and_publish(
+    client: AsyncClient, headers: dict[str, str], event: Event, **body: object
+) -> dict[str, object]:
+    sessions = await client.get(f"/v1/events/{event.id}/sessions", headers=headers)
+    for row in sessions.json():
+        await client.post(
+            f"/v1/events/{event.id}/sessions/{row['id']}/approval",
+            headers=headers,
+            json={"content_status": "approved"},
+        )
+    response = await client.post(
+        f"/v1/events/{event.id}/schedule/publish",
+        headers=headers,
+        json={"acknowledge_conflicts": True, **body},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()  # type: ignore[no-any-return]
+
+
+async def test_only_speakers_whose_slot_moved_are_emailed(
+    client: AsyncClient,
+    session: AsyncSession,
+    grid: tuple[dict[str, str], Event, dict[str, uuid.UUID]],
+) -> None:
+    """Publishing a tidy-up must not mail everyone. Rosa is on talk0 and talk1;
+    moving only talk0 should reach her once and nobody else."""
+    headers, event, ids = grid
+    await _place(client, headers, event, ids["talk0"], room=ids["main"], day=ids["day"], at=NINE_AM)
+    await _place(
+        client,
+        headers,
+        event,
+        ids["talk2"],
+        room=ids["side"],
+        day=ids["day"],
+        at=NINE_AM + timedelta(hours=2),
+    )
+    first = await _approve_and_publish(client, headers, event, notify_affected=True)
+    assert first["notified"] == 1
+
+    # Republishing with nothing changed must email nobody at all.
+    unchanged = await _approve_and_publish(client, headers, event, notify_affected=True)
+    assert unchanged["notified"] == 0
+
+    # Now move one session; only its speaker hears about it.
+    await _place(
+        client,
+        headers,
+        event,
+        ids["talk0"],
+        room=ids["main"],
+        day=ids["day"],
+        at=NINE_AM + timedelta(minutes=45),
+    )
+    after = await _approve_and_publish(client, headers, event, notify_affected=True)
+
+    assert after["notified"] == 1
+    with tenancy_disabled():
+        messages = (
+            (
+                await session.execute(
+                    select(Message)
+                    .where(Message.ics_attached.is_(True))
+                    .order_by(Message.created_at)
+                )
+            )
+            .scalars()
+            .all()
+        )
+    latest = messages[-1]
+    assert "Previously" in latest.body_rendered
+    assert "BEGIN:VCALENDAR" in latest.body_rendered
+
+
+async def test_publishing_without_the_flag_emails_nobody(
+    client: AsyncClient,
+    session: AsyncSession,
+    grid: tuple[dict[str, str], Event, dict[str, uuid.UUID]],
+) -> None:
+    """Deciding to publish is not deciding to notify, the same separation the
+    product draws everywhere else."""
+    headers, event, ids = grid
+    await _place(client, headers, event, ids["talk0"], room=ids["main"], day=ids["day"], at=NINE_AM)
+
+    result = await _approve_and_publish(client, headers, event)
+
+    assert result["notified"] == 0
+
+
+async def test_the_calendar_entry_keeps_one_uid_and_climbs_the_sequence() -> None:
+    """A stable UID is what makes a speaker's calendar update the entry it already
+    has instead of growing a second one on every republish."""
+    from app.features.publishing import ics
+
+    talk = {
+        "id": "8f14e45f-ceea-467a-9c3a-1b2c3d4e5f60",
+        "title": "Serving LLMs; on spot fleets, without tears",
+        "starts_at": "2027-05-12T09:00:00+00:00",
+        "duration_minutes": 45,
+        "room": "Main stage",
+        "speakers": [{"name": "Rosa Lindqvist"}],
+        "abstract": "A talk.",
+    }
+    event = {"name": "DevFlow", "location": "Fort Mason"}
+    now = datetime(2027, 1, 1, tzinfo=UTC)
+
+    first = ics.build(talk, event=event, sequence=1, now=now)
+    second = ics.build(talk, event=event, sequence=2, now=now)
+
+    uid = f"UID:{ics.uid_for(str(talk['id']))}"
+    assert uid in first
+    assert uid in second
+    assert "SEQUENCE:1" in first
+    assert "SEQUENCE:2" in second
+    # Semicolons and commas in a title are separators in RFC 5545 and have to be
+    # escaped, or the entry parses as several broken properties.
+    assert r"Serving LLMs\; on spot fleets\, without tears" in first
+    assert "DTEND:20270512T094500Z" in first

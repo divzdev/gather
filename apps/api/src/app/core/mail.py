@@ -59,8 +59,13 @@ async def queue(
     purpose: MessagePurpose = MessagePurpose.CUSTOM,
     to_speaker_id: uuid.UUID | None = None,
     batch_id: uuid.UUID | None = None,
+    ics_attached: bool = False,
 ) -> Message:
-    """Record an outbound message. Delivery happens in `deliver`."""
+    """Record an outbound message. Delivery happens in `deliver`.
+
+    `purpose` classifies the send for the caller and for the log; the row itself
+    carries it only through its batch, so a single send does not persist it.
+    """
     message = Message(
         event_id=event_id,
         to_email=to_email,
@@ -68,6 +73,7 @@ async def queue(
         batch_id=batch_id,
         subject=subject,
         body_rendered=body,
+        ics_attached=ics_attached,
         status=MessageStatus.QUEUED,
     )
     session.add(message)
@@ -104,6 +110,7 @@ async def send_now(
     body: str,
     purpose: MessagePurpose = MessagePurpose.CUSTOM,
     to_speaker_id: uuid.UUID | None = None,
+    ics_attached: bool = False,
 ) -> Message:
     message = await queue(
         session,
@@ -113,6 +120,7 @@ async def send_now(
         body=body,
         purpose=purpose,
         to_speaker_id=to_speaker_id,
+        ics_attached=ics_attached,
     )
     await session.flush()
     await deliver(message)

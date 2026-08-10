@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from app.core.deps import DbSession, bind_tenant, require_role
 from app.core.errors import ApiError, NotFoundError
-from app.features.publishing import snapshot
+from app.features.publishing import notify, snapshot
 from app.features.scheduling import conflicts
 from app.models import (
     ConflictDismissal,
@@ -44,6 +44,10 @@ class PublishRequest(BaseModel):
     note: str | None = Field(default=None, max_length=500)
     #: Publishing over a known double-booking is allowed, but never by accident.
     acknowledge_conflicts: bool = False
+    #: Email the speakers whose slot actually changed. Off by default: a publish
+    #: is often a no-op tidy-up, and mailing eighty people about nothing is how
+    #: organisers train their speakers to ignore them.
+    notify_affected: bool = False
 
 
 class RollbackRequest(BaseModel):
@@ -117,12 +121,27 @@ async def publish(
                 details={"count": len(standing)},
             )
 
+    was = await snapshot.latest(session)
+    previous = dict(was.snapshot) if was else None
+
     published = await snapshot.publish(session, event=event, user_id=user.id, note=body.note)
+
+    notified = 0
+    if body.notify_affected:
+        notified = await notify.schedule_changes(
+            session,
+            event_id=event.id,
+            snapshot=published.snapshot,
+            previous=previous,
+            version=published.version,
+        )
+
     return {
         "version": published.version,
         "published_at": published.published_at,
         "sessions": len(published.snapshot.get("sessions", [])),
         "speakers": len(published.snapshot.get("speakers", [])),
+        "notified": notified,
     }
 
 
