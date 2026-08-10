@@ -20,8 +20,9 @@
       <span style="display:flex;align-items:center;gap:8px;font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>AI Engineer 2026</span>
       <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">/ Tasks</span>
       <div style="flex:1"></div>
+      <button onClick="{{ downloadPack }}" style="height:30px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap" style-hover="background:var(--sk,#EDF1F2)">Download all files</button>
       <button onClick="{{ nudgeAll }}" style="height:30px;padding:0 13px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12px 'IBM Plex Sans',sans-serif;white-space:nowrap">Nudge all overdue</button>
-      
+
       <div style="position:relative">
         <button onClick="{{ togUser }}" title="Account" aria-label="Account menu" style="width:28px;height:28px;border-radius:50%;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Sans Condensed',sans-serif;color:var(--i2,#3E4E58);padding:0" style-hover="border:1px solid var(--ls,#C8D2D5)">SW</button>
         <sc-if value="{{ popUser }}" hint-placeholder-val="{{ false }}">

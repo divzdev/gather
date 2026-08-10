@@ -41,6 +41,8 @@ class Settings(BaseSettings):
 
     mail_transport: Literal["log", "ses"] = "log"
     mail_from: str = "events@example.com"
+    #: Where links in outbound email point. The API never serves these routes.
+    web_origin: str = "http://localhost:3000"
 
     anthropic_api_key: str = ""
     ai_model_default: str = "claude-sonnet-5"

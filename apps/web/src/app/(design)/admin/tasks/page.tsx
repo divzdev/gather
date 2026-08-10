@@ -1,0 +1,308 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+
+import { useConsoleChrome } from "@/components/console/chrome";
+import { stripData, useProgramStats } from "@/components/console/stats";
+import { Tasks, type TasksData } from "@/components/design/Tasks";
+import { API_BASE_URL } from "@/lib/api";
+import { authed, getToken } from "@/lib/session";
+
+type Row = {
+  id: string;
+  speaker_id: string;
+  speaker_name: string;
+  speaker_email: string;
+  task_template_id: string;
+  task_name: string;
+  kind: string;
+  is_required: boolean;
+  due_at: string | null;
+  status: string;
+  completed_at: string | null;
+  last_nudged_at: string | null;
+  file_count: number;
+};
+
+const OPEN = new Set(["not_started", "in_progress", "overdue"]);
+const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+const WEEK_MS = 7 * 86_400_000;
+
+const KIND_WORD: Record<string, string> = {
+  upload: "Upload",
+  form: "Form",
+  acknowledge: "Acknowledge",
+  external_link: "External link",
+};
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .map((part) => part[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+/** How the due date reads, and in which colour. Overdue is already derived by
+ *  the API; this only renders the distance. */
+function dueLabel(row: Row, now: number): { text: string; fg: string } {
+  if (row.status === "complete") {
+    return { text: "Done", fg: "var(--ok,#0E7A5F)" };
+  }
+  if (row.due_at === null) {
+    return { text: "No due date", fg: "var(--i4,#99A6AD)" };
+  }
+  const days = Math.round((new Date(row.due_at).getTime() - now) / 86_400_000);
+  if (row.status === "overdue") {
+    return { text: `${Math.abs(days)}d overdue`, fg: "var(--cn,#D8432B)" };
+  }
+  if (days <= 3) {
+    return { text: `due in ${days}d`, fg: "var(--pd,#B96A1F)" };
+  }
+  return { text: `due ${DAY.format(new Date(row.due_at))}`, fg: "var(--i4,#99A6AD)" };
+}
+
+function bar(row: Row): string {
+  if (row.status === "complete") return "var(--ok,#0E7A5F)";
+  if (row.status === "overdue") return "var(--cn,#D8432B)";
+  if (row.status === "submitted") return "var(--if,#47599F)";
+  return "var(--ln,#E1E7E9)";
+}
+
+export default function TasksPage() {
+  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { stats, eventId } = useProgramStats();
+  const queryClient = useQueryClient();
+
+  const [groupBy, setGroupBy] = useState<"task" | "speaker">("task");
+  const [collapsed, setCollapsed] = useState<string[]>([]);
+  const [only, setOnly] = useState<"open" | "overdue" | "all">("open");
+
+  // The clock is read once, when the rows arrive. Reading it during render makes
+  // "3d overdue" depend on which re-render you happened to catch.
+  const { data } = useQuery({
+    queryKey: ["tasks", eventId],
+    enabled: eventId !== null,
+    queryFn: async () => ({
+      rows: await authed<Row[]>(`/events/${eventId}/tasks/summary`),
+      now: Date.now(),
+    }),
+  });
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["tasks", eventId] });
+  };
+
+  const nudge = useMutation({
+    mutationFn: (speakerIds: string[] | null) =>
+      authed<{ sent: number; skipped: number }>(`/events/${eventId}/tasks/nudge`, {
+        method: "POST",
+        body: speakerIds === null ? {} : { speaker_ids: speakerIds },
+      }),
+    onSuccess: (result) => {
+      invalidate();
+      toast(
+        result.sent === 0
+          ? `Nobody emailed. ${result.skipped} were already nudged in the last 24 hours.`
+          : `Reminded ${result.sent} speaker${result.sent === 1 ? "" : "s"}.` +
+              (result.skipped > 0 ? ` ${result.skipped} skipped, nudged today already.` : ""),
+      );
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  const complete = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      authed(`/events/${eventId}/speaker-tasks/${id}`, { method: "PATCH", body: { status } }),
+    onSuccess: () => {
+      invalidate();
+      toast("Marked complete.");
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  const all = useMemo(() => data?.rows ?? [], [data]);
+  const now = data?.now ?? 0;
+
+  const openRows = all.filter((row) => OPEN.has(row.status) || row.status === "submitted");
+  const overdue = all.filter((row) => row.status === "overdue");
+  const waiting = new Set(openRows.map((row) => row.speaker_id));
+  const doneThisWeek = all.filter(
+    (row) => row.completed_at !== null && now - new Date(row.completed_at).getTime() < WEEK_MS,
+  );
+
+  const visible = useMemo(() => {
+    if (only === "overdue") return overdue;
+    if (only === "open") return openRows;
+    return all;
+  }, [all, only, openRows, overdue]);
+
+  const groups = useMemo(() => {
+    const buckets = new Map<string, { name: string; rows: Row[] }>();
+    for (const row of visible) {
+      const key = groupBy === "task" ? row.task_template_id : row.speaker_id;
+      const name = groupBy === "task" ? row.task_name : row.speaker_name;
+      const bucket = buckets.get(key) ?? { name, rows: [] };
+      bucket.rows.push(row);
+      buckets.set(key, bucket);
+    }
+    return [...buckets.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name));
+  }, [visible, groupBy]);
+
+  /** Per-template completion, which is the number an organiser actually reports
+   *  upward: "headshots are 62 of 80". */
+  const perTemplate = useMemo(() => {
+    const buckets = new Map<string, { name: string; done: number; total: number }>();
+    for (const row of all) {
+      const bucket = buckets.get(row.task_template_id) ?? { name: row.task_name, done: 0, total: 0 };
+      bucket.total += 1;
+      if (row.status === "complete") bucket.done += 1;
+      buckets.set(row.task_template_id, bucket);
+    }
+    return [...buckets.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [all]);
+
+  /** The ZIP arrives as an authenticated fetch rather than a plain link: a
+   *  bearer token has no business in a URL, and the browser would not attach it. */
+  const downloadPack = async () => {
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}/tasks/download.zip`, {
+      headers: { Authorization: `Bearer ${getToken() ?? ""}` },
+    });
+    if (!response.ok) {
+      toast("That download could not be prepared.");
+      return;
+    }
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "deliverables.zip";
+    link.click();
+    URL.revokeObjectURL(url);
+    toast("Downloaded the current version of every file.");
+  };
+
+  const tile = (name: "open" | "overdue" | "all", count: number) => ({
+    c: count,
+    on: () => setOnly(name),
+    bd: only === name ? "var(--sg,#E04E4E)" : "var(--ln,#E1E7E9)",
+    ring: only === name ? "0 0 0 3px var(--sw,#FFEAE6)" : "0 1px 2px rgba(13,16,32,.04)",
+    numFg: only === name ? "var(--sg,#E04E4E)" : "var(--ik,#16232B)",
+  });
+
+  const toggle = (on: boolean) => ({
+    Bg: on ? "var(--cd,#FFFFFF)" : "transparent",
+    Fg: on ? "var(--ik,#16232B)" : "var(--i3,#6B7B84)",
+    Wt: on ? "600" : "400",
+    Sh: on ? "0 1px 2px rgba(13,16,32,.10)" : "none",
+  });
+  const byTaskStyle = toggle(groupBy === "task");
+  const bySpeakerStyle = toggle(groupBy === "speaker");
+
+  const screen: TasksData = {
+    ...chrome,
+    ...stripData(stats),
+
+    odCount: overdue.length,
+    sumLine:
+      all.length === 0
+        ? "No deliverables assigned yet. Create a task template and assign it to the roster."
+        : `${openRows.length} open across ${waiting.size} speaker${waiting.size === 1 ? "" : "s"}, ${overdue.length} overdue.`,
+    allClear: groups.length === 0,
+
+    tOpen: tile("open", openRows.length),
+    tOdT: tile("overdue", overdue.length),
+    tSpk: tile("all", waiting.size),
+    tDoneT: {
+      c: doneThisWeek.length,
+      on: () => setOnly("all"),
+      bd: "var(--ln,#E1E7E9)",
+      ring: "0 1px 2px rgba(13,16,32,.04)",
+      numFg: "var(--ik,#16232B)",
+    },
+
+    byTask: () => setGroupBy("task"),
+    bySpeaker: () => setGroupBy("speaker"),
+    vTaskBg: byTaskStyle.Bg,
+    vTaskFg: byTaskStyle.Fg,
+    vTaskWt: byTaskStyle.Wt,
+    vTaskSh: byTaskStyle.Sh,
+    vSpBg: bySpeakerStyle.Bg,
+    vSpFg: bySpeakerStyle.Fg,
+    vSpWt: bySpeakerStyle.Wt,
+    vSpSh: bySpeakerStyle.Sh,
+
+    nudgeAll: () => {
+      const ids = [...new Set(overdue.map((row) => row.speaker_id))];
+      if (ids.length === 0) {
+        toast("Nothing is overdue.");
+        return;
+      }
+      nudge.mutate(ids);
+    },
+
+    summary: perTemplate.map((entry) => ({
+      n: entry.name,
+      frac: `${entry.done}/${entry.total}`,
+      w: `${entry.total === 0 ? 0 : Math.round((entry.done / entry.total) * 100)}%`,
+      fill: entry.done === entry.total ? "var(--ok,#0E7A5F)" : "var(--sg,#E04E4E)",
+      bg: "var(--cd,#FFFFFF)",
+      bd: "var(--ln,#E1E7E9)",
+      on: () => setOnly("all"),
+    })),
+
+    groups: groups.map(([key, bucket]) => {
+      const late = bucket.rows.filter((row) => row.status === "overdue").length;
+      const open = collapsed.includes(key) === false;
+      return {
+        n: bucket.name,
+        meta:
+          groupBy === "task"
+            ? `${bucket.rows.length} assigned`
+            : (bucket.rows[0]?.speaker_email ?? ""),
+        chev: open ? "▾" : "▸",
+        open,
+        onTog: () =>
+          setCollapsed((current) =>
+            current.includes(key) ? current.filter((id) => id !== key) : [...current, key],
+          ),
+        hasOd: late > 0,
+        odLabel: `${late} overdue`,
+        rows: bucket.rows.map((row) => {
+          const due = dueLabel(row, now);
+          return {
+            ini: initials(row.speaker_name),
+            n: groupBy === "task" ? row.speaker_name : row.task_name,
+            c: groupBy === "task" ? (KIND_WORD[row.kind] ?? row.kind) : row.speaker_name,
+            sub:
+              row.file_count > 0
+                ? `${row.file_count} file${row.file_count === 1 ? "" : "s"} uploaded`
+                : row.status === "submitted"
+                  ? "Submitted, waiting on you"
+                  : row.speaker_email,
+            due: due.text,
+            dueFg: due.fg,
+            bar: bar(row),
+            onNudge: () => nudge.mutate([row.speaker_id]),
+            onDone: () => complete.mutate({ id: row.id, status: "complete" }),
+          };
+        }),
+      };
+    }),
+
+    downloadPack: () => void downloadPack(),
+
+    toasts: toasts.map((entry) => ({
+      msg: entry.msg,
+      canUndo: entry.revert !== undefined,
+      onUndo: () => {
+        entry.revert?.();
+        dismiss(entry.id);
+      },
+      onX: () => dismiss(entry.id),
+    })),
+  };
+
+  return <Tasks d={screen} />;
+}

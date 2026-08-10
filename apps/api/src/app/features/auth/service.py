@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import mail
 from app.core.config import get_settings
 from app.core.errors import AuthenticationError, EmailTakenError, MagicLinkExpiredError
 from app.core.security import (
@@ -19,16 +20,19 @@ from app.core.security import (
     password_needs_rehash,
     verify_password,
 )
-from app.core.tenancy import tenancy_disabled
+from app.core.tenancy import tenancy_disabled, tenant_scope
 from app.models import (
     AuthSession,
     Event,
     EventMember,
+    EventSpeaker,
     MagicLink,
     MagicLinkPurpose,
+    MessagePurpose,
     Organization,
     OrgMember,
     Role,
+    Speaker,
     User,
 )
 
@@ -208,15 +212,25 @@ async def issue_magic_link(
     # An unknown event must not reach the insert: the foreign key would raise and
     # turn a 204 into a 500, which tells the caller the event id was wrong. Return
     # the same shape and persist nothing instead.
-    if event_id is not None:
-        with tenancy_disabled():
-            event = await session.get(Event, event_id)
+    if event_id is None:
+        return token
+    with tenancy_disabled():
+        event = await session.get(Event, event_id)
         if event is None:
             return token
+        # Resolved now rather than at consume time: the address may belong to
+        # nobody, and that has to cost the caller exactly one indistinguishable
+        # 204 either way.
+        speaker_id = await session.scalar(
+            select(EventSpeaker.speaker_id)
+            .join(Speaker, Speaker.id == EventSpeaker.speaker_id)
+            .where(EventSpeaker.event_id == event_id, Speaker.email == email)
+        )
 
     session.add(
         MagicLink(
             email=email,
+            speaker_id=speaker_id,
             event_id=event_id,
             token_hash=hash_token(token),
             purpose=MagicLinkPurpose.PORTAL,
@@ -224,6 +238,26 @@ async def issue_magic_link(
             created_ip_hash=hash_ip(ip) if ip else None,
         )
     )
+    if speaker_id is None:
+        return token
+
+    # The route is public and binds no tenant, but the outbox row is event-scoped.
+    with tenant_scope(org_id=event.org_id, event_id=event.id):
+        await mail.send_now(
+            session,
+            event_id=event_id,
+            to_email=email,
+            to_speaker_id=speaker_id,
+            purpose=MessagePurpose.PORTAL_INVITE,
+            subject=f"Your sign-in link for {event.name}",
+            body=(
+                f'<p>Open your speaker portal for {event.name}.</p><p><a href="'
+                f'{settings.web_origin}/auth/verify?token={token}">Sign in</a></p>'
+                f"<p>The link works once and expires in "
+                f"{settings.magic_link_ttl_minutes} minutes.</p>"
+            ),
+        )
+        await session.flush()
     return token
 
 
@@ -237,9 +271,14 @@ async def consume_magic_link(session: AsyncSession, *, token: str) -> str:
     if link.event_id is None:
         raise MagicLinkExpiredError("This link is not scoped to an event.")
 
+    if link.speaker_id is None:
+        # The address matched nobody when the link was issued. Minting a token
+        # anyway would produce a session pointing at a speaker that never existed.
+        raise MagicLinkExpiredError("This link has expired or was already used.")
+
     link.consumed_at = now
     return create_access_token(
-        link.speaker_id or link.id,
+        link.speaker_id,
         kind="speaker",
         expires_in=timedelta(days=settings.speaker_session_ttl_days),
         claims={"event_id": str(link.event_id), "email": link.email},

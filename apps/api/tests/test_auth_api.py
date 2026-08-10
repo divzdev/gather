@@ -186,6 +186,7 @@ async def test_magic_link_grants_a_speaker_token_once(
     # stored value is a one-way hash — the point of the test is single use.
     from app.features.auth import service
 
+    await _speaker_on(session, event, "speaker@example.com")
     with tenancy_disabled():
         raw = await service.issue_magic_link(
             session, email="speaker@example.com", event_id=event.id
@@ -200,6 +201,19 @@ async def test_magic_link_grants_a_speaker_token_once(
     assert second.json()["error"]["code"] == "MAGIC_LINK_EXPIRED"
 
 
+async def _speaker_on(session: AsyncSession, event: object, email: str) -> None:
+    """A link only signs someone in if the address is on the roster, so the
+    speaker has to exist before the link is worth anything."""
+    from app.models import EventSpeaker, Speaker
+
+    with tenancy_disabled():
+        speaker = Speaker(org_id=event.org_id, name="Marta Duarte", email=email)
+        session.add(speaker)
+        await session.flush()
+        session.add(EventSpeaker(org_id=event.org_id, event_id=event.id, speaker_id=speaker.id))
+        await session.commit()
+
+
 async def test_speaker_token_cannot_open_a_staff_route(
     client: AsyncClient, session: AsyncSession, two_orgs: object
 ) -> None:
@@ -209,7 +223,9 @@ async def test_speaker_token_cannot_open_a_staff_route(
 
     with tenancy_disabled():
         event = (await session.execute(select(Event))).scalars().first()
-        assert event is not None
+    assert event is not None
+    await _speaker_on(session, event, "speaker2@example.com")
+    with tenancy_disabled():
         raw = await service.issue_magic_link(
             session, email="speaker2@example.com", event_id=event.id
         )
@@ -272,3 +288,28 @@ async def test_registration_requires_a_long_password(client: AsyncClient) -> Non
     )
 
     assert response.status_code == 422
+
+
+async def test_a_link_for_an_address_on_nobodys_roster_signs_nobody_in(
+    client: AsyncClient, session: AsyncSession, two_orgs: object
+) -> None:
+    """The request still answers 204 — it must not enumerate speakers — but the
+    link it issues cannot be traded for a session, because there is no session to
+    give. The old behaviour minted a token pointing at the link's own row."""
+    from app.features.auth import service
+    from app.models import Event
+
+    with tenancy_disabled():
+        event = (await session.execute(select(Event))).scalars().first()
+        assert event is not None
+        raw = await service.issue_magic_link(session, email="nobody@example.com", event_id=event.id)
+        await session.commit()
+
+    asked = await client.post(
+        "/v1/auth/magic-link", json={"email": "nobody@example.com", "event_id": str(event.id)}
+    )
+    consumed = await client.post("/v1/auth/magic-link/consume", json={"token": raw})
+
+    assert asked.status_code == 204
+    assert consumed.status_code == 400
+    assert consumed.json()["error"]["code"] == "MAGIC_LINK_EXPIRED"

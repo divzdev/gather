@@ -132,12 +132,9 @@ async def request_magic_link(body: MagicLinkRequest, request: Request, session: 
     await rate_limit.enforce(
         _redis(request), rate_limit.MAGIC_LINK, bucket="magic-link", identifier=body.email
     )
-    token = await service.issue_magic_link(
+    await service.issue_magic_link(
         session, email=body.email, event_id=body.event_id, ip=_client_ip(request)
     )
-    # TODO(mail): hand `token` to the mail gateway. Until that lands, MAIL_TRANSPORT=log
-    # is the only consumer and the token is written to .mail/ by the renderer.
-    _ = token
 
 
 @router.post("/magic-link/consume", response_model=TokenResponse)

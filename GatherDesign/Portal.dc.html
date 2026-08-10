@@ -42,7 +42,7 @@
     <sc-if value="{{ tHome }}" hint-placeholder-val="{{ true }}">
       <div style="border:1px solid var(--heroBd,#E9DEDA);border-radius:18px;background:linear-gradient(120deg,var(--heroA,#FFEDE9) 0%,var(--heroB,#FDF6F3) 52%,var(--cd,#FFFFFF) 100%);box-shadow:0 1px 2px rgba(13,16,32,.04),0 10px 28px rgba(216,86,74,.06);padding:26px 28px 24px;margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:8px;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--pd,#B96A1F)"><span style="width:7px;height:7px;border-radius:50%;background:#FF6B6B"></span>{{ heroEyebrow }}</div>
-        <h1 style="font:600 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:var(--ik,#16232B);margin:10px 0 8px">{{ greet }}, Marta.</h1>
+        <h1 style="font:600 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:var(--ik,#16232B);margin:10px 0 8px">{{ greet }}</h1>
         <div style="font:400 14px/21px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);max-width:620px">{{ heroSub }}</div>
         <div style="display:flex;margin-top:26px">
           <sc-for list="{{ steps }}" as="sp2" hint-placeholder-count="5">
@@ -85,7 +85,7 @@
               </div>
             </sc-for>
             <div style="border-top:1px solid var(--ln,#E1E7E9);background:var(--zn,#F7F9F9)">
-              <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--i4,#99A6AD);padding:12px 20px 4px">COMPLETED · {{ doneN }} OF 6</div>
+              <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--i4,#99A6AD);padding:12px 20px 4px">COMPLETED · {{ doneN }} OF {{ totalN }}</div>
               <div style="padding:2px 0 10px">
                 <sc-for list="{{ doneTasks }}" as="dt" hint-placeholder-count="3">
                   <div style="display:flex;align-items:center;gap:10px;padding:5px 20px">
@@ -129,7 +129,7 @@
             <sc-for list="{{ keyDates }}" as="kd" hint-placeholder-count="4">
               <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-top:{{ kd.bt }}">
                 <span style="width:42px;height:42px;border-radius:11px;background:{{ kd.cb }};border:1px solid {{ kd.cbd }};display:inline-flex;flex-direction:column;align-items:center;justify-content:center;flex:none">
-                  <span style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:{{ kd.cf }}">OCT</span>
+                  <span style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:{{ kd.cf }}">{{ kd.mon }}</span>
                   <span style="font:600 16px 'IBM Plex Sans',sans-serif;color:{{ kd.cf }};line-height:17px">{{ kd.day }}</span>
                 </span>
                 <span style="min-width:0">
@@ -156,33 +156,24 @@
         <div style="min-width:0">
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
           <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">My submissions</h1>
-          <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">2 of 3 used</span>
+          <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ subCount }}</span>
         </div>
-        <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:18px">Everything stays editable until the CFP closes on 15 Sep.</div>
-        <div style="position:relative;border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:16px 20px 16px 24px;margin-bottom:12px;overflow:hidden">
-          <span style="position:absolute;left:10px;top:18px;bottom:18px;width:3px;border-radius:2px;background:var(--ok,#0E7A5F)"></span>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-            <span style="font:600 15px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Opening keynote</span>
-            <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:99px;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--ok,#0E7A5F);background:var(--okw,#E2F1EC)"><span style="width:5px;height:5px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>Accepted</span>
+        <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:18px">{{ subLine }}</div>
+        <sc-for list="{{ subs }}" as="sb" hint-placeholder-count="2">
+          <div style="position:relative;border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:16px 20px 16px 24px;margin-bottom:12px;overflow:hidden">
+            <span style="position:absolute;left:10px;top:18px;bottom:18px;width:3px;border-radius:2px;background:{{ sb.bar }}"></span>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+              <span style="font:600 15px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ sb.n }}</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:99px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ sb.fg }};background:{{ sb.bg }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ sb.fg }}"></span>{{ sb.st }}</span>
+            </div>
+            <div style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin-bottom:10px">{{ sb.meta }}</div>
+            <div style="font:400 12.5px/19px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:12px">{{ sb.note }}</div>
+            <button onClick="{{ sb.onView }}" style="height:32px;padding:0 15px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">View submission</button>
           </div>
-          <div style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin-bottom:10px">A2C4 · In production · 45 min keynote · submitted 12 Jul</div>
-          <div style="font:400 12.5px/19px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:12px">Scheduled for Mon 13 Oct, 09:05, Main stage. Your checklist on the Home tab covers what happens next.</div>
-          <button onClick="{{ viewSub }}" style="height:32px;padding:0 15px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">View submission</button>
-        </div>
-        <div style="position:relative;border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:16px 20px 16px 24px;margin-bottom:12px;overflow:hidden">
-          <span style="position:absolute;left:10px;top:18px;bottom:18px;width:3px;border-radius:2px;background:var(--pd,#B96A1F)"></span>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-            <span style="font:600 15px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Serving LLMs on spot fleets without tears</span>
-            <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:99px;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F);background:var(--pdw,#F9EDDF)"><span style="width:5px;height:5px;border-radius:50%;background:var(--pd,#B96A1F)"></span>In review</span>
-          </div>
-          <div style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin-bottom:10px">B7F1 · Infrastructure · 30 min talk · submitted 3 Aug</div>
-          <div style="font:400 12.5px/19px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:12px">Reviews close 22 Sep, decisions go out by 29 Sep. We email you the moment there is news.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <a href="CFP.dc.html" style="display:inline-flex;align-items:center;height:32px;padding:0 15px;border-radius:999px;background:#FF6B6B;color:#331313;font:600 12.5px 'IBM Plex Sans',sans-serif;text-decoration:none" style-hover="background:#E85B5B">Edit until 15 Sep</a>
-            <button onClick="{{ withdraw }}" style="height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)" style-hover="background:var(--sk,#EDF1F2)">Withdraw</button>
-          </div>
-        </div>
-        <a href="CFP.dc.html" style="display:flex;align-items:center;justify-content:center;height:48px;border-radius:16px;border:1.5px dashed var(--ls,#C8D2D5);font:500 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);text-decoration:none" style-hover="border:1.5px dashed #FF6B6B;color:var(--sg,#E04E4E)">+ Submit another proposal · 1 slot left</a>
+        </sc-for>
+        <sc-if value="{{ noSubs }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;justify-content:center;height:48px;border-radius:16px;border:1.5px dashed var(--ls,#C8D2D5);font:500 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">You have no proposals on this event yet.</div>
+        </sc-if>
         </div>
         <div style="display:flex;flex-direction:column;gap:16px">
           <div style="border:1px solid var(--ln,#E1E7E9);border-radius:16px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04);padding:16px 20px 8px">

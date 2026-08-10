@@ -4,6 +4,9 @@ import { ApiError, apiFetch } from "@/lib/api";
 
 const TOKEN_KEY = "gather.token";
 const EVENT_KEY = "gather.event";
+/** Kept apart from the staff token on purpose: an organiser previewing the
+ *  portal must not have their console session replaced by a speaker's. */
+const SPEAKER_KEY = "gather.speaker";
 
 export function setToken(token: string): void {
   window.localStorage.setItem(TOKEN_KEY, token);
@@ -23,6 +26,31 @@ export function setEventId(id: string): void {
 
 export function getEventId(): string | null {
   return typeof window === "undefined" ? null : window.localStorage.getItem(EVENT_KEY);
+}
+
+export function setSpeakerToken(token: string): void {
+  window.localStorage.setItem(SPEAKER_KEY, token);
+}
+
+export function getSpeakerToken(): string | null {
+  return typeof window === "undefined" ? null : window.localStorage.getItem(SPEAKER_KEY);
+}
+
+export function clearSpeakerToken(): void {
+  window.localStorage.removeItem(SPEAKER_KEY);
+}
+
+/** A speaker session is a single long-lived token from a magic link. There is no
+ *  refresh cookie behind it, so an expiry means asking for a new link. */
+export async function portal<T>(
+  path: string,
+  options: Parameters<typeof apiFetch>[1] = {},
+): Promise<T> {
+  const token = getSpeakerToken();
+  return apiFetch<T>(`/portal${path}`, {
+    ...options,
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers },
+  });
 }
 
 /** Access tokens last 15 minutes, so a console left open outlives them. One
