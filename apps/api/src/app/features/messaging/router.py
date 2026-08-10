@@ -18,7 +18,7 @@ from sqlalchemy import select
 
 from app.core import mail
 from app.core.deps import DbSession, bind_tenant, require_role
-from app.core.errors import RecipientCountMismatchError
+from app.core.errors import ApiError, NotFoundError, RecipientCountMismatchError
 from app.core.pagination import ListQueryDep, PageMeta, paginate
 from app.core.tenancy import current_tenant
 from app.models import (
@@ -46,6 +46,10 @@ READ = (Role.OWNER, Role.ADMIN, Role.COORDINATOR)
 SEND = (Role.OWNER, Role.ADMIN)
 
 DECIDED = (SubmissionStatus.ACCEPTED, SubmissionStatus.WAITLISTED, SubmissionStatus.REJECTED)
+
+#: Only these can be retried. Resending something that arrived is how one person
+#: gets told twice.
+RESENDABLE = (MessageStatus.FAILED, MessageStatus.BOUNCED)
 
 PURPOSES = {
     SubmissionStatus.ACCEPTED: MessagePurpose.ACCEPTANCE,
@@ -190,6 +194,55 @@ async def outbox(
     statement = select(Message).order_by(Message.created_at.desc())
     rows, meta = await paginate(session, statement, query)
     return OutboxPage(data=[OutboxRow.model_validate(row) for row in rows], meta=meta)
+
+
+class ResendResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    status: MessageStatus
+
+
+@router.post("/outbox/{message_id}/resend", response_model=ResendResult)
+async def resend(
+    message_id: uuid.UUID,
+    session: DbSession,
+    _: User = Depends(require_role(*SEND)),
+) -> ResendResult:
+    """Try one failed or bounced message again.
+
+    A new row rather than a retry in place, so the outbox keeps the record of
+    what went wrong the first time — an organiser explaining a missed acceptance
+    to a speaker needs the history, not a row that has quietly turned green.
+
+    Only failures are resendable: offering it on a delivered message is how the
+    same person gets told twice.
+    """
+    original = await session.get(Message, message_id)
+    if original is None:
+        raise NotFoundError(f"No message with id {message_id}.")
+    if original.status not in RESENDABLE:
+        raise ApiError(
+            f"That message is {original.status.value}, so there is nothing to retry.",
+            code="MESSAGE_NOT_RESENDABLE",
+            status_code=409,
+        )
+
+    tenant = current_tenant()
+    if tenant.event_id is None:
+        raise NotFoundError("No event in scope.")
+
+    retry = await mail.queue(
+        session,
+        event_id=tenant.event_id,
+        to_email=original.to_email,
+        subject=original.subject,
+        body=original.body_rendered,
+        to_speaker_id=original.to_speaker_id,
+        batch_id=original.batch_id,
+    )
+    await session.flush()
+    return ResendResult(id=retry.id, status=retry.status)
 
 
 @router.post("/send-decisions", response_model=SendResult)

@@ -113,7 +113,16 @@ test("21. an event day is added and removed again", async ({ page }) => {
   await removeRow(days, label);
 });
 
-test("23-24. an unused track deletes; one in use does not crash the screen", async ({ page }) => {
+test("23-24. an unused track deletes; one in use does not crash the screen", async ({
+  page,
+  request,
+}) => {
+  const login = await request.post(`${API}/v1/auth/demo-login`, { data: { role: "organizer" } });
+  const { access_token } = (await login.json()) as { access_token: string };
+  const headers = { Authorization: `Bearer ${access_token}` };
+  const events = await request.get(`${API}/v1/events`, { headers });
+  const eventId = ((await events.json()) as { id: string }[])[0]!.id;
+
   await openProgram(page);
   const tracks = panel(page, /^Tracks$/);
 
@@ -127,13 +136,26 @@ test("23-24. an unused track deletes; one in use does not crash the screen", asy
   // 24. A track with sessions on it is refused, and says how many. It used to
   // succeed: the foreign key is ON DELETE SET NULL, so deleting silently
   // stripped the track off every session that used it.
-  const inUse = tracks.getByRole("button", { name: /Remove AI Engineering/i });
-  if ((await inUse.count()) > 0) {
-    await inUse.click();
-    await expect(tracks.getByRole("alert")).toContainText(/still use this|in use/i, {
-      timeout: 15_000,
-    });
-    // And it is still there.
-    await expect(tracks.getByText("AI Engineering", { exact: true })).toBeVisible();
-  }
+  //
+  // The in-use track is found rather than named: hard-coding a seeded name made
+  // this pass vacuously once an earlier run had deleted that very track, which
+  // is precisely the failure it exists to catch.
+  const sessions = await request.get(`${API}/v1/events/${eventId}/sessions`, { headers });
+  const used = new Set(
+    ((await sessions.json()) as { track_id: string | null }[])
+      .map((row) => row.track_id)
+      .filter((id): id is string => id !== null),
+  );
+  const listing = await request.get(`${API}/v1/events/${eventId}/tracks`, { headers });
+  const busy = ((await listing.json()) as { id: string; name: string }[]).find((row) =>
+    used.has(row.id),
+  );
+  expect(busy, "no track has any session on it, so nothing can be in use").toBeDefined();
+
+  await tracks.getByRole("button", { name: new RegExp(`Remove ${busy!.name}`) }).click();
+  await expect(tracks.getByRole("alert")).toContainText(/still use this|in use/i, {
+    timeout: 15_000,
+  });
+  // And it is still there.
+  await expect(tracks.getByText(busy!.name, { exact: true }).first()).toBeVisible();
 });

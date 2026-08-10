@@ -15,14 +15,14 @@
 </helmet>
 <div ref="{{ setRoot }}" data-screen-label="Speaker portal" style="min-height:100vh;background:var(--pp,#F4F6F7);color:var(--ik,#16232B)">
   <div style="border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
-    <div style="max-width:1120px;margin:0 auto;padding:0 24px;height:62px;display:flex;align-items:center;gap:14px">
+    <div style="max-width:1120px;margin:0 auto;padding:10px 16px;min-height:62px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <svg width="26" height="26" viewBox="0 0 24 24" aria-label="Gather" style="flex:none"><rect width="24" height="24" rx="6.5" fill="#12142E"></rect><circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B"></circle><circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7"></circle><circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7"></circle><circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7"></circle></svg>
       <span style="min-width:0">
-        <span style="display:block;font:600 14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);white-space:nowrap">AI Engineer 2026</span>
-        <span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);white-space:nowrap">12–14 OCT · FORT MASON, SF</span>
+        <span style="display:block;font:600 14px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">AI Engineer 2026</span>
+        <span style="display:block;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">12–14 OCT · FORT MASON, SF</span>
       </span>
       <div style="flex:1"></div>
-      <div style="display:flex;gap:2px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);border-radius:999px;padding:3px">
+      <div style="display:flex;gap:2px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);border-radius:999px;padding:3px;max-width:100%;overflow-x:auto">
         <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="3">
           <button onClick="{{ tb.on }}" style="height:34px;padding:0 16px;border-radius:999px;border:none;background:{{ tb.bg }};box-shadow:{{ tb.sh }};font:{{ tb.wt }} 13px 'IBM Plex Sans',sans-serif;color:{{ tb.fg }};white-space:nowrap;display:flex;align-items:center;gap:7px">{{ tb.n }}<span style="display:{{ tb.badge }};min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--sw,#FFEAE6);color:var(--sg,#E04E4E);font:600 10px 'IBM Plex Mono',monospace;align-items:center;justify-content:center">{{ tb.c }}</span></button>
         </sc-for>
@@ -30,21 +30,21 @@
       <div style="flex:1"></div>
       <div style="display:flex;gap:2px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);border-radius:999px;padding:3px">
         <sc-for list="{{ themeSeg }}" as="th" hint-placeholder-count="3">
-          <button onClick="{{ th.on }}" title="{{ th.tt }}" style="width:26px;height:26px;border-radius:50%;border:none;background:{{ th.bg }};box-shadow:{{ th.sh }};color:var(--i2,#3E4E58);font:500 12px 'IBM Plex Sans',sans-serif;display:flex;align-items:center;justify-content:center;padding:0">{{ th.g }}</button>
+          <button onClick="{{ th.on }}" title="{{ th.tt }}" style="width:32px;height:32px;border-radius:50%;border:none;background:{{ th.bg }};box-shadow:{{ th.sh }};color:var(--i2,#3E4E58);font:500 12px 'IBM Plex Sans',sans-serif;display:flex;align-items:center;justify-content:center;padding:0">{{ th.g }}</button>
         </sc-for>
       </div>
       <button onClick="{{ togTz }}" style="height:32px;padding:0 13px;border-radius:99px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);white-space:nowrap" style-hover="background:var(--sk,#EDF1F2)">{{ tzLabel }}</button>
       <span style="width:32px;height:32px;border-radius:50%;background:#12142E;display:inline-flex;align-items:center;justify-content:center;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;color:#EBEDF7;flex:none" title="Marta Duarte">MD</span>
     </div>
   </div>
-  <div style="max-width:1120px;margin:0 auto;padding:24px 24px 56px">
+  <div style="max-width:1120px;margin:0 auto;padding:20px 16px 56px">
 
     <sc-if value="{{ tHome }}" hint-placeholder-val="{{ true }}">
       <div style="border:1px solid var(--heroBd,#E9DEDA);border-radius:18px;background:linear-gradient(120deg,var(--heroA,#FFEDE9) 0%,var(--heroB,#FDF6F3) 52%,var(--cd,#FFFFFF) 100%);box-shadow:0 1px 2px rgba(13,16,32,.04),0 10px 28px rgba(216,86,74,.06);padding:26px 28px 24px;margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:8px;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--pd,#B96A1F)"><span style="width:7px;height:7px;border-radius:50%;background:#FF6B6B"></span>{{ heroEyebrow }}</div>
         <h1 style="font:600 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:var(--ik,#16232B);margin:10px 0 8px">{{ greet }}</h1>
         <div style="font:400 14px/21px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);max-width:620px">{{ heroSub }}</div>
-        <div style="display:flex;margin-top:26px">
+        <div style="display:flex;flex-wrap:wrap;row-gap:14px;margin-top:26px">
           <sc-for list="{{ steps }}" as="sp2" hint-placeholder-count="5">
             <div style="flex:{{ sp2.fx }};min-width:76px">
               <div style="display:flex;align-items:center">

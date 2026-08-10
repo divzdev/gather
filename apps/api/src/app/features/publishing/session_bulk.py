@@ -116,6 +116,78 @@ class ImportRequest(BaseModel):
     dry_run: bool = False
 
 
+class SessionCreate(BaseModel):
+    """A session with no proposal behind it.
+
+    Keynotes and invited talks never go through the CFP, so promotion cannot be
+    the only way a session comes into being.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=300)
+    abstract: str | None = Field(default=None, max_length=10_000)
+    track_id: uuid.UUID | None = None
+    session_format_id: uuid.UUID | None = None
+    duration_minutes: int = Field(default=30, ge=MIN_DURATION, le=MAX_DURATION)
+    speaker_ids: list[uuid.UUID] = Field(default_factory=list, max_length=20)
+
+
+@router.post("", status_code=201)
+async def create_session(
+    body: SessionCreate,
+    session: DbSession,
+    _: User = Depends(require_role(*STAFF)),
+) -> dict[str, Any]:
+    if body.track_id is not None:
+        await _require(session, Track, body.track_id, "track")
+    if body.session_format_id is not None:
+        await _require(session, SessionFormat, body.session_format_id, "session format")
+
+    talk = Session(
+        title=body.title,
+        abstract=body.abstract,
+        slug=await _unique_slug(session, body.title),
+        track_id=body.track_id,
+        session_format_id=body.session_format_id,
+        duration_minutes=body.duration_minutes,
+    )
+    session.add(talk)
+    await session.flush()
+
+    for index, speaker_id in enumerate(body.speaker_ids):
+        await _require(session, Speaker, speaker_id, "speaker")
+        session.add(SessionSpeaker(session_id=talk.id, speaker_id=speaker_id, sort_order=index))
+    await session.flush()
+
+    return {"id": str(talk.id), "title": talk.title, "slug": talk.slug}
+
+
+@router.delete("/{session_id}", status_code=204)
+async def delete_session(
+    session_id: uuid.UUID,
+    session: DbSession,
+    _: User = Depends(require_role(*STAFF)),
+) -> None:
+    """Removing a session from the draft.
+
+    Allowed even when it is on the published schedule: the public site reads a
+    snapshot, so nothing changes out there until the next publish, and an
+    organiser who has cancelled a talk needs to act before then.
+    """
+    talk = await session.get(Session, session_id)
+    if talk is None:
+        raise NotFoundError(f"No session in this event with id {session_id}.")
+    if talk.is_locked:
+        raise ApiError(
+            f"{talk.title!r} is locked. Unlock it first.",
+            code="SESSION_LOCKED",
+            status_code=409,
+        )
+    await session.delete(talk)
+    await session.flush()
+
+
 @router.post("/bulk", response_model=BulkResult)
 async def bulk_edit(
     body: BulkEdit,

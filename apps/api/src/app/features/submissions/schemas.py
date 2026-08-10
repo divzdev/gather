@@ -59,6 +59,10 @@ class SpeakerSummary(Strict):
 class SubmissionRead(Strict):
     id: uuid.UUID
     code: str
+    #: Which form this arrived through — the seam that tells a proposal a
+    #: stranger submitted from one an organiser typed in, and which version of
+    #: the questions the answers belong to.
+    form_id: uuid.UUID
     title: str
     answers: dict[str, Any]
     status: SubmissionStatus

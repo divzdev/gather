@@ -80,6 +80,7 @@ async def _with_speakers(session: DbSession, rows: list[Submission]) -> list[Sub
         SubmissionRead(
             id=s.id,
             code=s.code,
+            form_id=s.form_id,
             title=s.title,
             answers=s.answers,
             status=s.status,

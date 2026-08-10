@@ -27,6 +27,9 @@ from app.models import (
     Event,
     EventDay,
     EventSpeaker,
+    Form,
+    FormKind,
+    FormStatus,
     Room,
     Session,
     SessionSpeaker,
@@ -510,7 +513,79 @@ TEMPLATES = [
     ("Headshot", TaskKind.UPLOAD, 21, {"extensions": ["jpg", "jpeg", "png"]}),
     ("Slide deck", TaskKind.UPLOAD, 7, {"extensions": ["pdf", "key", "pptx"]}),
     ("Confirm your travel dates", TaskKind.ACKNOWLEDGE, 14, {}),
+    ("Tell us about your setup", TaskKind.FORM, 10, {}),
 ]
+
+#: The same JSON-schema engine that drives the CFP, pointed at a task. Seeded so
+#: the portal shows a form task rather than only uploads — a claim the README
+#: makes and the demo otherwise never demonstrates.
+TASK_FORM_SCHEMA: dict[str, Any] = {
+    "sections": [
+        {
+            "key": "setup",
+            "title": "Your setup",
+            "fields": [
+                {
+                    "key": "av_needs",
+                    "type": "select",
+                    "label": "What do you need on stage?",
+                    "required": True,
+                    "choices": [
+                        {"value": "hdmi", "label": "HDMI from my laptop"},
+                        {"value": "usbc", "label": "USB-C from my laptop"},
+                        {"value": "provided", "label": "Use the provided machine"},
+                    ],
+                },
+                {
+                    "key": "adapter",
+                    "type": "short_text",
+                    "label": "Which adapter are you bringing?",
+                    "required": False,
+                },
+                {
+                    "key": "dietary",
+                    "type": "long_text",
+                    "label": "Anything we should know for the speaker dinner?",
+                    "required": False,
+                    "max_length": 500,
+                },
+            ],
+        }
+    ],
+    # Asking about an adapter only makes sense if they are bringing a laptop.
+    "logic": [
+        {
+            "field": "av_needs",
+            "operator": "is_not",
+            "value": "provided",
+            "action": "show",
+            "target": "adapter",
+        }
+    ],
+    "settings": {},
+}
+
+
+async def _task_form(session: AsyncSession, event: Event) -> Form:
+    """Idempotent, like the rest of the seed: re-running follows this file rather
+    than freezing at whatever the first run wrote."""
+    form = await session.scalar(
+        select(Form).where(Form.event_id == event.id, Form.kind == FormKind.TASK)
+    )
+    if form is None:
+        form = Form(
+            org_id=event.org_id,
+            event_id=event.id,
+            name="Speaker setup",
+            kind=FormKind.TASK,
+            schema=TASK_FORM_SCHEMA,
+            status=FormStatus.OPEN,
+        )
+        session.add(form)
+    else:
+        form.schema = TASK_FORM_SCHEMA
+    await session.flush()
+    return form
 
 
 async def _tasks(session: AsyncSession, event: Event, rng: random.Random) -> None:
@@ -519,10 +594,17 @@ async def _tasks(session: AsyncSession, event: Event, rng: random.Random) -> Non
     A task board where everything is done proves nothing; the overdue rows are
     what the chasing tools are for.
     """
-    have = await session.scalar(
-        select(func.count(TaskTemplate.id)).where(TaskTemplate.event_id == event.id)
+    # Templates this file has grown since the last run are added; existing ones
+    # are left alone, so re-seeding never re-issues work a speaker has already
+    # done. A blanket "any template exists, do nothing" froze the demo at
+    # whatever the first run created.
+    existing = set(
+        (await session.execute(select(TaskTemplate.name).where(TaskTemplate.event_id == event.id)))
+        .scalars()
+        .all()
     )
-    if int(have or 0) > 0:
+    wanted = [entry for entry in TEMPLATES if entry[0] not in existing]
+    if not wanted:
         return
 
     speaking = (
@@ -540,12 +622,14 @@ async def _tasks(session: AsyncSession, event: Event, rng: random.Random) -> Non
         return
 
     now = datetime.now(UTC)
-    for order, (name, kind, days_before, accepted) in enumerate(TEMPLATES):
+    task_form = await _task_form(session, event)
+    for order, (name, kind, days_before, accepted) in enumerate(wanted, start=len(existing)):
         template = TaskTemplate(
             org_id=event.org_id,
             event_id=event.id,
             name=name,
             kind=kind,
+            form_id=task_form.id if kind is TaskKind.FORM else None,
             is_required=True,
             due_rule={"type": "relative", "days_before_event": days_before},
             applies_to={"scope": "all"},

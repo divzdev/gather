@@ -29,13 +29,13 @@
       <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">Limit: <span style="font:500 12px 'IBM Plex Mono',monospace">3 per speaker</span>, drafts included</span>
       <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">No account needed, your email is your identity</span>
     </div>
-    <div style="display:grid;grid-template-columns:200px minmax(0,1fr);gap:32px">
+    <div style="display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:32px">
       <div>
         <div style="position:sticky;top:20px">
           <sc-for list="{{ steps }}" as="st" hint-placeholder-count="5">
             <button onClick="{{ st.on }}" style="display:flex;align-items:center;gap:10px;background:none;border:none;padding:6px 0;width:100%;text-align:left">
               <span style="width:18px;height:18px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;background:{{ st.dotBg }};border:1.5px solid {{ st.dotBd }};font:600 9.5px 'IBM Plex Sans',sans-serif;color:{{ st.dotFg }}">{{ st.mark }}</span>
-              <span style="font:{{ st.wt }} 13.5px 'IBM Plex Sans',sans-serif;color:{{ st.fg }};white-space:nowrap">{{ st.n }}</span>
+              <span style="font:{{ st.wt }} 13.5px 'IBM Plex Sans',sans-serif;color:{{ st.fg }};min-width:0">{{ st.n }}</span>
             </button>
           </sc-for>
           <div style="font:400 11px 'IBM Plex Mono',monospace;color:#E04E4E;margin-top:14px">autosaved {{ savedAt }}</div>

@@ -46,6 +46,11 @@ class EventDetail(EventSummary):
     description: str | None
     cfp_opens_at: datetime | None
     cfp_closes_at: datetime | None
+    #: Both are enforced elsewhere and were unreachable from the API: the CFP
+    #: refuses a proposal over the limit, and the conflict engine skips track
+    #: collisions when they are switched off, but nothing could set either.
+    submission_limit_per_speaker: int | None
+    soft_conflicts_enabled: bool
 
 
 @router.get(
@@ -75,6 +80,8 @@ class EventUpdate(BaseModel):
     status: EventStatus | None = None
     cfp_opens_at: datetime | None = None
     cfp_closes_at: datetime | None = None
+    submission_limit_per_speaker: int | None = Field(default=None, ge=1, le=100)
+    soft_conflicts_enabled: bool | None = None
 
 
 @router.patch(

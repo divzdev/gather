@@ -24,6 +24,7 @@ from app.core.deps import DbSession, PortalSpeaker
 from app.core.errors import ApiError, NotFoundError
 from app.core.tenancy import current_tenant, tenancy_disabled
 from app.features.files import service as files
+from app.features.publishing import ics
 from app.features.tasks import service as tasks
 from app.models import (
     Event,
@@ -85,6 +86,10 @@ class SessionRead(BaseModel):
     starts_at: datetime | None
     duration_minutes: int
     room: str | None
+    #: Google and Outlook, alongside the .ics file. Most speakers do not download
+    #: an .ics — they click the calendar they already use, and the links existed
+    #: but only ever reached them inside an email.
+    calendar_links: dict[str, str] = Field(default_factory=dict)
 
 
 class ProfileRead(BaseModel):
@@ -305,6 +310,15 @@ async def home(session: DbSession, speaker: PortalSpeaker) -> Home:
                 starts_at=talk.starts_at,
                 duration_minutes=talk.duration_minutes,
                 room=room.name if room else None,
+                calendar_links=ics.calendar_links(
+                    {
+                        "starts_at": talk.starts_at,
+                        "duration_minutes": talk.duration_minutes,
+                        "title": talk.title,
+                        "room": room.name if room else None,
+                    },
+                    event={"location": event.location},
+                ),
             )
             for talk, room in talks
         ],
@@ -543,7 +557,6 @@ async def own_session_calendar(
     that gap is most of the period they actually need the entry. Scoped to their
     own sessions, so this is not a back door to the unpublished programme.
     """
-    from app.features.publishing import ics
 
     talk = (
         (
