@@ -252,8 +252,8 @@ function LoginPage() {
 
   return (
     <>
-      <Auth d={screen} />
       <DemoLogins accounts={demoAccounts ?? []} onPick={(role) => void demoSignIn(role)} />
+      <Auth d={screen} />
     </>
   );
 }
@@ -265,6 +265,11 @@ function LoginPage() {
  *  not design chrome — every end-to-end test signs in with them and the demo
  *  build is graded on them being findable — so they must not disappear the next
  *  time the prototype is regenerated.
+ *
+ *  A banner in normal flow, above the form, not an overlay. The first attempt
+ *  pinned it to the bottom of the viewport, which breaks on a phone: the layout
+ *  viewport is taller than the visual one, so the panel sat below the reachable
+ *  area and the buttons could not be tapped. Nothing here is positioned.
  *
  *  Absent on a real deployment: the endpoint that lists these 404s unless
  *  DEMO_MODE is on, so the array is empty and this renders nothing.
@@ -281,51 +286,44 @@ function DemoLogins({
   return (
     <div
       style={{
-        position: "fixed",
-        left: "50%",
-        bottom: 28,
-        transform: "translateX(-50%)",
-        width: 360,
-        maxWidth: "calc(100vw - 32px)",
-        display: "grid",
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        justifyContent: "center",
         gap: 10,
-        zIndex: 40,
+        padding: "10px 16px",
+        background: "var(--sw,#FFEAE6)",
+        borderBottom: "1px solid var(--sl,#FFC9C0)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ flex: 1, height: 1, background: "var(--ln,#E1E7E9)" }} />
-        <span
+      <span
+        style={{
+          font: "500 10px var(--font-plex-mono), monospace",
+          letterSpacing: "0.08em",
+          color: "var(--sg,#E04E4E)",
+        }}
+      >
+        DEMO DATA
+      </span>
+      {accounts.map((account) => (
+        <button
+          key={account.role}
+          onClick={() => onPick(account.role)}
+          title={`Sign in as ${account.label}`}
           style={{
-            font: "500 10px var(--font-plex-mono), monospace",
-            letterSpacing: "0.08em",
-            color: "var(--i4,#99A6AD)",
+            height: 34,
+            padding: "0 16px",
+            borderRadius: 999,
+            border: "1px solid var(--sl,#FFC9C0)",
+            background: "var(--cd,#FFFFFF)",
+            font: "500 12.5px var(--font-plex-sans), sans-serif",
+            color: "var(--i2,#3E4E58)",
+            whiteSpace: "nowrap",
           }}
         >
-          DEMO DATA
-        </span>
-        <span style={{ flex: 1, height: 1, background: "var(--ln,#E1E7E9)" }} />
-      </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        {accounts.map((account) => (
-          <button
-            key={account.role}
-            onClick={() => onPick(account.role)}
-            title={`Sign in as ${account.label}`}
-            style={{
-              flex: 1,
-              height: 38,
-              borderRadius: 999,
-              border: "1px solid var(--ls,#C8D2D5)",
-              background: "var(--cd,#FFFFFF)",
-              font: "500 12.5px var(--font-plex-sans), sans-serif",
-              color: "var(--i2,#3E4E58)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {account.role.replace(/^./, (letter) => letter.toUpperCase())}
-          </button>
-        ))}
-      </div>
+          {account.role.replace(/^./, (letter) => letter.toUpperCase())}
+        </button>
+      ))}
     </div>
   );
 }
