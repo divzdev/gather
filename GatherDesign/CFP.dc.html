@@ -75,42 +75,33 @@
         </sc-if>
 
         <sc-if value="{{ p2 }}" hint-placeholder-val="{{ false }}">
-          <h2 style="font:600 20px 'IBM Plex Sans',sans-serif;color:#16232B;margin:0 0 18px">Your proposal</h2>
-          <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
-            <div>
-              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Title <span style="color:#D8432B">*</span></div>
-              <input value="{{ title }}" onChange="{{ onTitle }}" placeholder="Say what the talk delivers" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:6px;border:1px solid {{ titleBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
-              <div style="font:400 11.5px 'IBM Plex Mono',monospace;color:#99A6AD;margin-top:5px">{{ titleCount }}</div>
+            <h2 style="font:600 20px 'IBM Plex Sans',sans-serif;color:#16232B;margin:0 0 18px">Your proposal</h2>
+            <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
+              <sc-for list="{{ fields }}" as="fd" hint-placeholder-count="5">
+                <div>
+                  <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">{{ fd.label }}<span style="color:#D8432B;display:{{ fd.reqD }}"> *</span></div>
+                  <sc-if value="{{ fd.isLine }}">
+                    <input value="{{ fd.value }}" onChange="{{ fd.onChange }}" type="{{ fd.inputType }}" placeholder="{{ fd.placeholder }}" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:6px;border:1px solid {{ fd.bd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E" />
+                  </sc-if>
+                  <sc-if value="{{ fd.isArea }}">
+                    <textarea value="{{ fd.value }}" onChange="{{ fd.onChange }}" rows="7" placeholder="{{ fd.placeholder }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid {{ fd.bd }};background:#FFFFFF;font:400 13.5px/21px 'IBM Plex Sans',sans-serif;color:#16232B;resize:vertical;outline-color:#E04E4E"></textarea>
+                  </sc-if>
+                  <sc-if value="{{ fd.isChoice }}">
+                    <div style="display:flex;gap:7px;flex-wrap:wrap">
+                      <sc-for list="{{ fd.options }}" as="op" hint-placeholder-count="3">
+                        <button onClick="{{ op.on }}" style="height:32px;padding:0 13px;border-radius:6px;border:1px solid {{ op.bd }};background:{{ op.bg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ op.fg }};white-space:nowrap">{{ op.label }}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ fd.isConsent }}">
+                    <button onClick="{{ fd.onToggle }}" style="display:flex;align-items:flex-start;gap:9px;background:none;border:none;padding:0;text-align:left"><span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ fd.bd }};background:{{ fd.tickBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:#FFFFFF;flex:none;margin-top:2px">{{ fd.tick }}</span><span style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#3E4E58">{{ fd.consentText }}</span></button>
+                  </sc-if>
+                  <sc-if value="{{ fd.hasCount }}"><div style="font:400 11.5px 'IBM Plex Mono',monospace;color:#99A6AD;margin-top:5px">{{ fd.count }}</div></sc-if>
+                  <sc-if value="{{ fd.hasHelp }}"><div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#99A6AD;margin-top:6px">{{ fd.help }}</div></sc-if>
+                </div>
+              </sc-for>
             </div>
-            <div>
-              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Abstract <span style="color:#D8432B">*</span></div>
-              <textarea value="{{ abstract }}" onChange="{{ onAbstract }}" rows="7" placeholder="150 to 400 words on what attendees walk away with" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid {{ absBd }};background:#FFFFFF;font:400 13.5px/21px 'IBM Plex Sans',sans-serif;color:#16232B;resize:vertical;outline-color:#E04E4E"></textarea>
-              <div style="font:400 11.5px 'IBM Plex Mono',monospace;color:#99A6AD;margin-top:5px">{{ wordCount }} words</div>
-            </div>
-            <div>
-              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:7px">Track <span style="color:#D8432B">*</span></div>
-              <div style="display:flex;gap:7px;flex-wrap:wrap">
-                <sc-for list="{{ tracks }}" as="tr" hint-placeholder-count="6">
-                  <button onClick="{{ tr.on }}" style="height:32px;padding:0 13px;border-radius:6px;border:1px solid {{ tr.bd }};background:{{ tr.bg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ tr.fg }};white-space:nowrap">{{ tr.n }}</button>
-                </sc-for>
-              </div>
-            </div>
-            <sc-if value="{{ askFramework }}" hint-placeholder-val="{{ false }}">
-              <div style="border-left:2px solid #E04E4E;background:#FFEAE6;border-radius:0 6px 6px 0;padding:12px 14px">
-                <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Because you picked Agents: which framework does your demo use?</div>
-                <input value="{{ framework }}" onChange="{{ onFramework }}" placeholder="e.g. LangGraph, custom, none" style="width:100%;box-sizing:border-box;height:34px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
-              </div>
-            </sc-if>
-            <div>
-              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:7px">Format <span style="color:#D8432B">*</span></div>
-              <div style="display:flex;gap:7px;flex-wrap:wrap">
-                <sc-for list="{{ formats }}" as="fo" hint-placeholder-count="3">
-                  <button onClick="{{ fo.on }}" style="height:32px;padding:0 13px;border-radius:6px;border:1px solid {{ fo.bd }};background:{{ fo.bg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ fo.fg }};white-space:nowrap">{{ fo.n }}</button>
-                </sc-for>
-              </div>
-            </div>
-          </div>
-        </sc-if>
+          </sc-if>
 
         <sc-if value="{{ p3 }}" hint-placeholder-val="{{ false }}">
           <h2 style="font:600 20px 'IBM Plex Sans',sans-serif;color:#16232B;margin:0 0 4px">Speakers</h2>

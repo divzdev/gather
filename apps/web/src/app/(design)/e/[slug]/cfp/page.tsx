@@ -4,20 +4,33 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { use, useEffect, useRef, useState } from "react";
 
 import { Cfp, type CfpData } from "@/components/design/Cfp";
+import { resolveVisibility, type FormSchema } from "@/lib/formLogic";
 import { ApiError, apiFetch } from "@/lib/api";
 
-type Choice = { value: string; label: string };
-type Field = { key: string; type: string; label: string; required: boolean; choices?: Choice[] };
-type Section = { key: string; title: string; fields: Field[] };
 type PublicForm = {
   event_name: string;
   event_slug: string;
   form_id: string;
   form_name: string;
-  schema: { sections: Section[]; settings?: Record<string, unknown> };
+  schema: FormSchema;
   closes_at: string | null;
   is_open: boolean;
   closed_reason: string | null;
+};
+
+/** Collected on the Speakers step, so it is not repeated in the proposal list. */
+const SPEAKER_FIELDS = new Set(["speaker_bio"]);
+
+const LINE_TYPES = new Set(["short_text", "url", "email", "number", "date"]);
+const AREA_TYPES = new Set(["long_text"]);
+const CHOICE_TYPES = new Set(["select", "radio", "multi_select", "checkbox_group"]);
+const MULTI_TYPES = new Set(["multi_select", "checkbox_group"]);
+const CONSENT_TYPES = new Set(["checkbox", "consent"]);
+const HTML_INPUT: Record<string, string> = {
+  url: "url",
+  email: "email",
+  number: "number",
+  date: "date",
 };
 
 // Panel 0 is the welcome screen; the numbered rail starts at panel 1.
@@ -56,13 +69,10 @@ const EMPTY: Draft = {
   terms: false,
 };
 
-function choicesFor(form: PublicForm | undefined, key: string): string[] {
-  for (const section of form?.schema.sections ?? []) {
-    for (const field of section.fields) {
-      if (field.key === key) return (field.choices ?? []).map((choice) => choice.label);
-    }
-  }
-  return [];
+/** The submission's own title column, which the API needs alongside the answers. */
+function titleFrom(values: Record<string, unknown>): string {
+  const value = values["title"];
+  return typeof value === "string" ? value : "";
 }
 
 const words = (text: string) => (text.trim() === "" ? 0 : text.trim().split(/\s+/).length);
@@ -74,10 +84,12 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
   const { slug } = use(params);
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  // Answers are keyed by field, so a question the organiser adds needs no code.
+  const [values, setValues] = useState<Record<string, unknown>>({});
   const [visited, setVisited] = useState<number[]>([0]);
   const [savedAt, setSavedAt] = useState("");
   const [code, setCode] = useState<string | null>(null);
-  const [errors, setErrors] = useState<{ t: string; field: keyof Draft; step: number }[]>([]);
+  const [errors, setErrors] = useState<{ t: string; field: string; step: number }[]>([]);
   const [toasts, setToasts] = useState<{ id: string; msg: string }[]>([]);
   const draftToken = useRef<string | null>(null);
 
@@ -92,24 +104,18 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     window.setTimeout(() => setToasts((current) => current.filter((t) => t.id !== id)), 6000);
   };
 
-  const answers = () => ({
-    title: draft.title,
-    abstract: draft.abstract,
-    track: draft.track,
-    format: draft.format,
-    speaker_bio: draft.bio,
-  });
+  const answers = () => ({ ...values, speaker_bio: draft.bio });
 
   const saveDraft = useMutation({
     mutationFn: async () => {
-      if (draft.email.trim() === "" || draft.title.trim() === "") return null;
+      if (draft.email.trim() === "" || title().trim() === "") return null;
       return apiFetch<{ code: string; draft_token: string }>(
         `/public/events/${slug}/submissions/draft`,
         {
           method: "POST",
           body: {
             form_id: form?.form_id,
-            title: draft.title,
+            title: title(),
             answers: answers(),
             speaker_email: draft.email,
             speaker_name: draft.name || draft.email,
@@ -134,7 +140,7 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
           method: "POST",
           body: {
             form_id: form?.form_id,
-            title: draft.title,
+            title: title(),
             answers: answers(),
             speaker_email: draft.email,
             speaker_name: draft.name,
@@ -165,10 +171,19 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
   const validate = (): typeof errors => {
     const found: typeof errors = [];
     if (draft.email.trim() === "") found.push({ t: "Your email address is required", field: "email", step: 1 });
-    if (draft.title.trim() === "") found.push({ t: "A session title is required", field: "title", step: 2 });
     if (draft.abstract.trim() === "") found.push({ t: "An abstract is required", field: "abstract", step: 2 });
     if (draft.track === "") found.push({ t: "Pick a track", field: "track", step: 2 });
     if (draft.format === "") found.push({ t: "Pick a session format", field: "format", step: 2 });
+    for (const field of visibleFields) {
+      if (!requiredKeys.has(field.key)) continue;
+      const value = values[field.key];
+      const blank =
+        value === undefined ||
+        value === false ||
+        (typeof value === "string" && value.trim() === "") ||
+        (Array.isArray(value) && value.length === 0);
+      if (blank) found.push({ t: `${field.label} is required`, field: field.key, step: 2 });
+    }
     if (draft.name.trim() === "") found.push({ t: "Your name is required", field: "name", step: 3 });
     if (!draft.terms) found.push({ t: "Confirm you agree to the speaker terms", field: "terms", step: 0 });
     return found;
@@ -190,7 +205,21 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     submit.mutate();
   };
 
-  const invalid = (field: keyof Draft) =>
+  const title = () => titleFrom(values);
+
+  const setValue = (key: string, value: unknown) =>
+    setValues((current) => ({ ...current, [key]: value }));
+
+  const schema = form?.schema;
+  const { visible, required } = schema
+    ? resolveVisibility(schema, values)
+    : { visible: new Set<string>(), required: new Set<string>() };
+  const requiredKeys = required;
+  const visibleFields = (schema?.sections ?? [])
+    .flatMap((section) => section.fields)
+    .filter((field) => visible.has(field.key) && !SPEAKER_FIELDS.has(field.key));
+
+  const invalid = (field: string) =>
     errors.some((entry) => entry.field === field) ? "#D8432B" : "#C8D2D5";
 
   const pill = (chosen: boolean) => ({
@@ -265,14 +294,6 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     email: draft.email,
     onEmail: set("email"),
     emailBd: invalid("email"),
-    title: draft.title,
-    onTitle: set("title"),
-    titleBd: invalid("title"),
-    titleCount: `${draft.title.length}/120`,
-    abstract: draft.abstract,
-    onAbstract: set("abstract"),
-    absBd: invalid("abstract"),
-    wordCount: words(draft.abstract),
     name: draft.name,
     onName: set("name"),
     nameBd: invalid("name"),
@@ -282,20 +303,52 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     onBio: set("bio"),
     bioBd: invalid("bio"),
 
-    tracks: choicesFor(form, "track").map((label) => ({
-      n: label,
-      on: () => setDraft((current) => ({ ...current, track: label })),
-      ...pill(draft.track === label),
-    })),
-    formats: choicesFor(form, "format").map((label) => ({
-      n: label,
-      on: () => setDraft((current) => ({ ...current, format: label })),
-      ...pill(draft.format === label),
-    })),
-
-    askFramework: false,
-    framework: "",
-    onFramework: () => undefined,
+    fields: visibleFields.map((field) => {
+      const value = values[field.key];
+      const required = requiredKeys.has(field.key);
+      const invalidHere = errors.some((entry) => entry.field === field.key);
+      const border = invalidHere ? "#D8432B" : "#C8D2D5";
+      const isMulti = MULTI_TYPES.has(field.type);
+      const chosen = Array.isArray(value) ? value : [];
+      return {
+        label: field.label,
+        reqD: required ? "inline" : "none",
+        bd: border,
+        placeholder: field.help_text ?? "",
+        inputType: HTML_INPUT[field.type] ?? "text",
+        isLine: LINE_TYPES.has(field.type),
+        isArea: AREA_TYPES.has(field.type),
+        isChoice: CHOICE_TYPES.has(field.type),
+        isConsent: CONSENT_TYPES.has(field.type),
+        value: typeof value === "string" ? value : "",
+        onChange: (event: React.SyntheticEvent) =>
+          setValue(field.key, (event.target as HTMLInputElement).value),
+        onToggle: () => setValue(field.key, value !== true),
+        tick: value === true ? "✓" : "",
+        tickBg: value === true ? "#E04E4E" : "#FFFFFF",
+        consentText: field.help_text ?? field.label,
+        options: field.choices.map((choice) => {
+          const picked = isMulti ? chosen.includes(choice.value) : value === choice.value;
+          return {
+            label: choice.label,
+            on: () =>
+              setValue(
+                field.key,
+                isMulti
+                  ? picked
+                    ? chosen.filter((entry) => entry !== choice.value)
+                    : [...chosen, choice.value]
+                  : choice.value,
+              ),
+            ...pill(picked),
+          };
+        }),
+        hasCount: field.type === "long_text",
+        count: `${words(typeof value === "string" ? value : "")} words`,
+        hasHelp: field.help_text !== null && !LINE_TYPES.has(field.type),
+        help: field.help_text ?? "",
+      };
+    }),
 
     hasCo: draft.hasCo,
     noCo: !draft.hasCo,
@@ -312,9 +365,14 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     togTerms: () => setDraft((current) => ({ ...current, terms: !current.terms })),
 
     summary: [
-      { k: "Title", v: draft.title || "—", fg: "#16232B" },
-      { k: "Track", v: draft.track || "—", fg: "#16232B" },
-      { k: "Format", v: draft.format || "—", fg: "#16232B" },
+      { k: "Title", v: title() || "—", fg: "#16232B" },
+      ...visibleFields
+        .filter((field) => field.key !== "title" && CHOICE_TYPES.has(field.type))
+        .map((field) => ({
+          k: field.label,
+          v: String(values[field.key] ?? "—"),
+          fg: "#16232B",
+        })),
       { k: "Speaker", v: draft.name || "—", fg: "#16232B" },
       { k: "Email", v: draft.email || "—", fg: "#3E4E58" },
     ],
