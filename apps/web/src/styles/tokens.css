@@ -45,10 +45,14 @@
 
   /* Portal-only surfaces. */
   --zn: #f7f9fa;
-  --heroa: #fff3f0;
-  --herob: #ffe8e2;
-  --herobd: #ffd5cc;
-  --stepln: #e1e7e9;
+  /* These four are the values the prototypes carry as their var() fallbacks.
+     They must match exactly: while the names were misspelled the fallbacks were
+     what light mode actually rendered, so anything else here changes a screen
+     that was already signed off. */
+  --heroA: #ffede9;
+  --heroB: #fdf6f3;
+  --heroBd: #e9deda;
+  --stepLn: #ffb3aa; /* completed connector — accent, not the hairline */
 
   /* Track hues, assigned per track and stored so a colour never shifts. */
   --track-agents: #3e8896;
@@ -100,10 +104,12 @@
   --ifl: #3e4152;
 
   --zn: #141416;
-  --heroa: #241a1b;
-  --herob: #191719;
-  --herobd: #332826;
-  --stepln: #2a2a31;
+  --heroA: #241a1b;
+  --heroB: #191719;
+  --heroBd: #332826;
+  /* The dark accent line, not the neutral hairline: a completed step has to
+     stay distinguishable from one still to come. */
+  --stepLn: #66302e;
 }
 
 @media (prefers-reduced-motion: reduce) {

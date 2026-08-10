@@ -7,488 +7,863 @@
 </head>
 <body>
 <x-dc>
-<helmet data-dc-atomics>
-<link rel="icon" href="assets/gather-mark.svg">
-<title>Gather · Speaker and session management software for conferences</title>
-<meta name="description" content="Open source call for papers, speaker review, and conference agenda software. Collect submissions, score them blind, chase speaker deliverables automatically, and publish a conflict-free schedule.">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<helmet>
+<title>Gather: open source speaker and program management for conferences</title>
+<meta name="description" content="Run your call for papers, committee review, speaker onboarding and agenda in one open source tool. Self-hosted, MIT licensed, and fast enough to use all day.">
+<meta property="og:title" content="So, you're running a conference.">
+<meta property="og:description" content="Gather runs the speaker program end to end. Proposals, scoring, decisions, speaker onboarding, the schedule, and the public program page.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin="anonymous">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://api.fontshare.com/v2/css?f%5B%5D=cabinet-grotesk@700,800&amp;f%5B%5D=switzer@400,500,600&amp;f%5B%5D=boska@401&amp;f%5B%5D=array@700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;family=Shantell+Sans:wght@300;400&amp;display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Gather","applicationCategory":"BusinessApplication","operatingSystem":"Self-hosted","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://opensource.org/licenses/MIT","description":"Run your call for papers, committee review, speaker onboarding and agenda in one open source tool. Self-hosted, MIT licensed, and fast enough to use all day."}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is this really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. MIT licensed. There is no paid tier and nothing is held back from the open source version. The code you are reading now runs on your own server, forever."}},{"@type":"Question","name":"How many proposals can it handle?","acceptedAnswer":{"@type":"Answer","text":"The demo runs 214 proposals, 80 speakers and 61 sessions, and the agenda holds 60fps while dragging 120 sessions across six rooms. It is Postgres and a schedule, not a distributed system problem."}},{"@type":"Question","name":"Can my committee review anonymously?","acceptedAnswer":{"@type":"Answer","text":"Yes. Blind rounds strip names, companies and any answer you flag as identifying, on the server, before the data reaches the reviewer's browser."}},{"@type":"Question","name":"Do speakers need an account?","acceptedAnswer":{"@type":"Answer","text":"No. They get a link. They can set a password if they would rather have one, but nobody is asked to remember another login for a conference they speak at once."}},{"@type":"Question","name":"What happens to my data if I stop using it?","acceptedAnswer":{"@type":"Answer","text":"It is in your own Postgres database, and everything exports as CSV or XLSX. There is no export fee, because there is nobody to pay."}},{"@type":"Question","name":"Can I move off my current tool mid-cycle?","acceptedAnswer":{"@type":"Answer","text":"Import speakers and sessions from CSV, then carry on. Review history is the awkward part of any migration, so switch between events if you can."}},{"@type":"Question","name":"Does it do registration and ticketing?","acceptedAnswer":{"@type":"Answer","text":"No, deliberately. That is a different product with different regulations attached. Gather pushes the program to whatever you already use for registration."}},{"@type":"Question","name":"Who is behind it?","acceptedAnswer":{"@type":"Answer","text":"It was built to replace a specific forty thousand dollar renewal for a specific conference, and opened up so the next conference does not have to have the same argument."}}]}</script>
 <style>
-html{scroll-behavior:smooth}
-body{margin:0;background:#08080A;font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-a{color:#FF8E8E}a:hover{color:#FF6B6B}
-::selection{background:#FF6B6B;color:#08080A}
-@keyframes riseIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
-@keyframes drift{from{transform:translateY(0)}to{transform:translateY(-9px)}}
-@keyframes glowPulse{from{opacity:.45}to{opacity:.9}}
-@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@keyframes blockMove{0%,24%{transform:translate(0,0)}40%,100%{transform:translate(calc(100% + 12px),50px)}}
-@keyframes conflictOn{0%,26%{opacity:1}42%,100%{opacity:0}}
-@keyframes conflictOff{0%,30%{opacity:0}46%,100%{opacity:1}}
-@keyframes scanline{from{background-position:0 0}to{background-position:0 240px}}
-@keyframes drawIn{to{stroke-dashoffset:0}}
+html,body{margin:0;padding:0;background:#08080A}
+body{overflow-x:clip}
+a{color:inherit;text-decoration:none;transition:color .15s ease,background .15s ease,border-color .15s ease,transform .12s ease,opacity .15s ease}
+a:hover{color:#FF7A5C}
+button{font:inherit}
+::selection{background:#FF5A36;color:#331313}
+:focus-visible{outline:2px solid #FF7A5C !important;outline-offset:2px}
+@keyframes gcaret{0%,55%{opacity:1}56%,100%{opacity:0}}
+@keyframes gfloat{0%,100%{transform:rotate(1.5deg) translateY(0)}50%{transform:rotate(1.5deg) translateY(-7px)}}
+@keyframes gpulse{0%,100%{opacity:.5}50%{opacity:1}}
+@media (max-width:1080px){[data-herogrid]{grid-template-columns:1fr !important}[data-visual]{height:auto !important;min-width:0;margin-top:36px}[data-tilt]{position:relative !important;width:100% !important}}
+@media (max-width:920px){[data-guide]{display:none}[data-navlinks]{display:none}[data-split]{grid-template-columns:1fr !important}[data-marks]{grid-template-columns:1fr 1fr !important}[data-cols4]{grid-template-columns:1fr 1fr !important}[data-faqcols]{grid-template-columns:1fr !important}[data-ann]{position:static !important;transform:none !important;margin:16px 0 0 !important;max-width:none !important;text-align:left !important}[data-arrow]{display:none}}
+@media (max-width:780px){[data-demo]{width:182% !important;transform:scale(.55);transform-origin:top left;margin-bottom:-176px !important}[data-marks]{grid-template-columns:1fr !important}[data-measure]{flex-direction:column;gap:30px !important}[data-visual]{overflow:hidden}[data-tilt]{width:760px !important;transform:rotate(1.2deg) scale(.42) !important;transform-origin:left top !important;margin-bottom:-238px}[data-heroann]{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </helmet>
-<div ref="{{ setRoot }}" data-screen-label="Gather Landing" style="background:#08080A;color:#F2F2F0;overflow-x:clip">
+<div style="--bg:#08080A;--pnl:#101013;--pnl2:#17171B;--pnl3:#1F1F24;--ln:#26262D;--ln2:#33333C;--ik:#F2F2F0;--i2:#B9B9B6;--i3:#8A8A87;--i4:#66666A;--cue:#FF5A36;--cuep:#E44A28;--cuel:#FF7A5C;--cuebf:#331313;--alarm:#F0766A;--alarmw:#3A1F1E;--clear:#57B899;--clearw:#123029;--pend:#F0A468;--pendw:#332617;--info:#8B9AD0;--infow:#222848;--disp:'Cabinet Grotesk','Switzer',-apple-system,'Segoe UI',sans-serif;--sans:'Switzer',-apple-system,'Segoe UI',sans-serif;--ital:'Boska','Iowan Old Style',Georgia,serif;--mono:'JetBrains Mono',ui-monospace,monospace;--hand:'Shantell Sans',ui-rounded,'Segoe Print',cursive;--mark:'Array','Cabinet Grotesk',sans-serif;--fsh2:clamp(2rem,3.8vw,3.25rem);--pad:0 clamp(20px,5vw,72px);--padA:clamp(76px,9.5vh,120px);--padB:clamp(52px,7vh,84px);background:var(--bg);color:var(--ik);font-family:var(--sans);font-size:17px;line-height:1.62">
 
-  <sc-if value="{{ showAnnounce }}" hint-placeholder-val="{{ true }}">
-    <div style="display:flex;align-items:center;justify-content:center;gap:10px;height:38px;background:#101013;border-bottom:1px solid rgba(255,255,255,.06);font:400 12.5px 'IBM Plex Sans',sans-serif;color:#B9B9B6">
-      <span style="width:6px;height:6px;border-radius:50%;background:#FF6B6B"></span>
-      Open source, MIT licensed. Your speakers' data stays yours.
-      <a href="#featureindex" style="font-weight:500;color:#FF8E8E;text-decoration:none">See what ships →</a>
-    </div>
-  </sc-if>
-
-  <div style="position:sticky;top:0;z-index:50;background:rgba(8,8,10,.72);backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);border-bottom:1px solid rgba(255,255,255,.06)">
-    <div style="max-width:1200px;margin:0 auto;height:60px;display:flex;align-items:center;gap:28px;padding:0 24px">
-      <a href="#top" style="display:flex;align-items:center;gap:10px;text-decoration:none">
-        <img src="assets/gather-mark.svg" alt="Gather" width="28" height="28" style="display:block;border-radius:7px">
-        <span style="font:700 19px 'Bricolage Grotesque',sans-serif;color:#F2F2F0;letter-spacing:-0.01em">Gather</span>
-      </a>
-      <div style="flex:1"></div>
-      <div style="display:flex;align-items:center;gap:22px">
-        <a href="#cfp" style="font:500 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">CFP</a>
-        <a href="#review" style="font:500 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Review</a>
-        <a href="#speakers" style="font:500 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Speakers</a>
-        <a href="#agenda" style="font:500 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Agenda</a>
-        <a href="#publish" style="font:500 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Publish</a>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-left:6px">
-        <a href="Portal.dc.html" style="font:500 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none;padding:8px 10px" style-hover="color:#F2F2F0">Speaker portal</a>
-        <a href="Overview.dc.html" style="font:600 13px 'IBM Plex Sans',sans-serif;color:#331313;background:#FF6B6B;text-decoration:none;height:34px;display:inline-flex;align-items:center;padding:0 16px;border-radius:999px;box-shadow:0 0 24px rgba(255,107,107,.25)" style-hover="background:#FF8E8E">Open the console</a>
+  <header data-screen-label="Nav" style="position:sticky;top:0;z-index:50;background:rgba(8,8,10,.93);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--ln)">
+    <div style="max-width:1200px;margin:0 auto;padding:var(--pad);display:flex;align-items:center;justify-content:space-between;gap:24px;height:64px">
+      <a href="#top" style="display:flex;align-items:center;gap:10px;color:var(--ik);flex-shrink:0"><img src="assets/gather-mark.svg" width="28" height="28" alt="" style="display:block;border-radius:6px"><span style="font-weight:600;font-size:17px;letter-spacing:-.01em">Gather</span></a>
+      <nav data-navlinks aria-label="Product" style="display:flex;gap:26px;font-size:14.5px;font-weight:500;color:var(--i3)">
+        <a href="#beat1" style-hover="color:#F2F2F0">Program</a>
+        <a href="#beat2" style-hover="color:#F2F2F0">Review</a>
+        <a href="#beat5" style-hover="color:#F2F2F0">Agenda</a>
+        <a href="#beat4" style-hover="color:#F2F2F0">Portal</a>
+        <a href="#beat6" style-hover="color:#F2F2F0">Publish</a>
+        <a href="#faq" style-hover="color:#F2F2F0">Docs</a>
+      </nav>
+      <div style="display:flex;align-items:center;gap:16px;flex-shrink:0">
+        <a href="#opensource" style="display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:500;color:var(--i3)" style-hover="color:#F2F2F0"><svg width="17" height="17" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38l-.01-1.49c-2.23.48-2.7-.95-2.7-.95-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.21 1.87.86 2.33.66.07-.52.28-.86.5-1.06-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.66 7.66 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.24.54.73.54 1.48l-.01 2.19c0 .21.15.46.55.38A8 8 0 0 0 8 .2Z"></path></svg>GitHub</a>
+        <a href="Auth.dc.html" style="display:inline-flex;align-items:center;height:40px;padding:0 20px;background:var(--cue);color:var(--cuebf);border-radius:6px;font-size:14.5px;font-weight:600" style-hover="background:var(--cuep);color:var(--cuebf);transform:translateY(-1px)">Open the demo</a>
       </div>
     </div>
-  </div>
+  </header>
 
-  <div id="top" style="position:relative;padding:110px 24px 96px;overflow:clip;background:repeating-linear-gradient(90deg,rgba(255,255,255,.022) 0 1px,transparent 1px 130px)">
-    <div style="position:absolute;left:50%;top:-300px;width:1200px;height:820px;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(255,107,107,.14),rgba(255,107,107,0) 70%);pointer-events:none;animation:glowPulse 7s ease-in-out infinite alternate"></div>
-    <div style="max-width:1200px;margin:0 auto;position:relative">
-      <div style="text-align:center;max-width:900px;margin:0 auto;animation:riseIn .7s cubic-bezier(.2,.7,.2,1) both">
-        <div style="display:inline-flex;align-items:center;gap:8px;font:500 11.5px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#FF8E8E;border:1px solid rgba(255,107,107,.28);background:rgba(255,107,107,.07);border-radius:999px;padding:7px 15px;margin-bottom:26px">CFP · REVIEW · SPEAKER OPS · AGENDA · PUBLISHING</div>
-        <h1 style="font:600 clamp(48px,6.8vw,94px)/1.04 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em;color:#F2F2F0;margin:0 0 30px;text-wrap:balance">The speaker side of your conference,<br><span style="position:relative;display:inline-block;background:linear-gradient(100deg,#FF8E8E 0%,#FF6B6B 55%,#F0A468 110%);-webkit-background-clip:text;background-clip:text;color:transparent">off your plate.<svg aria-hidden="true" viewBox="0 0 300 14" preserveAspectRatio="none" style="position:absolute;left:2%;bottom:-14px;width:96%;height:14px;overflow:visible"><path d="M4 9 C 44 3, 74 12, 112 8 S 192 3, 232 8 S 286 11, 296 6" fill="none" stroke="#FF6B6B" stroke-width="4" stroke-linecap="round" style="stroke-dasharray:330;stroke-dashoffset:330;animation:drawIn .9s .8s cubic-bezier(.5,0,.3,1) forwards;opacity:.85"></path></svg></span></h1>
-        <p style="font:400 clamp(16px,1.6vw,19px)/1.6 'IBM Plex Sans',sans-serif;color:#A3A3A0;margin:0 auto 34px;max-width:660px;text-wrap:pretty">The call for papers, the review rounds, the headshot chasing, the agenda, the schedule on your website. Gather runs it end to end. Nothing double-books, nobody emails you asking if their talk got in, and you get your evenings back.</p>
-        <div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap">
-          <a href="Overview.dc.html" style="font:600 15px 'IBM Plex Sans',sans-serif;color:#331313;background:#FF6B6B;text-decoration:none;height:48px;display:inline-flex;align-items:center;padding:0 26px;border-radius:999px;box-shadow:0 0 44px rgba(255,107,107,.35)" style-hover="background:#FF8E8E">Poke around the demo console</a>
-          <a href="CFP.dc.html" style="font:500 15px 'IBM Plex Sans',sans-serif;color:#F2F2F0;text-decoration:none;height:48px;display:inline-flex;align-items:center;gap:8px;padding:0 22px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.03)" style-hover="border-color:rgba(255,142,142,.5);color:#FF8E8E">Submit a fake talk →</a>
-        </div>
-      </div>
-
-      <div style="position:relative;max-width:1020px;margin:78px auto 0;animation:riseIn .8s .18s cubic-bezier(.2,.7,.2,1) both">
-        <div style="position:absolute;inset:-40px -60px auto;height:340px;background:radial-gradient(closest-side,rgba(255,107,107,.12),transparent 70%);pointer-events:none"></div>
-        <div style="position:relative;background:#101013;border:1px solid rgba(255,255,255,.09);border-radius:18px;box-shadow:0 60px 140px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.5),0 0 80px rgba(255,107,107,.08);overflow:hidden">
-          <div style="height:44px;display:flex;align-items:center;gap:10px;padding:0 16px;background:#17171B;border-bottom:1px solid #2A2A31">
-            <img src="assets/gather-mark.svg" alt="" width="20" height="20" style="border-radius:5px">
-            <span style="font:600 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0">AI Engineer 2026 · Agenda</span>
-            <span style="font:400 11px 'IBM Plex Mono',monospace;color:#686865">Day 2 · Tue 13 Oct</span>
-            <div style="flex:1"></div>
-            <span style="position:relative;width:104px;height:24px">
-              <span style="position:absolute;inset:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;font:500 11px 'IBM Plex Sans',sans-serif;color:#F0766A;background:#3A1F1E;border-radius:999px;animation:conflictOn 9s linear infinite"><span style="width:5px;height:5px;border-radius:50%;background:#F0766A"></span>1 conflict</span>
-              <span style="position:absolute;inset:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;font:500 11px 'IBM Plex Sans',sans-serif;color:#57B899;background:#123029;border-radius:999px;animation:conflictOff 9s linear infinite"><span style="width:5px;height:5px;border-radius:50%;background:#57B899"></span>0 conflicts</span>
-            </span>
-            <span style="font:600 11.5px 'IBM Plex Sans',sans-serif;color:#331313;background:#FF6B6B;border-radius:999px;padding:5px 12px">Publish changes</span>
-          </div>
-          <div style="position:relative;padding:14px 16px 20px;background:#101013">
-            <div style="display:grid;grid-template-columns:46px 1fr 1fr 1fr;gap:0 12px">
-              <div></div>
-              <div style="font:600 10.5px 'IBM Plex Sans',sans-serif;letter-spacing:.07em;color:#8A8A87;padding-bottom:8px">MAIN STAGE</div>
-              <div style="font:600 10.5px 'IBM Plex Sans',sans-serif;letter-spacing:.07em;color:#8A8A87;padding-bottom:8px">ROOM 2</div>
-              <div style="font:600 10.5px 'IBM Plex Sans',sans-serif;letter-spacing:.07em;color:#8A8A87;padding-bottom:8px">ROOM 3</div>
-              <div style="display:grid;grid-template-rows:repeat(4,50px);font:400 10px 'IBM Plex Mono',monospace;color:#5F5F5C"><span>09:00</span><span>10:00</span><span>11:00</span><span>12:00</span></div>
-              <div style="display:grid;grid-template-rows:repeat(4,50px)">
-                <div style="grid-row:1/3;background:#17171B;border:1px solid #2A2A31;border-left:3px solid #34526B;border-radius:8px;padding:8px 10px;margin:2px 0"><div style="font:600 11.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Opening keynote</div><div style="font:400 10.5px 'IBM Plex Sans',sans-serif;color:#929290">Marta Duarte · 09:05</div></div>
-                <div style="grid-row:3/4;background:#17171B;border:1px solid #2A2A31;border-left:3px solid #5A6BA8;border-radius:8px;padding:8px 10px;margin:2px 0"><div style="font:600 11.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Spot fleets without tears</div><div style="font:400 10.5px 'IBM Plex Sans',sans-serif;color:#929290">Lars Bergström</div></div>
-                <div style="grid-row:4/5;background:#17171B;border:1px solid #2A2A31;border-left:3px solid #C4703A;border-radius:8px;padding:8px 10px;margin:2px 0"><div style="font:600 11.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Grounding in production</div><div style="font:400 10.5px 'IBM Plex Sans',sans-serif;color:#929290">José Águilar</div></div>
-              </div>
-              <div style="display:grid;grid-template-rows:repeat(4,50px);position:relative">
-                <div style="grid-row:1/2;background:#17171B;border:1px solid #2A2A31;border-left:3px solid #A85788;border-radius:8px;padding:8px 10px;margin:2px 0"><div style="font:600 11.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Evals beyond vibes</div><div style="font:400 10.5px 'IBM Plex Sans',sans-serif;color:#929290">Sofia Petrova</div></div>
-                <div style="grid-row:2/3;background:repeating-linear-gradient(135deg,rgba(240,118,106,.12) 0 8px,rgba(240,118,106,.04) 8px 16px);border:1px dashed rgba(240,118,106,.45);border-radius:8px;margin:2px 0;animation:conflictOn 9s linear infinite;display:flex;align-items:center;justify-content:center"><span style="font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#F0766A">KEIKO BUSY · MAIN STAGE</span></div>
-                <div style="grid-row:4/5;background:#17171B;border:1px solid #2A2A31;border-left:3px solid #3E8896;border-radius:8px;padding:8px 10px;margin:2px 0"><div style="font:600 11.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Guardrail budgets</div><div style="font:400 10.5px 'IBM Plex Sans',sans-serif;color:#929290">Nils Vogel</div></div>
-              </div>
-              <div style="display:grid;grid-template-rows:repeat(4,50px)">
-                <div style="grid-row:1/2;background:#17171B;border:1px solid #2A2A31;border-left:3px solid #7E5CB8;border-radius:8px;padding:8px 10px;margin:2px 0"><div style="font:600 11.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">A billion documents, one index</div><div style="font:400 10.5px 'IBM Plex Sans',sans-serif;color:#929290">Kwame Osei</div></div>
-                <div style="grid-row:4/5;background:#17171B;border:1px solid #2A2A31;border-left:3px solid #3E8896;border-radius:8px;padding:8px 10px;margin:2px 0"><div style="font:600 11.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Long-horizon planning</div><div style="font:400 10.5px 'IBM Plex Sans',sans-serif;color:#929290">Wei Zhang</div></div>
-              </div>
+  <main>
+    <section id="top" data-screen-label="Hero" aria-labelledby="h-hero" style="position:relative;padding:clamp(64px,8vh,96px) 0 clamp(48px,6vh,72px);overflow:hidden">
+      <div aria-hidden="true" style="position:absolute;inset:0;background:radial-gradient(60% 55% at 16% 22%,rgba(255,90,54,.09),transparent 62%);pointer-events:none"></div>
+      <div style="position:relative;max-width:1200px;margin:0 auto;padding:var(--pad)">
+        <div data-herogrid style="display:grid;grid-template-columns:minmax(0,490px) minmax(0,1fr);gap:clamp(28px,4vw,56px);align-items:center">
+          <div>
+            <h1 id="h-hero" style="font-family:var(--disp);font-weight:800;font-size:clamp(2.9rem,6.2vw,5.1rem);line-height:.95;letter-spacing:-.035em;color:var(--ik);margin:0 0 24px;text-wrap:balance">So, you're running a conference.</h1>
+            <p style="font-size:clamp(1.0625rem,1.3vw,1.1875rem);line-height:1.58;color:var(--i2);margin:0 0 14px;max-width:44ch;text-wrap:pretty">Two hundred proposals in a spreadsheet. A committee that can't agree. Forty speakers who haven't sent a bio. And a schedule that keeps double-booking Hall A.</p>
+            <p style="font-size:clamp(1.0625rem,1.3vw,1.1875rem);line-height:1.58;color:var(--ik);margin:0 0 30px;max-width:44ch">We built Gather for exactly that week.</p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <a href="#beat1" style="display:inline-flex;align-items:center;height:48px;padding:0 24px;background:var(--cue);color:var(--cuebf);border-radius:6px;font-size:15.5px;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.22)" style-hover="background:var(--cuep);color:var(--cuebf);transform:translateY(-1px)">Walk me through it</a>
+              <a href="Auth.dc.html" style="display:inline-flex;align-items:center;height:48px;padding:0 24px;border:1px solid var(--ln2);color:var(--ik);border-radius:6px;font-size:15.5px;font-weight:500" style-hover="background:var(--pnl2);color:var(--ik);transform:translateY(-1px)">Open the live demo</a>
             </div>
-            <div style="position:absolute;left:calc(46px + 12px + (100% - 78px - 24px)/3 + 12px);top:calc(14px + 21px + 50px);width:calc((100% - 78px - 24px)/3 - 12px);animation:blockMove 9s cubic-bezier(.3,.8,.3,1) infinite;z-index:3">
-              <div style="background:#1F1F24;border:1.5px solid #FF6B6B;border-radius:8px;padding:8px 10px;box-shadow:0 14px 34px rgba(0,0,0,.5),0 0 24px rgba(255,107,107,.18)">
-                <div style="font:600 11.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Golden-trace workshop</div>
-                <div style="font:400 10.5px 'IBM Plex Sans',sans-serif;color:#929290">Keiko Watanabe · 90 min</div>
+            <p style="font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--i3);margin:18px 0 0;max-width:38ch">Free and open source. No signup, no sales call, no forty thousand dollar invoice.</p>
+          </div>
+          <div data-visual style="position:relative;height:clamp(420px,40vw,500px)">
+            <p style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">The agenda grid for Devflow 2027, with a session being dragged toward Hall A at ten where Priya is already speaking</p>
+            <div data-tilt aria-hidden="true" style="position:absolute;left:0;top:0;width:1180px;transform:rotate(2.5deg);transform-origin:left top;border:1px solid var(--ln);border-radius:12px;background:var(--pnl);box-shadow:0 40px 80px -20px rgba(0,0,0,.75);overflow:hidden">
+              <div style="display:flex;align-items:center;justify-content:space-between;height:38px;background:var(--pnl2);border-bottom:1px solid var(--ln);padding:0 14px"><span style="font-family:var(--mono);font-size:11px;color:var(--i3)">Devflow 2027 &#183; agenda &#183; Wed 12</span><span style="display:flex;gap:6px"><span style="font-family:var(--mono);font-size:10px;color:var(--i3);border:1px solid var(--ln);border-radius:4px;padding:2px 7px">Day</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3);border:1px solid var(--ln);border-radius:4px;padding:2px 7px">Track</span><span style="font-family:var(--mono);font-size:10px;color:var(--cuebf);background:var(--cue);border-radius:4px;padding:2px 7px">Publish</span></span></div>
+              <div style="position:relative;height:372px;padding:10px 14px 0">
+                <div style="position:absolute;left:70px;right:14px;top:12px;display:grid;grid-template-columns:repeat(4,1fr);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--i3)"><span style="text-align:center">Hall A</span><span style="text-align:center">Hall B</span><span style="text-align:center">Studio 2</span><span style="text-align:center">Workshop</span></div>
+                <div style="position:absolute;left:14px;top:38px;width:46px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--i3)">09:00</div>
+                <div style="position:absolute;left:14px;top:122px;width:46px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--i3)">10:00</div>
+                <div style="position:absolute;left:14px;top:206px;width:46px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--i3)">11:00</div>
+                <div style="position:absolute;left:14px;top:290px;width:46px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--i3)">12:00</div>
+                <div style="position:absolute;left:70px;right:14px;top:32px;height:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:70px;right:14px;top:116px;height:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:70px;right:14px;top:200px;height:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:70px;right:14px;top:284px;height:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:70px;right:14px;top:368px;height:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:70px;right:14px;top:32px;bottom:4px;display:grid;grid-template-columns:repeat(4,1fr)"><div style="border-left:1px solid var(--ln)"></div><div style="border-left:1px solid var(--ln)"></div><div style="border-left:1px solid var(--ln)"></div><div style="border-left:1px solid var(--ln);border-right:1px solid var(--ln)"></div></div>
+                <div style="position:absolute;left:76px;top:38px;width:calc((100% - 84px)/4 - 12px);height:72px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:8px 10px 8px 13px;box-sizing:border-box"><span style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#34526B;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.3">Opening keynote: the year in agents</span><span style="display:block;font-family:var(--mono);font-size:9.5px;color:var(--i3);margin-top:4px">Ade Balogun &#183; 45 min</span></div>
+                <div style="position:absolute;left:calc(76px + (100% - 84px)/2);top:38px;width:calc((100% - 84px)/4 - 12px);height:72px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:8px 10px 8px 13px;box-sizing:border-box"><span style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#5A6BA8;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.3">Fine-tuning on a budget</span><span style="display:block;font-family:var(--mono);font-size:9.5px;color:var(--i3);margin-top:4px">Tomas Lindqvist &#183; 30 min</span></div>
+                <div style="position:absolute;left:calc(76px + 3*(100% - 84px)/4);top:122px;width:calc((100% - 84px)/4 - 12px);height:156px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:8px 10px 8px 13px;box-sizing:border-box"><span style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3E8896;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.3">Ship an eval suite in 90 minutes</span><span style="display:block;font-family:var(--mono);font-size:9.5px;color:var(--i3);margin-top:4px">Maya Okonkwo &#183; 2 h workshop</span></div>
+                <div style="position:absolute;left:calc(76px + (100% - 84px)/4);top:206px;width:calc((100% - 84px)/4 - 12px);height:72px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:8px 10px 8px 13px;box-sizing:border-box"><span style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#A85788;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.3">Evals that catch regressions</span><span style="display:block;font-family:var(--mono);font-size:9.5px;color:var(--i3);margin-top:4px">Sofia Marchetti &#183; 45 min</span></div>
+                <div style="position:absolute;left:72px;top:118px;width:calc((100% - 84px)/4 - 4px);height:80px;border:1px solid var(--cue);background:rgba(255,90,54,.10);border-radius:7px;animation:gpulse 2.6s ease-in-out infinite"></div>
+                <div style="position:absolute;left:76px;top:122px;width:calc((100% - 84px)/4 - 12px);height:72px;background:var(--pnl2);border:1px solid #4A2A22;border-radius:6px;padding:8px 10px 8px 13px;box-sizing:border-box"><span style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#7E5CB8;border-radius:6px 0 0 6px"></span><span style="display:block;font-family:var(--mono);font-size:9.5px;color:var(--alarm)">Priya Raghunathan &#183; Hall A</span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.3;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Serving LLMs on spot GPUs</span></div>
+                <div style="position:absolute;left:calc(76px + 2*(100% - 84px)/4);top:214px;width:calc((100% - 84px)/4 - 12px);height:72px;background:var(--pnl3);border:1px solid var(--cue);border-radius:6px;padding:8px 10px 8px 13px;box-sizing:border-box;animation:gfloat 6s ease-in-out infinite;box-shadow:0 22px 40px -14px rgba(0,0,0,.85);z-index:3"><span style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3E8896;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Agents in production</span><span style="display:block;font-family:var(--mono);font-size:9.5px;color:var(--i3);margin-top:4px">Priya Raghunathan &#183; 45 min</span></div>
+                <div style="position:absolute;left:76px;top:298px;width:calc((100% - 84px)/2 + 40px);z-index:9"><svg data-arrow width="52" height="86" viewBox="0 0 52 86" fill="none" aria-hidden="true" style="position:absolute;left:20px;top:-84px;color:var(--cue);pointer-events:none"><path d="M34 82C28 62 22 42 20 20c-1-6-1-11-1-14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M19 6c-4 5-8 10-10 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M19 6c4 5 9 9 12 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg><div data-ann style="transform:rotate(-3deg);transform-origin:left top;font-family:var(--hand);font-weight:300;font-size:15px;line-height:1.35;color:var(--cue)">Priya is already on stage at 10. It says so before you let go.</div></div>
               </div>
             </div>
           </div>
         </div>
-        <div style="position:absolute;right:-22px;top:-44px;rotate:2deg;background:#17171B;border:1px solid #3A1F1E;border-radius:12px;padding:11px 15px;box-shadow:0 18px 44px rgba(0,0,0,.55);animation:drift 5.5s ease-in-out infinite alternate;z-index:4">
-          <div style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#F0766A;margin-bottom:3px">CONFLICT CAUGHT</div>
-          <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#C9C9C6">Keiko is already on Main stage at 10:00</div>
-        </div>
-        <div style="position:absolute;left:-16px;bottom:-22px;rotate:-1.5deg;background:#17171B;border:1px solid #123029;border-radius:12px;padding:11px 15px;box-shadow:0 18px 44px rgba(0,0,0,.55);animation:drift 6.5s .8s ease-in-out infinite alternate;z-index:4">
-          <div style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#57B899;margin-bottom:3px">RESOLVED · PUBLISHED</div>
-          <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#C9C9C6">Moved to Room 3 · 7 speakers notified</div>
-        </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <div style="border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);background:#0B0B0E;overflow:hidden;padding:15px 0" aria-hidden="true">
-    <div style="display:flex;gap:44px;width:max-content;animation:marquee 36s linear infinite">
-      <div style="display:flex;gap:44px;align-items:center">
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">CONDITIONAL CFP FORMS</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">BLIND REVIEW</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">AI FIRST-PASS SCORES</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">ESCALATING REMINDERS</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">MAGIC-LINK PORTALS</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">LIVE CONFLICT DETECTION</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">ONE-TAG EMBEDS</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">DELIVERY TRUTH</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">CSV EVERYWHERE</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">READ-ONLY PUBLIC API</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">ACCELEVENTS PUSH</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">FILE VERSIONING</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-      </div>
-      <div style="display:flex;gap:44px;align-items:center">
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">CONDITIONAL CFP FORMS</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">BLIND REVIEW</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">AI FIRST-PASS SCORES</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">ESCALATING REMINDERS</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">MAGIC-LINK PORTALS</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">LIVE CONFLICT DETECTION</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">ONE-TAG EMBEDS</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">DELIVERY TRUTH</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">CSV EVERYWHERE</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">READ-ONLY PUBLIC API</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">ACCELEVENTS PUSH</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-        <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7A7A77;white-space:nowrap">FILE VERSIONING</span><span style="width:4px;height:4px;border-radius:50%;background:#FF6B6B;flex:none"></span>
-      </div>
-    </div>
-  </div>
+    <div style="position:relative">
+      <sc-if value="{{showGuides}}" hint-placeholder-val="{{true}}"><div data-guide aria-hidden="true" style="position:absolute;inset:0;pointer-events:none"><div style="position:absolute;left:12.5%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.05)"></div><div style="position:absolute;left:87.5%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.05)"></div></div></sc-if>
 
-  <sc-if value="{{ showStats }}" hint-placeholder-val="{{ true }}">
-    <div style="padding:84px 24px 20px">
-      <div style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px">
-        <div data-rv="0" style="border-top:1px solid rgba(255,255,255,.1);padding-top:18px"><div style="font:600 40px 'Bricolage Grotesque',sans-serif;color:#F2F2F0"><span data-count="216">216</span></div><div style="font:400 13px/1.5 'IBM Plex Sans',sans-serif;color:#8A8A87">submissions in, zero spreadsheets harmed</div></div>
-        <div data-rv="80" style="border-top:1px solid rgba(255,255,255,.1);padding-top:18px"><div style="font:600 40px 'Bricolage Grotesque',sans-serif;color:#F2F2F0"><span data-count="9">9</span></div><div style="font:400 13px/1.5 'IBM Plex Sans',sans-serif;color:#8A8A87">reviewers kept on pace, no awkward emails written</div></div>
-        <div data-rv="160" style="border-top:1px solid rgba(255,255,255,.1);padding-top:18px"><div style="font:600 40px 'Bricolage Grotesque',sans-serif;color:#F2F2F0"><span data-count="84">84</span></div><div style="font:400 13px/1.5 'IBM Plex Sans',sans-serif;color:#8A8A87">speakers' bios, headshots, and slides in on time</div></div>
-        <div data-rv="240" style="border-top:1px solid #FF6B6B;padding-top:18px"><div style="font:600 40px 'Bricolage Grotesque',sans-serif;color:#FF8E8E"><span data-count="0">0</span></div><div style="font:400 13px/1.5 'IBM Plex Sans',sans-serif;color:#8A8A87">double-bookings. We are not flexible about this.</div></div>
-      </div>
-    </div>
-  </sc-if>
-
-  <div id="cfp" style="padding:130px 24px 70px">
-    <div style="max-width:1200px;margin:0 auto">
-      <div data-rv="0" style="max-width:760px;margin-bottom:54px;position:relative">
-        <div aria-hidden="true" style="position:absolute;left:-18px;top:-86px;font:700 190px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.04em;color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.055);pointer-events:none;user-select:none">01</div>
-        <div style="position:relative;font:500 11.5px 'IBM Plex Mono',monospace;letter-spacing:.22em;color:#FF8E8E;margin-bottom:16px">01 · CALL FOR PAPERS</div>
-        <h2 style="position:relative;font:600 clamp(34px,4.4vw,60px)/1.05 'Bricolage Grotesque',sans-serif;letter-spacing:-0.024em;margin:0 0 16px;color:#F2F2F0;text-wrap:balance">A call for papers speakers actually finish</h2>
-        <p style="position:relative;font:400 16.5px/1.6 'IBM Plex Sans',sans-serif;color:#A3A3A0;margin:0;max-width:620px;text-wrap:pretty">Build the form once, in one schema engine that also powers every portal task later. Questions appear only when they apply, drafts save themselves, and co-speakers join the same submission instead of forwarding you attachments.</p>
-        <div style="position:relative;font:400 12px 'IBM Plex Mono',monospace;color:#5F5F5C;margin-top:12px">We timed a real submission: 11 minutes, on a phone, with one thumb.</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px">
-        <div data-rv="0" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)">
-          <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#F2F2F0;margin-bottom:4px">Questions that mind their own business</div>
-          <div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87;margin-bottom:18px">Fields show up only when an earlier answer makes them relevant. Nobody scrolls past twelve questions that were never for them.</div>
-          <div style="background:#17171B;border:1px solid #2A2A31;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px">
-            <div style="display:flex;align-items:center;gap:9px;border:1px solid #2A2A31;background:#1F1F24;border-radius:8px;padding:9px 11px"><span style="color:#3F3F49;font:500 11px 'IBM Plex Mono',monospace">⠿</span><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Title</span><span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#686865">short text · required</span></div>
-            <div style="display:flex;align-items:center;gap:9px;border:1px solid #2A2A31;background:#1F1F24;border-radius:8px;padding:9px 11px"><span style="color:#3F3F49;font:500 11px 'IBM Plex Mono',monospace">⠿</span><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Track</span><span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#686865">select · 6 options</span></div>
-            <div style="display:flex;align-items:center;gap:9px;border:1.5px solid rgba(255,107,107,.5);background:rgba(255,107,107,.06);border-radius:8px;padding:9px 11px"><span style="color:#66302E;font:500 11px 'IBM Plex Mono',monospace">⠿</span><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Framework in the demo</span><span style="font:500 10px 'IBM Plex Sans',sans-serif;color:#FF8E8E;background:#3A1D1D;border-radius:999px;padding:3px 8px;margin-left:auto;white-space:nowrap">when Track is Agents</span></div>
-            <div style="display:flex;align-items:center;gap:9px;border:1px solid #2A2A31;background:#1F1F24;border-radius:8px;padding:9px 11px"><span style="color:#3F3F49;font:500 11px 'IBM Plex Mono',monospace">⠿</span><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Co-speakers</span><span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#686865">up to 4 people</span></div>
+      <section data-screen-label="Proof strip" aria-label="Demo event numbers" style="border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);background:var(--pnl)">
+        <div style="max-width:1200px;margin:0 auto;padding:clamp(26px,3.4vh,38px) clamp(20px,5vw,72px)">
+          <div data-cols4 style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center">
+            <div><div data-count="214" style="font-family:var(--mono);font-weight:500;font-size:clamp(21px,2.4vw,28px);color:var(--ik);font-variant-numeric:tabular-nums">214</div><div style="font-family:var(--mono);font-size:12px;color:var(--i3);margin-top:4px">proposals</div></div>
+            <div><div data-count="80" style="font-family:var(--mono);font-weight:500;font-size:clamp(21px,2.4vw,28px);color:var(--ik);font-variant-numeric:tabular-nums">80</div><div style="font-family:var(--mono);font-size:12px;color:var(--i3);margin-top:4px">speakers</div></div>
+            <div><div data-count="61" style="font-family:var(--mono);font-weight:500;font-size:clamp(21px,2.4vw,28px);color:var(--ik);font-variant-numeric:tabular-nums">61</div><div style="font-family:var(--mono);font-size:12px;color:var(--i3);margin-top:4px">sessions</div></div>
+            <div><div data-count="0" style="font-family:var(--mono);font-weight:500;font-size:clamp(21px,2.4vw,28px);color:var(--ik);font-variant-numeric:tabular-nums">0</div><div style="font-family:var(--mono);font-size:12px;color:var(--i3);margin-top:4px">double-bookings</div></div>
           </div>
         </div>
-        <div data-rv="90" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)">
-          <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#F2F2F0;margin-bottom:4px">Drafts that wait patiently</div>
-          <div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87;margin-bottom:18px">Autosave as they type, resume from any device with a magic link. No accounts, no passwords, no rage-quits.</div>
-          <div style="background:#17171B;border:1px solid #2A2A31;border-radius:12px;padding:16px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font:600 13px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Your proposal</span><span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57B899;background:#123029;border-radius:4px;padding:2px 7px">draft saved 11:42</span></div>
-            <div style="height:9px;border-radius:5px;background:#1F1F24;margin-bottom:8px"><div style="width:64%;height:9px;border-radius:5px;background:linear-gradient(90deg,#FF6B6B,#F0A468)"></div></div>
-            <div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#8A8A87;margin-bottom:14px">Step 2 of 3 · about 6 minutes left</div>
-            <div style="display:flex;align-items:center;gap:8px;border-top:1px solid #2A2A31;padding-top:13px"><span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#8A8A87">Deadline</span><span style="font:500 11.5px 'IBM Plex Mono',monospace;color:#F2F2F0">15 Sep, 23:59 PT</span><span style="font:500 10.5px 'IBM Plex Sans',sans-serif;color:#F0A468;background:#332617;border-radius:999px;padding:3px 9px;margin-left:auto">38 days left</span></div>
-          </div>
-        </div>
-        <div data-rv="180" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)">
-          <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#F2F2F0;margin-bottom:4px">The end of "did you get my talk?"</div>
-          <div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87;margin-bottom:18px">Every submission shows its live status in the portal, from received to decided. Speakers check a page instead of your inbox.</div>
-          <div style="background:#17171B;border:1px solid #2A2A31;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:9px">
-            <div style="display:flex;align-items:center;gap:9px"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Evals beyond vibes</span><span style="display:inline-flex;align-items:center;gap:5px;font:500 10.5px 'IBM Plex Sans',sans-serif;color:#57B899;background:#123029;border-radius:999px;padding:3px 9px"><span style="width:5px;height:5px;border-radius:50%;background:#57B899"></span>Accepted</span></div>
-            <div style="display:flex;align-items:center;gap:9px"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Latency budgets in practice</span><span style="display:inline-flex;align-items:center;gap:5px;font:500 10.5px 'IBM Plex Sans',sans-serif;color:#F0A468;background:#332617;border-radius:999px;padding:3px 9px"><span style="width:5px;height:5px;border-radius:50%;background:#F0A468"></span>In review · 3 of 5</span></div>
-            <div style="display:flex;align-items:center;gap:9px"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Prompt golf: live tournament</span><span style="display:inline-flex;align-items:center;gap:5px;font:500 10.5px 'IBM Plex Sans',sans-serif;color:#C9C9C6;background:#1F1F24;border-radius:999px;padding:3px 9px"><span style="width:5px;height:5px;border-radius:50%;background:#929290"></span>Received</span></div>
-          </div>
-          <a href="CFP.dc.html" style="display:inline-block;margin-top:16px;font:500 13px 'IBM Plex Sans',sans-serif;color:#FF8E8E;text-decoration:none">Walk through the live CFP →</a>
-        </div>
-      </div>
-    </div>
-  </div>
+      </section>
 
-  <div id="review" style="padding:70px 24px">
-    <div style="max-width:1200px;margin:0 auto">
-      <div data-rv="0" style="max-width:760px;margin-bottom:54px;position:relative">
-        <div aria-hidden="true" style="position:absolute;left:-18px;top:-86px;font:700 190px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.04em;color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.055);pointer-events:none;user-select:none">02</div>
-        <div style="position:relative;font:500 11.5px 'IBM Plex Mono',monospace;letter-spacing:.22em;color:#FF8E8E;margin-bottom:16px">02 · REVIEW &amp; SELECTION</div>
-        <h2 style="position:relative;font:600 clamp(34px,4.4vw,60px)/1.05 'Bricolage Grotesque',sans-serif;letter-spacing:-0.024em;margin:0 0 16px;color:#F2F2F0;text-wrap:balance">Scores you can defend</h2>
-        <p style="position:relative;font:400 16.5px/1.6 'IBM Plex Sans',sans-serif;color:#A3A3A0;margin:0;max-width:620px;text-wrap:pretty">Rubric scoring across multiple rounds, blind mode that actually hides names, and a committee that stays on pace because Gather does the chasing. AI drafts a first pass with its reasoning shown. A human always decides. And when a speaker asks why they were waitlisted, you will have a better answer than a shrug.</p>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px">
-        <div data-rv="0" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)">
-          <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#F2F2F0;margin-bottom:4px">An evening, not a weekend</div>
-          <div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87;margin-bottom:18px">1 to 5 on each criterion, Tab between them, ⌘⏎ saves and advances. Scoring is built around your right hand and a cup of coffee.</div>
-          <div style="background:#17171B;border:1px solid #2A2A31;border-radius:12px;padding:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px"><span style="font:600 10px 'IBM Plex Sans',sans-serif;letter-spacing:.1em;color:#8A8A87">ORIGINALITY</span><span style="display:inline-flex;align-items:center;gap:4px;font:400 9.5px 'IBM Plex Mono',monospace;color:#5F5F5C">press<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 3px;border-radius:4px;border:1px solid #3F3F49;border-bottom-width:2px;background:#1F1F24;color:#C9C9C6;font:500 9px 'IBM Plex Mono',monospace">1</span>to<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 3px;border-radius:4px;border:1px solid #3F3F49;border-bottom-width:2px;background:#1F1F24;color:#C9C9C6;font:500 9px 'IBM Plex Mono',monospace">5</span></span></div>
-            <div style="display:flex;gap:6px;margin-bottom:14px">
-              <span style="width:32px;height:30px;border-radius:6px;border:1px solid #3F3F49;background:#1F1F24;display:inline-flex;align-items:center;justify-content:center;font:400 12.5px 'IBM Plex Mono',monospace;color:#C9C9C6">1</span>
-              <span style="width:32px;height:30px;border-radius:6px;border:1px solid #3F3F49;background:#1F1F24;display:inline-flex;align-items:center;justify-content:center;font:400 12.5px 'IBM Plex Mono',monospace;color:#C9C9C6">2</span>
-              <span style="width:32px;height:30px;border-radius:6px;border:1px solid #3F3F49;background:#1F1F24;display:inline-flex;align-items:center;justify-content:center;font:400 12.5px 'IBM Plex Mono',monospace;color:#C9C9C6">3</span>
-              <span style="width:32px;height:30px;border-radius:6px;background:#FF6B6B;display:inline-flex;align-items:center;justify-content:center;font:600 12.5px 'IBM Plex Mono',monospace;color:#331313;box-shadow:0 0 18px rgba(255,107,107,.35)">4</span>
-              <span style="width:32px;height:30px;border-radius:6px;border:1px solid #3F3F49;background:#1F1F24;display:inline-flex;align-items:center;justify-content:center;font:400 12.5px 'IBM Plex Mono',monospace;color:#C9C9C6">5</span>
+      <section id="beat1" data-screen-label="Beat 1 proposals" aria-labelledby="h-b1" style="padding:var(--padA) 0">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad)">
+          <div data-split style="display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4.5vw,64px);align-items:center">
+            <div>
+              <p data-rv="0" style="font-family:var(--ital);font-size:19px;color:var(--cue);margin:0 0 14px">First, you need people to submit something.</p>
+              <h2 id="h-b1" data-rv="1" style="font-family:var(--disp);font-weight:800;font-size:var(--fsh2);line-height:.98;letter-spacing:-.035em;margin:0 0 22px;text-wrap:balance">Build the form. Share one link. Go to bed.</h2>
+              <p style="margin:0 0 16px;color:var(--i2);max-width:50ch;text-wrap:pretty">Drag in the questions you want. Add one that only appears when somebody picks workshop, so your keynote speakers aren't answering questions about room layout.</p>
+              <p style="margin:0;color:var(--i2);max-width:50ch;text-wrap:pretty">Set a deadline and Gather closes the form itself, on its own clock, not the submitter's laptop.</p>
             </div>
-            <div style="display:flex;align-items:center;gap:7px;border-top:1px solid #2A2A31;padding-top:12px"><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:#8A8A87">Speaker</span><span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#686865;font-style:italic">hidden by blind review</span><span style="font:500 9.5px 'IBM Plex Mono',monospace;color:#F0A468;background:#332617;border-radius:4px;padding:2px 7px;margin-left:auto">ROUND 1 · BLIND</span></div>
-          </div>
-        </div>
-        <div data-rv="90" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)">
-          <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#F2F2F0;margin-bottom:4px">AI suggests. You decide.</div>
-          <div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87;margin-bottom:18px">Suggested scores arrive with the why: near-duplicates flagged across all 216, never auto-scored, one click to override. The committee stays the committee.</div>
-          <div style="background:#17171B;border:1px solid #2A2A31;border-radius:12px;overflow:hidden">
-            <div style="display:flex;align-items:center;gap:8px;background:#3A1D1D;padding:10px 13px"><span style="font:500 10.5px 'IBM Plex Mono',monospace;color:#FF8E8E">✦ SUGGESTED SCORES</span><span style="font:400 10px 'IBM Plex Sans',sans-serif;color:#FF8E8E;margin-left:auto">accept or override</span></div>
-            <div style="padding:12px 13px;display:flex;flex-direction:column;gap:8px">
-              <div style="display:flex;gap:8px;align-items:baseline"><span style="font:600 12px 'IBM Plex Mono',monospace;color:#F2F2F0;flex:none">4</span><span style="font:400 11.5px/1.45 'IBM Plex Sans',sans-serif;color:#C9C9C6">Relevance: production postmortem with named failure modes, rare in this track.</span></div>
-              <div style="display:flex;gap:8px;align-items:baseline"><span style="font:600 12px 'IBM Plex Mono',monospace;color:#F2F2F0;flex:none">3</span><span style="font:400 11.5px/1.45 'IBM Plex Sans',sans-serif;color:#C9C9C6">Originality: overlaps submission E930, flagged as a near-duplicate pair.</span></div>
-              <div style="display:flex;gap:8px;align-items:center;border-top:1px solid #2A2A31;padding-top:10px"><span style="font:500 11px 'IBM Plex Sans',sans-serif;color:#331313;background:#FF6B6B;border-radius:999px;padding:4px 11px">Use both</span><span style="font:500 11px 'IBM Plex Sans',sans-serif;color:#C9C9C6;border:1px solid #3F3F49;border-radius:999px;padding:4px 11px">Score myself</span></div>
+            <div style="position:relative">
+              <div data-plx>
+                <div data-fb aria-hidden="true" style="border:1px solid var(--ln);border-radius:10px;overflow:hidden;background:var(--pnl)">
+                  <div style="display:flex;align-items:center;height:34px;background:var(--pnl2);border-bottom:1px solid var(--ln);padding:0 12px;position:relative"><span style="display:flex;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--ln2)"></span><span style="width:8px;height:8px;border-radius:50%;background:var(--ln2)"></span><span style="width:8px;height:8px;border-radius:50%;background:var(--ln2)"></span></span><span style="position:absolute;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:11px;color:var(--i3)">devflow.dev/forms/cfp</span></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) 172px;min-height:284px">
+                    <div style="padding:14px;display:grid;gap:9px;align-content:start;border-right:1px solid var(--ln)">
+                      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:13px;font-weight:600;color:var(--ik)">Call for proposals</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3);border:1px solid var(--ln);border-radius:4px;padding:2px 7px">DRAFT</span></div>
+                      <div style="background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:9px 11px;display:flex;align-items:center;gap:9px"><span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--i3);background:var(--pnl3);border-radius:4px;padding:2px 6px">TEXT</span><span style="font-size:12.5px;font-weight:500;color:var(--ik)">Session title</span><span style="margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--cue)"></span></div>
+                      <div style="background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:9px 11px;display:flex;align-items:center;gap:9px"><span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--i3);background:var(--pnl3);border-radius:4px;padding:2px 6px">LONG</span><span style="font-size:12.5px;font-weight:500;color:var(--ik)">Abstract</span><span style="margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--cue)"></span></div>
+                      <div data-fb-drop style="background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:9px 11px;display:flex;align-items:center;gap:9px"><span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--i3);background:var(--pnl3);border-radius:4px;padding:2px 6px">SELECT</span><span style="font-size:12.5px;font-weight:500;color:var(--ik)">Format</span><span style="margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--i3)">Talk / Workshop</span></div>
+                      <div data-fb-cond style="margin-left:20px;position:relative;background:var(--pnl2);border:1px solid var(--ln2);border-radius:6px;padding:9px 11px;display:flex;align-items:center;gap:9px"><span aria-hidden="true" style="position:absolute;left:-13px;top:-9px;bottom:50%;width:11px;border-left:1px solid var(--ln2);border-bottom:1px solid var(--ln2);border-radius:0 0 0 4px"></span><span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--i3);background:var(--pnl3);border-radius:4px;padding:2px 6px">SELECT</span><span style="font-size:12.5px;font-weight:500;color:var(--ik)">Room layout</span></div>
+                      <div style="background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:9px 11px;display:flex;align-items:center;gap:9px"><span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--i3);background:var(--pnl3);border-radius:4px;padding:2px 6px">FILE</span><span style="font-size:12.5px;font-weight:500;color:var(--ik)">Slides, draft is fine</span></div>
+                      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:2px"><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">Closes 14 Mar, 23:59 UTC</span><span style="display:inline-flex;align-items:center;height:26px;padding:0 13px;background:var(--cue);color:var(--cuebf);border-radius:6px;font-size:11px;font-weight:600">Publish form</span></div>
+                    </div>
+                    <div style="padding:14px 12px;background:var(--bg)">
+                      <div style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--i3);margin-bottom:10px">LIVE PREVIEW</div>
+                      <div style="display:grid;gap:7px">
+                        <div style="height:9px;width:64%;background:var(--ln)"></div>
+                        <div style="height:26px;background:var(--pnl2);border:1px solid var(--ln);border-radius:4px"></div>
+                        <div style="height:9px;width:44%;background:var(--ln)"></div>
+                        <div style="height:44px;background:var(--pnl2);border:1px solid var(--ln);border-radius:4px"></div>
+                        <div data-fb-prev style="display:grid;gap:7px"><div style="height:9px;width:56%;background:var(--ln2)"></div><div style="height:26px;background:var(--pnl2);border:1px solid var(--ln2);border-radius:4px"></div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <svg data-arrow width="112" height="140" viewBox="0 0 112 140" fill="none" aria-hidden="true" style="position:absolute;left:250px;top:246px;color:var(--cue);pointer-events:none"><path d="M90 126C76 104 60 78 46 54 39 41 31 24 25 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M25 6c0 6 1 11 3 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M25 6c6 1 11 3 16 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              <div data-ann style="position:absolute;right:-6px;bottom:-46px;transform:rotate(2deg);font-family:var(--hand);font-weight:300;font-size:15px;line-height:1.35;color:var(--cue);max-width:210px;text-align:right">this one only shows up for workshops</div>
             </div>
           </div>
         </div>
-        <div data-rv="180" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)">
-          <div style="font:600 14px 'IBM Plex Sans',sans-serif;color:#F2F2F0;margin-bottom:4px">Nobody chases reviewers but us</div>
-          <div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87;margin-bottom:18px">Pace per evaluator, harsh and generous graders surfaced, one-click nudges that escalate politely on their own.</div>
-          <div style="background:#17171B;border:1px solid #2A2A31;border-radius:12px;padding:8px 13px;display:flex;flex-direction:column">
-            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #2A2A31"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0;width:100px">K. Watanabe</span><span style="flex:1;height:4px;border-radius:2px;background:#2A2A31"><span style="display:block;width:100%;height:4px;border-radius:2px;background:#57B899"></span></span><span style="font:500 10.5px 'IBM Plex Mono',monospace;color:#57B899">24/24</span></div>
-            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #2A2A31"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0;width:100px">P. Nair</span><span style="flex:1;height:4px;border-radius:2px;background:#2A2A31"><span style="display:block;width:61%;height:4px;border-radius:2px;background:#F0A468"></span></span><span style="font:500 10.5px 'IBM Plex Mono',monospace;color:#F0A468">14/23</span></div>
-            <div style="display:flex;align-items:center;gap:10px;padding:8px 0"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#F2F2F0;width:100px">M. Cole</span><span style="flex:1;height:4px;border-radius:2px;background:#2A2A31"><span style="display:block;width:2%;height:4px;border-radius:2px;background:#F0766A"></span></span><span style="font:500 10.5px 'IBM Plex Sans',sans-serif;color:#F0A468;background:#332617;border-radius:999px;padding:3px 9px">Nudge</span></div>
-          </div>
-          <a href="Evaluations.dc.html" style="display:inline-block;margin-top:16px;font:500 13px 'IBM Plex Sans',sans-serif;color:#FF8E8E;text-decoration:none">See the evaluator view →</a>
-        </div>
-      </div>
-    </div>
-  </div>
+      </section>
 
-  <div id="speakers" style="padding:70px 24px">
-    <div style="max-width:1200px;margin:0 auto;background:linear-gradient(180deg,#101013,#0B0B0E);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:clamp(28px,4.5vw,64px);position:relative;overflow:clip">
-      <div style="position:absolute;right:-180px;top:-180px;width:560px;height:560px;background:radial-gradient(closest-side,rgba(240,164,104,.09),transparent 70%);pointer-events:none"></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:52px;align-items:center;position:relative">
-        <div data-rv="0">
-          <div style="font:500 11.5px 'IBM Plex Mono',monospace;letter-spacing:.22em;color:#FF8E8E;margin-bottom:16px">03 · SPEAKER OPERATIONS</div>
-          <h2 style="font:600 clamp(34px,4.4vw,60px)/1.05 'Bricolage Grotesque',sans-serif;letter-spacing:-0.024em;margin:0 0 16px;color:#F2F2F0;text-wrap:balance">Stop chasing headshots</h2>
-          <p style="font:400 16px/1.6 'IBM Plex Sans',sans-serif;color:#A3A3A0;margin:0 0 22px;text-wrap:pretty">Ask any program lead what breaks first and they will say the chasing: bios in the wrong length, headshots that never arrive, slides named <span style="font:500 13px 'IBM Plex Mono',monospace;color:#F0A468;white-space:nowrap">final_v3_revised_EDITED.pptx</span><span style="color:#5F5F5C">*</span>. Gather gives every speaker a checklist and gives you one view of who still owes what.</p>
-          <div style="display:flex;flex-direction:column;gap:13px;margin-bottom:26px">
-            <div style="display:flex;gap:12px"><span style="width:22px;height:22px;border-radius:6px;background:#3A1D1D;color:#FF8E8E;display:inline-flex;align-items:center;justify-content:center;flex:none;font:600 11px 'IBM Plex Mono',monospace">1</span><span style="font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#A3A3A0"><span style="font-weight:600;color:#F2F2F0">Reminders escalate on their own.</span> Gentle at first, then firmer, then to you. You never write the awkward third email.</span></div>
-            <div style="display:flex;gap:12px"><span style="width:22px;height:22px;border-radius:6px;background:#3A1D1D;color:#FF8E8E;display:inline-flex;align-items:center;justify-content:center;flex:none;font:600 11px 'IBM Plex Mono',monospace">2</span><span style="font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#A3A3A0"><span style="font-weight:600;color:#F2F2F0">Files stay versioned.</span> New upload, new version, old one kept. The inbox full of attachments retires.</span></div>
-            <div style="display:flex;gap:12px"><span style="width:22px;height:22px;border-radius:6px;background:#3A1D1D;color:#FF8E8E;display:inline-flex;align-items:center;justify-content:center;flex:none;font:600 11px 'IBM Plex Mono',monospace">3</span><span style="font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#A3A3A0"><span style="font-weight:600;color:#F2F2F0">Magic links, no passwords.</span> Speakers land in their portal from any email, on any device, already signed in.</span></div>
-          </div>
-          <div style="font:400 11.5px 'IBM Plex Mono',monospace;color:#5F5F5C;margin-bottom:24px">* a real filename from a real conference. We are so sorry.</div>
-          <a href="Speakers.dc.html" style="font:600 14px 'IBM Plex Sans',sans-serif;color:#331313;background:#FF6B6B;text-decoration:none;height:42px;display:inline-flex;align-items:center;padding:0 20px;border-radius:999px;box-shadow:0 0 30px rgba(255,107,107,.25)" style-hover="background:#FF8E8E">See who owes what</a>
-        </div>
-        <div data-rv="120" style="position:relative">
-          <div style="background:#17171B;border:1px solid #2A2A31;border-radius:18px;padding:20px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-              <span style="width:34px;height:34px;border-radius:50%;background:#1F1F24;border:1px solid #2A2A31;display:inline-flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Sans',sans-serif;color:#C9C9C6">MD</span>
-              <div><div style="font:600 13.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Marta Duarte</div><div style="font:400 11px 'IBM Plex Sans',sans-serif;color:#8A8A87">Opening keynote · Vercel</div></div>
-              <span style="font:500 10.5px 'IBM Plex Sans',sans-serif;color:#F0A468;background:#332617;border-radius:999px;padding:3px 9px;margin-left:auto">2 items open</span>
+      <section id="beat2" data-screen-label="Beat 2 review" aria-labelledby="h-b2" style="background:var(--pnl);border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);padding:var(--padA) 0">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad)">
+          <div data-split style="display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,4.5vw,64px);align-items:center">
+            <div style="position:relative">
+              <div data-rq aria-hidden="true" style="border:1px solid var(--ln);border-radius:10px;overflow:hidden;background:var(--bg);transform:rotate(-1.4deg)">
+                <div style="display:flex;align-items:center;height:34px;background:var(--pnl2);border-bottom:1px solid var(--ln);padding:0 12px;position:relative"><span style="display:flex;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--ln2)"></span><span style="width:8px;height:8px;border-radius:50%;background:var(--ln2)"></span><span style="width:8px;height:8px;border-radius:50%;background:var(--ln2)"></span></span><span style="position:absolute;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:11px;color:var(--i3)">devflow.dev/review</span></div>
+                <div style="display:grid;grid-template-columns:206px minmax(0,1fr)">
+                  <div style="border-right:1px solid var(--ln);padding:10px 0;display:grid;gap:2px;align-content:start">
+                    <div style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--i3);padding:0 12px 8px">YOUR QUEUE &#183; 34 OF 90</div>
+                    <div data-rq-row style="position:relative;padding:8px 12px"><span data-rq-bar style="position:absolute;left:0;top:4px;bottom:4px;width:2px;background:var(--cue);opacity:0"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Serving LLMs on spot GPUs</span><span style="display:block;font-family:var(--mono);font-size:9px;color:var(--i3);margin-top:2px">R-118 &#183; scored 3.7</span></div>
+                    <div data-rq-row style="position:relative;padding:8px 12px"><span data-rq-bar style="position:absolute;left:0;top:4px;bottom:4px;width:2px;background:var(--cue);opacity:0"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Evals that catch regressions</span><span style="display:block;font-family:var(--mono);font-size:9px;color:var(--i3);margin-top:2px">R-119 &#183; not scored</span></div>
+                    <div data-rq-row style="position:relative;padding:8px 12px"><span data-rq-bar style="position:absolute;left:0;top:4px;bottom:4px;width:2px;background:var(--cue);opacity:0"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">The multimodal pipeline at scale</span><span style="display:block;font-family:var(--mono);font-size:9px;color:var(--i3);margin-top:2px">R-120 &#183; not scored</span></div>
+                    <div data-rq-row style="position:relative;padding:8px 12px"><span data-rq-bar style="position:absolute;left:0;top:4px;bottom:4px;width:2px;background:var(--cue);opacity:0"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Retrieval evals worth running</span><span style="display:block;font-family:var(--mono);font-size:9px;color:var(--i3);margin-top:2px">R-121 &#183; not scored</span></div>
+                  </div>
+                  <div style="padding:14px">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:12px"><div><div data-rq-title style="font-size:13.5px;font-weight:600;color:var(--ik)">Serving LLMs on spot GPUs</div><div style="font-family:var(--mono);font-size:10px;color:var(--i3);margin-top:3px">Submitter hidden &#183; blind round 1</div></div><span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--info);background:var(--infow);border-radius:4px;padding:3px 7px;white-space:nowrap">BLIND</span></div>
+                    <div style="display:grid;gap:9px">
+                      <div style="display:grid;grid-template-columns:88px 30px minmax(0,1fr) 18px;gap:10px;align-items:center"><span style="font-size:12px;color:var(--i2)">Relevance</span><span style="font-family:var(--mono);font-size:9.5px;color:var(--i3)">&#215;0.3</span><span style="height:4px;background:var(--ln);border-radius:2px;position:relative;overflow:hidden"><span data-rq-fill data-w="80" style="position:absolute;left:0;top:0;bottom:0;width:80%;background:var(--cue);border-radius:2px;transition:width .4s cubic-bezier(.22,.8,.24,1)"></span></span><span style="font-family:var(--mono);font-size:11.5px;color:var(--ik);text-align:right">4</span></div>
+                      <div style="display:grid;grid-template-columns:88px 30px minmax(0,1fr) 18px;gap:10px;align-items:center"><span style="font-size:12px;color:var(--i2)">Depth</span><span style="font-family:var(--mono);font-size:9.5px;color:var(--i3)">&#215;0.3</span><span style="height:4px;background:var(--ln);border-radius:2px;position:relative;overflow:hidden"><span data-rq-fill data-w="80" style="position:absolute;left:0;top:0;bottom:0;width:80%;background:var(--cue);border-radius:2px;transition:width .4s cubic-bezier(.22,.8,.24,1)"></span></span><span style="font-family:var(--mono);font-size:11.5px;color:var(--ik);text-align:right">4</span></div>
+                      <div style="display:grid;grid-template-columns:88px 30px minmax(0,1fr) 18px;gap:10px;align-items:center"><span style="font-size:12px;color:var(--i2)">Novelty</span><span style="font-family:var(--mono);font-size:9.5px;color:var(--i3)">&#215;0.2</span><span style="height:4px;background:var(--ln);border-radius:2px;position:relative;overflow:hidden"><span data-rq-fill data-w="60" style="position:absolute;left:0;top:0;bottom:0;width:60%;background:var(--cue);border-radius:2px;transition:width .4s cubic-bezier(.22,.8,.24,1)"></span></span><span style="font-family:var(--mono);font-size:11.5px;color:var(--ik);text-align:right">3</span></div>
+                      <div style="display:grid;grid-template-columns:88px 30px minmax(0,1fr) 18px;gap:10px;align-items:center"><span style="font-size:12px;color:var(--i2)">Experience</span><span style="font-family:var(--mono);font-size:9.5px;color:var(--i3)">&#215;0.2</span><span style="height:4px;background:var(--ln);border-radius:2px;position:relative;overflow:hidden"><span data-rq-fill data-w="80" style="position:absolute;left:0;top:0;bottom:0;width:80%;background:var(--cue);border-radius:2px;transition:width .4s cubic-bezier(.22,.8,.24,1)"></span></span><span style="font-family:var(--mono);font-size:11.5px;color:var(--ik);text-align:right">4</span></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--ln);margin-top:13px;padding-top:11px;gap:10px"><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">Weighted 3.7 &#183; 2 of 3 in &#183; 1 COI excluded</span><span style="display:flex;gap:5px"><span data-rq-key style="font-family:var(--mono);font-size:9.5px;color:var(--i3);border:1px solid var(--ln);border-radius:4px;padding:2px 6px;transition:color .15s,border-color .15s,background .15s">J</span><span data-rq-key style="font-family:var(--mono);font-size:9.5px;color:var(--i3);border:1px solid var(--ln);border-radius:4px;padding:2px 6px;transition:color .15s,border-color .15s,background .15s">K</span><span data-rq-key style="font-family:var(--mono);font-size:9.5px;color:var(--i3);border:1px solid var(--ln);border-radius:4px;padding:2px 6px;transition:color .15s,border-color .15s,background .15s">4</span><span data-rq-key style="font-family:var(--mono);font-size:9.5px;color:var(--i3);border:1px solid var(--ln);border-radius:4px;padding:2px 6px;transition:color .15s,border-color .15s,background .15s">&#9166;</span></span></div>
+                  </div>
+                </div>
+              </div>
+              <svg data-arrow width="88" height="58" viewBox="0 0 88 58" fill="none" aria-hidden="true" style="position:absolute;left:290px;bottom:-42px;color:var(--cue);pointer-events:none"><path d="M4 46c18 4 36-2 50-16 5-5 8-12 10-20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M64 10c3 5 7 9 11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M64 10c-2 5-3 10-5 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              <div data-ann style="position:absolute;left:6px;bottom:-48px;transform:rotate(-2deg);font-family:var(--hand);font-weight:300;font-size:15px;color:var(--cue)">j and k to move, 1 to 5 to score, that's it</div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <div style="display:flex;align-items:center;gap:10px;border:1px solid #2A2A31;border-left:3px solid #F0766A;background:#1F1F24;border-radius:9px;padding:10px 12px"><div style="flex:1"><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Headshot</div><div style="font:400 11px 'IBM Plex Sans',sans-serif;color:#F0766A">3 days overdue · reminder 2 of 3 sent</div></div><span style="font:500 11px 'IBM Plex Sans',sans-serif;color:#331313;background:#FF6B6B;border-radius:999px;padding:5px 12px">Upload</span></div>
-              <div style="display:flex;align-items:center;gap:10px;border:1px solid #2A2A31;border-left:3px solid #F0A468;background:#1F1F24;border-radius:9px;padding:10px 12px"><div style="flex:1"><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Recording consent</div><div style="font:400 11px 'IBM Plex Sans',sans-serif;color:#8A8A87">due Friday · one signature</div></div><span style="font:500 11px 'IBM Plex Sans',sans-serif;color:#C9C9C6;border:1px solid #3F3F49;border-radius:999px;padding:5px 12px">Sign</span></div>
-              <div style="display:flex;align-items:center;gap:10px;border:1px solid #2A2A31;background:#1F1F24;border-radius:9px;padding:10px 12px;opacity:.55"><span style="width:16px;height:16px;border-radius:50%;background:#123029;color:#57B899;display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif">✓</span><div style="flex:1"><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Bio, house style</div><div style="font:400 11px 'IBM Plex Sans',sans-serif;color:#8A8A87">approved from the AI-normalized diff</div></div></div>
-              <div style="display:flex;align-items:center;gap:10px;border:1px solid #2A2A31;background:#1F1F24;border-radius:9px;padding:10px 12px;opacity:.55"><span style="width:16px;height:16px;border-radius:50%;background:#123029;color:#57B899;display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif">✓</span><div style="flex:1"><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Slides v2</div><div style="font:400 11px 'IBM Plex Sans',sans-serif;color:#8A8A87">v1 kept · uploaded from the portal</div></div></div>
+            <div>
+              <p data-rv="0" style="font-family:var(--ital);font-size:19px;color:var(--cue);margin:0 0 14px">Two hundred and fourteen of them, in fact.</p>
+              <h2 id="h-b2" data-rv="1" style="font-family:var(--disp);font-weight:800;font-size:var(--fsh2);line-height:.98;letter-spacing:-.035em;margin:0 0 22px;text-wrap:balance">Split the pile. Score it. Defend it later.</h2>
+              <p style="margin:0 0 16px;color:var(--i2);max-width:50ch;text-wrap:pretty">Set your rubric, split the submissions across the committee, and let people work through them with the keyboard. Nobody is reaching for a mouse two hundred times.</p>
+              <p style="margin:0;color:var(--i2);max-width:50ch;text-wrap:pretty">Blind review hides names on the server, so it stays blind even for the reviewer who knows how to open devtools. Reviews nobody submitted don't count as zero.</p>
             </div>
           </div>
-          <div style="position:absolute;right:-18px;top:-46px;rotate:1.5deg;background:#101013;border:1px solid #332617;border-radius:12px;padding:11px 15px;box-shadow:0 18px 44px rgba(0,0,0,.55);animation:drift 6s ease-in-out infinite alternate">
-            <div style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#F0A468;margin-bottom:3px">AUTO-REMINDER · DAY 3</div>
-            <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#C9C9C6">"One thing still open: your headshot"</div>
+        </div>
+      </section>
+
+      <section id="beat3" data-screen-label="Beat 3 decisions" aria-labelledby="h-b3" style="padding:var(--padA) 0">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad)">
+          <div data-split style="display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,4.5vw,64px);align-items:center">
+            <div>
+              <p data-rv="0" style="font-family:var(--ital);font-size:19px;color:var(--cue);margin:0 0 14px">And this is the one that keeps you up.</p>
+              <h2 id="h-b3" data-rv="1" style="font-family:var(--disp);font-weight:800;font-size:clamp(2.4rem,4.4vw,3.75rem);line-height:.95;letter-spacing:-.035em;margin:0 0 24px;text-wrap:balance">The button that can ruin your week.</h2>
+              <p style="margin:0 0 16px;font-size:1.0625rem;line-height:1.6;color:var(--i2);max-width:54ch;text-wrap:pretty">Somewhere in every tool there's a button that emails a decision to everyone who applied. Press it against a screen five minutes out of date and you've told forty people the wrong thing about the most exposed moment of their professional year.</p>
+              <p style="margin:0;font-size:1.0625rem;line-height:1.6;color:var(--i2);max-width:54ch;text-wrap:pretty">So deciding and sending are two different acts here. Marking a decision emails nobody. When you send, Gather counts the recipients on the server and stops if that number disagrees with your screen.</p>
+            </div>
+            <div style="position:relative">
+              <div data-sd aria-hidden="true" style="background:var(--pnl);border:1px solid var(--ln);border-radius:10px;padding:18px;box-shadow:0 30px 60px -24px rgba(0,0,0,.8)">
+                <div style="font-size:14px;font-weight:600;color:var(--ik);margin-bottom:4px">Send 38 decision emails?</div>
+                <div style="font-family:var(--mono);font-size:10.5px;color:var(--i3);margin-bottom:14px">Accepted 12 &#183; waitlist 9 &#183; declined 17</div>
+                <div style="display:grid;gap:8px;font-family:var(--mono);font-size:11.5px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px"><span style="color:var(--i3)">On your screen</span><span data-sd-a style="color:var(--ik)">38</span></div>
+                  <div data-sd-b style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--alarmw);border:1px solid var(--alarm);border-radius:6px;transition:border-color .25s,background .25s"><span style="color:var(--i3)">On the server</span><span data-sd-c style="color:var(--alarm)">41</span></div>
+                </div>
+                <div data-sd-stop style="margin-top:12px;padding:10px 12px;border:1px solid var(--alarm);background:var(--alarmw);border-radius:6px;transition:opacity .25s"><div style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--alarm);margin-bottom:5px"><span aria-hidden="true" style="display:inline-block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:9px solid #F0766A"></span>STOPPED</div><div style="font-size:12px;color:var(--ik);line-height:1.45">Three submissions changed while this dialog was open. Reload and check before sending.</div></div>
+                <div style="display:flex;gap:8px;margin-top:14px"><span data-sd-send style="flex:1;display:inline-flex;align-items:center;justify-content:center;height:36px;background:var(--pnl3);color:var(--i3);border-radius:6px;font-size:12.5px;font-weight:600;transition:opacity .25s,background .25s,color .25s">Send now</span><span style="display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 16px;border:1px solid var(--ln);color:var(--i2);border-radius:6px;font-size:12.5px">Cancel</span></div>
+              </div>
+              <svg data-arrow width="70" height="72" viewBox="0 0 70 72" fill="none" aria-hidden="true" style="position:absolute;left:30px;top:266px;color:var(--cue);pointer-events:none"><path d="M18 64C22 48 28 32 36 18c1-4 3-8 4-11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M40 7c-5 4-9 8-12 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M40 7c4 5 8 9 11 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              <div data-ann style="position:absolute;left:0;bottom:-52px;transform:rotate(-2deg);font-family:var(--hand);font-weight:300;font-size:15px;color:var(--cue);max-width:250px">38 on your screen, 41 on the server. It stops.</div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+      </section>
 
-  <div id="agenda" style="padding:70px 24px">
-    <div style="max-width:1200px;margin:0 auto">
-      <div data-rv="0" style="text-align:center;max-width:760px;margin:0 auto 48px">
-        <div style="font:500 11.5px 'IBM Plex Mono',monospace;letter-spacing:.22em;color:#FF8E8E;margin-bottom:16px">04 · AGENDA</div>
-        <h2 style="font:600 clamp(36px,4.8vw,66px)/1.04 'Bricolage Grotesque',sans-serif;letter-spacing:-0.024em;margin:0 0 16px;color:#F2F2F0;text-wrap:balance">Drag. Drop. Nothing double-books.</h2>
-        <p style="font:400 16.5px/1.6 'IBM Plex Sans',sans-serif;color:#A3A3A0;margin:0 auto;max-width:580px;text-wrap:pretty">The moment a spreadsheet becomes dangerous is the moment you start scheduling. Gather checks every drop against rooms, speakers, and tracks live, and explains its objections in plain language.</p>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px;max-width:1040px;margin:0 auto 26px">
-        <div data-rv="0" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px 22px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)"><div style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#FF8E8E;margin-bottom:8px">ROOM COLLISIONS</div><div style="font:400 13.5px/1.55 'IBM Plex Sans',sans-serif;color:#A3A3A0">Two sessions in one room split into side-by-side lanes while you decide, never stacked into a mess.</div></div>
-        <div data-rv="90" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px 22px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)"><div style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#FF8E8E;margin-bottom:8px">SPEAKER COLLISIONS</div><div style="font:400 13.5px/1.55 'IBM Plex Sans',sans-serif;color:#A3A3A0">Keiko cannot give a workshop in Room 2 while keynoting Main stage. Gather notices before the audience does.</div></div>
-        <div data-rv="180" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px 22px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)"><div style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#FF8E8E;margin-bottom:8px">AI DRAFT, EXPLAINED</div><div style="font:400 13.5px/1.55 'IBM Plex Sans',sans-serif;color:#A3A3A0">"No workshops before 10, keep tracks together": the assistant drafts a full schedule and lists every trade-off it made.</div></div>
-      </div>
-      <div data-rv="240" style="text-align:center">
-        <a href="Agenda.dc.html" style="font:600 14px 'IBM Plex Sans',sans-serif;color:#331313;background:#FF6B6B;text-decoration:none;height:44px;display:inline-flex;align-items:center;padding:0 22px;border-radius:999px;box-shadow:0 0 30px rgba(255,107,107,.25)" style-hover="background:#FF8E8E">Open the agenda builder</a>
-      </div>
-    </div>
-  </div>
-
-  <div id="publish" style="padding:70px 24px">
-    <div style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:52px;align-items:center">
-      <div data-rv="0" style="position:relative">
-        <div aria-hidden="true" style="position:absolute;left:-18px;top:-80px;font:700 180px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.04em;color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.055);pointer-events:none;user-select:none">05</div>
-        <div style="position:relative;font:500 11.5px 'IBM Plex Mono',monospace;letter-spacing:.22em;color:#FF8E8E;margin-bottom:16px">05 · PUBLISH &amp; SYNC</div>
-        <h2 style="font:600 clamp(34px,4.4vw,60px)/1.05 'Bricolage Grotesque',sans-serif;letter-spacing:-0.024em;margin:0 0 16px;color:#F2F2F0;text-wrap:balance">Publish once, never paste again</h2>
-        <p style="font:400 16px/1.6 'IBM Plex Sans',sans-serif;color:#A3A3A0;margin:0 0 22px;text-wrap:pretty">One script tag embeds the schedule and speaker gallery on your website, under 40KB, always current. Move a session and Gather diffs the change, updates the embed, and notifies exactly the speakers it affects.</p>
-        <div style="background:#050506;border:1px solid #2A2A31;border-radius:12px;padding:16px 18px;margin-bottom:22px;overflow-x:auto"><div style="font:400 12px/1.6 'IBM Plex Mono',monospace;color:#4A4A48;margin-bottom:4px">// the entire integration:</div><code style="font:400 13px/1.6 'IBM Plex Mono',monospace;color:#C9C9C6;white-space:pre">&lt;script src="<span style="color:#FF8E8E">https://gather.events/embed/ai2026.js</span>"&gt;&lt;/script&gt;</code></div>
-        <div style="display:flex;flex-wrap:wrap;gap:10px">
-          <span style="display:inline-flex;align-items:center;gap:7px;font:500 12.5px 'IBM Plex Sans',sans-serif;color:#C9C9C6;border:1px solid #2A2A31;background:#101013;border-radius:999px;padding:7px 14px"><span style="width:6px;height:6px;border-radius:50%;background:#57B899"></span>Schedule widget</span>
-          <span style="display:inline-flex;align-items:center;gap:7px;font:500 12.5px 'IBM Plex Sans',sans-serif;color:#C9C9C6;border:1px solid #2A2A31;background:#101013;border-radius:999px;padding:7px 14px"><span style="width:6px;height:6px;border-radius:50%;background:#F0A468"></span>Speaker gallery</span>
-          <span style="display:inline-flex;align-items:center;gap:7px;font:500 12.5px 'IBM Plex Sans',sans-serif;color:#C9C9C6;border:1px solid #2A2A31;background:#101013;border-radius:999px;padding:7px 14px"><span style="width:6px;height:6px;border-radius:50%;background:#FF6B6B"></span>Read-only public API</span>
-          <span style="display:inline-flex;align-items:center;gap:7px;font:500 12.5px 'IBM Plex Sans',sans-serif;color:#C9C9C6;border:1px solid #2A2A31;background:#101013;border-radius:999px;padding:7px 14px"><span style="width:6px;height:6px;border-radius:50%;background:#C4703A"></span>One-way push to Accelevents</span>
-        </div>
-      </div>
-      <div data-rv="120">
-        <div style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:20px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span style="font:600 13px 'IBM Plex Sans',sans-serif;color:#F2F2F0">Schedule change</span><span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#5F5F5C">2 minutes ago</span><span style="font:500 10.5px 'IBM Plex Sans',sans-serif;color:#57B899;background:#123029;border-radius:999px;padding:3px 9px;margin-left:auto">embed updated</span></div>
-          <div style="background:#17171B;border:1px solid #2A2A31;border-radius:12px;padding:14px;margin-bottom:12px">
-            <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#F2F2F0;margin-bottom:8px">Golden-trace regression workshop</div>
-            <div style="display:flex;align-items:center;gap:8px;font:400 12px 'IBM Plex Mono',monospace;flex-wrap:wrap"><span style="color:#686865;text-decoration:line-through">Tue 10:00 · Room 2</span><span style="color:#8A8A87">→</span><span style="color:#F2F2F0;font-weight:500">Wed 11:30 · Room 3</span></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:7px">
-            <div style="display:flex;align-items:center;gap:9px;font:400 12px 'IBM Plex Sans',sans-serif;color:#C9C9C6"><span style="width:16px;height:16px;border-radius:50%;background:#123029;color:#57B899;display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;flex:none">✓</span>Website embed rebuilt, cache purged</div>
-            <div style="display:flex;align-items:center;gap:9px;font:400 12px 'IBM Plex Sans',sans-serif;color:#C9C9C6"><span style="width:16px;height:16px;border-radius:50%;background:#123029;color:#57B899;display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;flex:none">✓</span>Keiko + 2 co-speakers emailed with a fresh .ics</div>
-            <div style="display:flex;align-items:center;gap:9px;font:400 12px 'IBM Plex Sans',sans-serif;color:#C9C9C6"><span style="width:16px;height:16px;border-radius:50%;background:#123029;color:#57B899;display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;flex:none">✓</span>Old calendar holds replaced automatically</div>
+      <section id="beat4" data-screen-label="Beat 4 speaker portal" aria-labelledby="h-b4" style="background:var(--pnl);border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);padding:var(--padA) 0">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad)">
+          <div data-split style="display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,4.5vw,64px);align-items:center">
+            <div>
+              <p data-rv="0" style="font-family:var(--ital);font-size:19px;color:var(--cue);margin:0 0 14px">Forty bios, forty headshots, forty slide decks.</p>
+              <h2 id="h-b4" data-rv="1" style="font-family:var(--disp);font-weight:800;font-size:var(--fsh2);line-height:.98;letter-spacing:-.035em;margin:0 0 22px;max-width:18ch;text-wrap:balance">Stop sending the headshot email for the fourth time.</h2>
+              <p style="margin:0 0 16px;color:var(--i2);max-width:52ch;text-wrap:pretty">Every accepted speaker gets a page listing what they owe you and when. They upload it from a phone in the back of a taxi, which is where this actually happens.</p>
+              <p style="margin:0 0 26px;color:var(--i2);max-width:52ch;text-wrap:pretty">You watch a dashboard instead of an inbox. Nudge whoever's late, and nobody gets the same reminder twice in a day.</p>
+              <div style="display:inline-flex;align-items:center;gap:16px;border:1px solid var(--ln);border-radius:8px;padding:14px 20px;background:var(--pnl2)">
+                <div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--i3);margin-bottom:4px">SPEAKER TASKS COMPLETE</div><div style="display:flex;align-items:baseline;gap:6px"><span data-pt-count style="font-family:var(--mono);font-weight:500;font-size:30px;color:var(--ik);font-variant-numeric:tabular-nums">31</span><span style="font-family:var(--mono);font-size:14px;color:var(--i3)">/ 40</span></div></div>
+                <div style="width:1px;align-self:stretch;background:var(--ln)"></div>
+                <div style="font-size:13.5px;color:var(--i2);line-height:1.45;max-width:22ch">Nine still owe you something. Six are late.</div>
+              </div>
+            </div>
+            <div style="position:relative">
+              <p style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">A speaker's task list on a phone, showing a bio uploaded and slides still outstanding</p>
+              <div data-ann style="transform:rotate(2deg);transform-origin:right bottom;font-family:var(--hand);font-weight:300;font-size:15px;line-height:1.35;color:var(--cue);text-align:right;margin:0 0 34px">they never see anyone else's stuff</div>
+              <svg data-arrow width="104" height="58" viewBox="0 0 104 58" fill="none" aria-hidden="true" style="position:absolute;left:146px;top:16px;color:var(--cue);pointer-events:none"><path d="M92 4C78 14 60 24 44 31c-4 2-9 4-14 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M30 36c6-5 10-8 13-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M30 36c4 5 7 9 10 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              <div data-plx><div data-pt aria-hidden="true" style="width:min(292px,100%);margin:0 auto;position:relative;background:var(--bg);border:1px solid var(--ln2);border-radius:30px;padding:10px;box-sizing:border-box">
+                <div style="background:var(--pnl);border:1px solid var(--ln);border-radius:22px;overflow:hidden">
+                  <div style="padding:16px 16px 12px;border-bottom:1px solid var(--ln)"><div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--i3);margin-bottom:6px">Devflow 2027 &#183; your page</div><div style="font-size:15px;font-weight:600;color:var(--ik)">Morning, Priya</div><div style="font-size:11.5px;color:var(--i3);margin-top:3px">Hall A, Wed 12 at 10:00</div></div>
+                  <div style="padding:12px 16px 16px;display:grid;gap:8px">
+                    <div data-pt-row style="border:1px solid var(--ln);border-left:3px solid var(--cue);border-radius:6px;padding:9px 11px;background:var(--pnl2);transition:border-color .3s,opacity .3s"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:12.5px;font-weight:500;color:var(--ik)">Headshot</span><span data-pt-tag style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--pend);background:var(--pendw);border-radius:4px;padding:2px 6px;white-space:nowrap">3 DAYS LATE</span></div><div style="height:3px;background:var(--ln);border-radius:2px;margin-top:8px;overflow:hidden"><div data-pt-bar style="height:100%;width:100%;background:var(--cue);border-radius:2px;transition:width .9s cubic-bezier(.22,.8,.24,1)"></div></div></div>
+                    <div style="border:1px solid var(--ln);border-left:3px solid var(--cue);border-radius:6px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--pnl2)"><span><span style="display:block;font-size:12.5px;font-weight:500;color:var(--ik)">Slides</span><span style="display:block;font-size:10.5px;color:var(--i3);margin-top:2px">PDF or a link</span></span><span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--i3);border:1px solid var(--ln);border-radius:4px;padding:2px 6px;white-space:nowrap">DUE 2 MAY</span></div>
+                    <div style="border:1px solid var(--ln);border-radius:6px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:12.5px;font-weight:500;color:var(--i3);text-decoration:line-through">Bio</span><span style="font-family:var(--mono);font-size:9px;color:var(--clear);background:var(--clearw);border-radius:4px;padding:2px 6px">DONE</span></div>
+                    <div style="border:1px solid var(--ln);border-radius:6px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:12.5px;font-weight:500;color:var(--i3);text-decoration:line-through">Signed release</span><span style="font-family:var(--mono);font-size:9px;color:var(--clear);background:var(--clearw);border-radius:4px;padding:2px 6px">DONE</span></div>
+                  </div>
+                </div>
+              </div></div>
+            </div>
           </div>
         </div>
-        <a href="Embeds.dc.html" style="display:inline-block;margin-top:16px;font:500 13px 'IBM Plex Sans',sans-serif;color:#FF8E8E;text-decoration:none">Configure the embed widget →</a>
-      </div>
-    </div>
-  </div>
+      </section>
 
-  <div style="padding:70px 24px">
-    <div style="max-width:1200px;margin:0 auto">
-      <div data-rv="0" style="max-width:680px;margin-bottom:40px;position:relative">
-        <div aria-hidden="true" style="position:absolute;left:-18px;top:-80px;font:700 180px/1 'Bricolage Grotesque',sans-serif;letter-spacing:-0.04em;color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.055);pointer-events:none;user-select:none">06</div>
-        <div style="position:relative;font:500 11.5px 'IBM Plex Mono',monospace;letter-spacing:.22em;color:#FF8E8E;margin-bottom:16px">06 · COMMUNICATIONS</div>
-        <h2 style="font:600 clamp(30px,3.6vw,46px)/1.08 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;margin:0 0 14px;color:#F2F2F0;text-wrap:balance">Email that tells you the truth</h2>
-        <p style="font:400 15.5px/1.6 'IBM Plex Sans',sans-serif;color:#A3A3A0;margin:0;text-wrap:pretty">Templates with variables, previewed against a real speaker before anything sends. Every send lands in an outbox with per-recipient delivery status, bounces requeue in one click, and calendar invites replace themselves when times change.</p>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px">
-        <div data-rv="0" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)"><div style="font:600 24px 'Bricolage Grotesque',sans-serif;color:#F2F2F0;margin-bottom:6px">Step 3, always</div><div style="font:400 13.5px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Nothing sends on a decision click. Accept 61 talks, review the queued email, send when you say so.</div></div>
-        <div data-rv="90" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)"><div style="font:600 24px 'Bricolage Grotesque',sans-serif;color:#F2F2F0;margin-bottom:6px">Delivery truth</div><div style="font:400 13.5px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Delivered, queued, bounced: per recipient, with resend. "I never got it" stops being an argument.</div></div>
-        <div data-rv="180" style="background:#101013;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .35s" style-hover="transform:translateY(-4px);border-color:rgba(255,142,142,.3)"><div style="font:600 24px 'Bricolage Grotesque',sans-serif;color:#F2F2F0;margin-bottom:6px">CSV everywhere</div><div style="font:400 13.5px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Every list view exports what you see, filters applied. Organizers call this priceless. We agree.</div></div>
-      </div>
-    </div>
-  </div>
+      <section id="beat5" data-screen-label="Beat 5 agenda" aria-labelledby="h-b5" style="padding:var(--padA) 0">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad)">
+          <div style="max-width:640px">
+            <p data-rv="0" style="font-family:var(--ital);font-size:19px;color:var(--cue);margin:0 0 14px">Six rooms, three days, sixty-one sessions.</p>
+            <h2 id="h-b5" data-rv="1" style="font-family:var(--disp);font-weight:800;font-size:var(--fsh2);line-height:.98;letter-spacing:-.035em;color:var(--ik);margin:0 0 22px;text-wrap:balance">Drag it anywhere. It'll warn you before you let go.</h2>
+            <p style="margin:0 0 16px;color:var(--i2);text-wrap:pretty">Rooms across, time down, everything unscheduled in a tray. Pick up a session and Gather finds the collisions while the card is still under your cursor. Room's taken. Speaker's already on stage. Two talks on one track.</p>
+            <p style="margin:0;color:var(--i2);text-wrap:pretty">The drop still lands. We don't bounce your card back across the screen and make you guess what was wrong with it.</p>
+          </div>
+          <p style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">A session being dragged into a room that is already booked, with the clash named on screen</p>
+          <div style="position:relative">
+            <div data-demo aria-hidden="true" style="position:relative;height:424px;margin-top:40px;overflow:hidden">
+              <div style="position:absolute;left:0;top:8px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--i3)">Unscheduled</div>
+              <div style="position:absolute;left:0;top:32px;width:176px;height:60px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:8px 10px 8px 13px;box-sizing:border-box"><span aria-hidden="true" style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#C4703A;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">The multimodal pipeline</span><span style="display:block;font-family:var(--mono);font-size:9.5px;color:var(--i3);margin-top:3px">Ines Duarte &#183; 45 min</span></div>
+              <div data-drag style="position:absolute;left:0;top:104px;width:176px;height:60px;background:var(--pnl3);border:1px solid var(--ln);border-radius:6px;padding:8px 10px 8px 13px;box-sizing:border-box;z-index:5"><span aria-hidden="true" style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3E8896;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Agents in production</span><span style="display:block;font-family:var(--mono);font-size:9.5px;color:var(--i3);margin-top:3px">Priya Raghunathan &#183; 45 min</span></div>
+              <div style="position:absolute;left:0;top:176px;width:176px;height:60px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:8px 10px 8px 13px;box-sizing:border-box"><span aria-hidden="true" style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#7E5CB8;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:12px;font-weight:500;color:var(--ik);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Retrieval evals</span><span style="display:block;font-family:var(--mono);font-size:9.5px;color:var(--i3);margin-top:3px">Wei Chen &#183; 30 min</span></div>
+              <div style="position:absolute;left:264px;right:0;top:8px;height:378px">
+                <div style="position:absolute;left:-58px;top:14px;width:48px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--i3)">09:00</div>
+                <div style="position:absolute;left:-58px;top:102px;width:48px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--i3)">10:00</div>
+                <div style="position:absolute;left:-58px;top:190px;width:48px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--i3)">11:00</div>
+                <div style="position:absolute;left:-58px;top:278px;width:48px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--i3)">12:00</div>
+                <div style="position:absolute;left:0;top:2px;width:25%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--i3)">Hall A</div>
+                <div style="position:absolute;left:25%;top:2px;width:25%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--i3)">Hall B</div>
+                <div style="position:absolute;left:50%;top:2px;width:25%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--i3)">Studio 2</div>
+                <div style="position:absolute;left:75%;top:2px;width:25%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--i3)">Workshop</div>
+                <div style="position:absolute;left:0;top:26px;right:0;height:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:0;top:114px;right:0;height:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:0;top:202px;right:0;height:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:0;top:290px;right:0;height:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:0;top:378px;right:0;height:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:0;top:26px;bottom:0;width:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:25%;top:26px;bottom:0;width:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:50%;top:26px;bottom:0;width:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:75%;top:26px;bottom:0;width:1px;background:var(--ln)"></div>
+                <div style="position:absolute;left:100%;top:26px;bottom:0;width:1px;background:var(--ln)"></div>
+                <div data-cell-a style="position:absolute;left:5px;top:119px;width:calc(25% - 10px);height:78px"></div>
+                <div data-cell-b style="position:absolute;left:calc(50% + 5px);top:207px;width:calc(25% - 10px);height:78px"></div>
+                <div data-occ style="position:absolute;left:5px;top:119px;width:calc(25% - 10px);height:78px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:7px 9px 7px 12px;box-sizing:border-box;z-index:2"><span aria-hidden="true" style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#7E5CB8;border-radius:6px 0 0 6px"></span><span style="display:block;font-family:var(--mono);font-size:9px;color:var(--i3)">Priya Raghunathan</span><span style="display:block;font-size:11.5px;font-weight:500;color:var(--ik);line-height:1.3;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Serving LLMs on spot GPUs</span></div>
+                <div style="position:absolute;left:5px;top:31px;width:calc(25% - 10px);height:78px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:7px 9px 7px 12px;box-sizing:border-box"><span aria-hidden="true" style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#34526B;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:11.5px;font-weight:500;color:var(--ik);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Opening keynote</span><span style="display:block;font-family:var(--mono);font-size:9px;color:var(--i3);margin-top:3px">Ade Balogun &#183; 45 min</span></div>
+                <div style="position:absolute;left:calc(50% + 5px);top:31px;width:calc(25% - 10px);height:78px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:7px 9px 7px 12px;box-sizing:border-box"><span aria-hidden="true" style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#5A6BA8;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:11.5px;font-weight:500;color:var(--ik);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Fine-tuning on a budget</span><span style="display:block;font-family:var(--mono);font-size:9px;color:var(--i3);margin-top:3px">Tomas Lindqvist</span></div>
+                <div style="position:absolute;left:calc(25% + 5px);top:119px;width:calc(25% - 10px);height:78px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:7px 9px 7px 12px;box-sizing:border-box"><span aria-hidden="true" style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#A85788;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:11.5px;font-weight:500;color:var(--ik);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Evals that catch regressions</span><span style="display:block;font-family:var(--mono);font-size:9px;color:var(--i3);margin-top:3px">Sofia Marchetti</span></div>
+                <div style="position:absolute;left:calc(75% + 5px);top:119px;width:calc(25% - 10px);height:166px;background:var(--pnl2);border:1px solid var(--ln);border-radius:6px;padding:7px 9px 7px 12px;box-sizing:border-box"><span aria-hidden="true" style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#3E8896;border-radius:6px 0 0 6px"></span><span style="display:block;font-size:11.5px;font-weight:500;color:var(--ik);line-height:1.3">Ship an eval suite in 90 minutes</span><span style="display:block;font-family:var(--mono);font-size:9px;color:var(--i3);margin-top:3px">Maya Okonkwo &#183; 2 h</span></div>
+              </div>
+              <div data-dchip style="position:absolute;left:50%;transform:translateX(-50%);top:10px;font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:4px;border:1px solid var(--alarm);color:var(--alarm);background:var(--alarmw);white-space:nowrap;opacity:0;z-index:7">Speaker clash: Priya Raghunathan, 10:00</div>
+              <div data-insp style="position:absolute;right:0;top:34px;width:244px;background:var(--pnl2);border:1px solid var(--ln);border-radius:8px;padding:14px;box-sizing:border-box;z-index:6;transform:translateX(118%);transition:transform .32s cubic-bezier(.22,.8,.24,1)">
+                <div style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--alarm);margin-bottom:8px">Speaker clash</div>
+                <div style="font-size:13px;font-weight:600;color:var(--ik);margin-bottom:10px">Priya is in two rooms at 10:00</div>
+                <div style="font-size:12px;color:var(--i2);line-height:1.5;padding-bottom:10px;border-bottom:1px solid var(--ln)">Serving LLMs on spot GPUs &#183; Hall A<br>Agents in production &#183; Hall A</div>
+                <div style="margin-top:12px;display:grid;gap:8px"><span style="display:inline-flex;align-items:center;justify-content:center;height:34px;background:var(--cue);color:var(--cuebf);border-radius:6px;font-size:12.5px;font-weight:600">Move this one to 11:00</span><span style="text-align:center;font-family:var(--mono);font-size:11px;color:var(--i3)">Keep both anyway</span></div>
+              </div>
+              <div data-dplay style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:8;opacity:0;pointer-events:none;transition:opacity .2s ease;cursor:pointer"><span style="display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:6px;border:1px solid var(--ln2);background:rgba(8,8,10,.85);color:var(--ik);font-family:var(--mono);font-size:12px;letter-spacing:.08em">&#9654; PLAY</span></div>
+            </div>
+            <svg data-arrow width="132" height="112" viewBox="0 0 132 112" fill="none" aria-hidden="true" style="position:absolute;left:150px;top:168px;color:var(--cue);pointer-events:none;z-index:9"><path d="M26 100C46 88 66 70 86 50c10-10 20-24 27-37" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M113 13c-8 1-14 3-20 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M113 13c1 8 2 14 4 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            <div data-ann style="position:absolute;left:0;top:262px;max-width:176px;transform:rotate(-2deg);font-family:var(--hand);font-weight:300;font-size:15px;line-height:1.35;color:var(--cue);z-index:9">Priya can't be in Hall A and Studio 2 at 10</div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:40px"><a href="Agenda.dc.html" style="font-family:var(--mono);font-size:12px;color:var(--i3)" style-hover="color:#F2F2F0">Try it in the live demo &#8594;</a></div>
+          <div data-marks style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:20px">
+            <div style="border-top:1px solid var(--ln);padding-top:14px"><div style="font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--ik);margin-bottom:6px">Live, not on refresh</div><div style="font-size:14px;color:var(--i3);line-height:1.5">Collisions appear as you drag, not after you reload</div></div>
+            <div style="border-top:1px solid var(--ln);padding-top:14px"><div style="font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--ik);margin-bottom:6px">Hard and soft</div><div style="font-size:14px;color:var(--i3);line-height:1.5">Room and speaker clashes block. Track overlap only warns</div></div>
+            <div style="border-top:1px solid var(--ln);padding-top:14px"><div style="font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--ik);margin-bottom:6px">Versioned</div><div style="font-size:14px;color:var(--i3);line-height:1.5">Publish makes a snapshot. Roll back to any previous one</div></div>
+          </div>
+        </div>
+      </section>
 
-  <div id="featureindex" style="padding:90px 24px 80px">
-    <div style="max-width:1200px;margin:0 auto">
-      <div data-rv="0" style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:40px">
-        <h2 style="font:600 clamp(30px,3.8vw,48px)/1.06 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;margin:0;color:#F2F2F0">Everything in the box</h2>
-        <span style="font:400 13px 'IBM Plex Mono',monospace;color:#5F5F5C">open source · self-hostable · no "book a demo" button</span>
-      </div>
-      <div data-rv="60" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden">
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">Form builder</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Ten field types, conditional logic, one schema engine for CFP and portal tasks alike.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">Multi-round review</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Rubrics, thresholds, blind and anonymized modes, bulk accept, reject, waitlist.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">Speaker portal</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Task checklists with due dates, file requests, session details, live submission status.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">Magic-link auth</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">No speaker passwords, ever. Every email deep-links into a signed-in portal.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">Agenda builder</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Room × time grid, unscheduled tray, lanes on overlap, live conflict detection.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">AI where it helps</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Schedule drafts, duplicate detection, bio normalization as a diff, first-pass scores. Always overridable.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">Internal notes</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Owner per submission, notes reviewers and organizers see, speakers never do.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">File versioning</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Every upload keeps its history. Bulk-download by speaker, foldered, in one zip.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">Outbox &amp; log</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Per-recipient delivery status, resend, escalating deadline reminders, real .ics invites.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">Publishing</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Schedule and speaker embeds from one script tag, public schedule page, read-only API.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">Integrations</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">One-way push of sessions and speakers to Accelevents. Registration stays where it is.</div></div>
-        <div style="background:#0B0B0E;padding:22px" style-hover="background:#101013"><div style="font:500 12.5px 'IBM Plex Mono',monospace;color:#FF8E8E;margin-bottom:7px">Built for 2026</div><div style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#8A8A87">Keyboard-first, optimistic updates, dense list views, bulk edit inline, light and dark.</div></div>
-      </div>
-    </div>
-  </div>
+      <section id="beat6" data-screen-label="Beat 6 publish" aria-labelledby="h-b6" style="background:var(--pnl);border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);padding:var(--padA) 0">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad)">
+          <div data-em data-split style="display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4.5vw,64px);align-items:start">
+            <div style="position:relative">
+              <p data-rv="0" style="font-family:var(--ital);font-size:19px;color:var(--cue);margin:0 0 14px">And your website needs to match, today.</p>
+              <h2 id="h-b6" data-rv="1" style="font-family:var(--disp);font-weight:800;font-size:var(--fsh2);line-height:.98;letter-spacing:-.035em;margin:0 0 22px;text-wrap:balance">Publish once. Never paste a schedule into a CMS again.</h2>
+              <p style="margin:0 0 16px;color:var(--i2);max-width:48ch;text-wrap:pretty">Publishing takes a snapshot. Your schedule, session pages and speaker gallery all read that one snapshot, so your site can't show half of an edit.</p>
+              <p style="margin:0 0 28px;color:var(--i2);max-width:48ch;text-wrap:pretty">One script tag puts the same agenda on your existing website, and it updates the second you publish.</p>
+              <div style="background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:12px 18px 16px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--ln)"><span style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--i3)">YOUR WEBSITE</span><button onClick="{{copyEmbed}}" style="background:transparent;border:1px solid var(--ln2);color:var(--i2);border-radius:6px;font-family:var(--mono);font-size:10.5px;padding:4px 11px;cursor:pointer">Copy</button></div>
+                <div style="font-family:var(--mono);font-size:12.5px;line-height:1.8;color:var(--ik);min-height:72px;white-space:pre-wrap;word-break:break-word"><span data-em-code>&lt;script src="https://gather.dev/embed.js"
+  data-event="devflow-2027"
+  data-view="agenda"&gt;&lt;/script&gt;</span><span aria-hidden="true" style="display:inline-block;width:1.5px;height:14px;background:var(--ik);vertical-align:-2px;animation:gcaret 1s step-end infinite"></span></div>
+              </div>
+              <svg data-arrow width="96" height="54" viewBox="0 0 96 54" fill="none" aria-hidden="true" style="position:absolute;right:-64px;bottom:36px;color:var(--cue);pointer-events:none"><path d="M8 8c14 6 32 14 48 24 8 5 15 11 19 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M75 48c-1-7-3-13-6-18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M75 48c-7 0-13-1-19-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </div>
+            <div data-em-out style="transition:opacity .5s ease,transform .5s cubic-bezier(.16,1,.3,1)">
+              <div aria-hidden="true" style="border:1px solid var(--ln);border-radius:10px;overflow:hidden;background:var(--bg)">
+                <div style="display:flex;align-items:center;height:34px;background:var(--pnl2);border-bottom:1px solid var(--ln);padding:0 12px;position:relative"><span style="display:flex;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--ln2)"></span><span style="width:8px;height:8px;border-radius:50%;background:var(--ln2)"></span><span style="width:8px;height:8px;border-radius:50%;background:var(--ln2)"></span></span><span style="position:absolute;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:11px;color:var(--i3)">devflow.dev/program</span></div>
+                <div style="padding:20px 22px 22px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap"><span style="font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:-.03em;color:var(--ik)">Devflow 2027</span><span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--clear);background:var(--clearw);border-radius:4px;padding:3px 7px">UPDATED JUST NOW</span></div>
+                  <div style="display:flex;gap:8px;margin-bottom:14px"><span style="font-family:var(--mono);font-size:11px;padding:4px 11px;border-radius:6px;background:var(--ik);color:var(--bg)">Wed 12</span><span style="font-family:var(--mono);font-size:11px;padding:4px 11px;border-radius:6px;border:1px solid var(--ln);color:var(--i3)">Thu 13</span><span style="font-family:var(--mono);font-size:11px;padding:4px 11px;border-radius:6px;border:1px solid var(--ln);color:var(--i3)">By track</span></div>
+                  <div style="display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--ln)"><span style="font-family:var(--mono);font-size:11px;color:var(--i3)">09:00</span><span style="font-size:13.5px;font-weight:500;color:var(--ik)">Opening keynote: the year in agents</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">Ade Balogun</span></div>
+                  <div style="display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--ln)"><span style="font-family:var(--mono);font-size:11px;color:var(--i3)">10:00</span><span style="font-size:13.5px;font-weight:500;color:var(--ik)">Serving LLMs on spot GPUs</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">Priya Raghunathan</span></div>
+                  <div style="display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--ln)"><span style="font-family:var(--mono);font-size:11px;color:var(--i3)">10:00</span><span style="font-size:13.5px;font-weight:500;color:var(--ik)">Ship an eval suite in 90 minutes</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">Maya Okonkwo</span></div>
+                  <div style="display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--ln)"><span style="font-family:var(--mono);font-size:11px;color:var(--i3)">11:00</span><span style="font-size:13.5px;font-weight:500;color:var(--ik)">Evals that catch regressions</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">Sofia Marchetti</span></div>
+                  <div style="display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--ln)"><span style="font-family:var(--mono);font-size:11px;color:var(--i3)">12:00</span><span style="font-size:13.5px;font-weight:500;color:var(--ik)">Panel: buying vs building</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">4 speakers</span></div>
+                </div>
+              </div>
+              <div data-ann style="transform:rotate(-2deg);font-family:var(--hand);font-weight:300;font-size:15px;color:var(--cue);margin:18px 0 0">that's the whole integration</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-  <div style="position:relative;padding:90px 24px 40px;overflow:clip">
-    <div style="position:absolute;left:50%;bottom:-340px;width:1300px;height:760px;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(255,107,107,.16),rgba(255,107,107,0) 70%);pointer-events:none;animation:glowPulse 6s ease-in-out infinite alternate"></div>
-    <div data-rv="0" style="max-width:1200px;margin:0 auto;position:relative;text-align:center">
-      <img src="assets/gather-mark.svg" alt="" width="52" height="52" style="border-radius:13px;margin-bottom:26px;box-shadow:0 0 40px rgba(255,107,107,.3)">
-      <h2 style="font:600 clamp(40px,5.4vw,76px)/1.02 'Bricolage Grotesque',sans-serif;letter-spacing:-0.026em;color:#F2F2F0;margin:0 0 16px;text-wrap:balance">Your next event, gathered</h2>
-      <p style="font:400 17px/1.6 'IBM Plex Sans',sans-serif;color:#A3A3A0;margin:0 auto 34px;max-width:500px;text-wrap:pretty">Kick the tires on a real event: 216 submissions, 84 speakers, an agenda that refuses to double-book. No signup, no credit card, just the product.</p>
-      <div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:80px">
-        <a href="Overview.dc.html" style="font:600 15px 'IBM Plex Sans',sans-serif;color:#331313;background:#FF6B6B;text-decoration:none;height:48px;display:inline-flex;align-items:center;padding:0 26px;border-radius:999px;box-shadow:0 0 44px rgba(255,107,107,.4)" style-hover="background:#FF8E8E">Open the console</a>
-        <a href="Event Landing.dc.html" style="font:500 15px 'IBM Plex Sans',sans-serif;color:#F2F2F0;text-decoration:none;height:48px;display:inline-flex;align-items:center;padding:0 22px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.03)" style-hover="border-color:rgba(255,142,142,.5);color:#FF8E8E">See a published event page</a>
+      <section id="beat7" data-screen-label="Beat 7 speed" aria-labelledby="h-b7" style="padding:var(--padA) 0 var(--padB)">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad);text-align:center">
+          <p data-rv="0" style="font-family:var(--ital);font-size:19px;color:var(--cue);margin:0 0 14px">Because the thing you're replacing isn't.</p>
+          <h2 id="h-b7" data-rv="1" style="font-family:var(--disp);font-weight:800;font-size:var(--fsh2);line-height:.98;letter-spacing:-.035em;margin:0 auto 20px;max-width:18ch;text-wrap:balance">Every list, under a fifth of a second.</h2>
+          <p style="margin:0 auto;color:var(--i2);max-width:56ch;text-wrap:pretty">Nothing here makes you wait to find out whether it heard you. Status changes apply instantly, dragging holds sixty frames a second with a hundred and twenty sessions on screen, and command K jumps you anywhere.</p>
+          <div data-measure style="display:flex;justify-content:center;gap:clamp(40px,6vw,96px);margin:clamp(38px,5vh,56px) 0">
+            <div><div style="font-family:var(--mono);font-weight:500;font-size:clamp(2.2rem,4.2vw,3.4rem);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--ik)">&lt;200ms</div><div style="font-family:var(--mono);font-size:12px;color:var(--i3);margin-top:8px">any admin list, interactive</div></div>
+            <div><div style="font-family:var(--mono);font-weight:500;font-size:clamp(2.2rem,4.2vw,3.4rem);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--ik)">60fps</div><div style="font-family:var(--mono);font-size:12px;color:var(--i3);margin-top:8px">dragging 120 sessions, six rooms</div></div>
+            <div><div style="font-family:var(--mono);font-weight:500;font-size:clamp(2.2rem,4.2vw,3.4rem);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--ik)">0</div><div style="font-family:var(--mono);font-size:12px;color:var(--i3);margin-top:8px">full page reloads in the console</div></div>
+          </div>
+          <div data-pal aria-hidden="true" style="display:flex;justify-content:center">
+            <div data-pal-panel style="width:min(560px,100%);background:var(--pnl);border:1px solid var(--ln);border-radius:10px;overflow:hidden;text-align:left">
+              <div style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--ln)"><span style="font-family:var(--mono);font-size:10.5px;color:var(--i3);border:1px solid var(--ln);border-radius:4px;padding:2px 6px">&#8984;K</span><span style="position:relative;font-size:14px;color:var(--ik);display:inline-flex;align-items:center"><span data-pal-ghost style="position:absolute;left:0;color:var(--i3);white-space:nowrap">Type a command or search</span><span data-pal-text></span><span aria-hidden="true" style="display:inline-block;width:1.5px;height:16px;background:var(--ik);margin-left:2px;animation:gcaret 1s step-end infinite"></span></span></div>
+              <div style="padding:6px 0">
+                <div data-pal-row data-m="1" style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:9px 16px"><span data-cuebar style="position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--cue);opacity:0"></span><span style="font-size:13px;color:var(--ik)">Agenda &#183; Devflow 2027</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">G then A</span></div>
+                <div data-pal-row data-m="1" style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:9px 16px"><span style="font-size:13px;color:var(--ik)">Agenda: view by room</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">view</span></div>
+                <div data-pal-row data-m="1" style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:9px 16px"><span style="font-size:13px;color:var(--ik)">Agenda: publish snapshot</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">action</span></div>
+                <div data-pal-row data-m="0" style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:9px 16px"><span style="font-size:13px;color:var(--ik)">Priya Raghunathan &#183; speaker</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">G then S</span></div>
+                <div data-pal-row data-m="0" style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:9px 16px"><span style="font-size:13px;color:var(--ik)">Submissions &#183; 214</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">G then U</span></div>
+                <div data-pal-row data-m="0" style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:9px 16px"><span style="font-size:13px;color:var(--ik)">Overview</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">G then O</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="beat8" data-screen-label="Beat 8 next year" aria-labelledby="h-b8" style="background:var(--pnl);border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);padding:var(--padB) 0">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad)">
+          <div data-split style="display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4.5vw,64px);align-items:center">
+            <div>
+              <p data-rv="0" style="font-family:var(--ital);font-size:19px;color:var(--cue);margin:0 0 14px">The part nobody plans for.</p>
+              <h2 id="h-b8" data-rv="1" style="font-family:var(--disp);font-weight:800;font-size:var(--fsh2);line-height:.98;letter-spacing:-.035em;margin:0 0 22px;text-wrap:balance">Your speakers are still here in twelve months.</h2>
+              <p style="margin:0;color:var(--i2);max-width:48ch;text-wrap:pretty">Every speaker, talk and score stays on one record across every event you run. Next year starts with a directory of people who already said yes once, not an empty spreadsheet.</p>
+            </div>
+            <div style="position:relative">
+              <div style="border:1px solid var(--ln);border-radius:10px;overflow:hidden;background:var(--bg)">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--ln);background:var(--pnl2);gap:10px"><span style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--i3)">SPEAKER DIRECTORY &#183; ALL EVENTS</span><span style="font-family:var(--mono);font-size:10px;color:var(--i3)">80 people</span></div>
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--ln)"><span style="display:flex;align-items:center;gap:11px;min-width:0"><span style="width:30px;height:30px;border-radius:50%;background:var(--pnl3);font-family:var(--mono);font-size:11px;color:var(--i2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">PR</span><span style="min-width:0"><span style="display:block;font-size:14px;font-weight:500;color:var(--ik)">Priya Raghunathan</span><span style="display:block;font-size:11.5px;color:var(--i3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Serving LLMs on spot GPUs</span></span></span><span style="font-family:var(--mono);font-size:11px;color:var(--i3)">3 events</span><span style="font-family:var(--mono);font-size:10px;color:var(--clear);background:var(--clearw);border-radius:4px;padding:3px 8px">4 talks</span></div>
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--ln)"><span style="display:flex;align-items:center;gap:11px;min-width:0"><span style="width:30px;height:30px;border-radius:50%;background:var(--pnl3);font-family:var(--mono);font-size:11px;color:var(--i2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">MO</span><span style="min-width:0"><span style="display:block;font-size:14px;font-weight:500;color:var(--ik)">Maya Okonkwo</span><span style="display:block;font-size:11.5px;color:var(--i3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Ship an eval suite in 90 minutes</span></span></span><span style="font-family:var(--mono);font-size:11px;color:var(--i3)">2 events</span><span style="font-family:var(--mono);font-size:10px;color:var(--clear);background:var(--clearw);border-radius:4px;padding:3px 8px">2 talks</span></div>
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--ln)"><span style="display:flex;align-items:center;gap:11px;min-width:0"><span style="width:30px;height:30px;border-radius:50%;background:var(--pnl3);font-family:var(--mono);font-size:11px;color:var(--i2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">AB</span><span style="min-width:0"><span style="display:block;font-size:14px;font-weight:500;color:var(--ik)">Ade Balogun</span><span style="display:block;font-size:11.5px;color:var(--i3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Opening keynote: the year in agents</span></span></span><span style="font-family:var(--mono);font-size:11px;color:var(--i3)">4 events</span><span style="font-family:var(--mono);font-size:10px;color:var(--clear);background:var(--clearw);border-radius:4px;padding:3px 8px">5 talks</span></div>
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:12px 16px"><span style="display:flex;align-items:center;gap:11px;min-width:0"><span style="width:30px;height:30px;border-radius:50%;background:var(--pnl3);font-family:var(--mono);font-size:11px;color:var(--i2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">TL</span><span style="min-width:0"><span style="display:block;font-size:14px;font-weight:500;color:var(--ik)">Tomas Lindqvist</span><span style="display:block;font-size:11.5px;color:var(--i3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Fine-tuning on a budget</span></span></span><span style="font-family:var(--mono);font-size:11px;color:var(--i3)">2 events</span><span style="font-family:var(--mono);font-size:10px;color:var(--clear);background:var(--clearw);border-radius:4px;padding:3px 8px">3 talks</span></div>
+              </div>
+              <div data-ann style="transform:rotate(2deg);font-family:var(--hand);font-weight:300;font-size:15px;color:var(--cue);text-align:right;margin:16px 0 0">she said yes in 2025 too</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section data-screen-label="Comparison" aria-labelledby="h-compare" style="padding:var(--padA) 0">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad)">
+          <div data-rule style="height:1px;background:var(--cue);opacity:.5;margin-bottom:34px"></div>
+          <h2 id="h-compare" data-rv="0" style="font-family:var(--disp);font-weight:800;font-size:var(--fsh2);line-height:.98;letter-spacing:-.035em;margin:0 0 36px;max-width:22ch;text-wrap:balance">What we do differently to the one that costs forty thousand.</h2>
+          <div data-rv="1">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(24px,4vw,56px);padding:0 0 12px"><span style="font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--i3)">The expensive one</span><span style="font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ik)">Gather</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(24px,4vw,56px);padding:16px 0;border-top:1px solid var(--ln)"><span style="font-size:15px;color:var(--i3);line-height:1.55">Agenda conflicts recalculate when you refresh the page</span><span style="font-size:15px;font-weight:500;line-height:1.55;color:var(--ik)"><span aria-hidden="true" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cue);margin-right:10px;vertical-align:2px"></span>Conflicts appear while the card is still moving</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(24px,4vw,56px);padding:16px 0;border-top:1px solid var(--ln)"><span style="font-size:15px;color:var(--i3);line-height:1.55">Embedded schedules cache for an hour</span><span style="font-size:15px;font-weight:500;line-height:1.55;color:var(--ik)"><span aria-hidden="true" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cue);margin-right:10px;vertical-align:2px"></span>The embed updates the moment you publish</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(24px,4vw,56px);padding:16px 0;border-top:1px solid var(--ln)"><span style="font-size:15px;color:var(--i3);line-height:1.55">The submission form cannot be embedded, link only</span><span style="font-size:15px;font-weight:500;line-height:1.55;color:var(--ik)"><span aria-hidden="true" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cue);margin-right:10px;vertical-align:2px"></span>Embed the form anywhere</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(24px,4vw,56px);padding:16px 0;border-top:1px solid var(--ln)"><span style="font-size:15px;color:var(--i3);line-height:1.55">A form has a close date but no open date</span><span style="font-size:15px;font-weight:500;line-height:1.55;color:var(--ik)"><span aria-hidden="true" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cue);margin-right:10px;vertical-align:2px"></span>Both, and it opens itself</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(24px,4vw,56px);padding:16px 0;border-top:1px solid var(--ln)"><span style="font-size:15px;color:var(--i3);line-height:1.55">A speaker belongs to exactly one portal, decided by filter order</span><span style="font-size:15px;font-weight:500;line-height:1.55;color:var(--ik)"><span aria-hidden="true" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cue);margin-right:10px;vertical-align:2px"></span>A speaker sees everything they are on</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(24px,4vw,56px);padding:16px 0;border-top:1px solid var(--ln)"><span style="font-size:15px;color:var(--i3);line-height:1.55">Deciding and notifying are loosely coupled</span><span style="font-size:15px;font-weight:500;line-height:1.55;color:var(--ik)"><span aria-hidden="true" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cue);margin-right:10px;vertical-align:2px"></span>Deciding writes. Sending is separate, counted, confirmed</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(24px,4vw,56px);padding:16px 0;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln)"><span style="font-size:15px;color:var(--i3);line-height:1.55">Slow enough to complain about on camera, four times</span><span style="font-size:15px;font-weight:500;line-height:1.55;color:var(--ik)"><span aria-hidden="true" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cue);margin-right:10px;vertical-align:2px"></span>Under 200ms, and we publish the numbers</span></div>
+            <p style="font-size:13px;color:var(--i3);line-height:1.6;margin:18px 0 0;max-width:64ch">All of the left column is documented in the vendor's own help centre. It is a capable product. It is also more product than most conferences need, at a price most conferences feel.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="opensource" data-screen-label="Open source" aria-labelledby="h-oss" style="background:var(--pnl);border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);padding:var(--padA) 0">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad)">
+          <div data-split style="display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,4.5vw,64px);align-items:center">
+            <div>
+              <h2 id="h-oss" data-rv="0" style="font-family:var(--disp);font-weight:800;font-size:var(--fsh2);line-height:.98;letter-spacing:-.035em;color:var(--ik);margin:0 0 22px;text-wrap:balance">It's yours. That's the entire business model.</h2>
+              <p style="margin:0;color:var(--i2);max-width:52ch;text-wrap:pretty">MIT licensed, self-hosted, no seat count, no per-event fee, no call with a salesperson. Clone it, read it, change the bits that don't suit your conference.</p>
+            </div>
+            <div data-rv="1">
+              <div style="background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:12px 18px 16px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--ln)"><span style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--i3)">SHELL</span><button onClick="{{copyInstall}}" style="background:transparent;border:1px solid var(--ln2);color:var(--i2);border-radius:6px;font-family:var(--mono);font-size:10.5px;padding:4px 11px;cursor:pointer">Copy</button></div>
+                <div style="font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--ik);overflow-wrap:anywhere">
+                  <div style="padding-left:15px;text-indent:-15px"><span style="color:var(--i3)">$</span> git clone https://github.com/&lt;org&gt;/gather</div>
+                  <div style="padding-left:15px;text-indent:-15px"><span style="color:var(--i3)">$</span> cd gather <span style="color:var(--cue)">&amp;&amp;</span> make setup <span style="color:var(--cue)">&amp;&amp;</span> make dev</div>
+                </div>
+              </div>
+              <p style="font-family:var(--mono);font-size:12px;color:var(--i3);margin:12px 0 0">A running install with a seeded conference and no API keys required.</p>
+            </div>
+          </div>
+          <div data-cols4 style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:44px">
+            <div style="border-top:1px solid var(--ln);padding-top:14px"><div style="font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--ik);margin-bottom:6px">MIT</div><div style="font-size:14px;color:var(--i3);line-height:1.5">Do what you like with it</div></div>
+            <div style="border-top:1px solid var(--ln);padding-top:14px"><div style="font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--ik);margin-bottom:6px">Self-hosted</div><div style="font-size:14px;color:var(--i3);line-height:1.5">Your speakers' data stays on your infrastructure</div></div>
+            <div style="border-top:1px solid var(--ln);padding-top:14px"><div style="font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--ik);margin-bottom:6px">Public API</div><div style="font-size:14px;color:var(--i3);line-height:1.5">OpenAPI schema, typed client, ics feeds</div></div>
+            <div style="border-top:1px solid var(--ln);padding-top:14px"><div style="font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--ik);margin-bottom:6px">No account</div><div style="font-size:14px;color:var(--i3);line-height:1.5">The demo needs nothing from you</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" data-screen-label="FAQ" aria-label="Frequently asked questions" style="padding:var(--padA) 0">
+        <div style="max-width:1200px;margin:0 auto;padding:var(--pad)">
+          <div style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--i3);margin-bottom:24px">Things people ask</div>
+          <div data-faqcols style="display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(32px,5vw,64px);align-items:start">
+            <div>
+              <sc-for list="{{faqsL}}" as="f" hint-placeholder-count="4">
+                <div style="border-top:1px solid var(--ln)">
+                  <button onClick="{{f.toggle}}" aria-expanded="{{f.open}}" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;align-items:center;width:100%;min-height:44px;padding:16px 0;gap:16px"><span style="font-size:16px;font-weight:500;color:var(--ik);line-height:1.4">{{f.q}}</span><span style="font-family:var(--mono);font-size:16px;color:var(--i3)">{{f.glyph}}</span></button>
+                  <div style="display:grid;grid-template-rows:{{f.rows}};transition:grid-template-rows .2s ease"><div style="overflow:hidden"><p style="margin:0;padding:0 28px 20px 0;font-size:15px;line-height:1.62;color:var(--i2);text-wrap:pretty">{{f.a}}</p></div></div>
+                </div>
+              </sc-for>
+            </div>
+            <div>
+              <sc-for list="{{faqsR}}" as="f" hint-placeholder-count="4">
+                <div style="border-top:1px solid var(--ln)">
+                  <button onClick="{{f.toggle}}" aria-expanded="{{f.open}}" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;align-items:center;width:100%;min-height:44px;padding:16px 0;gap:16px"><span style="font-size:16px;font-weight:500;color:var(--ik);line-height:1.4">{{f.q}}</span><span style="font-family:var(--mono);font-size:16px;color:var(--i3)">{{f.glyph}}</span></button>
+                  <div style="display:grid;grid-template-rows:{{f.rows}};transition:grid-template-rows .2s ease"><div style="overflow:hidden"><p style="margin:0;padding:0 28px 20px 0;font-size:15px;line-height:1.62;color:var(--i2);text-wrap:pretty">{{f.a}}</p></div></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section data-screen-label="Final CTA" aria-labelledby="h-cta" style="padding:var(--padB) 0 var(--padA);position:relative;overflow:hidden">
+        <div aria-hidden="true" style="position:absolute;inset:0;background:radial-gradient(50% 70% at 50% 40%,rgba(255,90,54,.10),transparent 65%);pointer-events:none"></div>
+        <div style="position:relative;max-width:760px;margin:0 auto;padding:var(--pad);text-align:center">
+          <h2 id="h-cta" data-rv="0" style="font-family:var(--disp);font-weight:800;font-size:clamp(2.6rem,5.2vw,4.4rem);line-height:.95;letter-spacing:-.035em;margin:0 0 20px;text-wrap:balance">Your next event, gathered.</h2>
+          <p data-rv="1" style="margin:0 auto;color:var(--i2);max-width:44ch;text-wrap:pretty">Open the demo, accept a talk, drag it into a room it can't fit in, and see what happens. Four minutes, no email address.</p>
+          <div style="display:flex;justify-content:center;gap:12px;margin-top:30px;flex-wrap:wrap">
+            <a href="Auth.dc.html" style="display:inline-flex;align-items:center;height:48px;padding:0 24px;background:var(--cue);color:var(--cuebf);border-radius:6px;font-size:15.5px;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.22)" style-hover="background:var(--cuep);color:var(--cuebf);transform:translateY(-1px)">Open the live demo</a>
+            <a href="#opensource" style="display:inline-flex;align-items:center;height:48px;padding:0 24px;border:1px solid var(--ln2);color:var(--ik);border-radius:6px;font-size:15.5px;font-weight:500" style-hover="background:var(--pnl2);color:var(--ik);transform:translateY(-1px)">Read the source</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer data-screen-label="Footer" style="position:relative;background:var(--pnl);border-top:1px solid var(--ln);overflow:hidden">
+    <sc-if value="{{showScene}}" hint-placeholder-val="{{true}}">
+      <div data-scene aria-hidden="true" style="position:relative">
+        <div style="position:absolute;inset:0;background:radial-gradient(46% 130% at 50% 100%,rgba(255,90,54,.20),transparent 68%)"></div>
+        <svg viewBox="0 0 1440 260" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges" style="position:relative;width:100%;height:auto;display:block">
+          <defs>
+            <pattern id="gcrowd-d" x="0" y="0" width="90" height="40" patternUnits="userSpaceOnUse">
+              <rect x="5" y="5" width="10" height="10" fill="#1C1C22"></rect><rect x="0" y="15" width="20" height="25" fill="#1C1C22"></rect>
+              <rect x="35" y="0" width="10" height="10" fill="#1C1C22"></rect><rect x="30" y="10" width="20" height="30" fill="#1C1C22"></rect>
+              <rect x="65" y="10" width="10" height="10" fill="#1C1C22"></rect><rect x="60" y="20" width="20" height="20" fill="#1C1C22"></rect>
+            </pattern>
+            <pattern id="gcrowd-c" x="0" y="0" width="108" height="48" patternUnits="userSpaceOnUse">
+              <rect x="6" y="6" width="12" height="12" fill="#23232B"></rect><rect x="0" y="18" width="24" height="30" fill="#23232B"></rect>
+              <rect x="42" y="0" width="12" height="12" fill="#23232B"></rect><rect x="36" y="12" width="24" height="36" fill="#23232B"></rect>
+              <rect x="78" y="12" width="12" height="12" fill="#23232B"></rect><rect x="72" y="24" width="24" height="24" fill="#23232B"></rect>
+            </pattern>
+            <pattern id="gcrowd-b" x="0" y="0" width="126" height="56" patternUnits="userSpaceOnUse">
+              <rect x="7" y="7" width="14" height="14" fill="#2C2C35"></rect><rect x="0" y="21" width="28" height="35" fill="#2C2C35"></rect>
+              <rect x="49" y="0" width="14" height="14" fill="#2C2C35"></rect><rect x="42" y="14" width="28" height="42" fill="#2C2C35"></rect>
+              <rect x="91" y="14" width="14" height="14" fill="#2C2C35"></rect><rect x="84" y="28" width="28" height="28" fill="#2C2C35"></rect>
+            </pattern>
+            <pattern id="gcrowd-a" x="0" y="0" width="162" height="72" patternUnits="userSpaceOnUse">
+              <rect x="9" y="9" width="18" height="18" fill="#383842"></rect><rect x="0" y="27" width="36" height="45" fill="#383842"></rect>
+              <rect x="63" y="0" width="18" height="18" fill="#383842"></rect><rect x="54" y="18" width="36" height="54" fill="#383842"></rect>
+              <rect x="117" y="18" width="18" height="18" fill="#383842"></rect><rect x="108" y="36" width="36" height="36" fill="#383842"></rect>
+            </pattern>
+          </defs>
+          <polygon points="700,118 536,260 640,260" fill="#FF5A36" opacity="0.04"></polygon>
+          <polygon points="740,118 904,260 800,260" fill="#FF5A36" opacity="0.04"></polygon>
+          <rect x="520" y="22" width="400" height="96" fill="#3A3A45"></rect>
+          <rect x="528" y="30" width="384" height="80" fill="#0B0B0E"></rect>
+          <rect x="544" y="44" width="88" height="8" fill="#FF5A36" opacity="0.6"></rect>
+          <rect x="648" y="44" width="120" height="8" fill="#2E2E38"></rect>
+          <rect x="544" y="64" width="112" height="8" fill="#2E2E38"></rect>
+          <rect x="672" y="64" width="72" height="8" fill="#FF5A36" opacity="0.38"></rect>
+          <rect x="544" y="84" width="96" height="8" fill="#2E2E38"></rect>
+          <rect x="656" y="84" width="144" height="8" fill="#2E2E38"></rect>
+          <rect x="340" y="146" width="760" height="6" fill="#3A3A45"></rect>
+          <rect x="995" y="86" width="20" height="20" fill="#3E3E4A"></rect>
+          <rect x="985" y="106" width="40" height="40" fill="#3E3E4A"></rect>
+          <rect x="1040" y="100" width="60" height="12" fill="#2C2C35"></rect>
+          <rect x="1054" y="112" width="32" height="34" fill="#2C2C35"></rect>
+          <rect x="0" y="150" width="1440" height="40" fill="url(#gcrowd-d)"></rect>
+          <rect x="-38" y="172" width="1516" height="48" fill="url(#gcrowd-c)"></rect>
+          <rect x="-71" y="196" width="1582" height="56" fill="url(#gcrowd-b)"></rect>
+          <rect x="-113" y="216" width="1666" height="72" fill="url(#gcrowd-a)"></rect>
+          <rect x="112" y="240" width="9" height="9" fill="#FF5A36"></rect>
+          <rect x="166" y="255" width="9" height="9" fill="#FF5A36"></rect>
+          <rect x="436" y="240" width="9" height="9" fill="#FF5A36"></rect>
+          <rect x="652" y="255" width="9" height="9" fill="#FF5A36"></rect>
+          <rect x="922" y="240" width="9" height="9" fill="#FF5A36"></rect>
+          <rect x="1138" y="255" width="9" height="9" fill="#FF5A36"></rect>
+          <rect x="1354" y="249" width="9" height="9" fill="#FF5A36"></rect>
+        </svg>
+      </div>
+    </sc-if>
+    <div style="position:relative;max-width:1200px;margin:0 auto;padding:clamp(36px,5vh,56px) clamp(20px,5vw,72px) 0">
+      <div data-cols4 style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:36px">
+        <div><a href="#top" style="display:flex;align-items:center;gap:10px;color:var(--ik)"><img src="assets/gather-mark.svg" width="28" height="28" alt="" style="display:block;border-radius:6px"><span style="font-weight:600;font-size:17px;letter-spacing:-.01em">Gather</span></a><p style="font-size:14px;color:var(--i3);margin:12px 0 0;max-width:30ch;line-height:1.5">Speaker and program management for conferences that would rather not pay for it.</p></div>
+        <div><div style="font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--i3);margin-bottom:14px">Product</div><div style="display:grid;gap:9px;font-size:14px;color:var(--i2)"><a href="#beat1" style-hover="color:#FF7A5C">Call for papers</a><a href="#beat2" style-hover="color:#FF7A5C">Review</a><a href="#beat5" style-hover="color:#FF7A5C">Agenda</a><a href="#beat4" style-hover="color:#FF7A5C">Speaker portal</a><a href="#beat6" style-hover="color:#FF7A5C">Publish</a><a href="#beat6" style-hover="color:#FF7A5C">Embeds</a></div></div>
+        <div><div style="font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--i3);margin-bottom:14px">Developers</div><div style="display:grid;gap:9px;font-size:14px;color:var(--i2)"><a href="#faq" style-hover="color:#FF7A5C">Docs</a><a href="#opensource" style-hover="color:#FF7A5C">API reference</a><a href="#opensource" style-hover="color:#FF7A5C">GitHub</a><a href="#opensource" style-hover="color:#FF7A5C">Self-hosting</a></div></div>
+        <div><div style="font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--i3);margin-bottom:14px">Project</div><div style="display:grid;gap:9px;font-size:14px;color:var(--i2)"><a href="#opensource" style-hover="color:#FF7A5C">Licence</a><a href="#faq" style-hover="color:#FF7A5C">Roadmap</a><a href="#faq" style-hover="color:#FF7A5C">Changelog</a></div></div>
       </div>
     </div>
-    <div data-rv="120" style="max-width:440px;margin:-16px auto 84px;position:relative;background:#141417;border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:20px 22px;rotate:-1.2deg;text-align:left;box-shadow:0 24px 60px rgba(0,0,0,.45)">
-      <div style="font:400 13.5px/1.65 'IBM Plex Sans',sans-serif;color:#C9C9C6;margin-bottom:10px">We once ran a 400-speaker program out of a spreadsheet. The spreadsheet won. Gather is the rematch.</div>
-      <div style="font:500 11.5px 'IBM Plex Mono',monospace;color:#FF8E8E">The Gather team</div>
-    </div>
-    <div style="max-width:1200px;margin:0 auto;position:relative;border-top:1px solid rgba(255,255,255,.07);padding-top:44px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:32px">
-      <div>
-        <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px"><img src="assets/gather-mark.svg" alt="" width="22" height="22" style="border-radius:6px"><span style="font:700 16px 'Bricolage Grotesque',sans-serif;color:#F2F2F0">Gather</span></div>
-        <div style="font:400 12.5px/1.6 'IBM Plex Sans',sans-serif;color:#5F5F5C">Call for papers, speaker review, and conference agenda software. Open source, MIT licensed, built by people who have chased a headshot at midnight.</div>
-      </div>
-      <div>
-        <div style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#5F5F5C;margin-bottom:12px">CONSOLE</div>
-        <div style="display:flex;flex-direction:column;gap:9px">
-          <a href="Overview.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Overview</a>
-          <a href="Submissions.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Submissions</a>
-          <a href="Review.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Review</a>
-          <a href="Agenda.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Agenda</a>
-          <a href="Speakers.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Speakers</a>
-        </div>
-      </div>
-      <div>
-        <div style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#5F5F5C;margin-bottom:12px">PUBLIC PAGES</div>
-        <div style="display:flex;flex-direction:column;gap:9px">
-          <a href="Event Landing.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Event page</a>
-          <a href="CFP.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Call for papers</a>
-          <a href="Portal.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Speaker portal</a>
-        </div>
-      </div>
-      <div>
-        <div style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#5F5F5C;margin-bottom:12px">WORKFLOW</div>
-        <div style="display:flex;flex-direction:column;gap:9px">
-          <a href="Messages.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Messages</a>
-          <a href="Tasks.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Tasks</a>
-          <a href="Forms.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Forms</a>
-          <a href="Embeds.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Publishing</a>
-          <a href="Settings.dc.html" style="font:400 13px 'IBM Plex Sans',sans-serif;color:#9A9A97;text-decoration:none" style-hover="color:#F2F2F0">Settings</a>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;justify-content:flex-end">
-        <div style="font:400 12px 'IBM Plex Mono',monospace;color:#4A4A48">© 2026 Gather · MIT</div>
+    <div data-mark aria-hidden="true" style="position:relative;margin:clamp(32px,5vh,56px) 0 0;overflow:hidden"><span style="display:block;font-family:var(--mark);font-weight:700;font-size:clamp(96px,25vw,440px);line-height:.8;letter-spacing:-.012em;white-space:nowrap;text-align:center;background:linear-gradient(180deg,#FF8A6B 0%,#FF5A36 38%,#B8371C 72%,rgba(255,90,54,0) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-mask-image:linear-gradient(180deg,#000 0%,#000 42%,rgba(0,0,0,.5) 72%,rgba(0,0,0,0) 97%);mask-image:linear-gradient(180deg,#000 0%,#000 42%,rgba(0,0,0,.5) 72%,rgba(0,0,0,0) 97%);user-select:none">Gather</span></div>
+    <div style="position:relative;max-width:1200px;margin:0 auto;padding:0 clamp(20px,5vw,72px)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid var(--ln);margin-top:clamp(18px,2.5vh,28px);padding:20px 0">
+        <span style="font-family:var(--mono);font-size:12px;color:var(--i3)">MIT licensed. Built because the renewal quote came in at forty thousand.</span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--i3)">Postgres and a schedule.</span>
       </div>
     </div>
-    <div aria-hidden="true" style="max-width:1400px;margin:50px auto -60px;font:700 clamp(130px,22vw,330px)/0.78 'Bricolage Grotesque',sans-serif;letter-spacing:-0.045em;text-align:center;background:linear-gradient(180deg,#2E2E33 0%,#0A0A0C 88%);-webkit-background-clip:text;background-clip:text;color:transparent;user-select:none;pointer-events:none">Gather</div>
-  </div>
+  </footer>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;announceBar&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Sections&quot;}, &quot;statBand&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Sections&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;blueprintGuides&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Page&quot;},&quot;footerScene&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Page&quot;},&quot;annotations&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Page&quot;}}">
 class Component extends DCLogic {
-  componentDidMount() {
-    const root = this.root || document.body;
-    const els = Array.from(root.querySelectorAll('[data-rv]'));
-    els.forEach(el => {
-      el.style.opacity = '0'; el.style.transform = 'translateY(26px)';
-      el.style.transition = 'opacity .75s cubic-bezier(.2,.7,.2,1), transform .75s cubic-bezier(.2,.7,.2,1)';
-      el.style.transitionDelay = (parseInt(el.getAttribute('data-rv'), 10) || 0) + 'ms';
-    });
-    this._io = new IntersectionObserver((ents) => {
-      ents.forEach(en => { if (en.isIntersecting) { en.target.style.opacity = '1'; en.target.style.transform = 'translateY(0)'; this._io.unobserve(en.target); } });
-    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
-    els.forEach(el => this._io.observe(el));
-    const nums = Array.from(root.querySelectorAll('[data-count]'));
-    this._io2 = new IntersectionObserver((ents) => {
-      ents.forEach(en => {
-        if (!en.isIntersecting) return;
-        this._io2.unobserve(en.target);
-        const t = parseInt(en.target.getAttribute('data-count'), 10) || 0, st = performance.now();
-        const tick = (now) => {
-          const p = Math.min(1, (now - st) / 1100), e = 1 - Math.pow(1 - p, 3);
-          en.target.textContent = String(Math.round(t * e));
-          if (p < 1) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      });
-    }, { threshold: 0.5 });
-    nums.forEach(el => this._io2.observe(el));
-  }
-  componentWillUnmount() { if (this._io) this._io.disconnect(); if (this._io2) this._io2.disconnect(); }
+  state = { openFaq: 0 };
   renderVals() {
-    return {
-      setRoot: (el) => { this.root = el; },
-      showAnnounce: this.props.announceBar ?? true,
-      showStats: this.props.statBand ?? true
+    const F = [
+      { q: 'Is this really free?', a: 'Yes. MIT licensed. There is no paid tier and nothing is held back from the open source version. The code you are reading now runs on your own server, forever.' },
+      { q: 'How many proposals can it handle?', a: 'The demo runs 214 proposals, 80 speakers and 61 sessions, and the agenda holds 60fps while dragging 120 sessions across six rooms. It is Postgres and a schedule, not a distributed system problem.' },
+      { q: 'Can my committee review anonymously?', a: 'Yes. Blind rounds strip names, companies and any answer you flag as identifying, on the server, before the data reaches the reviewer\u2019s browser.' },
+      { q: 'Do speakers need an account?', a: 'No. They get a link. They can set a password if they would rather have one, but nobody is asked to remember another login for a conference they speak at once.' },
+      { q: 'What happens to my data if I stop using it?', a: 'It is in your own Postgres database, and everything exports as CSV or XLSX. There is no export fee, because there is nobody to pay.' },
+      { q: 'Can I move off my current tool mid-cycle?', a: 'Import speakers and sessions from CSV, then carry on. Review history is the awkward part of any migration, so switch between events if you can.' },
+      { q: 'Does it do registration and ticketing?', a: 'No, deliberately. That is a different product with different regulations attached. Gather pushes the program to whatever you already use for registration.' },
+      { q: 'Who is behind it?', a: 'It was built to replace a specific forty thousand dollar renewal for a specific conference, and opened up so the next conference does not have to have the same argument.' }
+    ];
+    const faqs = F.map((f, i) => ({
+      q: f.q, a: f.a,
+      open: i === this.state.openFaq,
+      glyph: i === this.state.openFaq ? '\u2212' : '+',
+      rows: i === this.state.openFaq ? '1fr' : '0fr',
+      toggle: () => this.setState(s => ({ openFaq: s.openFaq === i ? -1 : i }))
+    }));
+    const mk = t => e => {
+      const b = e.currentTarget, o = b.textContent;
+      try { navigator.clipboard.writeText(t); } catch (x) {}
+      b.textContent = 'Copied';
+      setTimeout(() => { b.textContent = o; }, 1600);
     };
+    const TAG = 'scr' + 'ipt';
+    return {
+      showGuides: this.props.blueprintGuides ?? true,
+      showScene: this.props.footerScene ?? true,
+      faqsL: faqs.slice(0, 4), faqsR: faqs.slice(4),
+      copyEmbed: mk('<' + TAG + ' src="https://gather.dev/embed.js" data-event="devflow-2027" data-view="agenda"></' + TAG + '>'),
+      copyInstall: mk('git clone https://github.com/<org>/gather\ncd gather && make setup && make dev')
+    };
+  }
+  componentDidMount() {
+    if (this._up) return; this._up = 1;
+    const rm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this._els = s => Array.from(document.querySelectorAll(s));
+    this._el = s => document.querySelector(s);
+    if ((this.props.annotations ?? true) === false) {
+      this._els('[data-ann],[data-arrow],[data-heroann]').forEach(el => { el.style.display = 'none'; });
+    }
+    this._io(rm); this._arrows(rm); this._plxInit(rm);
+    this._form(rm); this._review(rm); this._send(rm); this._portal(rm);
+    this._agenda(rm); this._embed(rm); this._pal(rm);
+  }
+  _when(el, fn, th) {
+    if (!el) return;
+    const io = new IntersectionObserver(es => es.forEach(en => {
+      if (en.isIntersecting) { io.disconnect(); fn(); }
+    }), { threshold: th || 0.3 });
+    io.observe(el);
+  }
+  _io(rm) {
+    const rvs = this._els('[data-rv]'), rules = this._els('[data-rule]'), counts = this._els('[data-count]');
+    if (rm) { counts.forEach(c => c.textContent = c.getAttribute('data-count')); return; }
+    const strike = 'cubic-bezier(.16,1,.3,1)';
+    rvs.forEach(el => {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity .52s ' + strike;
+      el.style.transitionDelay = ((+el.getAttribute('data-rv') || 0) * 70) + 'ms';
+    });
+    rules.forEach(el => { el.style.transform = 'scaleX(0)'; el.style.transformOrigin = 'left'; el.style.transition = 'transform .7s cubic-bezier(.22,.8,.24,1)'; });
+    counts.forEach(c => c.textContent = '0');
+    const io = new IntersectionObserver(es => es.forEach(en => {
+      if (!en.isIntersecting) return;
+      const el = en.target; io.unobserve(el);
+      if (el.hasAttribute('data-rv')) { el.style.opacity = '1'; }
+      else if (el.hasAttribute('data-rule')) { el.style.transform = 'scaleX(1)'; }
+      else { this._count(el); }
+    }), { threshold: 0.2 });
+    rvs.concat(rules, counts).forEach(el => io.observe(el));
+    setTimeout(() => rvs.forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (r.top < innerHeight && r.bottom > 0) { el.style.opacity = '1'; }
+    }), 400);
+  }
+  _count(el) {
+    const t = +el.getAttribute('data-count'), s = performance.now();
+    const f = n => { const p = Math.min(1, (n - s) / 900), e = 1 - Math.pow(1 - p, 3); el.textContent = Math.round(t * e); if (p < 1) requestAnimationFrame(f); };
+    requestAnimationFrame(f);
+  }
+  _arrows(rm) {
+    if (rm) return;
+    this._els('[data-arrow]').forEach(svg => {
+      const paths = Array.from(svg.querySelectorAll('path'));
+      paths.forEach(p => {
+        const L = p.getTotalLength();
+        p.style.strokeDasharray = L; p.style.strokeDashoffset = L;
+        p.style.transition = 'stroke-dashoffset .6s cubic-bezier(.22,.8,.24,1)';
+      });
+      this._when(svg, () => paths.forEach((p, i) => setTimeout(() => { p.style.strokeDashoffset = '0'; }, i * 160)), 0.35);
+    });
+  }
+  _plxInit(rm) {
+    if (rm) return;
+    const els = this._els('[data-plx]'); if (!els.length) return;
+    let tick = false;
+    const f = () => {
+      tick = false;
+      const vh = innerHeight;
+      els.forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.bottom < -100 || r.top > vh + 100) return;
+        const off = (r.top + r.height / 2 - vh / 2) / vh;
+        el.style.transform = 'translateY(' + Math.max(-18, Math.min(18, -off * 36)).toFixed(1) + 'px)';
+      });
+    };
+    addEventListener('scroll', () => { if (!tick) { tick = true; requestAnimationFrame(f); } }, { passive: true }); f();
+  }
+  _loop(host, steps, total, rm) {
+    if (!host || rm) return;
+    let timers = [];
+    const run = () => {
+      timers.forEach(clearTimeout); timers = [];
+      steps.forEach(s => timers.push(setTimeout(s[1], s[0])));
+      timers.push(setTimeout(run, total));
+    };
+    this._when(host, run, 0.3);
+  }
+  _form(rm) {
+    const host = this._el('[data-fb]'); if (!host || rm) return;
+    const drop = host.querySelector('[data-fb-drop]'), cond = host.querySelector('[data-fb-cond]'), prev = host.querySelector('[data-fb-prev]');
+    if (!drop || !cond || !prev) return;
+    const cue = 'cubic-bezier(.22,.8,.24,1)';
+    const steps = [
+      [0, () => {
+        drop.style.transition = 'none'; drop.style.transform = 'translate(26px,-22px) rotate(-2deg)'; drop.style.opacity = '.45'; drop.style.borderColor = '#FF5A36';
+        cond.style.transition = 'none'; cond.style.opacity = '0'; cond.style.transform = 'translateX(-10px)';
+        prev.style.transition = 'none'; prev.style.opacity = '0';
+      }],
+      [420, () => { drop.style.transition = 'transform .5s ' + cue + ', opacity .4s, border-color .4s'; drop.style.transform = 'none'; drop.style.opacity = '1'; }],
+      [1000, () => { drop.style.borderColor = '#26262D'; }],
+      [1250, () => { cond.style.transition = 'opacity .4s ease, transform .4s ' + cue; cond.style.opacity = '1'; cond.style.transform = 'none'; }],
+      [1900, () => { prev.style.transition = 'opacity .45s ease'; prev.style.opacity = '1'; }]
+    ];
+    this._loop(host, steps, 5200, rm);
+  }
+  _review(rm) {
+    const host = this._el('[data-rq]'); if (!host || rm) return;
+    const rows = Array.from(host.querySelectorAll('[data-rq-row]')), bars = Array.from(host.querySelectorAll('[data-rq-bar]')), fills = Array.from(host.querySelectorAll('[data-rq-fill]')), keys = Array.from(host.querySelectorAll('[data-rq-key]')), title = host.querySelector('[data-rq-title]');
+    const titles = ['Serving LLMs on spot GPUs', 'Evals that catch regressions', 'The multimodal pipeline at scale'];
+    const lite = i => { const k = keys[i]; if (!k) return; k.style.color = '#331313'; k.style.borderColor = '#FF5A36'; k.style.background = '#FF5A36'; setTimeout(() => { k.style.color = '#8A8A87'; k.style.borderColor = '#26262D'; k.style.background = 'transparent'; }, 320); };
+    const sel = i => { rows.forEach((r, j) => { r.style.background = j === i ? '#17171B' : 'transparent'; }); bars.forEach((b, j) => { b.style.opacity = j === i ? '1' : '0'; }); if (title && titles[i]) title.textContent = titles[i]; };
+    const fill = on => fills.forEach((f, i) => setTimeout(() => { f.style.width = on ? f.getAttribute('data-w') + '%' : '0%'; }, i * 90));
+    rows.forEach(r => { r.style.transition = 'background .18s'; });
+    bars.forEach(b => { b.style.transition = 'opacity .18s'; });
+    fills.forEach(f => { f.style.width = '0%'; });
+    const steps = [
+      [0, () => { sel(0); fill(false); }],
+      [300, () => fill(true)],
+      [1500, () => { lite(2); }],
+      [1900, () => { lite(3); fill(false); }],
+      [2350, () => { lite(0); sel(1); }],
+      [2900, () => fill(true)],
+      [4100, () => { lite(0); fill(false); sel(2); }],
+      [4700, () => fill(true)]
+    ];
+    this._loop(host, steps, 6800, rm);
+  }
+  _send(rm) {
+    const host = this._el('[data-sd]'); if (!host || rm) return;
+    const c = host.querySelector('[data-sd-c]'), b = host.querySelector('[data-sd-b]'), stop = host.querySelector('[data-sd-stop]'), send = host.querySelector('[data-sd-send]');
+    if (!c || !b || !stop) return;
+    c.textContent = '38'; c.style.color = '#F2F2F0';
+    b.style.borderColor = '#26262D'; b.style.background = '#17171B';
+    stop.style.opacity = '0';
+    this._when(host, () => {
+      setTimeout(() => { c.textContent = '41'; c.style.color = '#F0766A'; b.style.borderColor = '#F0766A'; b.style.background = '#3A1F1E'; }, 1100);
+      setTimeout(() => { stop.style.opacity = '1'; if (send) { send.style.opacity = '.45'; } }, 1600);
+    }, 0.4);
+  }
+  _portal(rm) {
+    const host = this._el('[data-pt]'); if (!host || rm) return;
+    const row = host.querySelector('[data-pt-row]'), bar = host.querySelector('[data-pt-bar]'), tag = host.querySelector('[data-pt-tag]'), count = this._el('[data-pt-count]');
+    if (!row || !bar) return;
+    bar.style.width = '0';
+    this._when(host, () => {
+      setTimeout(() => { bar.style.width = '100%'; }, 500);
+      setTimeout(() => {
+        row.style.borderLeftColor = '#57B899'; row.style.opacity = '.7';
+        tag.textContent = 'DONE'; tag.style.color = '#57B899'; tag.style.background = '#123029';
+        bar.style.background = '#57B899';
+        if (count) { count.textContent = '32'; count.animate([{ transform: 'translateY(6px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 320, easing: 'cubic-bezier(.16,1,.3,1)' }); }
+      }, 1500);
+    }, 0.4);
+  }
+  _embed(rm) {
+    const host = this._el('[data-em]'); if (!host || rm) return;
+    const code = host.querySelector('[data-em-code]'), out = host.querySelector('[data-em-out]');
+    if (!code || !out) return;
+    const T = 'scr' + 'ipt';
+    const txt = '<' + T + ' src="https://gather.dev/embed.js"\n  data-event="devflow-2027"\n  data-view="agenda"></' + T + '>';
+    code.textContent = '';
+    out.style.opacity = '0'; out.style.transform = 'translateY(10px)';
+    this._when(host, () => {
+      setTimeout(() => { out.style.opacity = '1'; out.style.transform = 'none'; }, 120);
+      let i = 0;
+      const tick = () => {
+        i++; code.textContent = txt.slice(0, i);
+        if (i < txt.length) setTimeout(tick, 13);
+      };
+      setTimeout(tick, 240);
+    }, 0.25);
+  }
+  _agenda(rm) {
+    const box = this._el('[data-demo]'); if (!box || rm) return;
+    const drag = box.querySelector('[data-drag]'), occ = box.querySelector('[data-occ]'), chip = box.querySelector('[data-dchip]'), insp = box.querySelector('[data-insp]'), play = box.querySelector('[data-dplay]'), cA = box.querySelector('[data-cell-a]'), cB = box.querySelector('[data-cell-b]');
+    if (!drag || !occ) return;
+    const cue = 'cubic-bezier(.22,.8,.24,1)', strike = 'cubic-bezier(.16,1,.3,1)';
+    const sc = () => (box.getBoundingClientRect().width / box.offsetWidth) || 1;
+    const pos = e => { const k = sc(), b = box.getBoundingClientRect(), r = e.getBoundingClientRect(); return [(r.left - b.left) / k, (r.top - b.top) / k]; };
+    let oD = null, oO = null;
+    const T = (o, t, ox, oy) => { const p = pos(t); return 'translate(' + (p[0] - o[0] + ox).toFixed(1) + 'px,' + (p[1] - o[1] + oy).toFixed(1) + 'px)'; };
+    const chipSet = (txt, kind) => {
+      chip.textContent = txt;
+      if (kind === 'alarm') { chip.style.borderColor = '#F0766A'; chip.style.color = '#F0766A'; chip.style.background = '#3A1F1E'; }
+      else { chip.style.borderColor = '#57B899'; chip.style.color = '#57B899'; chip.style.background = '#123029'; }
+      chip.style.transition = 'opacity .18s'; chip.style.opacity = '1';
+    };
+    const steps = [
+      [0, () => {
+        if (!oD) { oD = pos(drag); oO = pos(occ); }
+        drag.style.transition = 'none'; drag.style.transform = 'none'; drag.style.borderColor = '#26262D'; drag.style.boxShadow = 'none';
+        occ.style.transition = 'none'; occ.style.transform = 'none';
+        chip.style.transition = 'none'; chip.style.opacity = '0';
+        insp.style.transform = 'translateX(118%)';
+      }],
+      [600, () => { drag.style.transition = 'transform .32s ' + cue + ', border-color .2s, box-shadow .2s'; drag.style.borderColor = '#FF5A36'; drag.style.boxShadow = '0 22px 40px -14px rgba(0,0,0,.85)'; drag.style.transform = 'translate(6px,-6px) scale(1.02)'; }],
+      [1150, () => { drag.style.transition = 'transform .72s ' + cue + ', border-color .2s'; drag.style.transform = T(oD, cA, 4, 30) + ' scale(1.02)'; }],
+      [1850, () => chipSet('Speaker clash: Priya Raghunathan, 10:00', 'alarm')],
+      [2650, () => { drag.style.transition = 'transform .3s ' + strike; drag.style.transform = T(oD, cA, 4, 38); }],
+      [3150, () => { insp.style.transform = 'translateX(0)'; }],
+      [4700, () => {
+        occ.style.transition = 'transform .5s ' + cue; occ.style.transform = T(oO, cB, 0, 0);
+        drag.style.transition = 'transform .45s ' + cue + ', border-color .3s, box-shadow .3s'; drag.style.transform = T(oD, cA, 0, 0); drag.style.borderColor = '#26262D'; drag.style.boxShadow = 'none';
+      }],
+      [5300, () => chipSet('Clear', 'clear')],
+      [5950, () => { insp.style.transform = 'translateX(118%)'; }],
+      [6600, () => { chip.style.transition = 'opacity .6s'; chip.style.opacity = '0'; }]
+    ];
+    const LOOP = 8800;
+    let timers = [], idx = 0, paused = true, started = false;
+    const runFrom = i => {
+      paused = false;
+      timers.forEach(clearTimeout); timers = [];
+      const base = steps[i] ? steps[i][0] : 0;
+      for (let j = i; j < steps.length; j++) {
+        const jj = j;
+        timers.push(setTimeout(() => { idx = jj + 1; steps[jj][1](); }, steps[jj][0] - base));
+      }
+      timers.push(setTimeout(() => { idx = 0; runFrom(0); }, LOOP - base));
+    };
+    const pause = () => {
+      if (paused || !started) return;
+      paused = true; timers.forEach(clearTimeout); timers = [];
+      play.style.opacity = '1'; play.style.pointerEvents = 'auto';
+    };
+    const resume = () => {
+      if (!paused || !started) return;
+      play.style.opacity = '0'; play.style.pointerEvents = 'none';
+      runFrom(Math.min(idx, steps.length - 1));
+    };
+    box.addEventListener('mouseenter', pause);
+    box.addEventListener('mouseleave', resume);
+    play.addEventListener('click', e => { e.stopPropagation(); resume(); });
+    this._when(box, () => { started = true; runFrom(0); }, 0.35);
+  }
+  _pal(rm) {
+    const pal = this._el('[data-pal]'); if (!pal) return;
+    const txt = pal.querySelector('[data-pal-text]'), ghost = pal.querySelector('[data-pal-ghost]'), panel = pal.querySelector('[data-pal-panel]'), rows = Array.from(pal.querySelectorAll('[data-pal-row]'));
+    if (rm) { if (txt) txt.textContent = 'agenda'; if (ghost) ghost.style.display = 'none'; rows.forEach(r => { if (r.getAttribute('data-m') === '0') r.style.opacity = '.14'; }); return; }
+    let timers = [];
+    const st = (f, t) => timers.push(setTimeout(f, t));
+    const word = 'agenda';
+    const cycle = () => {
+      timers = [];
+      panel.style.transition = 'none'; panel.style.opacity = '1'; panel.style.transform = 'none';
+      txt.textContent = ''; ghost.style.opacity = '1';
+      rows.forEach(r => {
+        r.style.transition = 'none'; r.style.transitionDelay = '0ms'; r.style.opacity = '1'; r.style.transform = 'none'; r.style.background = 'transparent';
+        const b = r.querySelector('[data-cuebar]'); if (b) { b.style.transition = 'none'; b.style.opacity = '0'; }
+      });
+      for (let i = 0; i < word.length; i++) st(() => { ghost.style.opacity = '0'; txt.textContent = word.slice(0, i + 1); }, 500 + i * 130);
+      st(() => {
+        rows.forEach((r, i) => {
+          if (r.getAttribute('data-m') === '0') {
+            r.style.transition = 'opacity .24s ease, transform .24s ease'; r.style.transitionDelay = (i * 40) + 'ms';
+            r.style.opacity = '.14'; r.style.transform = 'translateX(-4px)';
+          }
+        });
+      }, 1750);
+      st(() => {
+        const c = rows.find(r => r.getAttribute('data-m') === '1');
+        if (c) { c.style.transition = 'background .16s'; c.style.background = '#1F1F24'; const b = c.querySelector('[data-cuebar]'); if (b) { b.style.transition = 'opacity .16s'; b.style.opacity = '1'; } }
+      }, 2550);
+      st(() => { panel.style.transition = 'opacity .32s ease, transform .32s ease'; panel.style.opacity = '0'; panel.style.transform = 'scale(.985) translateY(4px)'; }, 3400);
+      st(cycle, 6600);
+    };
+    this._when(pal, cycle, 0.4);
   }
 }
 </script>

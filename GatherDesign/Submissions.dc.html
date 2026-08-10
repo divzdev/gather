@@ -22,10 +22,9 @@
       <sc-if value="{{ popSwitch }}" hint-placeholder-val="{{ false }}">
         <button onClick="{{ closePop }}" style="position:fixed;inset:0;background:none;border:none;cursor:default;z-index:31" aria-label="Close"></button>
         <div style="position:absolute;top:44px;left:12px;width:280px;background:var(--cd,#FFFFFF);border:1px solid var(--ln,#E1E7E9);border-radius:10px;box-shadow:0 12px 32px rgba(16,19,25,.16);padding:6px;z-index:32">
-          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);padding:8px 10px 4px">YOUR EVENTS</div>
-          <sc-for list="{{ events }}" as="ev" hint-placeholder-count="2">
-            <button onClick="{{ ev.on }}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;background:{{ ev.bg }};border:none;width:100%;text-align:left" style-hover="background:var(--sk,#EDF1F2)"><span style="width:7px;height:7px;border-radius:50%;background:{{ ev.dot }}"></span><div style="flex:1"><div style="font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ ev.n }}</div><div style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ ev.meta }}</div></div></button>
-          </sc-for>
+          <div style="font:600 10px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.08em;color:var(--i4,#99A6AD);padding:8px 10px 4px">SWYX &amp; TEAM</div>
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;background:var(--sw,#FFEAE6)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok,#0E7A5F)"></span><div style="flex:1"><div style="font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">AI Engineer 2026</div><div style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">12–14 Oct · cfp open</div></div></div>
+          <button onClick="{{ otherEvent }}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;background:none;border:none;width:100%;text-align:left" style-hover="background:var(--sk,#EDF1F2)"><span style="width:7px;height:7px;border-radius:50%;background:var(--i4,#99A6AD)"></span><div style="flex:1"><div style="font:600 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">AI Engineer Europe 2027</div><div style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">draft</div></div></button>
         </div>
       </sc-if>
       <button onClick="{{ focusSearch }}" title="Command palette (demo: focuses the list filter)" style="display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:999px;background:var(--sk,#EDF1F2);border:1px solid var(--ln,#E1E7E9);font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);min-width:220px;text-align:left"><span style="flex:1">Search or jump to…</span><span style="font:500 10px 'IBM Plex Mono',monospace;border:1px solid var(--ls,#C8D2D5);border-radius:4px;padding:1px 5px;color:var(--i3,#6B7B84)">⌘K</span></button>
@@ -69,22 +68,22 @@
     </div>
 
     <div style="height:32px;flex:none;display:flex;align-items:center;gap:16px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
-      <button onClick="{{ hsAll }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">SUB {{ subCount }}</button><span style="color:var(--i4,#99A6AD)">·</span>
-      <button onClick="{{ hsUnrev }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">UNREVIEWED {{ unreviewedCount }}</button><span style="color:var(--i4,#99A6AD)">·</span>
-      <button onClick="{{ hsDecided }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">DECIDED {{ decidedCount }}</button><span style="color:var(--i4,#99A6AD)">·</span>
+      <button onClick="{{ hsAll }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">SUB 216</button><span style="color:var(--i4,#99A6AD)">·</span>
+      <button onClick="{{ hsUnrev }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">UNREVIEWED 38</button><span style="color:var(--i4,#99A6AD)">·</span>
+      <button onClick="{{ hsDecided }}" style="background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)" style-hover="color:var(--ik,#16232B)">DECIDED 61</button><span style="color:var(--i4,#99A6AD)">·</span>
       <a href="Tasks.dc.html" style="text-decoration:none;background:none;border:none;padding:0;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--pd,#B96A1F)" style-hover="color:var(--ik,#16232B)">OVERDUE TASKS 12</a><span style="color:var(--i4,#99A6AD)">·</span>
       <a href="Agenda.dc.html" style="text-decoration:none;background:none;border:none;padding:0;font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--cn,#D8432B)" style-hover="color:var(--ik,#16232B)">⚠ 3 CONFLICTS</a>
       <div style="flex:1"></div>
-      <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">CFP closes in {{ cfpShort }}</span>
+      <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">CFP closes in 38d</span>
     </div>
 
     <div style="flex:1;overflow-y:auto;position:relative;padding:20px 28px 80px">
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
         <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Submissions</h1>
         <div style="flex:1"></div>
-        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ countLine }} · seeded slice</span>
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">16 of 216 shown · seeded slice</span>
       </div>
-      <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">{{ unreviewedCount }} unreviewed across the program · {{ pendingCount }} decisions queued to send · CFP closes in {{ cfpDays }} days</div>
+      <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">38 unreviewed across the program · 9 decisions queued to send · CFP closes in 38 days</div>
       <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px">
         <button onClick="{{ vAll.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ vAll.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ vAll.ring }};text-align:left;cursor:pointer">
           <span style="width:32px;height:32px;border-radius:9px;background:var(--ifw,#E9ECF7);color:var(--if,#47599F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="currentColor"><rect x="1.5" y="2" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="6.3" width="12" height="2.4" rx="1.2"></rect><rect x="1.5" y="10.6" width="8" height="2.4" rx="1.2"></rect></svg></span>
@@ -107,7 +106,7 @@
       <sc-if value="{{ banner }}" hint-placeholder-val="{{ true }}">
         <div style="display:flex;align-items:center;gap:12px;background:var(--pdw,#F9EDDF);border:1px solid var(--pdl,#EFD3B6);border-radius:10px;padding:10px 14px;margin-bottom:14px">
           <span style="width:7px;height:7px;border-radius:50%;background:var(--pd,#B96A1F);flex:none"></span>
-          <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);flex:1"><span style="font-weight:600;color:var(--pd,#B96A1F)">{{ pendingCount }} decisions are set but not sent.</span> Emails only go out from Messages. Sending is always a separate, explicit step.</span>
+          <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);flex:1"><span style="font-weight:600;color:var(--pd,#B96A1F)">9 decisions are set but not sent.</span> Emails only go out from Messages. Sending is always a separate, explicit step.</span>
           <button onClick="{{ bannerGo }}" style="height:26px;padding:0 10px;border-radius:6px;background:none;border:1px solid var(--pdl,#EFD3B6);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--pd,#B96A1F)">Review and send</button>
           <button onClick="{{ bannerX }}" aria-label="Dismiss" style="background:none;border:none;font:500 13px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);padding:2px">✕</button>
         </div>
@@ -139,7 +138,6 @@
         </div>
         <div style="flex:1"></div>
         <button onClick="{{ exportCsv }}" style="height:32px;padding:0 12px;border-radius:999px;background:var(--cd,#FFFFFF);border:1px solid var(--ls,#C8D2D5);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Export CSV</button>
-        <button onClick="{{ exportXlsx }}" style="height:32px;padding:0 12px;border-radius:999px;background:var(--cd,#FFFFFF);border:1px solid var(--ls,#C8D2D5);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Export XLSX</button>
       </div>
 
       <sc-if value="{{ hasChips }}" hint-placeholder-val="{{ false }}">
@@ -509,7 +507,6 @@ class Component extends DCLogic {
       bulkAcc: () => this.decide(s.sel, 'accepted'), bulkWait: () => this.decide(s.sel, 'waitlisted'), bulkRej: () => this.decide(s.sel, 'rejected'),
       bulkAssign: () => this.toast('Reviewer assignment opens the balance-by-load proposal, designed with the Review screen.'),
       exportCsv: () => this.csv(),
-      exportXlsx: () => this.toast('Builds the same rows as an Excel workbook, server-side.'),
       clearFilters: () => this.setState({ fTracks: [], fStatus: [], q: '', view: 'All' }),
       banner: (this.props.pendingDecisionsBanner ?? true) && !s.hideBanner && !firstRun,
       bannerX: () => this.setState({ hideBanner: true }),
