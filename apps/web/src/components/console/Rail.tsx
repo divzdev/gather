@@ -12,6 +12,7 @@ import { useState, useSyncExternalStore } from "react";
 import { ConsoleRail, type ConsoleRailData } from "@/components/design/ConsoleRail";
 import { useQuery } from "@tanstack/react-query";
 
+import { CommandPalette } from "@/components/console/CommandPalette";
 import { useProgramStats } from "@/components/console/stats";
 import { authed, getEventId, setEventId } from "@/lib/session";
 
@@ -152,6 +153,7 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     <div style={{ ...style, position: "relative" }}>
       <ConsoleRail d={data} />
       {collapsed ? null : <EventSwitcher />}
+      <CommandPalette />
     </div>
   );
 }

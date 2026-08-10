@@ -6,8 +6,7 @@ import { useMemo, useState } from "react";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Sessions, type SessionsData } from "@/components/design/Sessions";
-import { API_BASE_URL } from "@/lib/api";
-import { authed } from "@/lib/session";
+import { authed, download } from "@/lib/session";
 
 type SessionRow = {
   id: string;
@@ -38,6 +37,37 @@ const STATUS: Record<string, { label: string; fg: string; bg: string }> = {
 
 type View = "All" | "Unscheduled" | "Scheduled" | "Needs approval";
 type SortKey = "title" | "code" | "track" | "sched";
+/** The fields worth setting across a selection. Title and abstract are not on
+ *  this list on purpose — they are never the same across five talks. */
+type BulkField = "track" | "format" | "approval";
+type ImportedRow = { row: number; title: string; outcome: string; detail: string | null };
+
+const IMPORT_EXAMPLE = `title,track,format,duration_minutes,speakers,abstract
+Shipping on Fridays,Platform,Talk,30,Ada Lovelace <ada@example.com>,Why we stopped being scared of it
+Type systems at scale,Platform,Workshop,90,Grace Hopper <grace@example.com>; Alan Kay <alan@example.com>,A hands-on session
+`;
+
+/** What the preview shows: the columns as read, with no interpretation. The
+ *  server parses the file again and is the authority on what imports. */
+function previewRows(raw: string): { t: string; tr: string; fmt: string; sp: string }[] {
+  const [head, ...rest] = raw.trim().split(/\r?\n/);
+  if (head === undefined) return [];
+  const columns = head.split(",").map((name) => name.trim().toLowerCase());
+  const at = (cells: string[], name: string) => cells[columns.indexOf(name)]?.trim() ?? "";
+
+  return rest
+    .filter((line) => line.trim() !== "")
+    .slice(0, 50)
+    .map((line) => {
+      const cells = line.split(",");
+      return {
+        t: at(cells, "title"),
+        tr: at(cells, "track"),
+        fmt: at(cells, "format"),
+        sp: at(cells, "speakers"),
+      };
+    });
+}
 
 const WHEN = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
@@ -61,6 +91,11 @@ export default function SessionsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("title");
   const [sortDir, setSortDir] = useState<1 | -1>(1);
   const [partDraft, setPartDraft] = useState("");
+  const [optOpen, setOptOpen] = useState(false);
+  const [imp, setImp] = useState(false);
+  const [impRaw, setImpRaw] = useState("");
+  const [impErr, setImpErr] = useState("");
+  const [bulk, setBulk] = useState<BulkField | null>(null);
 
   const { data } = useQuery({
     queryKey: ["sessions", eventId],
@@ -85,6 +120,52 @@ export default function SessionsPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["sessions", eventId] });
       toast("Content approval updated. Only approved content reaches the public site.");
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  const runImport = useMutation({
+    mutationFn: () =>
+      authed<{ created: number; updated: number; skipped: number; rows: ImportedRow[] }>(
+        `/events/${eventId}/sessions/import`,
+        { method: "POST", body: { csv_text: impRaw } },
+      ),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["sessions", eventId] });
+      const bad = result.rows.filter((row) => row.outcome === "skipped");
+      // A partial import is the normal outcome, so the count of what failed is
+      // as prominent as the count of what worked — and the reasons stay on
+      // screen rather than vanishing with a toast.
+      setImpErr(
+        bad.length === 0
+          ? ""
+          : bad.map((row) => `Row ${row.row}: ${row.detail ?? "skipped"}`).join("\n"),
+      );
+      if (bad.length === 0) {
+        setImp(false);
+        setImpRaw("");
+      }
+      toast(
+        `${result.created} created, ${result.updated} updated` +
+          (result.skipped > 0 ? `, ${result.skipped} skipped.` : "."),
+      );
+    },
+    onError: (error: Error) => setImpErr(error.message),
+  });
+
+  const bulkEdit = useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      authed<{ updated: number; skipped_locked: number }>(`/events/${eventId}/sessions/bulk`, {
+        method: "POST",
+        body,
+      }),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["sessions", eventId] });
+      setBulk(null);
+      toast(
+        `Updated ${result.updated} session${result.updated === 1 ? "" : "s"}.` +
+          (result.skipped_locked > 0 ? ` ${result.skipped_locked} locked, left alone.` : ""),
+      );
     },
     onError: (error: Error) => toast(error.message),
   });
@@ -170,6 +251,7 @@ export default function SessionsPage() {
     fg: sortKey === key ? "var(--ik,#16232B)" : "var(--i3,#6B7B84)",
   });
   const notBuilt = (what: string) => () => toast(`${what} is not built yet.`);
+  const impPreview = useMemo(() => previewRows(impRaw), [impRaw]);
 
   const screen: SessionsData = {
     ...chrome,
@@ -331,8 +413,8 @@ export default function SessionsPage() {
       setPartDraft((event.target as HTMLInputElement).value),
     addPart: notBuilt("Adding a speaker to a session"),
 
-    optOpen: false,
-    togOpt: notBuilt("Session options"),
+    optOpen,
+    togOpt: () => setOptOpen((current) => !current),
     doCsv: () => {
       const header = ["title", "speakers", "track", "format", "status", "scheduled"];
       const lines = filtered.map((row) =>
@@ -359,27 +441,74 @@ export default function SessionsPage() {
     doXlsx: () => {
       // Server-built, so the file matches the review export byte for byte in
       // shape rather than being a second implementation in the browser.
-      window.open(`${API_BASE_URL}/events/${eventId}/sessions/export.xlsx`);
+      void download(`/events/${eventId}/sessions/export.xlsx`, "sessions.xlsx").catch(
+        (error: Error) => toast(error.message),
+      );
       toast("Building the spreadsheet.");
     },
-    doFiles: notBuilt("Bulk file download"),
-    doImport: notBuilt("Importing sessions"),
+    doFiles: () => {
+      setOptOpen(false);
+      void download(`/events/${eventId}/tasks/download.zip`, "deliverables.zip").catch(
+        (error: Error) => toast(error.message),
+      );
+      toast("Building the deliverables archive.");
+    },
+    doImport: () => {
+      setOptOpen(false);
+      setImpErr("");
+      setImp(true);
+    },
+    bulkTrack: () => {
+      setOptOpen(false);
+      setBulk("track");
+    },
+    bulkFormat: () => {
+      setOptOpen(false);
+      setBulk("format");
+    },
+    bulkApproval: () => {
+      setOptOpen(false);
+      setBulk("approval");
+    },
 
-    imp: false,
-    impClose: () => undefined,
-    impRaw: "",
-    onImpRaw: () => undefined,
-    impRows: [],
-    impCount: 0,
-    impErr: "",
-    impErrShow: false,
-    impExample: notBuilt("Importing sessions"),
-    impFile: notBuilt("Choosing a file"),
-    impGo: notBuilt("Importing sessions"),
-    impGoBg: "var(--ls,#C8D2D5)",
-    impGoFg: "var(--i3,#6B7B84)",
-    impLabel: "Import",
-    impReady: false,
+    imp,
+    impClose: () => setImp(false),
+    impRaw,
+    onImpRaw: (event: React.SyntheticEvent) => {
+      setImpRaw((event.target as HTMLTextAreaElement).value);
+      setImpErr("");
+    },
+    impRows: impPreview.map((row) => ({
+      ...row,
+      trCol: TRACK_HUES[0]!,
+    })),
+    impCount: impPreview.length,
+    impErr,
+    impErrShow: impErr !== "",
+    impExample: () => {
+      setImpRaw(IMPORT_EXAMPLE);
+      setImpErr("");
+    },
+    impFile: (event: React.SyntheticEvent) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file === undefined) return;
+      void file.text().then((text) => {
+        setImpRaw(text);
+        setImpErr("");
+      });
+    },
+    impGo: () => {
+      if (impPreview.length === 0 || runImport.isPending) return;
+      runImport.mutate();
+    },
+    impGoBg: impPreview.length === 0 ? "var(--ls,#C8D2D5)" : "var(--sg,#E04E4E)",
+    impGoFg: impPreview.length === 0 ? "var(--i3,#6B7B84)" : "#FFFFFF",
+    impLabel: runImport.isPending
+      ? "Importing…"
+      : impPreview.length === 0
+        ? "Import"
+        : `Import ${impPreview.length}`,
+    impReady: impPreview.length > 0 && !runImport.isPending,
 
     toasts: toasts.map((entry) => ({
       msg: entry.msg,
@@ -392,5 +521,169 @@ export default function SessionsPage() {
     })),
   };
 
-  return <Sessions d={screen} />;
+  return (
+    <>
+      <Sessions d={screen} />
+      {bulk === null ? null : (
+        <BulkDialog
+          field={bulk}
+          count={filtered.length}
+          tracks={data?.tracks ?? []}
+          formats={data?.formats ?? []}
+          pending={bulkEdit.isPending}
+          onCancel={() => setBulk(null)}
+          onApply={(value) =>
+            bulkEdit.mutate({
+              session_ids: filtered.map((row) => row.id),
+              ...(bulk === "track"
+                ? value === ""
+                  ? { clear_track: true }
+                  : { track_id: value }
+                : bulk === "format"
+                  ? { session_format_id: value }
+                  : { content_status: value }),
+            })
+          }
+        />
+      )}
+    </>
+  );
+}
+
+const BULK_LABEL: Record<BulkField, string> = {
+  track: "Set track",
+  format: "Set format",
+  approval: "Set approval",
+};
+
+/** Applies to everything currently filtered, so it names the count and makes you
+ *  confirm — the same reason sending decisions asks for a recipient count. The
+ *  screen has no checkbox column; filtering to the five you mean is the
+ *  selection, and that is only safe if the number is in front of you. */
+function BulkDialog({
+  field,
+  count,
+  tracks,
+  formats,
+  pending,
+  onCancel,
+  onApply,
+}: {
+  field: BulkField;
+  count: number;
+  tracks: Named[];
+  formats: Named[];
+  pending: boolean;
+  onCancel: () => void;
+  onApply: (value: string) => void;
+}) {
+  const options =
+    field === "track"
+      ? [{ id: "", name: "No track" }, ...tracks]
+      : field === "format"
+        ? formats
+        : [
+            { id: "pending", name: "Pending" },
+            { id: "approved", name: "Approved" },
+            { id: "changes_requested", name: "Changes requested" },
+          ];
+  const [value, setValue] = useState(options[0]?.id ?? "");
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(13,16,32,.36)",
+        display: "grid",
+        placeItems: "center",
+        zIndex: 130,
+      }}
+      onClick={onCancel}
+    >
+      <div
+        role="dialog"
+        aria-label={BULK_LABEL[field]}
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          width: 420,
+          maxWidth: "92vw",
+          background: "var(--cd,#FFFFFF)",
+          border: "1px solid var(--ln,#E1E7E9)",
+          borderRadius: 14,
+          padding: 20,
+          boxShadow: "0 24px 60px rgba(13,16,32,.28)",
+          display: "grid",
+          gap: 14,
+        }}
+      >
+        <div style={{ font: "600 15px var(--font-plex-sans), sans-serif" }}>
+          {BULK_LABEL[field]} on {count} session{count === 1 ? "" : "s"}
+        </div>
+        <div
+          style={{
+            font: "400 13px var(--font-plex-sans), sans-serif",
+            color: "var(--i3,#6B7B84)",
+          }}
+        >
+          Everything in the current view changes. Locked sessions are left alone.
+        </div>
+        <label
+          style={{ display: "grid", gap: 6, font: "500 12px var(--font-plex-sans), sans-serif" }}
+        >
+          New value
+          <select
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            style={{
+              height: 36,
+              borderRadius: 8,
+              border: "1px solid var(--ls,#C8D2D5)",
+              padding: "0 10px",
+              font: "400 13px var(--font-plex-sans), sans-serif",
+              background: "var(--cd,#FFFFFF)",
+              color: "var(--ik,#16232B)",
+            }}
+          >
+            {options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button
+            onClick={onCancel}
+            style={{
+              height: 34,
+              padding: "0 14px",
+              borderRadius: 999,
+              border: "1px solid var(--ls,#C8D2D5)",
+              background: "var(--cd,#FFFFFF)",
+              font: "500 12.5px var(--font-plex-sans), sans-serif",
+              color: "var(--ik,#16232B)",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            disabled={pending || count === 0}
+            onClick={() => onApply(value)}
+            style={{
+              height: 34,
+              padding: "0 14px",
+              borderRadius: 999,
+              border: "none",
+              background: count === 0 ? "var(--ls,#C8D2D5)" : "var(--sg,#E04E4E)",
+              font: "600 12.5px var(--font-plex-sans), sans-serif",
+              color: count === 0 ? "var(--i3,#6B7B84)" : "#FFFFFF",
+            }}
+          >
+            {pending ? "Applying…" : `Change ${count}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

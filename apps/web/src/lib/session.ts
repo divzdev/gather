@@ -1,6 +1,6 @@
 "use client";
 
-import { ApiError, apiFetch } from "@/lib/api";
+import { API_BASE_URL, ApiError, apiFetch } from "@/lib/api";
 
 const TOKEN_KEY = "gather.token";
 const EVENT_KEY = "gather.event";
@@ -96,4 +96,53 @@ export async function authed<T>(
     if (token === null) throw error;
     return send(token);
   }
+}
+
+/** Download a file from an authenticated endpoint.
+ *
+ *  `window.open` cannot carry the bearer token, so every export that reached for
+ *  it was quietly getting a 401 page instead of a file. Fetch it, then hand the
+ *  browser a blob.
+ *
+ *  Passing `ids` makes it a POST — used where the caller exports exactly what is
+ *  on screen and the list is too long for a URL.
+ */
+export async function download(
+  path: string,
+  filename: string,
+  ids?: readonly string[],
+): Promise<void> {
+  const request = (token: string | null): Promise<Response> =>
+    fetch(`${API_BASE_URL}${path}`, {
+      credentials: "include",
+      ...(ids === undefined
+        ? {}
+        : {
+            method: "POST",
+            body: JSON.stringify({ submission_ids: ids }),
+          }),
+      headers: {
+        ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
+        ...(ids === undefined ? {} : { "Content-Type": "application/json" }),
+      },
+    });
+
+  let response = await request(getToken());
+  if (response.status === 401) {
+    const token = await refreshAccessToken();
+    if (token !== null) response = await request(token);
+  }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => undefined)) as
+      | { error?: { message?: string } }
+      | undefined;
+    throw new Error(body?.error?.message ?? `Could not build ${filename}.`);
+  }
+
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }

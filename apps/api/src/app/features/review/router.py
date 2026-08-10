@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from app.core import mail
 from app.core.deps import DbSession, bind_tenant, require_role
 from app.core.errors import NotFoundError
+from app.core.xlsx import spreadsheet
 from app.features.review import service
 from app.features.review.schemas import (
     AssignRequest,
@@ -363,27 +364,14 @@ async def export_results_xlsx(
     Scores go in as numbers rather than text so the column sorts and averages in
     Excel instead of ordering 10 before 9.
     """
-    from openpyxl import Workbook
-
-    book = Workbook()
-    sheet = book.active
-    if sheet is None:  # pragma: no cover - a new Workbook always has one
-        raise NotFoundError("Could not build the workbook.")
-    sheet.title = "Review results"
-    sheet.append(RESULT_COLUMNS)
-
-    for row in await _result_rows(session, round_id):
-        score = row[5]
-        sheet.append([*row[:5], float(score) if score not in ("", None) else None, row[6]])
-
-    sheet.freeze_panes = "A2"
-    for column, width in zip("ABCDEFG", (10, 60, 34, 14, 9, 14, 16), strict=False):
-        sheet.column_dimensions[column].width = width
-
-    buffer = io.BytesIO()
-    book.save(buffer)
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": 'attachment; filename="review-results.xlsx"'},
+    rows = [
+        [*row[:5], float(row[5]) if row[5] not in ("", None) else None, row[6]]
+        for row in await _result_rows(session, round_id)
+    ]
+    return spreadsheet(
+        title="Review results",
+        filename="review-results.xlsx",
+        header=RESULT_COLUMNS,
+        rows=rows,
+        widths=(10, 60, 34, 14, 9, 14, 16),
     )

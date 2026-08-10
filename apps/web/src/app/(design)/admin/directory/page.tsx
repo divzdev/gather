@@ -15,7 +15,7 @@ import { Rail } from "@/components/console/Rail";
 import { useProgramStats } from "@/components/console/stats";
 import { card, EmptyState, PageHead, pill, quietPill, StatTiles } from "@/components/ui";
 import { API_BASE_URL } from "@/lib/api";
-import { authed, getToken } from "@/lib/session";
+import { authed, download, getToken } from "@/lib/session";
 
 type Appearance = { event_id: string; event_name: string; status: string };
 
@@ -224,7 +224,9 @@ export default function DirectoryPage() {
               </button>
               <button
                 style={quietPill}
-                onClick={() => window.open(`${API_BASE_URL}/orgs/${orgId}/directory/export.csv`)}
+                onClick={() => {
+                  void download(`/orgs/${orgId}/directory/export.csv`, "directory.csv");
+                }}
               >
                 Export
               </button>

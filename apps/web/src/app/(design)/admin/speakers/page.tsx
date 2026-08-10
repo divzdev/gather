@@ -1,13 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Speakers, type SpeakersData } from "@/components/design/Speakers";
 import { API_BASE_URL } from "@/lib/api";
-import { authed, getToken } from "@/lib/session";
+import { authed, download, getToken } from "@/lib/session";
 
 type Roster = {
   id: string;
@@ -67,7 +68,8 @@ export default function SpeakersPage() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<1 | -1>(1);
   const [hover, setHover] = useState<string | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // ?open=<id> so a speaker can be linked to — see the same note on submissions.
+  const [openId, setOpenId] = useState<string | null>(useSearchParams().get("open"));
   const [tab, setTab] = useState<"sessions" | "tasks" | "files" | "notes">("sessions");
   const [filterPop, setFilterPop] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
@@ -181,7 +183,9 @@ export default function SpeakersPage() {
   });
 
   const exportCsv = () => {
-    window.open(`${API_BASE_URL}/events/${eventId}/speakers/export.csv`, "_blank");
+    void download(`/events/${eventId}/speakers/export.csv`, "speakers.csv").catch(
+      (error: Error) => toast(error.message),
+    );
   };
 
 

@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select
 
 from app.core.deps import DbSession, bind_tenant, require_role
 from app.core.errors import NotFoundError
 from app.core.pagination import ListQueryDep, PageMeta, paginate
+from app.core.xlsx import spreadsheet
 from app.features.submissions import service
 from app.features.submissions.schemas import (
     BulkDecisionRequest,
@@ -267,3 +270,95 @@ async def add_note(
     session.add(note)
     await session.flush()
     return NoteRead(id=note.id, body=note.body, author_name=user.name, created_at=note.created_at)
+
+
+EXPORT_COLUMNS = (
+    "code",
+    "title",
+    "speakers",
+    "status",
+    "decision",
+    "score_avg",
+    "reviews",
+    "submitted_at",
+)
+EXPORT_WIDTHS = (10, 60, 40, 14, 16, 10, 9, 26)
+
+
+class ExportRequest(BaseModel):
+    """Which rows, in the caller's order.
+
+    A POST rather than query parameters because the screen exports what it is
+    showing, and two hundred ids do not fit in a URL. Empty means everything.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    submission_ids: list[uuid.UUID] = Field(default_factory=list, max_length=1000)
+
+
+async def _export_rows(session: DbSession, body: ExportRequest) -> list[list[Any]]:
+    statement = select(Submission)
+    if body.submission_ids:
+        statement = statement.where(Submission.id.in_(body.submission_ids))
+    rows = list((await session.execute(statement)).scalars().all())
+
+    order = {item: index for index, item in enumerate(body.submission_ids)}
+    rows.sort(key=lambda row: order.get(row.id, len(order)))
+
+    return [
+        [
+            row.code,
+            row.title,
+            "; ".join(person.name for person in row.speakers),
+            row.status.value,
+            row.decision_status.value,
+            float(row.score_avg) if row.score_avg is not None else None,
+            row.review_count,
+            "" if row.submitted_at is None else row.submitted_at.isoformat(),
+        ]
+        for row in await _with_speakers(session, rows)
+    ]
+
+
+@router.post("/export.xlsx")
+async def export_xlsx(
+    body: ExportRequest,
+    session: DbSession,
+    _: User = Depends(require_role(*READ)),
+) -> Response:
+    """The proposals as a spreadsheet.
+
+    Scores are numbers, not text, so the column averages and sorts in Excel.
+    """
+    return spreadsheet(
+        title="Submissions",
+        filename="submissions.xlsx",
+        header=EXPORT_COLUMNS,
+        rows=await _export_rows(session, body),
+        widths=EXPORT_WIDTHS,
+    )
+
+
+@router.post("/export.csv")
+async def export_csv(
+    body: ExportRequest,
+    session: DbSession,
+    _: User = Depends(require_role(*READ)),
+) -> Response:
+    """The same rows, same order, same columns — as CSV.
+
+    Server-side alongside the xlsx so the two files never disagree about what an
+    export contains.
+    """
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(EXPORT_COLUMNS)
+    for row in await _export_rows(session, body):
+        writer.writerow(["" if cell is None else cell for cell in row])
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="submissions.csv"'},
+    )

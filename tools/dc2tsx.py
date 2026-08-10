@@ -134,6 +134,10 @@ ROUTES = {
     "Settings.dc.html": "/admin/settings",
     "Portal.dc.html": "/portal",
     "Auth.dc.html": "/login",
+    # These two screens were built after the prototype, so the rail's links to
+    # them stayed relative .dc.html paths and 404'd in the app.
+    "Directory.dc.html": "/admin/directory",
+    "Program.dc.html": "/admin/program",
     "CFP.dc.html": "/e/devflow-2027/cfp",
     "Event Landing.dc.html": "/e/devflow-2027",
 }

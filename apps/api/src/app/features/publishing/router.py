@@ -12,6 +12,7 @@ from sqlalchemy import select
 
 from app.core.deps import DbSession, bind_tenant, require_role
 from app.core.errors import ApiError, NotFoundError
+from app.core.xlsx import spreadsheet
 from app.features.publishing import notify, snapshot
 from app.features.scheduling import conflicts
 from app.models import (
@@ -298,20 +299,11 @@ async def export_sessions_xlsx(
     Server-side like every other export here, rather than assembled in the
     browser: one implementation, and the file is identical whichever screen asks.
     """
-    import io
-
-    from openpyxl import Workbook
-
-    rows = await list_sessions(session)
-    book = Workbook()
-    sheet = book.active
-    if sheet is None:  # pragma: no cover - a new Workbook always has one
-        raise NotFoundError("Could not build the workbook.")
-    sheet.title = "Sessions"
-    sheet.append(["title", "speakers", "duration_minutes", "status", "approval", "starts_at"])
-
-    for row in rows:
-        sheet.append(
+    return spreadsheet(
+        title="Sessions",
+        filename="sessions.xlsx",
+        header=["title", "speakers", "duration_minutes", "status", "approval", "starts_at"],
+        rows=[
             [
                 row.title,
                 "; ".join(person.name for person in row.speakers),
@@ -322,15 +314,7 @@ async def export_sessions_xlsx(
                 # rather than a datetime that silently loses the offset.
                 "" if row.starts_at is None else row.starts_at.isoformat(),
             ]
-        )
-    sheet.freeze_panes = "A2"
-    for column, width in zip("ABCDEF", (60, 34, 10, 14, 12, 26), strict=False):
-        sheet.column_dimensions[column].width = width
-
-    buffer = io.BytesIO()
-    book.save(buffer)
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": 'attachment; filename="sessions.xlsx"'},
+            for row in await list_sessions(session)
+        ],
+        widths=(60, 34, 10, 14, 12, 26),
     )

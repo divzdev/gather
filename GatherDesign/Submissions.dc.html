@@ -139,6 +139,7 @@
         </div>
         <div style="flex:1"></div>
         <button onClick="{{ exportCsv }}" style="height:32px;padding:0 12px;border-radius:999px;background:var(--cd,#FFFFFF);border:1px solid var(--ls,#C8D2D5);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Export CSV</button>
+        <button onClick="{{ exportXlsx }}" style="height:32px;padding:0 12px;border-radius:999px;background:var(--cd,#FFFFFF);border:1px solid var(--ls,#C8D2D5);font:500 12px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Export XLSX</button>
       </div>
 
       <sc-if value="{{ hasChips }}" hint-placeholder-val="{{ false }}">
@@ -508,6 +509,7 @@ class Component extends DCLogic {
       bulkAcc: () => this.decide(s.sel, 'accepted'), bulkWait: () => this.decide(s.sel, 'waitlisted'), bulkRej: () => this.decide(s.sel, 'rejected'),
       bulkAssign: () => this.toast('Reviewer assignment opens the balance-by-load proposal, designed with the Review screen.'),
       exportCsv: () => this.csv(),
+      exportXlsx: () => this.toast('Builds the same rows as an Excel workbook, server-side.'),
       clearFilters: () => this.setState({ fTracks: [], fStatus: [], q: '', view: 'All' }),
       banner: (this.props.pendingDecisionsBanner ?? true) && !s.hideBanner && !firstRun,
       bannerX: () => this.setState({ hideBanner: true }),

@@ -1,12 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 
+import { openCommandPalette } from "@/components/console/CommandPalette";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Submissions, type SubmissionsData } from "@/components/design/Submissions";
-import { authed, setEventId } from "@/lib/session";
+import { authed, download, setEventId } from "@/lib/session";
 
 type Speaker = { name: string; organisation: string | null };
 type Submission = {
@@ -63,7 +65,6 @@ function initials(name: string): string {
 export default function SubmissionsPage() {
   const { chrome, toasts, toast, dismiss } = useConsoleChrome();
   const queryClient = useQueryClient();
-  const searchRef = useRef<HTMLInputElement>(null);
   const { stats, eventId } = useProgramStats();
 
   const [query, setQuery] = useState("");
@@ -75,7 +76,9 @@ export default function SubmissionsPage() {
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
   const [dense, setDense] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // ?open=<id> so a proposal can be linked to — from the command palette, or
+  // from one organiser to another in chat.
+  const [openId, setOpenId] = useState<string | null>(useSearchParams().get("open"));
   const [popover, setPopover] = useState<"track" | "status" | "switch" | "help" | null>(null);
   const [hideBanner, setHideBanner] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
@@ -198,33 +201,27 @@ export default function SubmissionsPage() {
       current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
     );
 
-  const exportCsv = () => {
-    const header = ["code", "title", "speakers", "track", "format", "status", "score", "reviews"];
-    const lines = filtered.map((row) =>
-      [
-        row.code,
-        row.title,
-        row.speakers.map((s) => s.name).join("; "),
-        trackName(row),
-        formatName(row),
-        statusOf(row).label,
-        score(row)?.toFixed(1) ?? "",
-        String(row.review_count),
-      ]
-        .map((cell) => `"${cell.replaceAll('"', '""')}"`)
-        .join(","),
-    );
-    const blob = new Blob([[header.join(","), ...lines].join("\n")], {
-      type: "text/csv;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "submissions.csv";
-    anchor.click();
-    URL.revokeObjectURL(url);
-    toast(`Exported ${filtered.length} rows.`);
+  /** Both formats are built server-side from the ids on screen, so the CSV and
+   *  the workbook can never disagree about what "export" contains. */
+  const exportAs = (extension: "csv" | "xlsx") => async () => {
+    const rows = selected.length > 0 ? selected : filtered.map((row) => row.id);
+    if (rows.length === 0) {
+      toast("Nothing to export — no rows match the current filter.");
+      return;
+    }
+    try {
+      await download(
+        `/events/${eventId}/submissions/export.${extension}`,
+        `submissions.${extension}`,
+        rows,
+      );
+      toast(`Exported ${rows.length} rows.`);
+    } catch (error) {
+      toast((error as Error).message);
+    }
   };
+  const exportCsv = exportAs("csv");
+  const exportXlsx = exportAs("xlsx");
 
   const tile = (name: View) => ({
     c: counts[name],
@@ -380,7 +377,7 @@ export default function SubmissionsPage() {
     q: query,
     onQ: (event: React.SyntheticEvent) =>
       setQuery((event.target as HTMLInputElement).value),
-    focusSearch: () => searchRef.current?.focus(),
+    focusSearch: openCommandPalette,
     countLine: `${filtered.length} of ${data?.page.meta.total ?? 0} matching`,
     rowH: dense ? "36px" : "44px",
     densTitle: dense ? "Comfortable rows" : "Compact rows",
@@ -402,6 +399,7 @@ export default function SubmissionsPage() {
     bulkRej: () => decide.mutate({ ids: selected, outcome: "rejected" }),
     bulkAssign: () => toast("Reviewer assignment lives on the Review screen."),
     exportCsv,
+    exportXlsx,
 
     firstRun: false,
     showTable: !isPending,
