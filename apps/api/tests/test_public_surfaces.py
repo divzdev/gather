@@ -425,3 +425,40 @@ async def test_a_coordinator_cannot_publish(
     )
 
     assert response.status_code == 403
+
+
+async def test_the_embed_serves_a_script_anyone_can_run(client: AsyncClient, world: World) -> None:
+    """One script tag, no build step, and reachable with no credentials at all."""
+    await _publish(client, world)
+
+    response = await client.get(f"/v1/public/events/{world.event.slug}/embed.js?widget=schedule")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/javascript")
+    assert response.headers["access-control-allow-origin"] == "*"
+    # A minute, not the incumbent's hour: an embed is correct the moment you publish.
+    assert response.headers["cache-control"] == "public, max-age=60"
+    assert "gather-schedule" in response.text
+
+
+async def test_the_embed_never_writes_untrusted_text_as_markup(
+    client: AsyncClient, world: World
+) -> None:
+    """It runs inside somebody else's page, so a session title has to reach the
+    DOM as characters. The script uses textContent and never innerHTML."""
+    await _publish(client, world)
+
+    response = await client.get(f"/v1/public/events/{world.event.slug}/embed.js")
+
+    assert "innerHTML" not in response.text
+    assert "textContent" in response.text
+    # A closing tag inside the JSON payload would end the host page's script early.
+    assert "</script>" not in response.text
+
+
+async def test_an_unknown_widget_is_refused(client: AsyncClient, world: World) -> None:
+    await _publish(client, world)
+
+    response = await client.get(f"/v1/public/events/{world.event.slug}/embed.js?widget=payroll")
+
+    assert response.status_code == 404

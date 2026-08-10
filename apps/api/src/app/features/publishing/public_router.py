@@ -11,11 +11,11 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request, Response
 
 from app.core.deps import DbSession, PublicEvent
 from app.core.errors import NotFoundError
-from app.features.publishing import snapshot
+from app.features.publishing import embed, snapshot
 
 router = APIRouter(prefix="/v1/public/events/{event_slug}", tags=["public"])
 
@@ -181,3 +181,39 @@ async def gallery(event: PublicEvent, session: DbSession) -> dict[str, Any]:
             for p in data["speakers"]
         ],
     }
+
+
+@router.get("/embed.js", response_class=Response)
+async def embed_script(
+    event: PublicEvent,
+    request: Request,
+    widget: str = Query(default="schedule"),
+    theme: str = Query(default="light"),
+    track: str | None = Query(default=None, max_length=80),
+) -> Response:
+    """The embeddable widget, as one self-contained script.
+
+    Cached for a minute rather than an hour: the incumbent's embeds go stale for
+    sixty minutes after a publish, and being correct immediately is the point.
+    """
+    if widget not in embed.WIDGETS:
+        raise NotFoundError(f"No embed widget called {widget!r}.")
+
+    origin = str(request.base_url).rstrip("/")
+    body = embed.build_script(
+        origin=origin,
+        slug=event.slug,
+        widget=widget,
+        theme=theme if theme in embed.PALETTES else "light",
+        track=track,
+        mount=f"gather-{widget}",
+    )
+    return Response(
+        content=body,
+        media_type="application/javascript; charset=utf-8",
+        headers={
+            "Cache-Control": "public, max-age=60",
+            # It is meant to be run by other people's pages; that is the feature.
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
