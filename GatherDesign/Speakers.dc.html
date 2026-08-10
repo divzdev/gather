@@ -58,7 +58,7 @@
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
         <h1 style="font:600 24px 'IBM Plex Sans',sans-serif;letter-spacing:-0.015em;color:var(--ik,#16232B);margin:0">Speakers</h1>
         <div style="flex:1"></div>
-        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">10 confirmed or invited · missing items first</span>
+        <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ headerNote }}</span>
       </div>
       <div style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);margin-bottom:16px">{{ sumLine }}</div>
       <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px">
@@ -72,7 +72,7 @@
         </button>
         <button onClick="{{ tOdS.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tOdS.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tOdS.ring }};text-align:left;cursor:pointer">
           <span style="width:32px;height:32px;border-radius:9px;background:var(--pdw,#F9EDDF);color:var(--pd,#B96A1F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M7.5 4.3v3.4l2.3 1.4"></path></svg></span>
-          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tOdS.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tOdS.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">Overdue items</span></span>
+          <span style="min-width:0"><span style="display:block;font:600 19px 'IBM Plex Sans',sans-serif;color:{{ tOdS.numFg }};font-variant-numeric:tabular-nums;line-height:22px">{{ tOdS.c }}</span><span style="display:block;font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84);white-space:nowrap">{{ tOdLabel }}</span></span>
         </button>
         <button onClick="{{ tDoneS.on }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {{ tDoneS.bd }};background:var(--cd,#FFFFFF);box-shadow:{{ tDoneS.ring }};text-align:left;cursor:pointer">
           <span style="width:32px;height:32px;border-radius:9px;background:var(--okw,#E2F1EC);color:var(--ok,#0E7A5F);display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="6"></circle><path d="M4.8 7.8l1.8 1.8 3.6-4"></path></svg></span>
