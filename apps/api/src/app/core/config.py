@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     ai_max_tokens: int = 4096
 
     storage_backend: Literal["local", "s3"] = "local"
+    storage_root: Path = REPO_ROOT / "var" / "uploads"
     s3_bucket: str = ""
     aws_region: str = "us-east-1"
 

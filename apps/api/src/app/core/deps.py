@@ -156,6 +156,37 @@ async def bind_public_event(
 PublicEvent = Annotated[Event, Depends(bind_public_event)]
 
 
+async def bind_speaker_tenant(
+    session: DbSession, speaker: CurrentSpeaker
+) -> AsyncIterator[SpeakerContext]:
+    """Bind the tenant a speaker's token names, after proving they are on that event.
+
+    Tenancy scopes portal queries to the event; it does not scope them to the
+    *person*. Every portal query still filters on `speaker_id` — this dependency
+    is the outer fence, not the inner one.
+    """
+    from app.models import EventSpeaker
+
+    with tenancy_disabled():
+        event = await session.get(Event, speaker.event_id)
+        member = await session.scalar(
+            select(EventSpeaker.id).where(
+                EventSpeaker.event_id == speaker.event_id,
+                EventSpeaker.speaker_id == speaker.speaker_id,
+            )
+        )
+    if event is None or member is None:
+        raise AuthenticationError("This portal link is no longer valid.")
+
+    with tenant_scope(org_id=event.org_id, event_id=event.id):
+        yield speaker
+        # See bind_public_event: flush before the scope closes.
+        await session.flush()
+
+
+PortalSpeaker = Annotated[SpeakerContext, Depends(bind_speaker_tenant)]
+
+
 async def bind_tenant(
     session: DbSession,
     user: CurrentUser,

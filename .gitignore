@@ -84,3 +84,6 @@ GatherDesign/*
 !GatherDesign/assets/
 !GatherDesign/assets/**
 GatherDesign/* v1.dc.html
+
+# Uploaded files in local dev (storage_backend=local, REPO_ROOT/var/uploads).
+var/

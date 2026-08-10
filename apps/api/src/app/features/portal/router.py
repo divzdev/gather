@@ -1,0 +1,529 @@
+"""The speaker's own view. A phone, three visits, no password.
+
+Every query here filters on the token's `speaker_id` as well as the bound event.
+Tenancy scopes these rows to one conference; it does not scope them to one
+person, and the difference between those two fences is the entire security story
+of this file.
+
+`/portal/home` answers the whole screen in one payload on purpose — a speaker
+opening this on hotel wifi should wait for one round trip, not five.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from typing import Annotated, Any
+
+from fastapi import APIRouter, File, Response, UploadFile
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import select
+
+from app.core import storage
+from app.core.deps import DbSession, PortalSpeaker
+from app.core.errors import ApiError, NotFoundError
+from app.core.tenancy import current_tenant, tenancy_disabled
+from app.features.files import service as files
+from app.features.tasks import service as tasks
+from app.models import (
+    Event,
+    Room,
+    Session,
+    SessionSpeaker,
+    Speaker,
+    SpeakerTask,
+    Submission,
+    SubmissionSpeaker,
+    TaskFile,
+    TaskKind,
+    TaskStatus,
+    TaskTemplate,
+)
+from app.models import (
+    File as FileRecord,
+)
+
+router = APIRouter(prefix="/v1/portal", tags=["portal"])
+
+
+class FileRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    filename: str
+    content_type: str
+    byte_size: int
+    version: int
+    uploaded_at: datetime
+
+
+class TaskRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    name: str
+    description: str | None
+    kind: TaskKind
+    is_required: bool
+    external_url: str | None
+    accepted_file_types: dict[str, Any]
+    max_file_mb: int | None
+    due_at: datetime | None
+    status: TaskStatus
+    form_response: dict[str, Any] | None
+    files: list[FileRead] = Field(default_factory=list)
+
+
+class SessionRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    title: str
+    abstract: str | None
+    starts_at: datetime | None
+    duration_minutes: int
+    room: str | None
+
+
+class ProfileRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    name: str
+    email: str
+    pronouns: str | None
+    company: str | None
+    job_title: str | None
+    bio: str | None
+    links: dict[str, Any]
+    headshot_file_id: uuid.UUID | None
+    dietary_notes: str | None
+    accessibility_notes: str | None
+    av_notes: str | None
+
+
+class ProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    pronouns: str | None = Field(default=None, max_length=60)
+    company: str | None = Field(default=None, max_length=200)
+    job_title: str | None = Field(default=None, max_length=200)
+    bio: str | None = None
+    links: dict[str, Any] | None = None
+    dietary_notes: str | None = None
+    accessibility_notes: str | None = None
+    av_notes: str | None = None
+
+
+class EventRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    name: str
+    slug: str
+    timezone: str
+    starts_on: Any
+    ends_on: Any
+    location: str | None
+
+
+class Progress(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    total: int
+    complete: int
+    outstanding: int
+    overdue: int
+
+
+class Home(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    event: EventRead
+    speaker: ProfileRead
+    sessions: list[SessionRead]
+    tasks: list[TaskRead]
+    progress: Progress
+
+
+class TaskSubmit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    form_response: dict[str, Any] | None = None
+    acknowledged: bool = False
+
+
+async def _speaker(session: DbSession, speaker_id: uuid.UUID) -> Speaker:
+    with tenancy_disabled():
+        row = await session.get(Speaker, speaker_id)
+    if row is None or row.org_id != current_tenant().org_id:
+        raise NotFoundError("That speaker record is missing.")
+    return row
+
+
+def _profile(speaker: Speaker) -> ProfileRead:
+    return ProfileRead(
+        id=speaker.id,
+        name=speaker.name,
+        email=speaker.email,
+        pronouns=speaker.pronouns,
+        company=speaker.company,
+        job_title=speaker.job_title,
+        bio=speaker.bio,
+        links=speaker.links,
+        headshot_file_id=speaker.headshot_file_id,
+        dietary_notes=speaker.dietary_notes,
+        accessibility_notes=speaker.accessibility_notes,
+        av_notes=speaker.av_notes,
+    )
+
+
+async def _own_task(
+    session: DbSession, task_id: uuid.UUID, speaker_id: uuid.UUID
+) -> tuple[SpeakerTask, TaskTemplate]:
+    """Load a task only if it belongs to this speaker.
+
+    The `speaker_id` predicate is the point: without it a valid token for one
+    speaker would read another speaker's deliverables from the same event.
+    """
+    found = (
+        (
+            await session.execute(
+                select(SpeakerTask, TaskTemplate)
+                .join(TaskTemplate, TaskTemplate.id == SpeakerTask.task_template_id)
+                .where(SpeakerTask.id == task_id, SpeakerTask.speaker_id == speaker_id)
+            )
+        )
+        .tuples()
+        .first()
+    )
+    if found is None:
+        raise NotFoundError(f"No task with id {task_id}.")
+    return found
+
+
+async def _files_for(
+    session: DbSession, task_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[FileRead]]:
+    if not task_ids:
+        return {}
+    rows = (
+        (
+            await session.execute(
+                select(TaskFile.speaker_task_id, FileRecord)
+                .join(FileRecord, FileRecord.id == TaskFile.file_id)
+                .where(TaskFile.speaker_task_id.in_(task_ids))
+                .order_by(FileRecord.version.desc())
+            )
+        )
+        .tuples()
+        .all()
+    )
+    grouped: dict[uuid.UUID, list[FileRead]] = {}
+    for task_id, record in rows:
+        grouped.setdefault(task_id, []).append(
+            FileRead(
+                id=record.id,
+                filename=record.filename,
+                content_type=record.content_type,
+                byte_size=record.byte_size,
+                version=record.version,
+                uploaded_at=record.created_at,
+            )
+        )
+    return grouped
+
+
+async def _tasks_for(session: DbSession, speaker_id: uuid.UUID) -> list[TaskRead]:
+    rows = await tasks.load_rows(session, speaker_id=speaker_id)
+    attachments = await _files_for(session, [task.id for task, _t, _s in rows])
+    now = datetime.now(UTC)
+    return [
+        TaskRead(
+            id=task.id,
+            name=template.name,
+            description=template.description,
+            kind=template.kind,
+            is_required=template.is_required,
+            external_url=template.external_url,
+            accepted_file_types=template.accepted_file_types,
+            max_file_mb=template.max_file_mb,
+            due_at=task.due_at,
+            status=tasks.derive_status(task, now),
+            form_response=task.form_response,
+            files=attachments.get(task.id, []),
+        )
+        for task, template, _speaker in rows
+    ]
+
+
+@router.get("/home", response_model=Home)
+async def home(session: DbSession, speaker: PortalSpeaker) -> Home:
+    with tenancy_disabled():
+        event = await session.get(Event, speaker.event_id)
+    if event is None:  # pragma: no cover - bind_speaker_tenant proved it exists
+        raise NotFoundError("This event is missing.")
+
+    person = await _speaker(session, speaker.speaker_id)
+    talks = (
+        (
+            await session.execute(
+                select(Session, Room)
+                .join(SessionSpeaker, SessionSpeaker.session_id == Session.id)
+                .outerjoin(Room, Room.id == Session.room_id)
+                .where(SessionSpeaker.speaker_id == speaker.speaker_id)
+                .order_by(Session.starts_at.nulls_last())
+            )
+        )
+        .tuples()
+        .all()
+    )
+    mine = await _tasks_for(session, speaker.speaker_id)
+    complete = sum(1 for task in mine if task.status is TaskStatus.COMPLETE)
+    overdue = sum(1 for task in mine if task.status is TaskStatus.OVERDUE)
+
+    return Home(
+        event=EventRead(
+            id=event.id,
+            name=event.name,
+            slug=event.slug,
+            timezone=event.timezone,
+            starts_on=event.starts_on,
+            ends_on=event.ends_on,
+            location=event.location,
+        ),
+        speaker=_profile(person),
+        sessions=[
+            SessionRead(
+                id=talk.id,
+                title=talk.title,
+                abstract=talk.abstract,
+                starts_at=talk.starts_at,
+                duration_minutes=talk.duration_minutes,
+                room=room.name if room else None,
+            )
+            for talk, room in talks
+        ],
+        tasks=mine,
+        progress=Progress(
+            total=len(mine),
+            complete=complete,
+            outstanding=len(mine) - complete,
+            overdue=overdue,
+        ),
+    )
+
+
+@router.get("/tasks/{task_id}", response_model=TaskRead)
+async def read_task(task_id: uuid.UUID, session: DbSession, speaker: PortalSpeaker) -> TaskRead:
+    await _own_task(session, task_id, speaker.speaker_id)
+    mine = await _tasks_for(session, speaker.speaker_id)
+    found = next((task for task in mine if task.id == task_id), None)
+    if found is None:  # pragma: no cover - it was loaded a moment ago
+        raise NotFoundError(f"No task with id {task_id}.")
+    return found
+
+
+@router.put("/tasks/{task_id}", response_model=TaskRead)
+async def submit_task(
+    task_id: uuid.UUID, body: TaskSubmit, session: DbSession, speaker: PortalSpeaker
+) -> TaskRead:
+    """A form answer or an acknowledgement.
+
+    Acknowledgements self-complete; a form answer lands as `submitted` and waits
+    for an organiser, because "the speaker sent something" and "we accepted it"
+    are different facts.
+    """
+    task, template = await _own_task(session, task_id, speaker.speaker_id)
+
+    if template.kind is TaskKind.ACKNOWLEDGE:
+        if not body.acknowledged:
+            raise ApiError(
+                "Tick the box to confirm you have read this.",
+                code="VALIDATION_FAILED",
+                status_code=422,
+                field="acknowledged",
+            )
+        task.status = TaskStatus.COMPLETE
+        task.completed_at = datetime.now(UTC)
+    elif template.kind is TaskKind.FORM:
+        if body.form_response is None:
+            raise ApiError(
+                "This task needs a filled-in form.",
+                code="VALIDATION_FAILED",
+                status_code=422,
+                field="form_response",
+            )
+        task.form_response = body.form_response
+        task.status = TaskStatus.SUBMITTED
+    else:
+        task.status = TaskStatus.SUBMITTED
+
+    await session.flush()
+    return await read_task(task_id, session, speaker)
+
+
+@router.post("/tasks/{task_id}/files", response_model=TaskRead, status_code=201)
+async def upload_to_task(
+    task_id: uuid.UUID,
+    session: DbSession,
+    speaker: PortalSpeaker,
+    file: Annotated[UploadFile, File()],
+) -> TaskRead:
+    """Uploading again replaces the deliverable and keeps the old one readable.
+
+    The new row is version + 1 of the same group rather than a second unrelated
+    file, so "the current slides" stays a single answer.
+    """
+    task, template = await _own_task(session, task_id, speaker.speaker_id)
+    data = await file.read()
+    accepted = template.accepted_file_types.get("extensions")
+    files.check_upload(
+        filename=file.filename or "upload",
+        content_type=file.content_type or "application/octet-stream",
+        byte_size=len(data),
+        accepted_extensions=list(accepted) if accepted else None,
+        max_bytes=(template.max_file_mb or 25) * 1024 * 1024,
+    )
+
+    previous = (
+        (
+            await session.execute(
+                select(FileRecord)
+                .join(TaskFile, TaskFile.file_id == FileRecord.id)
+                .where(TaskFile.speaker_task_id == task.id)
+                .order_by(FileRecord.version.desc())
+                .limit(1)
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    record = await files.store(
+        session,
+        data=data,
+        filename=file.filename or "upload",
+        content_type=file.content_type or "application/octet-stream",
+        version_group_id=previous.version_group_id if previous else None,
+        uploaded_by_speaker_id=speaker.speaker_id,
+    )
+    session.add(TaskFile(speaker_task_id=task.id, file_id=record.id))
+    task.status = TaskStatus.SUBMITTED
+    await session.flush()
+    return await read_task(task_id, session, speaker)
+
+
+@router.get("/files/{file_id}")
+async def download_own_file(
+    file_id: uuid.UUID, session: DbSession, speaker: PortalSpeaker
+) -> Response:
+    """Only files this speaker uploaded, or that hang off one of their tasks."""
+    record = await session.get(FileRecord, file_id)
+    if record is None:
+        raise NotFoundError(f"No file with id {file_id}.")
+
+    owned = record.uploaded_by_speaker_id == speaker.speaker_id
+    if not owned:
+        owned = (
+            await session.scalar(
+                select(TaskFile.id)
+                .join(SpeakerTask, SpeakerTask.id == TaskFile.speaker_task_id)
+                .where(
+                    TaskFile.file_id == file_id,
+                    SpeakerTask.speaker_id == speaker.speaker_id,
+                )
+            )
+        ) is not None
+    if not owned:
+        raise NotFoundError(f"No file with id {file_id}.")
+
+    return Response(
+        content=await storage.read(record.s3_key),
+        media_type=record.content_type,
+        headers={"Content-Disposition": f'attachment; filename="{record.filename}"'},
+    )
+
+
+@router.get("/profile", response_model=ProfileRead)
+async def read_profile(session: DbSession, speaker: PortalSpeaker) -> ProfileRead:
+    return _profile(await _speaker(session, speaker.speaker_id))
+
+
+@router.patch("/profile", response_model=ProfileRead)
+async def update_profile(
+    body: ProfileUpdate, session: DbSession, speaker: PortalSpeaker
+) -> ProfileRead:
+    person = await _speaker(session, speaker.speaker_id)
+    for key, value in body.model_dump(exclude_unset=True).items():
+        setattr(person, key, value)
+    await session.flush()
+    return _profile(person)
+
+
+@router.post("/profile/headshot", response_model=ProfileRead)
+async def upload_headshot(
+    session: DbSession, speaker: PortalSpeaker, file: Annotated[UploadFile, File()]
+) -> ProfileRead:
+    person = await _speaker(session, speaker.speaker_id)
+    data = await file.read()
+    files.check_upload(
+        filename=file.filename or "headshot",
+        content_type=file.content_type or "application/octet-stream",
+        byte_size=len(data),
+        accepted_extensions=["jpg", "jpeg", "png", "webp"],
+        max_bytes=8 * 1024 * 1024,
+    )
+
+    previous = (
+        await session.get(FileRecord, person.headshot_file_id) if person.headshot_file_id else None
+    )
+    record = await files.store(
+        session,
+        data=data,
+        filename=file.filename or "headshot",
+        content_type=file.content_type or "application/octet-stream",
+        version_group_id=previous.version_group_id if previous else None,
+        uploaded_by_speaker_id=speaker.speaker_id,
+    )
+    person.headshot_file_id = record.id
+    await session.flush()
+    return _profile(person)
+
+
+class SubmissionRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    code: str
+    title: str
+    status: str
+    submitted_at: datetime | None
+
+
+@router.get("/submissions", response_model=list[SubmissionRead])
+async def my_submissions(session: DbSession, speaker: PortalSpeaker) -> list[SubmissionRead]:
+    """Their own proposals and nothing else — never a score, never a reviewer note."""
+    rows = (
+        (
+            await session.execute(
+                select(Submission)
+                .join(SubmissionSpeaker, SubmissionSpeaker.submission_id == Submission.id)
+                .where(SubmissionSpeaker.speaker_id == speaker.speaker_id)
+                .order_by(Submission.created_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        SubmissionRead(
+            id=row.id,
+            code=row.code,
+            title=row.title,
+            status=row.status.value,
+            submitted_at=row.submitted_at,
+        )
+        for row in rows
+    ]
