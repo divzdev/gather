@@ -198,8 +198,10 @@ export default function SettingsPage() {
       void navigator.clipboard.writeText(publicUrl);
       toast(`Copied ${publicUrl}`);
     },
-    upLogo: () => toast("Logo upload needs the files endpoint, which is not built yet."),
-    upBg: () => toast("Background upload needs the files endpoint, which is not built yet."),
+    // Uploading works; serving a file to an anonymous visitor does not, and a
+    // logo that only signed-in staff can see is not a logo.
+    upLogo: () => toast("Branding images need a public file route, which is not built yet."),
+    upBg: () => toast("Branding images need a public file route, which is not built yet."),
 
     pubAccents: ACCENT_NAMES.map((name) => ({
       n: name,
