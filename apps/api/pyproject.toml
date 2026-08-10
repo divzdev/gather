@@ -19,6 +19,10 @@ dependencies = [
     # this is a small Rust-backed implementation that handles same-millisecond
     # ordering. Postgres 16 has no native uuidv7().
     "uuid-utils>=0.10",
+    # XLSX is a zip of XML schemas; hand-rolling a writer to save one dependency
+    # is how you ship a file Excel refuses to open. Write-only, no runtime cost
+    # on any path that does not export.
+    "openpyxl>=3.1",
 ]
 
 [dependency-groups]
@@ -29,6 +33,7 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.14",
     "freezegun>=1.5",
+    "types-openpyxl>=3.1.5.20260807",
 ]
 
 [build-system]

@@ -703,3 +703,41 @@ async def test_criterion_kind_is_stored(client: AsyncClient, world: World) -> No
 
     assert row["kind"] == "select"
     assert len(row["choices"]) == 2
+
+
+async def test_results_also_export_as_a_spreadsheet(client: AsyncClient, world: World) -> None:
+    """Programme committees pass spreadsheets around, and a score stored as text
+    sorts 10 before 9 — so the number column has to be a number."""
+    import io
+
+    from openpyxl import load_workbook
+
+    round_id = await _round(client, world)
+    rating = await _criterion(client, world, round_id, label="Relevance")
+    await client.post(
+        f"/v1/events/{world.event.id}/review-rounds/{round_id}/assignments",
+        json={"submission_ids": [str(world.submissions[0])], "user_ids": [str(world.reviewer_id)]},
+        headers=world.headers,
+    )
+    await _score(client, world, round_id, world.submissions[0], {rating: 4})
+
+    response = await client.get(
+        f"/v1/events/{world.event.id}/review-rounds/{round_id}/results.xlsx",
+        headers=world.headers,
+    )
+
+    assert response.status_code == 200
+    assert "spreadsheetml" in response.headers["content-type"]
+
+    sheet = load_workbook(io.BytesIO(response.content)).active
+    assert sheet is not None
+    header = [cell.value for cell in sheet[1]]
+    assert header[:6] == ["code", "title", "speakers", "status", "reviews", "average_score"]
+    assert sheet.max_row == 4  # header plus three submissions
+
+    scores = [sheet.cell(row=row, column=6).value for row in range(2, 5)]
+    assert 4 in scores
+    # Numeric, not text. A whole number reads back as int, which is still a
+    # number Excel will sort and average; a string is what breaks it.
+    assert all(value is None or isinstance(value, int | float) for value in scores)
+    assert not any(isinstance(value, str) for value in scores)

@@ -25,6 +25,7 @@ const NAV = [
   { href: "/schedule", label: "Sessions" },
   { href: "/agenda", label: "Agenda" },
   { href: "/speakers", label: "Speakers" },
+  { href: "/itinerary", label: "My schedule" },
   { href: "/cfp", label: "Submit a talk" },
 ] as const;
 

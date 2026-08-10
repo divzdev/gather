@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Sessions, type SessionsData } from "@/components/design/Sessions";
+import { API_BASE_URL } from "@/lib/api";
 import { authed } from "@/lib/session";
 
 type SessionRow = {
@@ -355,7 +356,12 @@ export default function SessionsPage() {
       URL.revokeObjectURL(url);
       toast(`Exported ${filtered.length} sessions.`);
     },
-    doXlsx: notBuilt("XLSX export"),
+    doXlsx: () => {
+      // Server-built, so the file matches the review export byte for byte in
+      // shape rather than being a second implementation in the browser.
+      window.open(`${API_BASE_URL}/events/${eventId}/sessions/export.xlsx`);
+      toast("Building the spreadsheet.");
+    },
     doFiles: notBuilt("Bulk file download"),
     doImport: notBuilt("Importing sessions"),
 

@@ -273,11 +273,19 @@ async def advance(
     return await service.advance(session, round_id=round_id)
 
 
-@router.get("/{round_id}/results.csv")
-async def export_results(
-    round_id: uuid.UUID, session: DbSession, _: User = Depends(require_role(*STAFF))
-) -> Response:
-    """One row per submission with its aggregate score and review counts."""
+RESULT_COLUMNS = [
+    "code",
+    "title",
+    "speakers",
+    "status",
+    "reviews",
+    "average_score",
+    "conflict_flagged",
+]
+
+
+async def _result_rows(session: DbSession, round_id: uuid.UUID) -> list[list[str | int]]:
+    """The export's contents, built once so CSV and XLSX cannot drift apart."""
     await service.get_round(session, round_id)
     rows = (
         (
@@ -314,26 +322,68 @@ async def export_results(
         .all()
     )
 
+    return [
+        [
+            submission.code,
+            submission.title,
+            "; ".join(names.get(submission.id, [])),
+            submission.status.value,
+            submission.review_count,
+            "" if submission.score_avg is None else f"{submission.score_avg}",
+            "yes" if submission.id in flagged else "",
+        ]
+        for submission in rows
+    ]
+
+
+@router.get("/{round_id}/results.csv")
+async def export_results(
+    round_id: uuid.UUID, session: DbSession, _: User = Depends(require_role(*STAFF))
+) -> Response:
+    """One row per submission with its aggregate score and review counts."""
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(
-        ["code", "title", "speakers", "status", "reviews", "average_score", "conflict_flagged"]
-    )
-    for submission in rows:
-        writer.writerow(
-            [
-                submission.code,
-                submission.title,
-                "; ".join(names.get(submission.id, [])),
-                submission.status.value,
-                submission.review_count,
-                "" if submission.score_avg is None else f"{submission.score_avg}",
-                "yes" if submission.id in flagged else "",
-            ]
-        )
+    writer.writerow(RESULT_COLUMNS)
+    writer.writerows(await _result_rows(session, round_id))
 
     return Response(
         content=buffer.getvalue(),
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="review-results.csv"'},
+    )
+
+
+@router.get("/{round_id}/results.xlsx")
+async def export_results_xlsx(
+    round_id: uuid.UUID, session: DbSession, _: User = Depends(require_role(*STAFF))
+) -> Response:
+    """The same rows as a spreadsheet, which is what programme committees
+    actually pass around.
+
+    Scores go in as numbers rather than text so the column sorts and averages in
+    Excel instead of ordering 10 before 9.
+    """
+    from openpyxl import Workbook
+
+    book = Workbook()
+    sheet = book.active
+    if sheet is None:  # pragma: no cover - a new Workbook always has one
+        raise NotFoundError("Could not build the workbook.")
+    sheet.title = "Review results"
+    sheet.append(RESULT_COLUMNS)
+
+    for row in await _result_rows(session, round_id):
+        score = row[5]
+        sheet.append([*row[:5], float(score) if score not in ("", None) else None, row[6]])
+
+    sheet.freeze_panes = "A2"
+    for column, width in zip("ABCDEFG", (10, 60, 34, 14, 9, 14, 16), strict=False):
+        sheet.column_dimensions[column].width = width
+
+    buffer = io.BytesIO()
+    book.save(buffer)
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="review-results.xlsx"'},
     )

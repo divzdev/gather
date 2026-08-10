@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
@@ -287,3 +287,50 @@ async def set_approval(
     talk.content_status = body.content_status
     await session.flush()
     return {"id": str(talk.id), "content_status": talk.content_status.value}
+
+
+@approval_router.get("/export.xlsx")
+async def export_sessions_xlsx(
+    session: DbSession, _: User = Depends(require_role(*STAFF))
+) -> Response:
+    """The programme as a spreadsheet.
+
+    Server-side like every other export here, rather than assembled in the
+    browser: one implementation, and the file is identical whichever screen asks.
+    """
+    import io
+
+    from openpyxl import Workbook
+
+    rows = await list_sessions(session)
+    book = Workbook()
+    sheet = book.active
+    if sheet is None:  # pragma: no cover - a new Workbook always has one
+        raise NotFoundError("Could not build the workbook.")
+    sheet.title = "Sessions"
+    sheet.append(["title", "speakers", "duration_minutes", "status", "approval", "starts_at"])
+
+    for row in rows:
+        sheet.append(
+            [
+                row.title,
+                "; ".join(person.name for person in row.speakers),
+                row.duration_minutes,
+                row.status.value,
+                row.content_status.value,
+                # Excel has no timezone-aware cell type, so this goes in as text
+                # rather than a datetime that silently loses the offset.
+                "" if row.starts_at is None else row.starts_at.isoformat(),
+            ]
+        )
+    sheet.freeze_panes = "A2"
+    for column, width in zip("ABCDEF", (60, 34, 10, 14, 12, 26), strict=False):
+        sheet.column_dimensions[column].width = width
+
+    buffer = io.BytesIO()
+    book.save(buffer)
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="sessions.xlsx"'},
+    )
