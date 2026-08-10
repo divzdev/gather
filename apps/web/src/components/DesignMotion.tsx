@@ -23,10 +23,22 @@ export function DesignMotion({ css, children }: { css: string; children: React.R
     const reveals = [...node.querySelectorAll<HTMLElement>("[data-rv]")];
     for (const element of reveals) {
       if (reduced) continue;
+      // Opacity only. Offsetting stacked text while its in-flow siblings stay
+      // put makes the two overlap for the length of the stagger, which is the
+      // defect GatherDesign/CLAUDE.md records being reported twice. data-rv is
+      // an order index, not a delay: the prototype spaces them 70ms apart.
       element.style.opacity = "0";
-      element.style.transform = "translateY(26px)";
-      element.style.transition = `opacity .75s ${EASE}, transform .75s ${EASE}`;
-      element.style.transitionDelay = `${Number(element.dataset.rv ?? 0) || 0}ms`;
+      element.style.transition = `opacity .52s ${EASE}`;
+      element.style.transitionDelay = `${(Number(element.dataset.rv ?? 0) || 0) * 70}ms`;
+    }
+
+    // A hairline that draws itself left to right under a section heading.
+    const rules = [...node.querySelectorAll<HTMLElement>("[data-rule]")];
+    for (const element of rules) {
+      if (reduced) continue;
+      element.style.transform = "scaleX(0)";
+      element.style.transformOrigin = "left";
+      element.style.transition = "transform .7s cubic-bezier(.22,.8,.24,1)";
     }
 
     const revealObserver = new IntersectionObserver(
@@ -34,14 +46,25 @@ export function DesignMotion({ css, children }: { css: string; children: React.R
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           const element = entry.target as HTMLElement;
-          element.style.opacity = "1";
-          element.style.transform = "translateY(0)";
+          if (element.hasAttribute("data-rule")) element.style.transform = "scaleX(1)";
+          else element.style.opacity = "1";
           revealObserver.unobserve(element);
         }
       },
-      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
+      { threshold: 0.2 },
     );
-    if (!reduced) reveals.forEach((element) => revealObserver.observe(element));
+    if (!reduced) {
+      [...reveals, ...rules].forEach((element) => revealObserver.observe(element));
+    }
+
+    // Anything already on screen at mount never crosses the threshold, so it
+    // would sit at opacity 0 forever. Catch those up once the page has settled.
+    const settle = setTimeout(() => {
+      for (const element of reveals) {
+        const box = element.getBoundingClientRect();
+        if (box.top < window.innerHeight && box.bottom > 0) element.style.opacity = "1";
+      }
+    }, 400);
 
     const frames: number[] = [];
     const countObserver = new IntersectionObserver(
@@ -73,6 +96,7 @@ export function DesignMotion({ css, children }: { css: string; children: React.R
     return () => {
       revealObserver.disconnect();
       countObserver.disconnect();
+      clearTimeout(settle);
       frames.forEach(cancelAnimationFrame);
     };
   }, []);

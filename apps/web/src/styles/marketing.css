@@ -1,0 +1,268 @@
+/* The marketing landing's own typography and layout rules.
+ *
+ * Two things live here that `tools/dc2tsx.py` cannot carry across, because it
+ * drops <style> and <helmet>:
+ *
+ * 1. The six faces the v6 landing is built on. They are declared as plain
+ *    @font-face rather than through next/font because the prototype's root
+ *    element sets `--disp:'Cabinet Grotesk'`, `--sans:'Switzer'` and so on as
+ *    inline literals. next/font generates hashed family names, which those
+ *    literals would never match, and the generated component is regenerated
+ *    verbatim on every design change — so the family names have to be real.
+ *
+ * 2. The prototype's <style> block: its breakpoints, keyframes and focus rules.
+ *    Every rule is scoped to the landing's own root. Unscoped, `a:hover` and
+ *    `::selection` would repaint the console in marketing colours.
+ *
+ * Fonts are self-hosted (apps/web/public/fonts) so a demo machine with no
+ * network renders the real thing rather than falling back to Segoe UI.
+ * Cabinet Grotesk, Switzer, Boska and Array are Fontshare, under the ITF Free
+ * Font License; JetBrains Mono and Shantell Sans are SIL OFL.
+ */
+
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/fonts/cabinet-grotesk-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/fonts/cabinet-grotesk-800.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Switzer";
+  src: url("/fonts/switzer-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Switzer";
+  src: url("/fonts/switzer-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Switzer";
+  src: url("/fonts/switzer-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Used only for the display italic. The prototype asks for weight 401, which is
+   Boska's own naming for its regular italic cut. */
+@font-face {
+  font-family: "Boska";
+  src: url("/fonts/boska-400-italic.woff2") format("woff2");
+  font-weight: 400 401;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* One use on the whole page: the outlined footer wordmark. */
+@font-face {
+  font-family: "Array";
+  src: url("/fonts/array-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Shantell Sans";
+  src: url("/fonts/shantell-sans-300.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Shantell Sans";
+  src: url("/fonts/shantell-sans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* globals.css paints the page in console light. The landing is a single dark
+   surface, so the page behind it has to change too, or a short page shows a
+   pale band under the footer. */
+html:has([data-marketing]),
+body:has([data-marketing]) {
+  margin: 0;
+  padding: 0;
+  background: #08080a;
+}
+
+body:has([data-marketing]) {
+  overflow-x: clip;
+}
+
+[data-marketing] a {
+  color: inherit;
+  text-decoration: none;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease,
+    opacity 0.15s ease;
+}
+
+[data-marketing] a:hover {
+  color: #ff7a5c;
+}
+
+[data-marketing] button {
+  font: inherit;
+}
+
+[data-marketing] ::selection {
+  background: #ff5a36;
+  color: #331313;
+}
+
+[data-marketing] :focus-visible {
+  outline: 2px solid #ff7a5c !important;
+  outline-offset: 2px;
+}
+
+@keyframes gcaret {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes gfloat {
+  0%,
+  100% {
+    transform: rotate(1.5deg) translateY(0);
+  }
+  50% {
+    transform: rotate(1.5deg) translateY(-7px);
+  }
+}
+
+@keyframes gpulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1080px) {
+  [data-marketing] [data-herogrid] {
+    grid-template-columns: 1fr !important;
+  }
+  [data-marketing] [data-visual] {
+    height: auto !important;
+    min-width: 0;
+    margin-top: 36px;
+  }
+  [data-marketing] [data-tilt] {
+    position: relative !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 920px) {
+  /* !important, unlike the prototype: the nav list carries an inline
+     `display:flex`, so the plain rule it ships with never wins and the links
+     stay up at phone width, widening the header past the viewport. */
+  [data-marketing] [data-guide],
+  [data-marketing] [data-navlinks],
+  [data-marketing] [data-arrow] {
+    display: none !important;
+  }
+  [data-marketing] [data-split],
+  [data-marketing] [data-faqcols] {
+    grid-template-columns: 1fr !important;
+  }
+  [data-marketing] [data-marks],
+  [data-marketing] [data-cols4] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  /* The annotations are pinned beside the mocks on a wide screen. Narrow, they
+     have nothing to be beside, so they return to the flow. */
+  [data-marketing] [data-ann] {
+    position: static !important;
+    transform: none !important;
+    margin: 16px 0 0 !important;
+    max-width: none !important;
+    text-align: left !important;
+  }
+}
+
+@media (max-width: 780px) {
+  /* The agenda demo is a fixed-width mock. Below this it is scaled down whole
+     rather than reflowed, and the negative margin reclaims the space the
+     transform leaves behind. */
+  [data-marketing] [data-demo] {
+    width: 182% !important;
+    transform: scale(0.55);
+    transform-origin: top left;
+    margin-bottom: -176px !important;
+  }
+  [data-marketing] [data-marks] {
+    grid-template-columns: 1fr !important;
+  }
+  [data-marketing] [data-measure] {
+    flex-direction: column;
+    gap: 30px !important;
+  }
+  [data-marketing] [data-visual] {
+    overflow: hidden;
+  }
+  [data-marketing] [data-tilt] {
+    width: 760px !important;
+    transform: rotate(1.2deg) scale(0.42) !important;
+    transform-origin: left top !important;
+    margin-bottom: -238px;
+  }
+  [data-marketing] [data-heroann] {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-marketing] * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

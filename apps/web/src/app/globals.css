@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
+@import "../styles/marketing.css";
 
 /* Tailwind reads the design tokens, so bg-cd / text-i2 / border-ln resolve to the
    same variables the ported .dc.html screens use inline. One source of truth. */
