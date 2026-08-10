@@ -5,6 +5,7 @@ leak. Nothing else in the API is allowed to depend on it until these pass.
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 import pytest
 from sqlalchemy import delete, select, update
@@ -17,7 +18,7 @@ from app.core.tenancy import (
     tenancy_disabled,
     tenant_scope,
 )
-from app.models import Event, Organization
+from app.models import Event, EventStatus, Organization, Room
 
 
 async def test_select_returns_only_the_active_org(
@@ -254,3 +255,63 @@ async def test_an_aggregate_over_a_table_column_is_refused(
     org_a, _ = two_orgs
     with tenant_scope(org_a.id), pytest.raises(UnscopedStatementError):
         await session.execute(select(func.count(Event.__table__.c.id)))
+
+
+async def test_a_scope_naming_an_event_hides_the_org_s_other_events(
+    session: AsyncSession, two_orgs: tuple[Organization, Organization]
+) -> None:
+    """Filtering on org alone is not enough. An organization running two
+    conferences is the ordinary case, and it would show one event's rooms inside
+    the other's agenda."""
+    org_a, _org_b = two_orgs
+
+    with tenancy_disabled():
+        first = (
+            (await session.execute(select(Event).where(Event.org_id == org_a.id))).scalars().first()
+        )
+        assert first is not None
+        second = Event(
+            org_id=org_a.id,
+            name="Alpha 2027",
+            slug="alpha-2027",
+            timezone="UTC",
+            starts_on=date(2027, 9, 1),
+            ends_on=date(2027, 9, 3),
+            status=EventStatus.CFP_OPEN,
+        )
+        session.add(second)
+        await session.flush()
+        session.add_all(
+            [
+                Room(org_id=org_a.id, event_id=first.id, name="This year's stage"),
+                Room(org_id=org_a.id, event_id=second.id, name="Next year's stage"),
+            ]
+        )
+        await session.commit()
+
+    with tenant_scope(org_id=org_a.id, event_id=first.id):
+        rooms = (await session.execute(select(Room))).scalars().all()
+
+    assert [room.name for room in rooms] == ["This year's stage"]
+
+
+async def test_a_scope_with_no_event_sees_the_whole_organization(
+    session: AsyncSession, two_orgs: tuple[Organization, Organization]
+) -> None:
+    """The speaker directory spans events on purpose, so an org-level scope must
+    not be silently narrowed to one of them."""
+    org_a, _org_b = two_orgs
+
+    with tenancy_disabled():
+        events = (
+            (await session.execute(select(Event).where(Event.org_id == org_a.id))).scalars().all()
+        )
+        assert events
+        for index, event in enumerate(events):
+            session.add(Room(org_id=org_a.id, event_id=event.id, name=f"Room {index}"))
+        await session.commit()
+
+    with tenant_scope(org_id=org_a.id):
+        rooms = (await session.execute(select(Room))).scalars().all()
+
+    assert len(rooms) == len(events)

@@ -224,6 +224,20 @@ def _apply_tenancy(state: ORMExecuteState) -> None:
         )
     )
 
+    # An organization running two conferences is the ordinary case, so filtering
+    # on org alone would show one event's agenda inside the other. When the scope
+    # names no event — an org-level directory read — event-scoped rows are
+    # deliberately visible across the whole organization.
+    if value.event_id is not None:
+        event_id = value.event_id
+        state.statement = state.statement.options(
+            with_loader_criteria(
+                EventScoped,
+                lambda cls: cls.event_id == event_id,
+                include_aliases=True,
+            )
+        )
+
 
 @event.listens_for(Session, "before_flush")
 def _stamp_and_validate(session: Session, flush_context: object, instances: object) -> None:
