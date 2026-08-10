@@ -60,6 +60,7 @@ type Home = {
   };
   sessions: {
     id: string;
+    slug: string;
     title: string;
     abstract: string | null;
     starts_at: string | null;
@@ -111,6 +112,27 @@ const CTA: Record<Task["kind"], string> = {
   acknowledge: "Confirm",
   external_link: "Open",
 };
+
+/** Google and Outlook take the whole event in a URL, so these are links rather
+ *  than files. The brief names all three targets; only iCal is ever a download. */
+function calendarLink(
+  which: "google" | "outlook",
+  talk: { title: string; starts_at: string | null; duration_minutes: number; room: string | null } | null,
+  eventName: string,
+): string | null {
+  if (talk === null || talk.starts_at === null) return null;
+  const starts = new Date(talk.starts_at);
+  const ends = new Date(starts.getTime() + talk.duration_minutes * 60_000);
+  const stamp = (at: Date) => at.toISOString().replace(/[-:]|\.\d{3}/g, "");
+  const title = encodeURIComponent(talk.title);
+  const where = encodeURIComponent([talk.room, eventName].filter(Boolean).join(" · "));
+
+  return which === "google"
+    ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}` +
+        `&dates=${stamp(starts)}/${stamp(ends)}&location=${where}`
+    : `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose` +
+        `&subject=${title}&startdt=${starts.toISOString()}&enddt=${ends.toISOString()}&location=${where}`;
+}
 
 function greeting(hour: number): string {
   if (hour < 12) return "Good morning";
@@ -390,16 +412,26 @@ export default function PortalPage() {
     calOpen,
     dlIcs: () => {
       setCalOpen(false);
-      if (home === undefined) return;
-      window.open(`${API_BASE_URL}/public/events/${home.event.slug}/schedule`, "_blank");
+      if (home === undefined || talk === null) {
+        say("Your session time is not set yet.");
+        return;
+      }
+      window.open(
+        `${API_BASE_URL}/public/events/${home.event.slug}/sessions/${talk.slug}.ics`,
+        "_blank",
+      );
     },
     calG: () => {
       setCalOpen(false);
-      say("Add-to-calendar links arrive with the schedule confirmation.");
+      const link = calendarLink("google", talk, home?.event.name ?? "");
+      if (link === null) say("Your session time is not set yet.");
+      else window.open(link, "_blank", "noopener");
     },
     calO: () => {
       setCalOpen(false);
-      say("Add-to-calendar links arrive with the schedule confirmation.");
+      const link = calendarLink("outlook", talk, home?.event.name ?? "");
+      if (link === null) say("Your session time is not set yet.");
+      else window.open(link, "_blank", "noopener");
     },
 
     keyDates: open.slice(0, 4).map((task, index) => {

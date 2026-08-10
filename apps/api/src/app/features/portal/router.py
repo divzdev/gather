@@ -78,6 +78,8 @@ class SessionRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: uuid.UUID
+    # The speaker's own calendar link is built from this.
+    slug: str
     title: str
     abstract: str | None
     starts_at: datetime | None
@@ -297,6 +299,7 @@ async def home(session: DbSession, speaker: PortalSpeaker) -> Home:
         sessions=[
             SessionRead(
                 id=talk.id,
+                slug=talk.slug,
                 title=talk.title,
                 abstract=talk.abstract,
                 starts_at=talk.starts_at,

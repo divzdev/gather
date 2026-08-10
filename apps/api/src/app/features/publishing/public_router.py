@@ -9,13 +9,14 @@ identical times and speakers wherever it appears.
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Query, Request, Response
 
 from app.core.deps import DbSession, PublicEvent
 from app.core.errors import NotFoundError
-from app.features.publishing import embed, snapshot
+from app.features.publishing import embed, ics, snapshot
 
 router = APIRouter(prefix="/v1/public/events/{event_slug}", tags=["public"])
 
@@ -217,3 +218,56 @@ async def embed_script(
             "Access-Control-Allow-Origin": "*",
         },
     )
+
+
+def _calendar(body: str, filename: str) -> Response:
+    return Response(
+        content=body,
+        media_type="text/calendar; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}.ics"',
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
+
+
+@router.get("/schedule.ics")
+async def whole_schedule_ics(event: PublicEvent, session: DbSession) -> Response:
+    """The entire published programme as one calendar file.
+
+    SEQUENCE is the published version, so re-importing after a republish updates
+    every entry in place rather than duplicating the conference.
+    """
+    data = await snapshot.require_latest(session)
+    latest = await snapshot.latest(session)
+    version = latest.version if latest else 1
+    now = datetime.now(UTC)
+
+    events = [
+        body
+        for talk in data["sessions"]
+        if (body := ics.build(talk, event=data["event"], sequence=version, now=now))
+    ]
+    if not events:
+        raise NotFoundError("Nothing on this schedule has a time yet.")
+    return _calendar(ics.merge(events), event.slug)
+
+
+@router.get("/sessions/{session_slug}.ics")
+async def session_ics(session_slug: str, event: PublicEvent, session: DbSession) -> Response:
+    """One session, for the speaker or an attendee who wants only that talk."""
+    data = await snapshot.require_latest(session)
+    found = next((s for s in data["sessions"] if s["slug"] == session_slug), None)
+    if found is None:
+        raise NotFoundError("No such session.")
+
+    latest = await snapshot.latest(session)
+    body = ics.build(
+        found,
+        event=data["event"],
+        sequence=latest.version if latest else 1,
+        now=datetime.now(UTC),
+    )
+    if body == "":
+        raise NotFoundError("That session has no time yet.")
+    return _calendar(body, session_slug)

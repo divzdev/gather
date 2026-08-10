@@ -108,3 +108,28 @@ def calendar_links(talk: dict[str, Any], *, event: dict[str, Any]) -> dict[str, 
             f"&location={where}"
         ),
     }
+
+
+def merge(calendars: list[str]) -> str:
+    """Fold several single-event calendars into one file.
+
+    Each `build` result is a complete VCALENDAR, so combining them means keeping
+    one header and one footer and stacking the VEVENTs between.
+    """
+    events: list[str] = []
+    for body in calendars:
+        lines = body.splitlines()
+        try:
+            start, end = lines.index("BEGIN:VEVENT"), lines.index("END:VEVENT")
+        except ValueError:  # pragma: no cover - build always emits both
+            continue
+        events.extend(lines[start : end + 1])
+
+    header = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Gather//Conference Schedule//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+    ]
+    return "\r\n".join([*header, *events, "END:VCALENDAR"]) + "\r\n"

@@ -462,3 +462,42 @@ async def test_an_unknown_widget_is_refused(client: AsyncClient, world: World) -
     response = await client.get(f"/v1/public/events/{world.event.slug}/embed.js?widget=payroll")
 
     assert response.status_code == 404
+
+
+async def test_one_session_downloads_as_a_calendar_entry(client: AsyncClient, world: World) -> None:
+    await _publish(client, world)
+    listing = await client.get(f"/v1/public/events/{world.event.slug}/schedule")
+    slug = listing.json()["sessions"][0]["slug"]
+
+    response = await client.get(f"/v1/public/events/{world.event.slug}/sessions/{slug}.ics")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/calendar")
+    assert "attachment" in response.headers["content-disposition"]
+    assert response.text.count("BEGIN:VEVENT") == 1
+
+
+async def test_the_whole_schedule_is_one_calendar_with_one_header(
+    client: AsyncClient, world: World
+) -> None:
+    """Several single-event calendars folded together, not concatenated: a file
+    with two VCALENDAR headers is rejected by most clients."""
+    await _publish(client, world)
+    listing = await client.get(f"/v1/public/events/{world.event.slug}/schedule")
+    timed = [row for row in listing.json()["sessions"] if row["starts_at"] is not None]
+
+    response = await client.get(f"/v1/public/events/{world.event.slug}/schedule.ics")
+
+    assert response.status_code == 200
+    assert response.text.count("BEGIN:VCALENDAR") == 1
+    assert response.text.count("END:VCALENDAR") == 1
+    assert response.text.count("BEGIN:VEVENT") == len(timed)
+
+
+async def test_a_calendar_needs_no_credentials(client: AsyncClient, world: World) -> None:
+    await _publish(client, world)
+
+    response = await client.get(f"/v1/public/events/{world.event.slug}/schedule.ics")
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "*"
