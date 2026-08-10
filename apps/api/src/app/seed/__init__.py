@@ -47,6 +47,7 @@ from app.models import (
     Track,
     User,
 )
+from app.seed import demo
 
 ORG_SLUG = "devflow"
 EVENT_SLUG = "devflow-conf-2027"
@@ -526,11 +527,15 @@ async def seed() -> None:
             people = await _upsert_speakers(session, event)
             await _upsert_proposals(session, event, form, program, people)
             await _upsert_review_round(session, event)
+            # The hand-written rows above are the ones a human reads; this fills
+            # in the volume so no screen opens empty.
+            counts = await demo.fill(session, event, form, program)
             await session.commit()
 
     print(
-        f"Seeded {EVENT_SLUG}: {len(TRACKS)} tracks, {len(FORMATS)} formats, "
-        f"{len(ROOMS)} rooms, {len(PROPOSALS)} proposals."
+        f"Seeded {EVENT_SLUG}: {counts['speakers']} speakers, "
+        f"{counts['submissions']} submissions, {counts['sessions']} sessions "
+        f"({counts['placed']} placed), {counts['tasks']} speaker tasks."
     )
     print("Sign in with sbek-organizer@example.com / SbekTest!2027-org")
 
