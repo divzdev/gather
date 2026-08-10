@@ -229,10 +229,19 @@ test("12-17. the event settings validate and persist", async ({ page }) => {
   await page.waitForTimeout(2000);
 });
 
-test("17. the event switcher lists the event you are in", async ({ page }) => {
+test("17. the event switcher is on every screen and lists your events", async ({ page }) => {
   await signInAsOrganizer(page);
 
-  const switcher = page.getByRole("button", { name: /event|switch/i }).first();
-  if ((await switcher.count()) === 0) test.skip(true, "no event switcher on this build");
-  await expect(page.locator("body")).toContainText(/DevFlow/i);
+  // It has to be reachable from wherever you are, not only the submissions list.
+  for (const route of ["/admin", "/admin/agenda", "/admin/tasks"]) {
+    await page.goto(route);
+    const switcher = page.getByRole("button", { name: /switch event/i });
+    await expect(switcher, `no event switcher on ${route}`).toBeVisible({ timeout: 15_000 });
+  }
+
+  await page.getByRole("button", { name: /switch event/i }).click();
+  const list = page.getByRole("listbox", { name: /events/i });
+  await expect(list).toBeVisible({ timeout: 10_000 });
+  await expect(list.getByRole("option")).not.toHaveCount(0);
+  await expect(list.getByRole("option", { selected: true })).toHaveCount(1);
 });
