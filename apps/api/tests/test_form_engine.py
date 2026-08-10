@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from app.features.forms.schema import FormSchema, resolve
 from app.features.forms.validation import validate_answers
@@ -193,3 +194,38 @@ def test_email_and_url_formats_are_checked() -> None:
     errors = {e.field for e in validate_answers(schema, {"email": "nope", "site": "example.com"})}
     assert errors == {"email", "site"}
     assert validate_answers(schema, {"email": "a@b.co", "site": "https://example.com"}) == []
+
+
+def test_a_participant_role_cannot_require_more_people_than_it_allows() -> None:
+    """The bug the customer hit on camera with the incumbent: it accepted the
+    combination and then refused every submission without saying why."""
+    from app.features.forms.schema import ParticipantRole
+
+    with pytest.raises(ValidationError) as caught:
+        ParticipantRole(key="speaker", label="Speaker", minimum=3, maximum=2)
+
+    assert "cannot exceed maximum" in str(caught.value)
+
+
+def test_a_participant_defaults_to_one_not_zero() -> None:
+    """A submission with nobody on it is not a submission."""
+    from app.features.forms.schema import ParticipantRole
+
+    role = ParticipantRole(key="speaker", label="Speaker")
+
+    assert role.minimum == 1
+    assert role.maximum == 1
+
+
+def test_an_older_schema_without_builder_settings_still_loads() -> None:
+    """Settings live in JSONB, so every form stored before these fields existed
+    has to keep parsing rather than needing a backfill."""
+    from app.features.forms.schema import FormSchema
+
+    schema = FormSchema.model_validate(
+        {"sections": [], "logic": [], "settings": {"allow_drafts": False}}
+    )
+
+    assert schema.settings.allow_drafts is False
+    assert schema.settings.welcome_message == ""
+    assert [role.key for role in schema.settings.participant_roles] == ["speaker", "co_speaker"]

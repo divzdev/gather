@@ -110,11 +110,54 @@ class FormSection(Strict):
     fields: list[FormField] = Field(default_factory=list)
 
 
+class ParticipantRole(Strict):
+    """How many people of one kind a submission may name.
+
+    `minimum` defaults to 1 rather than 0: a submission with nobody on it is not
+    a submission, and the incumbent defaulting this to zero is one of the bugs
+    the customer hit on camera.
+    """
+
+    key: str = Field(min_length=1, max_length=40, pattern=r"^[a-z0-9_]+$")
+    label: str = Field(min_length=1, max_length=80)
+    enabled: bool = True
+    minimum: int = Field(default=1, ge=0, le=20)
+    maximum: int = Field(default=1, ge=1, le=20)
+
+    @model_validator(mode="after")
+    def _check(self) -> ParticipantRole:
+        # The other bug from that recording: the incumbent accepted min > max and
+        # then refused every submission, with no explanation.
+        if self.minimum > self.maximum:
+            raise ValueError(
+                f"role '{self.key}': minimum {self.minimum} cannot exceed maximum {self.maximum}"
+            )
+        return self
+
+
+def _default_roles() -> list[ParticipantRole]:
+    return [
+        ParticipantRole(key="speaker", label="Speaker", minimum=1, maximum=1),
+        ParticipantRole(key="co_speaker", label="Co-speaker", enabled=False, minimum=0, maximum=3),
+    ]
+
+
 class FormSettings(Strict):
     allow_drafts: bool = True
     allow_co_speakers: bool = True
     max_co_speakers: int = Field(default=4, ge=0, le=20)
     confirmation_message: str = "Thanks, your proposal is in."
+
+    # Everything below is builder-facing chrome. It lives in the schema rather
+    # than on the Form row because it is content, and content versions with the
+    # form it belongs to.
+    welcome_message: str = ""
+    require_terms: bool = False
+    page_heading: str = ""
+    collect_participants: bool = True
+    participant_roles: list[ParticipantRole] = Field(default_factory=_default_roles)
+    notify_admins_on_submit: bool = True
+    confirm_participants: bool = True
 
 
 class FormSchema(Strict):

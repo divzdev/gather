@@ -1,0 +1,441 @@
+"use client";
+
+/** The form list, and the six-step builder behind it.
+ *
+ *  Everything the wizard edits is one `schema` blob plus a few columns on the
+ *  form row, so each step writes the same PATCH. Saving is explicit rather than
+ *  keystroke-by-keystroke: the server refuses structural changes once a form has
+ *  submissions, and finding that out on every character typed would be miserable.
+ */
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+
+import { useConsoleChrome } from "@/components/console/chrome";
+import { stripData, useProgramStats } from "@/components/console/stats";
+import { Forms, type FormsData } from "@/components/design/Forms";
+import { authed } from "@/lib/session";
+
+type Choice = { value: string; label: string };
+
+type Field = {
+  key: string;
+  type: string;
+  label: string;
+  help_text: string | null;
+  required: boolean;
+  choices: Choice[];
+  identity_bearing: boolean;
+  hidden_from_new: boolean;
+};
+
+type Role = {
+  key: string;
+  label: string;
+  enabled: boolean;
+  minimum: number;
+  maximum: number;
+};
+
+type Settings = {
+  allow_drafts: boolean;
+  allow_co_speakers: boolean;
+  max_co_speakers: number;
+  confirmation_message: string;
+  welcome_message: string;
+  require_terms: boolean;
+  page_heading: string;
+  collect_participants: boolean;
+  participant_roles: Role[];
+  notify_admins_on_submit: boolean;
+  confirm_participants: boolean;
+};
+
+type Section = { key: string; title: string; description: string | null; fields: Field[] };
+
+type Schema = { sections: Section[]; logic: unknown[]; settings: Settings };
+
+type FormRow = {
+  id: string;
+  name: string;
+  kind: string;
+  schema: Schema;
+  status: string;
+  is_locked: boolean;
+  opens_at: string | null;
+  closes_at: string | null;
+};
+
+const STEPS = [
+  { n: "What you collect", sub: "Sessions or abstracts" },
+  { n: "Welcome screen", sub: "Message and terms" },
+  { n: "Submission questions", sub: "The form itself" },
+  { n: "Participants", sub: "Roles and contact fields" },
+  { n: "Form settings", sub: "Deadline, limits, drafts" },
+  { n: "Notifications", sub: "Alerts and reminders" },
+] as const;
+
+const KINDS = [
+  { key: "cfp", n: "Call for papers", d: "Talk proposals from speakers you have not met yet." },
+  { key: "task", n: "Speaker task", d: "A form you send to people already on the programme." },
+] as const;
+
+const STATUS: Record<string, { l: string; fg: string; bg: string }> = {
+  open: { l: "Open", fg: "var(--ok,#0E7A5F)", bg: "var(--okw,#E2F1EC)" },
+  draft: { l: "Draft", fg: "var(--if,#47599F)", bg: "var(--ifw,#E9ECF7)" },
+  closed: { l: "Closed", fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)" },
+};
+
+const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+
+function check(on: boolean) {
+  return {
+    ck: on ? "✓" : "",
+    ckBg: on ? "var(--sg,#E04E4E)" : "var(--cd,#FFFFFF)",
+    ckBd: on ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
+  };
+}
+
+export default function FormsPage() {
+  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { stats, eventId } = useProgramStats();
+  const queryClient = useQueryClient();
+
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [step, setStep] = useState(0);
+  const [tab, setTab] = useState<"All" | "Open" | "Draft">("All");
+  const [edit, setEdit] = useState<FormRow | null>(null);
+  const [limit, setLimit] = useState("1");
+
+  const { data: forms } = useQuery({
+    queryKey: ["forms", eventId],
+    enabled: eventId !== null,
+    queryFn: () => authed<FormRow[]>(`/events/${eventId}/forms`),
+  });
+
+  const save = useMutation({
+    mutationFn: (row: FormRow) =>
+      authed<FormRow>(`/events/${eventId}/forms/${row.id}`, {
+        method: "PATCH",
+        body: { name: row.name, schema: row.schema, closes_at: row.closes_at },
+      }),
+    onSuccess: (row) => {
+      void queryClient.invalidateQueries({ queryKey: ["forms", eventId] });
+      setEdit(row);
+      toast("Saved.");
+    },
+    // A locked form rejects structural edits by design, and the message says
+    // which field caused it, so it goes straight through.
+    onError: (problem: Error) => toast(problem.message),
+  });
+
+  const create = useMutation({
+    mutationFn: () =>
+      authed<FormRow>(`/events/${eventId}/forms`, {
+        method: "POST",
+        body: {
+          name: "Untitled form",
+          kind: "cfp",
+          schema: {
+            sections: [{ key: "proposal", title: "Your proposal", fields: [] }],
+            logic: [],
+            settings: {},
+          },
+        },
+      }),
+    onSuccess: (row) => {
+      void queryClient.invalidateQueries({ queryKey: ["forms", eventId] });
+      setOpenId(row.id);
+      setEdit(row);
+      setStep(0);
+      toast("New form created.");
+    },
+    onError: (problem: Error) => toast(problem.message),
+  });
+
+  const all = useMemo(() => forms ?? [], [forms]);
+  const shown = all.filter((row) => tab === "All" || STATUS[row.status]?.l === tab);
+
+  const open = (row: FormRow) => {
+    setOpenId(row.id);
+    setEdit(structuredClone(row));
+    setStep(0);
+    setLimit("1");
+  };
+
+  /** Every step edits the same draft, so one helper covers all six. */
+  const patch = (change: (draft: FormRow) => void) => {
+    setEdit((current) => {
+      if (current === null) return current;
+      const next = structuredClone(current);
+      change(next);
+      return next;
+    });
+  };
+  const patchSettings = (change: (settings: Settings) => void) =>
+    patch((draft) => change(draft.schema.settings));
+
+  const draft = edit;
+  const settings = draft?.schema.settings;
+  const section = draft?.schema.sections[0];
+  const inBuilder = openId !== null && draft !== null;
+
+  const tile = (name: "All" | "Open" | "Draft", count: number) => ({
+    c: count,
+    on: () => setTab(name),
+    bd: tab === name ? "var(--sg,#E04E4E)" : "var(--ln,#E1E7E9)",
+    ring: tab === name ? "0 0 0 3px var(--sw,#FFEAE6)" : "0 1px 2px rgba(13,16,32,.04)",
+    numFg: tab === name ? "var(--sg,#E04E4E)" : "var(--ik,#16232B)",
+  });
+
+  const partCheck = check(settings?.collect_participants ?? true);
+  const termsCheck = check(settings?.require_terms ?? false);
+  const confirmCheck = check(settings?.confirm_participants ?? true);
+  const adminCheck = check(settings?.notify_admins_on_submit ?? true);
+
+  const screen: FormsData = {
+    ...chrome,
+    ...stripData(stats),
+
+    inList: !inBuilder,
+    inBuilder,
+    crumb: inBuilder ? `/ Forms / ${draft.name}` : "/ Forms",
+    bName: draft?.name ?? "",
+    backToList: () => {
+      setOpenId(null);
+      setEdit(null);
+    },
+    newForm: () => create.mutate(),
+
+    sumLine:
+      all.length === 0
+        ? "No forms yet. Create one and it becomes your call for papers."
+        : `${all.length} form${all.length === 1 ? "" : "s"}, ${all.filter((row) => row.status === "open").length} open.`,
+    tAllF: tile("All", all.length),
+    tOpenF: tile("Open", all.filter((row) => row.status === "open").length),
+    tDraftF: tile("Draft", all.filter((row) => row.status === "draft").length),
+    tResp: {
+      c: stats.total,
+      on: () => setTab("All"),
+      bd: "var(--ln,#E1E7E9)",
+      ring: "0 1px 2px rgba(13,16,32,.04)",
+      numFg: "var(--ik,#16232B)",
+    },
+
+    formRows: shown.map((row) => {
+      const look = STATUS[row.status] ?? STATUS.draft!;
+      const fieldCount = row.schema.sections.reduce(
+        (total, entry) => total + entry.fields.length,
+        0,
+      );
+      return {
+        n: row.name,
+        kind: row.kind === "cfp" ? "Call for papers" : "Speaker task",
+        meta: `${fieldCount} field${fieldCount === 1 ? "" : "s"}${row.is_locked ? " · locked, has submissions" : ""}`,
+        closes:
+          row.closes_at === null ? "no close date" : `closes ${DAY.format(new Date(row.closes_at))}`,
+        st: look.l,
+        stFg: look.fg,
+        stBg: look.bg,
+        onOpen: () => open(row),
+        onCopy: () => {
+          void navigator.clipboard?.writeText(
+            `${window.location.origin}/e/${stats.event?.name ?? ""}/cfp`,
+          );
+          toast("Public link copied.");
+        },
+      };
+    }),
+
+    steps: STEPS.map((entry, index) => ({
+      n: entry.n,
+      sub: entry.sub,
+      on: () => setStep(index),
+      mark: index < step ? "✓" : String(index + 1),
+      bg: index === step ? "var(--sw,#FFEAE6)" : "none",
+      fg: index === step ? "var(--sg,#E04E4E)" : "var(--i2,#3E4E58)",
+      wt: index === step ? "600" : "400",
+      dotBg: index <= step ? "var(--sg,#E04E4E)" : "var(--cd,#FFFFFF)",
+      dotBd: index <= step ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
+      dotFg: index <= step ? "#FFFFFF" : "var(--i4,#99A6AD)",
+    })),
+    s1: step === 0,
+    s2: step === 1,
+    s3: step === 2,
+    s4: step === 3,
+    s5: step === 4,
+    s6: step === 5,
+    nextStep: () => {
+      if (step === STEPS.length - 1) {
+        if (draft !== null) save.mutate(draft);
+        return;
+      }
+      setStep((current) => current + 1);
+    },
+    prevStep: () => setStep((current) => Math.max(0, current - 1)),
+    nextLabel: step === STEPS.length - 1 ? "Save form" : "Next",
+    preview: () => {
+      if (draft !== null) save.mutate(draft);
+    },
+    savedStamp: save.isPending ? "Saving…" : "Unsaved changes are kept until you save",
+
+    kinds: KINDS.map((entry) => ({
+      n: entry.n,
+      d: entry.d,
+      on: () => patch((row) => void (row.kind = entry.key)),
+      bd: draft?.kind === entry.key ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
+      bg: draft?.kind === entry.key ? "var(--sw,#FFEAE6)" : "var(--cd,#FFFFFF)",
+    })),
+    partCk: partCheck.ck,
+    partCkBg: partCheck.ckBg,
+    partCkBd: partCheck.ckBd,
+    partBd: partCheck.ckBd,
+    partBg: partCheck.ckBg,
+    togPart: () =>
+      patchSettings((entry) => void (entry.collect_participants = !entry.collect_participants)),
+
+    welcome: settings?.welcome_message ?? "",
+    onWelcome: (event) =>
+      patchSettings(
+        (entry) => void (entry.welcome_message = (event.target as HTMLTextAreaElement).value),
+      ),
+    termsCk: termsCheck.ck,
+    termsBd: termsCheck.ckBd,
+    termsBg: termsCheck.ckBg,
+    togTerms: () => patchSettings((entry) => void (entry.require_terms = !entry.require_terms)),
+
+    secTitle: section?.title ?? "",
+    onSecTitle: (event) =>
+      patch((row) => {
+        const first = row.schema.sections[0];
+        if (first !== undefined) first.title = (event.target as HTMLInputElement).value;
+      }),
+    pageHead: settings?.page_heading ?? "",
+    onPageHead: (event) =>
+      patchSettings(
+        (entry) => void (entry.page_heading = (event.target as HTMLInputElement).value.slice(0, 15)),
+      ),
+    fields: (section?.fields ?? []).map((field) => ({
+      n: field.label,
+      req: field.required ? "required" : "optional",
+      meta: `${field.type.replace(/_/g, " ")}${field.choices.length > 0 ? ` · ${field.choices.length} choices` : ""}`,
+      // A locked form keeps its fields: deletion becomes "hide from new
+      // submissions" so answers already given keep their meaning.
+      locked: draft?.is_locked ?? false,
+      idb: field.identity_bearing,
+      canX: !(draft?.is_locked ?? false),
+      onX: () =>
+        patch((row) => {
+          const first = row.schema.sections[0];
+          if (first !== undefined) {
+            first.fields = first.fields.filter((entry) => entry.key !== field.key);
+          }
+        }),
+    })),
+    addField: () => {
+      const label = window.prompt("What is the question?");
+      if (label === null || label.trim() === "") return;
+      const key = label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 60);
+      if (key === "") {
+        toast("That question needs at least one letter or number in it.");
+        return;
+      }
+      patch((row) => {
+        const first = row.schema.sections[0];
+        if (first === undefined) return;
+        if (first.fields.some((entry) => entry.key === key)) {
+          return;
+        }
+        first.fields.push({
+          key,
+          type: "long_text",
+          label: label.trim(),
+          help_text: null,
+          required: false,
+          choices: [],
+          identity_bearing: false,
+          hidden_from_new: false,
+        });
+      });
+    },
+
+    roles: (settings?.participant_roles ?? []).map((role) => {
+      const mark = check(role.enabled);
+      return {
+        n: role.label,
+        ck: mark.ck,
+        ckBg: mark.ckBg,
+        ckBd: mark.ckBd,
+        bd: mark.ckBd,
+        bg: mark.ckBg,
+        onSel: role.enabled,
+        min: String(role.minimum),
+        max: String(role.maximum),
+        onTog: () =>
+          patchSettings((entry) => {
+            const found = entry.participant_roles.find((item) => item.key === role.key);
+            if (found !== undefined) found.enabled = !found.enabled;
+          }),
+        onMin: (event) =>
+          patchSettings((entry) => {
+            const found = entry.participant_roles.find((item) => item.key === role.key);
+            if (found !== undefined) {
+              found.minimum = Math.max(0, Number((event.target as HTMLInputElement).value) || 0);
+            }
+          }),
+        onMax: (event) =>
+          patchSettings((entry) => {
+            const found = entry.participant_roles.find((item) => item.key === role.key);
+            if (found !== undefined) {
+              found.maximum = Math.max(1, Number((event.target as HTMLInputElement).value) || 1);
+            }
+          }),
+      };
+    }),
+    cfCk: confirmCheck.ck,
+    cfBd: confirmCheck.ckBd,
+    cfBg: confirmCheck.ckBg,
+    togConfirm: () =>
+      patchSettings((entry) => void (entry.confirm_participants = !entry.confirm_participants)),
+
+    closeAt: draft?.closes_at?.slice(0, 16) ?? "",
+    onCloseAt: (event) =>
+      patch((row) => {
+        const value = (event.target as HTMLInputElement).value;
+        row.closes_at = value === "" ? null : new Date(value).toISOString();
+      }),
+    limit,
+    onLimit: (event) => setLimit((event.target as HTMLInputElement).value),
+    draftOpts: [
+      { on: true, n: "Let speakers save and come back" },
+      { on: false, n: "Submissions must be completed in one sitting" },
+    ].map((entry) => ({
+      n: entry.n,
+      on: () => patchSettings((row) => void (row.allow_drafts = entry.on)),
+      rb: (settings?.allow_drafts ?? true) === entry.on ? "var(--sg,#E04E4E)" : "transparent",
+      rd:
+        (settings?.allow_drafts ?? true) === entry.on
+          ? "var(--sg,#E04E4E)"
+          : "var(--ls,#C8D2D5)",
+    })),
+
+    adCk: adminCheck.ck,
+    adBd: adminCheck.ckBd,
+    adBg: adminCheck.ckBg,
+    togAdmin: () =>
+      patchSettings(
+        (entry) => void (entry.notify_admins_on_submit = !entry.notify_admins_on_submit),
+      ),
+
+    toasts: toasts.map((entry) => ({
+      msg: entry.msg,
+      onX: () => dismiss(entry.id),
+    })),
+  };
+
+  return <Forms d={screen} />;
+}
