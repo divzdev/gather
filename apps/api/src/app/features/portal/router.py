@@ -530,3 +530,70 @@ async def my_submissions(session: DbSession, speaker: PortalSpeaker) -> list[Sub
         )
         for row in rows
     ]
+
+
+@router.get("/sessions/{session_id}.ics")
+async def own_session_calendar(
+    session_id: uuid.UUID, session: DbSession, speaker: PortalSpeaker
+) -> Response:
+    """The speaker's own session as a calendar entry, from live data.
+
+    Not from the published snapshot: between acceptance and publication a
+    speaker has a confirmed time and no public schedule to read it from, and
+    that gap is most of the period they actually need the entry. Scoped to their
+    own sessions, so this is not a back door to the unpublished programme.
+    """
+    from app.features.publishing import ics
+
+    talk = (
+        (
+            await session.execute(
+                select(Session, Room)
+                .join(SessionSpeaker, SessionSpeaker.session_id == Session.id)
+                .outerjoin(Room, Room.id == Session.room_id)
+                .where(Session.id == session_id, SessionSpeaker.speaker_id == speaker.speaker_id)
+            )
+        )
+        .tuples()
+        .first()
+    )
+    if talk is None:
+        raise NotFoundError(f"No session with id {session_id}.")
+
+    found, room = talk
+    if found.starts_at is None:
+        raise NotFoundError("That session has no time yet.")
+
+    with tenancy_disabled():
+        event = await session.get(Event, speaker.event_id)
+
+    names = (
+        (
+            await session.execute(
+                select(Speaker.name)
+                .join(SessionSpeaker, SessionSpeaker.speaker_id == Speaker.id)
+                .where(SessionSpeaker.session_id == found.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    body = ics.build(
+        {
+            "id": str(found.id),
+            "title": found.title,
+            "abstract": found.abstract,
+            "starts_at": found.starts_at.isoformat(),
+            "duration_minutes": found.duration_minutes,
+            "room": room.name if room else None,
+            "speakers": [{"name": name} for name in names],
+        },
+        event={"name": event.name if event else "", "location": event.location if event else None},
+        sequence=1,
+        now=datetime.now(UTC),
+    )
+    return Response(
+        content=body,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{found.slug}.ics"'},
+    )

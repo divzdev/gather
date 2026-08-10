@@ -416,10 +416,9 @@ export default function PortalPage() {
         say("Your session time is not set yet.");
         return;
       }
-      window.open(
-        `${API_BASE_URL}/public/events/${home.event.slug}/sessions/${talk.slug}.ics`,
-        "_blank",
-      );
+      // The speaker's own route, not the public one: between acceptance and
+      // publication there is no public schedule to read the time from.
+      window.open(`${API_BASE_URL}/portal/sessions/${talk.id}.ics`, "_blank");
     },
     calG: () => {
       setCalOpen(false);

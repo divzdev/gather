@@ -148,7 +148,6 @@ test("49-50. a conditional field appears and hides with its trigger", async ({ p
 });
 
 test("57-59. a proposal submits, returns a code, and the code shows a status", async ({
-  page,
   request,
 }) => {
   // Driven through the API rather than the wizard: this asserts the contract the
