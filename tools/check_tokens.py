@@ -20,8 +20,10 @@ import sys
 from pathlib import Path
 
 # A declaration can start a line, follow a `;` or `{`, or open a style="" —
-# the prototypes put whole token maps on one line inside a <style> block.
-DEFINITION = re.compile(r"""(?:^|[;{"'])\s*(--[A-Za-z0-9-]+)\s*:""", re.MULTILINE)
+# the prototypes put whole token maps on one line inside a <style> block. The
+# optional closing quote is for converted screens, where the same map arrives
+# as a React style object: `"--bg": "#08080A"`.
+DEFINITION = re.compile(r"""(?:^|[;{"'])\s*(--[A-Za-z0-9-]+)["']?\s*:""", re.MULTILINE)
 REFERENCE = re.compile(r"var\(\s*(--[A-Za-z0-9-]+)")
 
 TOKEN_FILES = ("apps/web/src/styles/tokens.css", "apps/web/src/app/globals.css")

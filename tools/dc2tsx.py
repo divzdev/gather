@@ -155,7 +155,9 @@ PATH = re.compile(r"^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$")
 KIND_TS = {
     "list": None,  # structural — rendered as an array of the item's own shape
     "handler": "(event: React.SyntheticEvent) => void",
-    "aria": '"true" | "false" | "mixed"',
+    # React's Booleanish. "mixed" is legal ARIA but React's types exclude it,
+    # and no prototype emits it.
+    "aria": '"true" | "false" | boolean',
     "bool": "boolean",
     "text": "string",
     "node": "React.ReactNode",
@@ -288,7 +290,13 @@ class Converter(HTMLParser):
             key = f'"{prop}"' if prop.startswith("--") else camel(prop)
             bound = self.interpolate(value, "text")
             parts.append(f"{key}: {bound}" if bound else f'{key}: "{js_quote(value)}"')
-        return "{" + ", ".join(parts) + "}"
+
+        literal = "{" + ", ".join(parts) + "}"
+        # A screen that declares its own design tokens inline needs the cast:
+        # React's CSSProperties has no index signature for custom properties.
+        if any(part.startswith('"--') for part in parts):
+            return f"{literal} as React.CSSProperties"
+        return literal
 
     # -- parsing ----------------------------------------------------------
 

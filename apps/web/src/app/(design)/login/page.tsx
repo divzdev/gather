@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 import { Auth, type AuthData } from "@/components/design/Auth";
 import { ApiError, apiFetch } from "@/lib/api";
@@ -33,7 +33,18 @@ function firstProblem(fields: {
   return null;
 }
 
-export default function LoginPage() {
+/** `useSearchParams` opts a route out of static prerendering unless it sits
+ *  inside a Suspense boundary — `next build` fails on /login without this, which
+ *  lint and tsc never see because neither runs a build. */
+export default function LoginRoute() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPage />
+    </Suspense>
+  );
+}
+
+function LoginPage() {
   const router = useRouter();
   /** Where the visitor was heading before the console bounced them here. Only
    *  in-app paths are honoured, so a crafted ?next= cannot redirect off-site. */
