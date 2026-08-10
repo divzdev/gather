@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import DbSession, bind_tenant, require_role
-from app.core.errors import NotFoundError
+from app.core.errors import ConflictError, NotFoundError
 from app.models import Role, User
 from app.models.base import Base
 
@@ -26,6 +26,8 @@ WRITE_ROLES = (Role.OWNER, Role.ADMIN, Role.COORDINATOR)
 READ_ROLES = (Role.OWNER, Role.ADMIN, Role.COORDINATOR, Role.REVIEWER)
 
 PostCreate = Callable[[AsyncSession, Any], Awaitable[None]]
+#: Returns how many rows still point at this one, so a delete can refuse.
+InUseCheck = Callable[[AsyncSession, uuid.UUID], Awaitable[int]]
 
 
 def event_resource_router[ModelT: Base, ReadT: BaseModel](
@@ -38,6 +40,7 @@ def event_resource_router[ModelT: Base, ReadT: BaseModel](
     tag: str,
     order_by: str = "sort_order",
     on_create: PostCreate | None = None,
+    in_use: InUseCheck | None = None,
 ) -> APIRouter:
     router = APIRouter(
         prefix="/v1/events/{event_id}/" + plural,
@@ -100,6 +103,19 @@ def event_resource_router[ModelT: Base, ReadT: BaseModel](
         session: DbSession,
         _: User = Depends(require_role(*WRITE_ROLES)),
     ) -> None:
-        await session.delete(await _get(session, item_id))
+        item = await _get(session, item_id)
+        if in_use is not None:
+            # The foreign keys are ON DELETE SET NULL, so this would otherwise
+            # succeed and quietly strip the track off forty sessions. Refusing
+            # with the count is the sensible outcome; unpicking it afterwards is
+            # not something an organiser can do.
+            used_by = await in_use(session, item_id)
+            if used_by > 0:
+                raise ConflictError(
+                    f"{used_by} session{'s' if used_by != 1 else ''} still use this. "
+                    "Move them first, or it would be removed from all of them.",
+                    details={"in_use": used_by},
+                )
+        await session.delete(item)
 
     return router

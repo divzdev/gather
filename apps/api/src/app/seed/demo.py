@@ -404,97 +404,104 @@ async def _place(session: AsyncSession, event: Event, talks: list[Session]) -> N
     if not days or not rooms:
         return
 
-    # Three tracks across four rooms repeats a track in every slot by pigeonhole,
-    # and the agenda would open under a dozen accidental warnings that bury the
-    # deliberate ones. So the last room takes the untracked workshops and the
-    # other three take one session from each track, round-robin.
-    #
-    # Which sessions are untracked is decided at promotion from their format, not
-    # here. Deciding it during placement wrote `track_id = None` back to the row,
-    # so a second run saw a fourth bucket and behaved differently from the first.
-    untracked = [talk for talk in talks if talk.track_id is None]
-    buckets: dict[Any, list[Session]] = {}
-    for talk in talks:
-        if talk.track_id is not None:
-            buckets.setdefault(talk.track_id, []).append(talk)
-
-    last = len(rooms) - 1
+    # Fill slot by slot, never repeating a track within one slot. Three tracks
+    # across four rooms repeats one by pigeonhole if you just deal them out, and
+    # the agenda then opens under a dozen accidental warnings that bury the three
+    # deliberate ones. The fourth room takes a session with no track where one is
+    # available, and is otherwise left empty — an empty room reads as a gap in
+    # the programme, which is honest; a phantom clash does not.
+    pool = list(talks)
     placed: list[Session] = []
-    for slot in range(TARGET_PLACED):
-        room_index = slot % len(rooms)
-        if room_index == last:
-            if not untracked:
-                continue
-            talk = untracked.pop(0)
-        else:
-            # Indexed by *room*, not by slot: room 0 always draws the first
-            # track, room 1 the second, and so on, which is what makes the three
-            # sessions sharing a time slot come from three different tracks.
-            keys = list(buckets)
-            queue = buckets[keys[room_index % len(keys)]]
-            if not queue:
-                queue = next((other for other in buckets.values() if other), [])
-            if not queue:
-                break
-            talk = queue.pop(0)
-
-        day = days[slot // (len(rooms) * 8) % len(days)]
-        offset = (slot // len(rooms)) % 8
-        talk.event_day_id = day.id
-        talk.room_id = rooms[room_index].id
-        talk.starts_at = datetime.combine(day.day_date, time(9, 0), tzinfo=UTC) + timedelta(
+    slot = 0
+    while pool and len(placed) < TARGET_PLACED:
+        day = days[(slot // 8) % len(days)]
+        offset = slot % 8
+        start = datetime.combine(day.day_date, time(9, 0), tzinfo=UTC) + timedelta(
             minutes=60 * offset
         )
-        talk.duration_minutes = 30
-        talk.status = SessionStatus.SCHEDULED
-        placed.append(talk)
+
+        used_tracks: set[Any] = set()
+        for room in rooms:
+            if len(placed) >= TARGET_PLACED:
+                break
+            # A tracked session whose track this slot has not used yet, and only
+            # then an untracked one. Taking whatever fits first packs every
+            # workshop into the opening slots and leaves the early grid with no
+            # tracks on it at all.
+            pick = next(
+                (
+                    item
+                    for item in pool
+                    if item.track_id is not None and item.track_id not in used_tracks
+                ),
+                None,
+            ) or next((item for item in pool if item.track_id is None), None)
+            if pick is None:
+                continue
+            pool.remove(pick)
+            if pick.track_id is not None:
+                used_tracks.add(pick.track_id)
+
+            pick.event_day_id = day.id
+            pick.room_id = room.id
+            pick.starts_at = start
+            pick.duration_minutes = 30
+            pick.status = SessionStatus.SCHEDULED
+            placed.append(pick)
+        slot += 1
 
     if len(placed) < 4:
         await session.flush()
         return
 
-    first, second, third, fourth = placed[0], placed[1], placed[2], placed[3]
-    # Narrowed once: `starts_at` is Optional on the model and every clash below
-    # is expressed relative to this one.
-    anchor = first.starts_at
-    if anchor is None:  # pragma: no cover - just assigned above
+    # Three deliberate clashes, one of each kind, as the brief asks for.
+    #
+    # Each is made by changing an attribute of a session already in place rather
+    # than moving one into an occupied slot. Moving creates collateral: the grid
+    # is nearly full, so anywhere you drop lands on something and you get two
+    # clashes where you wanted one.
+    by_slot: dict[Any, list[Session]] = {}
+    for item in placed:
+        by_slot.setdefault(item.starts_at, []).append(item)
+    together = [rows for rows in by_slot.values() if len(rows) >= 3]
+    if not together:
         await session.flush()
         return
+    clashing = together[0]
 
-    # 1. Room double-booking: same room, overlapping by fifteen minutes.
-    second.event_day_id = first.event_day_id
-    second.room_id = first.room_id
-    second.starts_at = anchor + timedelta(minutes=15)
+    # 1. Room double-booking: two of them share a room.
+    clashing[1].room_id = clashing[0].room_id
 
-    # 2. One speaker in two rooms at once.
-    third.event_day_id = first.event_day_id
-    third.starts_at = anchor
-    third.room_id = rooms[1 % len(rooms)].id if first.room_id == rooms[0].id else rooms[0].id
+    # 2. One speaker in two rooms at once — a third session, still in its own
+    #    room, gains the first one's speaker.
     speaker_of_first = await session.scalar(
-        select(SessionSpeaker.speaker_id).where(SessionSpeaker.session_id == first.id)
+        select(SessionSpeaker.speaker_id).where(SessionSpeaker.session_id == clashing[0].id)
     )
     if speaker_of_first is not None:
-        clash = await session.scalar(
+        already = await session.scalar(
             select(SessionSpeaker).where(
-                SessionSpeaker.session_id == third.id,
+                SessionSpeaker.session_id == clashing[2].id,
                 SessionSpeaker.speaker_id == speaker_of_first,
             )
         )
-        if clash is None:
+        if already is None:
             session.add(
                 SessionSpeaker(
                     org_id=event.org_id,
                     event_id=event.id,
-                    session_id=third.id,
+                    session_id=clashing[2].id,
                     speaker_id=speaker_of_first,
                 )
             )
 
-    # 3. Track collision: same track, different rooms, overlapping — soft.
-    fourth.event_day_id = first.event_day_id
-    fourth.starts_at = anchor + timedelta(minutes=10)
-    fourth.track_id = first.track_id
-    fourth.room_id = rooms[-1].id
+    # 3. Track collision, the soft one: a fourth session in the same slot takes
+    #    the first one's track. Needs a session that has a track at all.
+    anchor_track = next((item.track_id for item in clashing if item.track_id is not None), None)
+    if anchor_track is not None:
+        for item in clashing:
+            if item.track_id != anchor_track:
+                item.track_id = anchor_track
+                break
 
     await session.flush()
 

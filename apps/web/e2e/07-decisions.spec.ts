@@ -66,12 +66,16 @@ async function submitProposals(request: APIRequestContext, count: number): Promi
   return ids;
 }
 
-async function outboxSize(request: APIRequestContext, ctx: { headers: Record<string, string>; eventId: string }) {
-  const outbox = await request.get(`${API}/v1/events/${ctx.eventId}/messages/outbox`, {
+/** The outbox is paginated, so its total comes from the meta rather than the
+ *  length of one page — which caps out and made this silently compare 200 to 203. */
+async function outboxSize(
+  request: APIRequestContext,
+  ctx: { headers: Record<string, string>; eventId: string },
+) {
+  const outbox = await request.get(`${API}/v1/events/${ctx.eventId}/messages/outbox?per_page=1`, {
     headers: ctx.headers,
   });
-  const body = (await outbox.json()) as { data?: unknown[] } | unknown[];
-  return Array.isArray(body) ? body.length : (body.data?.length ?? 0);
+  return ((await outbox.json()) as { meta: { total: number } }).meta.total;
 }
 
 test.beforeAll(async ({ request }) => {

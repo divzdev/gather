@@ -34,6 +34,7 @@ const TRACK_HUES = [
 type GridSession = {
   id: string;
   title: string;
+  speaker_ids: string[];
   event_day_id: string | null;
   room_id: string | null;
   track_id: string | null;
@@ -381,6 +382,40 @@ export default function AgendaPage() {
   };
 
   const dragPreview = drag !== null && drag.roomIndex >= 0;
+
+  /** What the session under the cursor would collide with if dropped here.
+   *
+   *  Computed in the browser against data already loaded, so it appears while
+   *  the card is still moving. The server remains the authority and recomputes
+   *  on release; this is a preview, not a second source of truth. */
+  const previewClash = ((): { hard: boolean; why: string } | null => {
+    if (drag === null || drag.roomIndex < 0 || day === null) return null;
+    const moving = [...onThisDay, ...(data?.unscheduled ?? [])].find((row) => row.id === drag.id);
+    const roomId = rooms[drag.roomIndex]?.id;
+    const from = drag.minute;
+    const to = from + drag.duration;
+
+    const startOf = (row: GridSession) =>
+      row.starts_at === null ? 0 : Math.round((Date.parse(row.starts_at) - windowStart) / 60_000);
+
+    for (const row of onThisDay) {
+      if (row.id === drag.id) continue;
+      const start = startOf(row);
+      const end = start + row.duration_minutes;
+      // Half-open, exactly as the server does it: touching is not overlapping.
+      if (!(from < end && start < to)) continue;
+
+      if (row.room_id === roomId) {
+        return { hard: true, why: `${rooms[drag.roomIndex]?.name ?? "This room"} is taken` };
+      }
+      const shared = (moving?.speaker_ids ?? []).some((id) => row.speaker_ids.includes(id));
+      if (shared) return { hard: true, why: "Same speaker, same time" };
+      if (moving?.track_id != null && row.track_id === moving.track_id) {
+        return { hard: false, why: "Same track overlaps" };
+      }
+    }
+    return null;
+  })();
   const hardCount = conflicts.filter((row) => row.severity === "hard").length;
 
   const screen: AgendaData = {
@@ -493,12 +528,29 @@ export default function AgendaPage() {
       w: columnWidth(),
       top: `${(drag?.minute ?? 0) * MINUTES_PER_PX}px`,
       h: `${Math.max(24, (drag?.duration ?? 30) * MINUTES_PER_PX - 2)}px`,
-      bg: "var(--sw,#FFEAE6)",
-      bd: "var(--sg,#E04E4E)",
+      bg:
+        previewClash === null
+          ? "var(--sw,#FFEAE6)"
+          : previewClash.hard
+            ? "rgba(216,67,43,.12)"
+            : "var(--pdw,#F9EDDF)",
+      bd:
+        previewClash === null
+          ? "var(--sg,#E04E4E)"
+          : previewClash.hard
+            ? "var(--cn,#D8432B)"
+            : "var(--pd,#B96A1F)",
       labTop: `${Math.max(0, (drag?.minute ?? 0) * MINUTES_PER_PX - 18)}px`,
-      labFg: "var(--sg,#E04E4E)",
+      labFg:
+        previewClash === null
+          ? "var(--sg,#E04E4E)"
+          : previewClash.hard
+            ? "var(--cn,#D8432B)"
+            : "var(--pd,#B96A1F)",
       label: dragPreview
-        ? `${clockAt(windowStart, drag.minute)} · ${rooms[drag.roomIndex]?.name ?? ""}`
+        ? previewClash === null
+          ? `${clockAt(windowStart, drag.minute)} · ${rooms[drag.roomIndex]?.name ?? ""}`
+          : `${clockAt(windowStart, drag.minute)} · ${previewClash.why}`
         : "",
     },
 

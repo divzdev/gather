@@ -19,6 +19,7 @@ from sqlalchemy import select
 from app.core import mail
 from app.core.deps import DbSession, bind_tenant, require_role
 from app.core.errors import RecipientCountMismatchError
+from app.core.pagination import ListQueryDep, PageMeta, paginate
 from app.core.tenancy import current_tenant
 from app.models import (
     DecisionStatus,
@@ -168,16 +169,27 @@ class OutboxRow(BaseModel):
     error_detail: str | None
 
 
-@router.get("/outbox", response_model=list[OutboxRow])
-async def outbox(session: DbSession, _: User = Depends(require_role(*READ))) -> list[Message]:
+class OutboxPage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    data: list[OutboxRow]
+    meta: PageMeta
+
+
+@router.get("/outbox", response_model=OutboxPage)
+async def outbox(
+    session: DbSession, query: ListQueryDep, _: User = Depends(require_role(*READ))
+) -> OutboxPage:
     """One row per recipient, newest first. Delivery state lives here, so a
-    bounce is visible rather than assumed."""
-    rows = (
-        (await session.execute(select(Message).order_by(Message.created_at.desc()).limit(200)))
-        .scalars()
-        .all()
-    )
-    return list(rows)
+    bounce is visible rather than assumed.
+
+    Paginated rather than capped: this was a bare `limit(200)`, so an organiser
+    who had sent more than that saw the newest two hundred and had no way to know
+    the rest existed — in the one place that records what actually went out.
+    """
+    statement = select(Message).order_by(Message.created_at.desc())
+    rows, meta = await paginate(session, statement, query)
+    return OutboxPage(data=[OutboxRow.model_validate(row) for row in rows], meta=meta)
 
 
 @router.post("/send-decisions", response_model=SendResult)

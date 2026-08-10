@@ -27,6 +27,7 @@ from app.models import (
     Room,
     ScheduleBlock,
     Session,
+    SessionSpeaker,
     SessionStatus,
     Track,
     User,
@@ -68,6 +69,10 @@ class PlacedSession(BaseModel):
 
     id: uuid.UUID
     title: str
+    # Carried so the grid can spot a speaker double-booking *before* the drop
+    # lands. Without it the browser can only see room and track clashes, and the
+    # speaker one is the clash organisers most want warning about.
+    speaker_ids: list[uuid.UUID] = Field(default_factory=list)
     event_day_id: uuid.UUID | None
     room_id: uuid.UUID | None
     track_id: uuid.UUID | None
@@ -139,10 +144,11 @@ class Draft(BaseModel):
     conflicts: list[ConflictRead]
 
 
-def _read(row: Session) -> PlacedSession:
+def _read(row: Session, speakers: dict[uuid.UUID, list[uuid.UUID]] | None = None) -> PlacedSession:
     return PlacedSession(
         id=row.id,
         title=row.title,
+        speaker_ids=(speakers or {}).get(row.id, []),
         event_day_id=row.event_day_id,
         room_id=row.room_id,
         track_id=row.track_id,
@@ -341,6 +347,24 @@ async def draft(session: DbSession, _: User = Depends(require_role(*READ))) -> D
         .scalars()
         .all()
     )
+    links = (
+        (
+            (
+                await session.execute(
+                    select(SessionSpeaker.session_id, SessionSpeaker.speaker_id).where(
+                        SessionSpeaker.session_id.in_([row.id for row in sessions])
+                    )
+                )
+            )
+            .tuples()
+            .all()
+        )
+        if sessions
+        else []
+    )
+    by_session: dict[uuid.UUID, list[uuid.UUID]] = {}
+    for session_id, speaker_id in links:
+        by_session.setdefault(session_id, []).append(speaker_id)
 
     return Draft(
         days=[
@@ -370,7 +394,7 @@ async def draft(session: DbSession, _: User = Depends(require_role(*READ))) -> D
             )
             for block in blocks
         ],
-        scheduled=[_read(row) for row in sessions if row.starts_at is not None],
-        unscheduled=[_read(row) for row in sessions if row.starts_at is None],
+        scheduled=[_read(row, by_session) for row in sessions if row.starts_at is not None],
+        unscheduled=[_read(row, by_session) for row in sessions if row.starts_at is None],
         conflicts=await _live_conflicts(session),
     )

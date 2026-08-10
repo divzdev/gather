@@ -62,7 +62,11 @@ export default function MessagesPage() {
   const { data: outbox } = useQuery({
     queryKey: ["outbox", eventId],
     enabled: eventId !== null,
-    queryFn: () => authed<OutboxRow[]>(`/events/${eventId}/messages/outbox`),
+    // Paginated: ask for a screenful, and the meta says how many there are.
+    queryFn: () =>
+      authed<{ data: OutboxRow[]; meta: { total: number } }>(
+        `/events/${eventId}/messages/outbox?per_page=200`,
+      ),
   });
 
   const selected = (preview?.recipients ?? []).filter((row) => chosen.includes(row.outcome));
@@ -94,7 +98,7 @@ export default function MessagesPage() {
   });
 
   const sendable = selected.length > 0 && confirmed && !send.isPending;
-  const queued = outbox ?? [];
+  const queued = outbox?.data ?? [];
   const bounced = queued.filter((row) => row.status === "bounced" || row.status === "failed");
 
   const tile = (label: string, count: number, active: boolean, on: () => void) => ({

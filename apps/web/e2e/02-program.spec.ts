@@ -97,15 +97,18 @@ test("21. an event day is added and removed again", async ({ page }) => {
   await openProgram(page);
   const days = panel(page, /event days/i);
   const label = `Day ${Date.now()}`;
-  // Far future, so the unique (event, date) pair cannot collide with the seed.
-  const date = new Date(Date.now() + 86_400_000 * (500 + (Date.now() % 400)))
-    .toISOString()
-    .slice(0, 10);
+  // A date far enough out, and jittered, that concurrent or repeated runs cannot
+  // collide on the unique (event, date) pair — a collision here fails the add
+  // and made this flake in the full suite while passing alone.
+  const offset = 900 + Math.floor(Math.random() * 5000);
+  const date = new Date(Date.now() + 86_400_000 * offset).toISOString().slice(0, 10);
 
   await days.getByLabel(/^date$/i).fill(date);
   await days.getByLabel(/^label$/i).fill(label);
   await days.getByRole("button", { name: /^Add$/ }).click();
 
+  // If the add was refused, say so here rather than timing out on the row.
+  await expect(days.getByRole("alert")).toHaveCount(0);
   await expect(row(days, label)).toContainText("09:00–18:00", { timeout: 15_000 });
   await removeRow(days, label);
 });
@@ -121,14 +124,16 @@ test("23-24. an unused track deletes; one in use does not crash the screen", asy
   await expect(row(tracks, throwaway)).toBeVisible({ timeout: 15_000 });
   await removeRow(tracks, throwaway);
 
-  // 24. A seeded track has sessions on it. Either outcome is defensible; a raw
-  // constraint error or a white screen is not.
+  // 24. A track with sessions on it is refused, and says how many. It used to
+  // succeed: the foreign key is ON DELETE SET NULL, so deleting silently
+  // stripped the track off every session that used it.
   const inUse = tracks.getByRole("button", { name: /Remove AI Engineering/i });
   if ((await inUse.count()) > 0) {
     await inUse.click();
-    await page.waitForTimeout(2000);
-    await expect(page.getByRole("heading", { name: /program setup/i })).toBeVisible();
-    const body = await page.locator("body").innerText();
-    expect(body).not.toMatch(/Traceback|IntegrityError|500 Internal|undefined/i);
+    await expect(tracks.getByRole("alert")).toContainText(/still use this|in use/i, {
+      timeout: 15_000,
+    });
+    // And it is still there.
+    await expect(tracks.getByText("AI Engineering", { exact: true })).toBeVisible();
   }
 });
