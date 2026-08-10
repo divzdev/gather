@@ -10,6 +10,7 @@ email the wrong outcome to two hundred people.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
@@ -22,6 +23,7 @@ from app.core.tenancy import current_tenant
 from app.models import (
     DecisionStatus,
     Event,
+    Message,
     MessageBatch,
     MessagePurpose,
     MessageStatus,
@@ -153,6 +155,29 @@ async def decision_recipients(
     for recipient in recipients:
         by_outcome[recipient.outcome.value] = by_outcome.get(recipient.outcome.value, 0) + 1
     return RecipientPreview(total=len(recipients), by_outcome=by_outcome, recipients=recipients)
+
+
+class OutboxRow(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: uuid.UUID
+    to_email: str
+    subject: str
+    status: MessageStatus
+    created_at: datetime
+    error_detail: str | None
+
+
+@router.get("/outbox", response_model=list[OutboxRow])
+async def outbox(session: DbSession, _: User = Depends(require_role(*READ))) -> list[Message]:
+    """One row per recipient, newest first. Delivery state lives here, so a
+    bounce is visible rather than assumed."""
+    rows = (
+        (await session.execute(select(Message).order_by(Message.created_at.desc()).limit(200)))
+        .scalars()
+        .all()
+    )
+    return list(rows)
 
 
 @router.post("/send-decisions", response_model=SendResult)
