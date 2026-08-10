@@ -39,6 +39,12 @@ class Speaker(Base, PrimaryKey, Timestamps, OrgScoped):
     accessibility_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     av_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Directory-level, spanning every event. `EventSpeaker.status` answers "are
+    # they speaking at *this* one"; these answer "who are they to us at all", so
+    # a keynote from three years ago is still findable as an alum.
+    tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    crm_status: Mapped[str] = mapped_column(String(40), nullable=False, default="prospect")
+
 
 class EventSpeaker(Base, PrimaryKey, Timestamps, EventScoped):
     """One speaker's participation in one event."""

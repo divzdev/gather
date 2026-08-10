@@ -156,6 +156,51 @@ async def bind_public_event(
 PublicEvent = Annotated[Event, Depends(bind_public_event)]
 
 
+async def bind_org_tenant(
+    session: DbSession,
+    user: CurrentUser,
+    org_id: Annotated[uuid.UUID, Path()],
+) -> AsyncIterator[Role]:
+    """Bind an organization with no event, for reads that span all of them.
+
+    The speaker directory is the reason this exists: a person who keynoted three
+    years ago belongs to the organization, not to one conference. Leaving the
+    event unset is deliberate — see `_apply_tenancy`, which only constrains
+    event-scoped rows when the scope names one.
+    """
+    with tenancy_disabled():
+        role: Role | None = await session.scalar(
+            select(OrgMember.role).where(OrgMember.org_id == org_id, OrgMember.user_id == user.id)
+        )
+    if role is None:
+        raise RoleRequiredError("You do not have access to this organisation.")
+
+    with tenant_scope(org_id=org_id):
+        yield role
+        # See bind_public_event: flush before the scope closes.
+        await session.flush()
+
+
+OrgRole = Annotated[Role, Depends(bind_org_tenant)]
+
+
+def require_org_role(*allowed: Role) -> Callable[..., Awaitable[Role]]:
+    """Gate an org-level route. Mirrors require_role, which needs an event."""
+    if not allowed:
+        raise ValueError("require_org_role() needs at least one role; empty would allow everyone")
+    permitted = frozenset(allowed)
+
+    async def dependency(role: OrgRole) -> Role:
+        if role not in permitted:
+            raise RoleRequiredError(
+                "You do not have access to this organisation.",
+                details={"required": sorted(item.value for item in permitted)},
+            )
+        return role
+
+    return dependency
+
+
 async def bind_speaker_tenant(
     session: DbSession, speaker: CurrentSpeaker
 ) -> AsyncIterator[SpeakerContext]:
