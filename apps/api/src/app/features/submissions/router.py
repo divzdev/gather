@@ -170,6 +170,22 @@ async def decide(
     return (await _with_speakers(session, [submission]))[0]
 
 
+@router.post("/{submission_id}/withdraw", response_model=SubmissionRead)
+async def withdraw(
+    submission_id: uuid.UUID,
+    session: DbSession,
+    _: User = Depends(require_role(*READ)),
+) -> SubmissionRead:
+    """The speaker has pulled out.
+
+    Coordinators can do this, unlike deciding: it records something that already
+    happened rather than making a call. The session survives and drops to
+    unscheduled — see the service for why it is not deleted.
+    """
+    submission = await service.withdraw(session, submission_id=submission_id)
+    return (await _with_speakers(session, [submission]))[0]
+
+
 @router.post("/bulk-decision", response_model=BulkDecisionResponse)
 async def bulk_decide(
     body: BulkDecisionRequest,

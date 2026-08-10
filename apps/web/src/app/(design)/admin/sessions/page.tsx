@@ -289,7 +289,9 @@ export default function SessionsPage() {
     countLine: `${filtered.length} of ${all.length} sessions`,
     sumLine: `${counts.Scheduled} placed · ${counts.Unscheduled} still to schedule · ${counts["Needs approval"]} awaiting approval`,
     schedN: counts.Scheduled,
-    empty: all.length === 0,
+    // The filtered length, not the whole list: filtering to nothing used to
+    // render a blank table with no explanation and no way back.
+    empty: filtered.length === 0,
 
     soTitle: sorter("title"),
     soCode: sorter("code"),

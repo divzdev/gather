@@ -5,6 +5,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import mail
@@ -18,6 +19,7 @@ from app.core.errors import (
 from app.features.forms.schema import FormSchema
 from app.features.forms.validation import validate_answers
 from app.models import (
+    ContentStatus,
     DecisionStatus,
     Event,
     EventSpeaker,
@@ -94,9 +96,19 @@ async def upsert_speaker(
     from the same address is the same person, not a duplicate."""
     speaker = await session.scalar(select(Speaker).where(Speaker.email == email))
     if speaker is None:
-        speaker = Speaker(org_id=org_id, email=email, name=name)
-        session.add(speaker)
-        await session.flush()
+        # Check-then-insert is a race: two proposals submitted at once from the
+        # same new address both saw nothing and both inserted, and one request
+        # died on the unique index. The index is the authority — insert inside a
+        # savepoint so losing the race costs a re-read, not the transaction.
+        try:
+            async with session.begin_nested():
+                speaker = Speaker(org_id=org_id, email=email, name=name)
+                session.add(speaker)
+                await session.flush()
+        except IntegrityError:
+            speaker = await session.scalar(select(Speaker).where(Speaker.email == email))
+            if speaker is None:  # pragma: no cover - the constraint says otherwise
+                raise
 
     participating = await session.scalar(
         select(func.count(EventSpeaker.id)).where(EventSpeaker.speaker_id == speaker.id)
@@ -349,6 +361,36 @@ async def decide(
     submission.decided_at = _now()
     submission.decided_by_user_id = user_id
     await session.flush()
+    return submission
+
+
+async def withdraw(session: AsyncSession, *, submission_id: uuid.UUID) -> Submission:
+    """A speaker pulls out. Reachable from any state, including accepted.
+
+    The session survives and drops to unscheduled rather than being deleted: an
+    organiser who has already built an agenda around this slot needs to see the
+    hole, and the talk sometimes comes back with a different speaker. Deleting it
+    would silently close the gap and lose the room booking.
+    """
+    submission = await get(session, submission_id)
+    if submission.status == SubmissionStatus.WITHDRAWN:
+        return submission
+
+    submission.status = SubmissionStatus.WITHDRAWN
+    submission.decision_status = DecisionStatus.NONE
+    await session.flush()
+
+    talk = await session.scalar(select(Session).where(Session.submission_id == submission.id))
+    if talk is not None:
+        talk.status = SessionStatus.UNSCHEDULED
+        talk.event_day_id = None
+        talk.room_id = None
+        talk.starts_at = None
+        # Unapproved, so it cannot reach a public surface on the next publish
+        # while nobody is presenting it.
+        talk.content_status = ContentStatus.PENDING
+        await session.flush()
+
     return submission
 
 

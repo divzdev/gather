@@ -335,7 +335,8 @@ export default function SpeakersPage() {
       toast(`${selected.length} magic links would go out. Sending is not wired yet.`),
     exportCsv,
 
-    empty: all.length === 0,
+    // See the same note on the sessions screen.
+    empty: filtered.length === 0,
 
     open: open !== null,
     closeDrawer: () => setOpenId(null),

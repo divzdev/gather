@@ -19,6 +19,7 @@ import { useProgramStats } from "@/components/console/stats";
 import { card, EmptyState, PageHead, pill, quietPill } from "@/components/ui";
 import { ApiError } from "@/lib/api";
 import { authed } from "@/lib/session";
+import { useSubmitOnce } from "@/lib/submitOnce";
 
 type Row = Record<string, unknown> & { id: string; name?: string };
 
@@ -131,6 +132,7 @@ function label(row: Row): string {
 
 function List({ panel, eventId }: { panel: Panel; eventId: string | null }) {
   const queryClient = useQueryClient();
+  const once = useSubmitOnce();
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [problem, setProblem] = useState("");
 
@@ -262,14 +264,16 @@ function List({ panel, eventId }: { panel: Panel; eventId: string | null }) {
         <button
           style={pill}
           disabled={add.isPending}
-          onClick={() => {
-            const built = panel.build(draft);
-            if (typeof built === "string") {
-              setProblem(built);
-              return;
-            }
-            add.mutate(built);
-          }}
+          onClick={() =>
+            once(() => {
+              const built = panel.build(draft);
+              if (typeof built === "string") {
+                setProblem(built);
+                return;
+              }
+              add.mutate(built);
+            })
+          }
         >
           Add
         </button>

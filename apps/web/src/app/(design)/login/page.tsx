@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Auth, type AuthData } from "@/components/design/Auth";
@@ -35,6 +35,15 @@ function firstProblem(fields: {
 
 export default function LoginPage() {
   const router = useRouter();
+  /** Where the visitor was heading before the console bounced them here. Only
+   *  in-app paths are honoured, so a crafted ?next= cannot redirect off-site. */
+  const requested = useSearchParams().get("next");
+  // Typed routes cannot know a runtime path, and the guard above is what makes
+  // this safe: same-origin, absolute, never protocol-relative.
+  const next =
+    requested !== null && requested.startsWith("/") && !requested.startsWith("//")
+      ? (requested as Parameters<typeof router.push>[0])
+      : null;
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -78,7 +87,7 @@ export default function LoginPage() {
       });
       const first = events[0];
       if (first !== undefined) setEventId(first.id);
-      router.push(role === "reviewer" ? "/review" : "/admin");
+      router.push(next ?? (role === "reviewer" ? "/review" : "/admin"));
     } catch (caught) {
       setError(
         caught instanceof ApiError ? caught.message : "That demo account is not seeded yet.",
@@ -107,7 +116,7 @@ export default function LoginPage() {
         return;
       }
       setEventId(first.id);
-      router.push("/admin");
+      router.push(next ?? "/admin");
     } catch (caught) {
       setError(
         caught instanceof ApiError ? caught.message : "Could not sign in. Try again.",
@@ -140,7 +149,7 @@ export default function LoginPage() {
       });
       const first = events[0];
       if (first !== undefined) setEventId(first.id);
-      router.push("/admin");
+      router.push(next ?? "/admin");
     } catch (caught) {
       setError(
         caught instanceof ApiError ? caught.message : "Could not create the workspace. Try again.",

@@ -114,6 +114,9 @@ test("164. ⌘K opens on every console screen, searches, and navigates", async (
 
   // It searches, and Enter goes where the highlighted row says.
   await page.goto("/admin");
+  // The listener lives in the rail, so wait for the screen before pressing —
+  // otherwise the key lands on a document with nothing bound to it yet.
+  await expect(page.getByRole("heading").first()).toBeVisible({ timeout: 20_000 });
   await page.keyboard.press("ControlOrMeta+k");
   await page.getByRole("dialog", { name: /command palette/i }).getByRole("textbox").fill("agenda");
   await expect(page.getByRole("option", { name: /Agenda/i }).first()).toBeVisible();
@@ -121,6 +124,7 @@ test("164. ⌘K opens on every console screen, searches, and navigates", async (
   await expect(page).toHaveURL(/\/admin\/agenda/, { timeout: 15_000 });
 
   // And it finds records, not only screens.
+  await expect(page.getByRole("heading").first()).toBeVisible({ timeout: 20_000 });
   await page.keyboard.press("ControlOrMeta+k");
   const input = page.getByRole("dialog", { name: /command palette/i }).getByRole("textbox");
   await input.fill("the");
