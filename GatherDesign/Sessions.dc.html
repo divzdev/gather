@@ -91,7 +91,7 @@
         </button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Filter by title or speaker" style="height:32px;width:250px;padding:0 12px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+        <input aria-label="Filter by title or speaker" value="{{ q }}" onChange="{{ onQ }}" placeholder="Filter by title or speaker" style="height:32px;width:250px;padding:0 12px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
         <div style="position:relative">
           <button onClick="{{ togFPop }}" style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid {{ fBd }};background:{{ fBg }};font:500 12px 'IBM Plex Sans',sans-serif;color:{{ fFg }}" style-hover="background:var(--sk,#EDF1F2)"><svg width="11" height="11" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" style="flex:none"><path d="M1.5 2.5h12l-4.6 5.4v4.2l-2.8 1.4V7.9L1.5 2.5z"></path></svg>Filter{{ fCount }}</button>
           <sc-if value="{{ fPopOn }}" hint-placeholder-val="{{ false }}">
@@ -173,41 +173,34 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
               <div>
-                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Status</div>
-                <select value="{{ f.st }}" onChange="{{ onSt }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+                <label for="sessions-status" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Status</label><select id="sessions-status" value="{{ f.st }}" onChange="{{ onSt }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
                   <option value="accepted">Accepted</option><option value="acceptq">Accept queue</option><option value="pending">Pending</option><option value="declineq">Decline queue</option><option value="declined">Declined</option><option value="withdrawn">Withdrawn</option><option value="draft">Draft</option>
                 </select>
               </div>
               <div>
-                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Track</div>
-                <select value="{{ f.tr }}" onChange="{{ onTr }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+                <label for="sessions-track" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Track</label><select id="sessions-track" value="{{ f.tr }}" onChange="{{ onTr }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
                   <option>Agents</option><option>Evals</option><option>Infrastructure</option><option>Retrieval</option><option>Multimodal</option><option>In production</option>
                 </select>
               </div>
               <div>
-                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Format</div>
-                <select value="{{ f.fmt }}" onChange="{{ onFmt }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+                <label for="sessions-format" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Format</label><select id="sessions-format" value="{{ f.fmt }}" onChange="{{ onFmt }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
                   <option>30 min talk</option><option>10 min lightning</option><option>45 min keynote</option><option>60 min panel</option><option>90 min workshop</option>
                 </select>
               </div>
               <div>
-                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Capacity</div>
-                <input value="{{ f.cap }}" onChange="{{ onCap }}" placeholder="room default" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);outline-color:#E04E4E">
+                <label for="sessions-capacity" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Capacity</label><input id="sessions-capacity" value="{{ f.cap }}" onChange="{{ onCap }}" placeholder="room default" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);outline-color:#E04E4E">
               </div>
               <div>
-                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Starts</div>
-                <input value="{{ f.starts }}" onChange="{{ onStarts }}" placeholder="Tue 13 Oct 14:00" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);outline-color:#E04E4E">
+                <label for="sessions-starts" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Starts</label><input id="sessions-starts" value="{{ f.starts }}" onChange="{{ onStarts }}" placeholder="Tue 13 Oct 14:00" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px 'IBM Plex Mono',monospace;color:var(--ik,#16232B);outline-color:#E04E4E">
               </div>
               <div>
-                <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Room</div>
-                <select value="{{ f.room }}" onChange="{{ onRoom }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+                <label for="sessions-room" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Room</label><select id="sessions-room" value="{{ f.room }}" onChange="{{ onRoom }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
                   <option>Unassigned</option><option>Main stage</option><option>Room 2</option><option>Room 3</option><option>Workshop lab</option>
                 </select>
               </div>
             </div>
             <div>
-              <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Description</div>
-              <textarea value="{{ f.desc }}" onChange="{{ onDesc }}" rows="5" placeholder="Shown on the public schedule and embeds" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
+              <label for="sessions-description" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Description</label><textarea id="sessions-description" value="{{ f.desc }}" onChange="{{ onDesc }}" rows="5" placeholder="Shown on the public schedule and embeds" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
             </div>
             <div style="border:1px solid var(--ifl,#C6CDEA);background:var(--ifw,#E9ECF7);border-radius:8px;padding:10px 13px;font:400 12px/18px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Placing it on the grid sets starts and room. The agenda is the scheduling truth; these fields follow it.</div>
           </div>
@@ -222,7 +215,7 @@
               </div>
             </sc-for>
             <div style="display:flex;gap:7px">
-              <input value="{{ partDraft }}" onChange="{{ onPartDraft }}" placeholder="Add by name, role defaults to Speaker" style="flex:1;box-sizing:border-box;height:34px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
+              <input aria-label="Add by name, role defaults to Speaker" value="{{ partDraft }}" onChange="{{ onPartDraft }}" placeholder="Add by name, role defaults to Speaker" style="flex:1;box-sizing:border-box;height:34px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E">
               <button onClick="{{ addPart }}" style="height:34px;padding:0 13px;border-radius:6px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12px 'IBM Plex Sans',sans-serif">Add</button>
             </div>
             <div style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">Speaker role: 1 to 4 per session, from the CFP form rules. Each added person gets a portal on acceptance.</div>

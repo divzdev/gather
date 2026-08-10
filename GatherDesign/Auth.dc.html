@@ -77,28 +77,28 @@ input::placeholder{color:#99A6AD}
           </sc-if>
           <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
             <div>
-              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Your name</div>
-              <input value="{{ name }}" onChange="{{ onName }}" placeholder="Sasha Whitfield" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+              <label for="auth-name" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Your name</label>
+              <input id="auth-name" value="{{ name }}" onChange="{{ onName }}" placeholder="Sasha Whitfield" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
             </div>
             <div>
-              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Event or organization</div>
-              <input value="{{ org }}" onChange="{{ onOrg }}" placeholder="AI Engineer 2026" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+              <label for="auth-org" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Event or organization</label>
+              <input id="auth-org" value="{{ org }}" onChange="{{ onOrg }}" placeholder="AI Engineer 2026" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
             </div>
           </sc-if>
           <div>
-            <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Work email</div>
-            <input value="{{ email }}" onChange="{{ onEmail }}" placeholder="you@conference.dev" type="email" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid {{ emailBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+            <label for="auth-email" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Work email</label>
+            <input id="auth-email" value="{{ email }}" onChange="{{ onEmail }}" placeholder="you@conference.dev" type="email" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid {{ emailBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
           </div>
           <div>
             <div style="display:flex;align-items:baseline;margin-bottom:6px">
-              <span style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">Password</span>
+              <label for="auth-password" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">Password</label>
               <div style="flex:1"></div>
               <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
                 <button onClick="{{ forgot }}" style="background:none;border:none;padding:0;font:400 12px 'IBM Plex Sans',sans-serif;color:#6B7B84;cursor:pointer" style-hover="color:#E04E4E">Forgot it?</button>
               </sc-if>
             </div>
             <div style="position:relative">
-              <input value="{{ pw }}" onChange="{{ onPw }}" type="{{ pwType }}" placeholder="{{ pwPlaceholder }}" style="width:100%;box-sizing:border-box;height:44px;padding:0 74px 0 14px;border-radius:9px;border:1px solid {{ pwBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+              <input id="auth-password" value="{{ pw }}" onChange="{{ onPw }}" type="{{ pwType }}" placeholder="{{ pwPlaceholder }}" style="width:100%;box-sizing:border-box;height:44px;padding:0 74px 0 14px;border-radius:9px;border:1px solid {{ pwBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
               <button onClick="{{ togPw }}" style="position:absolute;right:8px;top:8px;height:28px;padding:0 10px;border-radius:999px;border:none;background:#EDF1F2;font:500 11px 'IBM Plex Sans',sans-serif;color:#3E4E58;cursor:pointer" style-hover="background:#E1E7E9">{{ pwToggle }}</button>
             </div>
           </div>

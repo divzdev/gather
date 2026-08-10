@@ -169,12 +169,14 @@ export default function SettingsPage() {
     pInteg: panel === "integrations",
 
     f: draft,
-    onName: (e: React.SyntheticEvent) =>
-      setDraft((c) => ({ ...c, name: (e.target as HTMLInputElement).value })),
-    onSlug: (e: React.SyntheticEvent) =>
-      setDraft((c) => ({ ...c, slug: (e.target as HTMLInputElement).value })),
-    onLoc: (e: React.SyntheticEvent) =>
-      setDraft((c) => ({ ...c, loc: (e.target as HTMLInputElement).value })),
+    // These three went through setDraft alone and never committed: you could
+    // rename the event, watch the field accept it, and lose it on reload.
+    // A blank name or slug is refused by the API, so it is not sent at all —
+    // the field keeps what you typed and the event keeps its old value.
+    onName: field("name", (value) => (value.trim() === "" ? null : { name: value.trim() })),
+    onSlug: field("slug", (value) => (value.trim() === "" ? null : { slug: value.trim() })),
+    // Clearing a location is a legitimate edit, so an empty string does commit.
+    onLoc: field("loc", (value) => ({ location: value })),
     onHook: (e: React.SyntheticEvent) =>
       setDraft((c) => ({ ...c, hook: (e.target as HTMLInputElement).value })),
     onType: field("type", (value) => ({ status: value })),

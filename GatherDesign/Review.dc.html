@@ -90,8 +90,7 @@
           </div>
         </sc-for>
         <div>
-          <div style="font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);margin-bottom:7px">COMMENT</div>
-          <textarea value="{{ comment }}" onChange="{{ onComment }}" rows="3" placeholder="Visible to organizers, never to the speaker" style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
+          <label for="review-comment" style="font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);margin-bottom:7px">COMMENT</label><textarea id="review-comment" value="{{ comment }}" onChange="{{ onComment }}" rows="3" placeholder="Visible to organizers, never to the speaker" style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 12.5px/18px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
         </div>
         <div style="border:1px solid var(--sl,#FFC9C0);border-radius:8px;overflow:hidden">
           <button onClick="{{ togAi }}" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 13px;background:var(--sw,#FFEAE6);border:none;text-align:left">

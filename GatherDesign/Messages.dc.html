@@ -82,8 +82,7 @@
                   <button onClick="{{ tp.on }}" style="height:28px;padding:0 11px;border-radius:6px;border:1px solid {{ tp.bd }};background:{{ tp.bg }};font:500 12px 'IBM Plex Sans',sans-serif;color:{{ tp.fg }};white-space:nowrap">{{ tp.n }}</button>
                 </sc-for>
               </div>
-              <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Subject</div>
-              <input value="{{ subj }}" onChange="{{ onSubj }}" style="width:100%;box-sizing:border-box;height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E;margin-bottom:12px">
+              <label for="messages-subject" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Subject</label><input id="messages-subject" value="{{ subj }}" onChange="{{ onSubj }}" style="width:100%;box-sizing:border-box;height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E;margin-bottom:12px">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Body</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">click a variable to insert it</span></div>
               <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">
                 <sc-for list="{{ vars }}" as="v" hint-placeholder-count="3">

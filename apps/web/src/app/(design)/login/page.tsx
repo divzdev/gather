@@ -13,6 +13,26 @@ type Mode = "login" | "register";
 /** Staff sign-in. Speakers never reach this screen — they get a magic link and
  *  land in the portal, which is why the link option here sends one rather than
  *  offering a password reset. */
+/** Client-side checks for the register form.
+ *
+ *  Deliberately the same rules the API enforces, not a looser subset: a field
+ *  the browser accepts and the server rejects is the worst of both.
+ */
+function firstProblem(fields: {
+  name: string;
+  organisation: string;
+  email: string;
+  password: string;
+}): string | null {
+  if (fields.name.trim() === "") return "Your name is needed.";
+  if (fields.organisation.trim() === "") return "An event or organisation name is needed.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email.trim())) {
+    return "That email address does not look right.";
+  }
+  if (fields.password.length < 12) return "Use a passphrase of at least 12 characters.";
+  return null;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
@@ -99,6 +119,14 @@ export default function LoginPage() {
 
   const createWorkspace = async () => {
     if (busy) return;
+    // Checked here as well as on the server: a typo should be caught while the
+    // cursor is still in the field, not after a round trip. The server remains
+    // the authority, this only saves the trip.
+    const problem = firstProblem({ name, organisation, email, password });
+    if (problem !== null) {
+      setError(problem);
+      return;
+    }
     setBusy(true);
     setError("");
     try {

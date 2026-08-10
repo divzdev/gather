@@ -69,7 +69,7 @@
           <p style="font:400 13px 'IBM Plex Sans',sans-serif;color:#6B7B84;margin:0 0 18px">Your email is the identity for this submission. We send a magic link, never a password.</p>
           <div style="max-width:420px">
             <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Email address <span style="color:#D8432B">*</span></div>
-            <input value="{{ email }}" onChange="{{ onEmail }}" placeholder="you@company.com" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:6px;border:1px solid {{ emailBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+            <input aria-label="you@company.com" value="{{ email }}" onChange="{{ onEmail }}" placeholder="you@company.com" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:6px;border:1px solid {{ emailBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
             <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#99A6AD;margin-top:6px">Already started? The same email resumes your draft on any device.</div>
           </div>
         </sc-if>
@@ -111,7 +111,7 @@
               <div style="font:600 12px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.06em;color:#99A6AD;margin-bottom:10px">SPEAKER 1 · YOU</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
                 <div><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Full name <span style="color:#D8432B">*</span></div><input value="{{ name }}" onChange="{{ onName }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid {{ nameBd }};background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E"></div>
-                <div><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Company</div><input value="{{ company }}" onChange="{{ onCompany }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E"></div>
+                <div><label for="cfp-company" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Company</label><input id="cfp-company" value="{{ company }}" onChange="{{ onCompany }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E"></div>
               </div>
               <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Bio <span style="color:#D8432B">*</span> <span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#99A6AD">50 to 100 words, third person</span></div>
               <textarea value="{{ bio }}" onChange="{{ onBio }}" rows="3" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid {{ bioBd }};background:#FFFFFF;font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#16232B;resize:vertical;outline-color:#E04E4E"></textarea>
@@ -120,8 +120,8 @@
               <div style="border:1px solid #E1E7E9;border-radius:8px;background:#FFFFFF;padding:14px 16px">
                 <div style="display:flex;align-items:center;margin-bottom:10px"><span style="font:600 12px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.06em;color:#99A6AD;flex:1">SPEAKER 2 · CO-SPEAKER</span><button onClick="{{ rmCo }}" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:#6B7B84;padding:0">Remove</button></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                  <input value="{{ coName }}" onChange="{{ onCoName }}" placeholder="Full name" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
-                  <input value="{{ coEmail }}" onChange="{{ onCoEmail }}" placeholder="Email for their portal invite" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+                  <input aria-label="Full name" value="{{ coName }}" onChange="{{ onCoName }}" placeholder="Full name" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+                  <input aria-label="Email for their portal invite" value="{{ coEmail }}" onChange="{{ onCoEmail }}" placeholder="Email for their portal invite" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
                 </div>
               </div>
             </sc-if>
