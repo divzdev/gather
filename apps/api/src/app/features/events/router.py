@@ -16,7 +16,7 @@ from sqlalchemy import or_, select
 from app.core.deps import CurrentUser, DbSession, bind_tenant, require_role
 from app.core.errors import ApiError, ConflictError, RoleRequiredError
 from app.core.tenancy import tenancy_disabled
-from app.models import Event, EventMember, EventStatus, Form, FormKind, OrgMember, Role
+from app.models import Event, EventMember, EventStatus, Form, FormKind, OrgMember, Role, User
 
 router = APIRouter(prefix="/v1/events", tags=["events"])
 
@@ -129,6 +129,64 @@ async def update_event(event_id: uuid.UUID, body: EventUpdate, session: DbSessio
 
     await session.flush()
     return event
+
+
+class MemberRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    user_id: uuid.UUID
+    name: str
+    email: str
+    role: Role
+
+
+@router.get(
+    "/{event_id}/members",
+    response_model=list[MemberRead],
+    dependencies=[Depends(bind_tenant), Depends(require_role(*READ))],
+)
+async def list_members(event_id: uuid.UUID, session: DbSession) -> list[MemberRead]:
+    """Who works on this event, and in what role.
+
+    Assignment and reviewer chasing both need to name people, and until now
+    nothing could: the console had no way to learn who the reviewers are.
+    """
+    # Mirrors resolve_role: a per-event role wins, and an org member with no
+    # event row still works on every event in the org. Listing only EventMember
+    # would report an empty team on an event nobody has been overridden on.
+    event = await session.get(Event, event_id)
+    if event is None:
+        raise RoleRequiredError("You do not have access to this event.")
+
+    with tenancy_disabled():
+        org_rows = (
+            (
+                await session.execute(
+                    select(OrgMember, User)
+                    .join(User, User.id == OrgMember.user_id)
+                    .where(OrgMember.org_id == event.org_id)
+                )
+            )
+            .tuples()
+            .all()
+        )
+        overrides = {
+            member.user_id: member.role
+            for member in (
+                await session.scalars(select(EventMember).where(EventMember.event_id == event_id))
+            ).all()
+        }
+
+    by_user = {
+        user.id: MemberRead(
+            user_id=user.id,
+            name=user.name,
+            email=user.email,
+            role=overrides.get(user.id, member.role),
+        )
+        for member, user in org_rows
+    }
+    return sorted(by_user.values(), key=lambda member: member.name)
 
 
 @router.get("", response_model=list[EventSummary])

@@ -17,6 +17,17 @@ type Round = {
 };
 
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+
+type Member = { user_id: string; name: string; email: string; role: string };
+
+/** Everyone who can be handed a review queue. Owners and admins review too. */
+const REVIEWING_ROLES = new Set(["owner", "admin", "coordinator", "reviewer"]);
+
+const ROUND_STATUS: Record<string, { label: string; fg: string; bg: string }> = {
+  draft: { label: "Draft", fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)" },
+  open: { label: "Open", fg: "var(--ok,#0E7A5F)", bg: "var(--okw,#E2F1EC)" },
+  closed: { label: "Closed", fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)" },
+};
 type Progress = {
   user_id: string;
   name: string;
@@ -65,10 +76,102 @@ export default function EvaluationsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<1 | -1>(1);
 
+  const [newName, setNewName] = useState("");
+  const [newBlind, setNewBlind] = useState(false);
+
   const { data: rounds } = useQuery({
     queryKey: ["review-rounds-admin", eventId],
     enabled: eventId !== null,
     queryFn: () => authed<Round[]>(`/events/${eventId}/review-rounds`),
+  });
+
+  const { data: members } = useQuery({
+    queryKey: ["members", eventId],
+    enabled: eventId !== null,
+    queryFn: () => authed<Member[]>(`/events/${eventId}/members`),
+  });
+
+  const { data: plans } = useQuery({
+    queryKey: ["round-plans", eventId, (rounds ?? []).map((r) => r.id).join(",")],
+    enabled: eventId !== null && (rounds ?? []).length > 0,
+    queryFn: async () =>
+      Object.fromEntries(
+        await Promise.all(
+          (rounds ?? []).map(async (round) => {
+            const [criteria, progressRows] = await Promise.all([
+              authed<{ id: string }[]>(`/events/${eventId}/review-rounds/${round.id}/criteria`),
+              authed<Progress[]>(`/events/${eventId}/review-rounds/${round.id}/progress`),
+            ]);
+            return [round.id, { criteria, progress: progressRows }] as const;
+          }),
+        ),
+      ),
+  });
+
+  const refreshRounds = () => {
+    void queryClient.invalidateQueries({ queryKey: ["review-rounds-admin", eventId] });
+    void queryClient.invalidateQueries({ queryKey: ["round-plans", eventId] });
+    void queryClient.invalidateQueries({ queryKey: ["review-progress", eventId] });
+  };
+
+  const createRound = useMutation({
+    mutationFn: (body: { name: string; is_blind: boolean }) =>
+      authed<Round>(`/events/${eventId}/review-rounds`, { method: "POST", body }),
+    onSuccess: (round) => {
+      refreshRounds();
+      setNewName("");
+      toast(`Created ${round.name}. Add its criteria, then assign reviewers.`);
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  const patchRound = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
+      authed<Round>(`/events/${eventId}/review-rounds/${id}`, { method: "PATCH", body }),
+    onSuccess: (round) => {
+      refreshRounds();
+      toast(`${round.name} is now ${round.is_blind ? "blind" : "open"}.`);
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  const distribute = useMutation({
+    mutationFn: (id: string) =>
+      authed<{ created: number; under_assigned: number }>(
+        `/events/${eventId}/review-rounds/${id}/auto-distribute`,
+        {
+          method: "POST",
+          body: {
+            user_ids: (members ?? [])
+              .filter((member) => REVIEWING_ROLES.has(member.role))
+              .map((member) => member.user_id),
+            per_submission: 2,
+          },
+        },
+      ),
+    onSuccess: (result) => {
+      refreshRounds();
+      toast(
+        `${result.created} assignments created` +
+          (result.under_assigned > 0
+            ? `; ${result.under_assigned} submissions could not be fully covered.`
+            : "."),
+      );
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  const advance = useMutation({
+    mutationFn: (id: string) =>
+      authed<Record<string, number>>(`/events/${eventId}/review-rounds/${id}/advance`, {
+        method: "POST",
+      }),
+    onSuccess: (result) => {
+      refreshRounds();
+      const advanced = result["advanced"] ?? 0;
+      toast(`${advanced} submission${advanced === 1 ? "" : "s"} advanced.`);
+    },
+    onError: (error: Error) => toast(error.message),
   });
   const openRound = rounds?.find((round) => round.status === "open") ?? rounds?.[0] ?? null;
 
@@ -237,10 +340,56 @@ export default function EvaluationsPage() {
       };
     }),
 
-    nudgeSlow: () => nudge.mutate(),
-    newPlan: () => toast("Round creation is on the API; the builder screen is not wired yet."),
-    editR2: () => toast("Round editing is on the API; the builder screen is not wired yet."),
-    previewR2: () => toast("Preview follows the round builder."),
+    rounds: (rounds ?? []).map((round) => {
+      const plan = plans?.[round.id];
+      const rows = plan?.progress ?? [];
+      const total = rows.reduce((sum, row) => sum + row.assigned, 0);
+      const finished = rows.reduce((sum, row) => sum + row.completed, 0);
+      const status = ROUND_STATUS[round.status] ?? ROUND_STATUS.draft!;
+      return {
+        name: round.name,
+        stLabel: status.label,
+        stFg: status.fg,
+        stBg: status.bg,
+        blindD: round.is_blind ? "inline-flex" : "none",
+        blindLabel: round.is_blind ? "Show identities" : "Make blind",
+        meta:
+          round.closes_at == null
+            ? "no close date · rubric below"
+            : `due ${DAY.format(new Date(round.closes_at))} · ${plan?.criteria.length ?? 0} criteria`,
+        subs: new Set(rows.map((row) => row.user_id)).size === 0 ? 0 : total,
+        evals: rows.length,
+        done: finished,
+        total,
+        crits: plan?.criteria.length ?? 0,
+        progW: total === 0 ? "0%" : `${Math.round((finished / total) * 100)}%`,
+        onAssign: () => distribute.mutate(round.id),
+        onNudge: () => nudge.mutate(),
+        onBlind: () => patchRound.mutate({ id: round.id, body: { is_blind: !round.is_blind } }),
+        onAdvance: () => advance.mutate(round.id),
+      };
+    }),
+    // The header's New plan button and the create card do the same thing.
+    newPlan: () => {
+      setView("plans");
+      toast("Name the round in the card below, then create it.");
+    },
+    newName,
+    onNewName: (e: React.SyntheticEvent) => setNewName((e.target as HTMLInputElement).value),
+    newBlindLabel: newBlind ? "Blind: on" : "Blind: off",
+    togNewBlind: () => setNewBlind((on) => !on),
+    createRound: () => {
+      const name = newName.trim();
+      if (name === "") {
+        toast("Give the round a name first.");
+        return;
+      }
+      createRound.mutate({ name, is_blind: newBlind });
+    },
+    plansNote:
+      (members ?? []).filter((member) => REVIEWING_ROLES.has(member.role)).length === 0
+        ? "No reviewers on this event yet — assignment needs someone to assign to."
+        : `${(members ?? []).filter((m) => REVIEWING_ROLES.has(m.role)).length} people can review. Assignment balances by current load and never gives anyone their own submission.`,
 
     toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),
   };
