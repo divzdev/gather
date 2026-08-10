@@ -50,6 +50,7 @@ type NavName =
   | "Review"
   | "Speakers"
   | "Directory"
+  | "Program"
   | "Agenda"
   | "Tasks"
   | "Messages"
@@ -106,6 +107,7 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     rv: item("Review"),
     sp: item("Speakers"),
     dr: item("Directory"),
+    pg: item("Program"),
     ag: item("Agenda"),
     tk: item("Tasks"),
     ms: item("Messages"),
