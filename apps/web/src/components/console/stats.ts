@@ -12,6 +12,8 @@ import { authed, getEventId } from "@/lib/session";
 type Row = { status: string; decision_status: string };
 type Page = { data: Row[]; meta: { total: number } };
 type Event = { name: string; starts_on: string; ends_on: string; cfp_closes_at: string | null };
+type Conflict = { severity: string };
+type TaskRow = { status: string };
 
 export type ProgramStats = {
   total: number;
@@ -21,6 +23,8 @@ export type ProgramStats = {
   drafts: number;
   pendingSend: number;
   cfpDays: number | null;
+  conflicts: number;
+  overdueTasks: number;
   event: Event | null;
 };
 
@@ -34,16 +38,26 @@ export function useProgramStats(): { stats: ProgramStats; eventId: string | null
     enabled: eventId !== null,
     staleTime: 15_000,
     queryFn: async () => {
-      const [page, event] = await Promise.all([
+      // A reviewer can read submissions but not the agenda or the task board, so
+      // each badge source falls back to empty rather than failing the whole rail.
+      const [page, event, conflicts, tasks] = await Promise.all([
         authed<Page>(`/events/${eventId}/submissions?per_page=200`),
         authed<Event>(`/events/${eventId}`),
+        authed<Conflict[]>(`/events/${eventId}/conflicts`).catch(() => [] as Conflict[]),
+        authed<TaskRow[]>(`/events/${eventId}/tasks/summary`).catch(() => [] as TaskRow[]),
       ]);
       // Computed here rather than in render: the countdown reads the clock, and
       // an impure read during render is a re-render hazard.
       const closesAt = event.cfp_closes_at === null ? null : new Date(event.cfp_closes_at).getTime();
       const cfpDays =
         closesAt === null ? null : Math.max(0, Math.ceil((closesAt - Date.now()) / 86_400_000));
-      return { page, event, cfpDays };
+      return {
+        page,
+        event,
+        cfpDays,
+        conflicts: conflicts.filter((row) => row.severity === "hard").length,
+        overdueTasks: tasks.filter((row) => row.status === "overdue").length,
+      };
     },
   });
 
@@ -59,6 +73,8 @@ export function useProgramStats(): { stats: ProgramStats; eventId: string | null
       drafts: rows.filter((row) => row.status === "draft").length,
       pendingSend: rows.filter((row) => row.decision_status === "pending_send").length,
       cfpDays: data?.cfpDays ?? null,
+      conflicts: data?.conflicts ?? 0,
+      overdueTasks: data?.overdueTasks ?? 0,
       event: data?.event ?? null,
     },
   };

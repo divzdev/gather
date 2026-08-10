@@ -30,6 +30,9 @@ class EventSummary(BaseModel):
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 
     id: uuid.UUID
+    # The console remembers an event, but the speaker directory is org-scoped, so
+    # this is how a screen finds the organisation it is working inside.
+    org_id: uuid.UUID
     name: str
     slug: str
     status: EventStatus

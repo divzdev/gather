@@ -49,6 +49,7 @@ type NavName =
   | "Sessions"
   | "Review"
   | "Speakers"
+  | "Directory"
   | "Agenda"
   | "Tasks"
   | "Messages"
@@ -79,6 +80,10 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
   const submissions = badge(stats.total);
   const sessions = badge(stats.accepted);
   const review = badge(stats.unreviewed);
+  // The conflict count is the number the customer complained the incumbent hides
+  // until you reload, so it belongs where it is visible from every screen.
+  const conflicts = badge(stats.conflicts);
+  const overdue = badge(stats.overdueTasks);
 
   const item = (name: NavName) =>
     name === active
@@ -100,6 +105,7 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     se: item("Sessions"),
     rv: item("Review"),
     sp: item("Speakers"),
+    dr: item("Directory"),
     ag: item("Agenda"),
     tk: item("Tasks"),
     ms: item("Messages"),
@@ -113,11 +119,10 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     seBadgeD: sessions.display,
     rvBadge: review.text,
     rvBadgeD: review.display,
-    // Agenda conflicts and speaker tasks are not built yet; no badge until they are.
-    agBadge: "",
-    agBadgeD: "none",
-    tkBadge: "",
-    tkBadgeD: "none",
+    agBadge: conflicts.text,
+    agBadgeD: conflicts.display,
+    tkBadge: overdue.text,
+    tkBadgeD: overdue.display,
     exp: !collapsed,
     col: collapsed,
     railW: collapsed ? "64px" : "216px",
