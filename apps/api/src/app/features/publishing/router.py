@@ -101,9 +101,7 @@ async def publish(
     if not body.acknowledge_conflicts:
         hard = [
             item
-            for item in await conflicts.detect(
-                session, soft_enabled=event.soft_conflicts_enabled
-            )
+            for item in await conflicts.detect(session, soft_enabled=event.soft_conflicts_enabled)
             if item.is_hard
         ]
         dismissed = set(
