@@ -70,8 +70,10 @@ types: ## Regenerate apps/web/src/lib/api-types.ts from the OpenAPI schema
 	@test -d apps/web && npx --yes openapi-typescript /tmp/openapi.json -o apps/web/src/lib/api-types.ts \
 		|| echo "apps/web not scaffolded yet, wrote /tmp/openapi.json only"
 
-test: test.api ## Run all tests
-	@test -d apps/web && npm run test --workspaces --if-present || true
+test: test.api test.e2e ## Run all tests
+
+test.e2e: ## Run Playwright golden paths (needs `make dev` running)
+	@test -d apps/web && npm run test --workspace apps/web
 
 test.api: ## Run API tests
 	cd $(API) && uv run pytest -q

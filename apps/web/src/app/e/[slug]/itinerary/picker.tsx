@@ -10,7 +10,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 type Session = {
   id: string;
@@ -34,17 +34,22 @@ export function Picker({ slug, sessions }: { slug: string; sessions: Session[] }
   const router = useRouter();
   const params = useSearchParams();
 
-  const picked = useMemo(() => {
-    const raw = params.get("sessions") ?? "";
-    return new Set(raw.split(",").filter(Boolean));
-  }, [params]);
+  // Local state is the source of truth so a tick lands instantly; the URL is
+  // written alongside it so the plan stays shareable. Driving the checkbox from
+  // the URL alone made it wait on a server round trip before it looked ticked,
+  // which reads as a broken control.
+  const [picked, setLocal] = useState<Set<string>>(
+    () => new Set((params.get("sessions") ?? "").split(",").filter(Boolean)),
+  );
 
   const setPicked = (next: Set<string>) => {
+    setLocal(next);
     const query = [...next].join(",");
     // replace, not push: twenty picks should not mean twenty back-button presses.
-    router.replace(query === "" ? `/e/${slug}/itinerary` : `/e/${slug}/itinerary?sessions=${query}`, {
-      scroll: false,
-    });
+    router.replace(
+      query === "" ? `/e/${slug}/itinerary` : `/e/${slug}/itinerary?sessions=${query}`,
+      { scroll: false },
+    );
   };
 
   const toggle = (id: string) => {

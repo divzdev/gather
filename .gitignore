@@ -87,3 +87,7 @@ GatherDesign/* v1.dc.html
 
 # Uploaded files in local dev (storage_backend=local, REPO_ROOT/var/uploads).
 var/
+
+# Playwright artefacts
+apps/web/test-results/
+apps/web/playwright-report/
