@@ -80,14 +80,14 @@ input::placeholder{color:#99A6AD}
           </div>
           <div>
             <div style="display:flex;align-items:baseline;margin-bottom:6px">
-              <span style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">Password</span>
+              <label for="auth-password" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">Password</label>
               <div style="flex:1"></div>
               <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
                 <button onClick="{{ forgot }}" style="background:none;border:none;padding:0;font:400 12px 'IBM Plex Sans',sans-serif;color:#6B7B84;cursor:pointer" style-hover="color:#E04E4E">Forgot it?</button>
               </sc-if>
             </div>
             <div style="position:relative">
-              <input value="{{ pw }}" onChange="{{ onPw }}" type="{{ pwType }}" placeholder="{{ pwPlaceholder }}" style="width:100%;box-sizing:border-box;height:44px;padding:0 74px 0 14px;border-radius:9px;border:1px solid {{ pwBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+              <input id="auth-password" value="{{ pw }}" onChange="{{ onPw }}" type="{{ pwType }}" placeholder="{{ pwPlaceholder }}" style="width:100%;box-sizing:border-box;height:44px;padding:0 74px 0 14px;border-radius:9px;border:1px solid {{ pwBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
               <button onClick="{{ togPw }}" style="position:absolute;right:8px;top:8px;height:28px;padding:0 10px;border-radius:999px;border:none;background:#EDF1F2;font:500 11px 'IBM Plex Sans',sans-serif;color:#3E4E58;cursor:pointer" style-hover="background:#E1E7E9">{{ pwToggle }}</button>
             </div>
           </div>

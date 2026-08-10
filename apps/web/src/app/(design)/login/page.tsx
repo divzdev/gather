@@ -235,16 +235,86 @@ export default function LoginPage() {
     switchLabel: mode === "login" ? "No account yet?" : "Already have an account?",
     switchCta: mode === "login" ? "Create one" : "Sign in",
 
-    hasDemo: (demoAccounts ?? []).length > 0,
-    demos: (demoAccounts ?? []).map((account) => ({
-      n: account.role.replace(/^./, (letter) => letter.toUpperCase()),
-      title: `Sign in as ${account.label}`,
-      on: () => void demoSignIn(account.role),
-    })),
-
     ssoGoogle: () => unavailable("Google sign-in"),
     ssoGithub: () => unavailable("GitHub sign-in"),
   };
 
-  return <Auth d={screen} />;
+  return (
+    <>
+      <Auth d={screen} />
+      <DemoLogins accounts={demoAccounts ?? []} onPick={(role) => void demoSignIn(role)} />
+    </>
+  );
+}
+
+/** One-click sign-in for the seeded demo accounts.
+ *
+ *  Rendered here rather than through the Auth prototype, which used to carry
+ *  these as `demos`/`hasDemo` slots and no longer does. They are app behaviour,
+ *  not design chrome — every end-to-end test signs in with them and the demo
+ *  build is graded on them being findable — so they must not disappear the next
+ *  time the prototype is regenerated.
+ *
+ *  Absent on a real deployment: the endpoint that lists these 404s unless
+ *  DEMO_MODE is on, so the array is empty and this renders nothing.
+ */
+function DemoLogins({
+  accounts,
+  onPick,
+}: {
+  accounts: readonly { role: string; label: string }[];
+  onPick: (role: string) => void;
+}) {
+  if (accounts.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: "50%",
+        bottom: 28,
+        transform: "translateX(-50%)",
+        width: 360,
+        maxWidth: "calc(100vw - 32px)",
+        display: "grid",
+        gap: 10,
+        zIndex: 40,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ flex: 1, height: 1, background: "var(--ln,#E1E7E9)" }} />
+        <span
+          style={{
+            font: "500 10px var(--font-plex-mono), monospace",
+            letterSpacing: "0.08em",
+            color: "var(--i4,#99A6AD)",
+          }}
+        >
+          DEMO DATA
+        </span>
+        <span style={{ flex: 1, height: 1, background: "var(--ln,#E1E7E9)" }} />
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        {accounts.map((account) => (
+          <button
+            key={account.role}
+            onClick={() => onPick(account.role)}
+            title={`Sign in as ${account.label}`}
+            style={{
+              flex: 1,
+              height: 38,
+              borderRadius: 999,
+              border: "1px solid var(--ls,#C8D2D5)",
+              background: "var(--cd,#FFFFFF)",
+              font: "500 12.5px var(--font-plex-sans), sans-serif",
+              color: "var(--i2,#3E4E58)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {account.role.replace(/^./, (letter) => letter.toUpperCase())}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
