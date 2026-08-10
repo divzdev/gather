@@ -9,11 +9,12 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Forms, type FormsData } from "@/components/design/Forms";
+import { blankField, FieldEditor, type Field as EditableField } from "@/components/forms/FieldEditor";
 import { authed } from "@/lib/session";
 
 type Choice = { value: string; label: string };
@@ -25,9 +26,13 @@ type Field = {
   help_text: string | null;
   required: boolean;
   choices: Choice[];
+  max_length?: number | null;
   identity_bearing: boolean;
   hidden_from_new: boolean;
 };
+
+/** show/hide a field when another field's answer matches. */
+type Rule = { field: string; operator: string; value: unknown; action: string; target: string };
 
 type Role = {
   key: string;
@@ -53,7 +58,7 @@ type Settings = {
 
 type Section = { key: string; title: string; description: string | null; fields: Field[] };
 
-type Schema = { sections: Section[]; logic: unknown[]; settings: Settings };
+type Schema = { sections: Section[]; logic: Rule[]; settings: Settings };
 
 type FormRow = {
   id: string;
@@ -106,6 +111,9 @@ export default function FormsPage() {
   const [tab, setTab] = useState<"All" | "Open" | "Draft">("All");
   const [edit, setEdit] = useState<FormRow | null>(null);
   const [limit, setLimit] = useState("1");
+  //  null = closed. A field with an empty key is a new one being added.
+  const [editing, setEditing] = useState<EditableField | null>(null);
+  const dragging = useRef<number | null>(null);
 
   const { data: forms } = useQuery({
     queryKey: ["forms", eventId],
@@ -315,7 +323,7 @@ export default function FormsPage() {
       patchSettings(
         (entry) => void (entry.page_heading = (event.target as HTMLInputElement).value.slice(0, 15)),
       ),
-    fields: (section?.fields ?? []).map((field) => ({
+    fields: (section?.fields ?? []).map((field, index) => ({
       n: field.label,
       req: field.required ? "required" : "optional",
       meta: `${field.type.replace(/_/g, " ")}${field.choices.length > 0 ? ` · ${field.choices.length} choices` : ""}`,
@@ -324,44 +332,35 @@ export default function FormsPage() {
       locked: draft?.is_locked ?? false,
       idb: field.identity_bearing,
       canX: !(draft?.is_locked ?? false),
-      onX: () =>
+      onX: (event) => {
+        // The row itself opens the editor, so removal must not also do that.
+        event.stopPropagation();
         patch((row) => {
           const first = row.schema.sections[0];
           if (first !== undefined) {
             first.fields = first.fields.filter((entry) => entry.key !== field.key);
           }
-        }),
-    })),
-    addField: () => {
-      const label = window.prompt("What is the question?");
-      if (label === null || label.trim() === "") return;
-      const key = label
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "")
-        .slice(0, 60);
-      if (key === "") {
-        toast("That question needs at least one letter or number in it.");
-        return;
-      }
-      patch((row) => {
-        const first = row.schema.sections[0];
-        if (first === undefined) return;
-        if (first.fields.some((entry) => entry.key === key)) {
-          return;
-        }
-        first.fields.push({
-          key,
-          type: "long_text",
-          label: label.trim(),
-          help_text: null,
-          required: false,
-          choices: [],
-          identity_bearing: false,
-          hidden_from_new: false,
         });
-      });
-    },
+      },
+      onEdit: () => setEditing({ ...field, max_length: field.max_length ?? null }),
+      onDragStart: () => {
+        dragging.current = index;
+      },
+      onDragOver: (event) => event.preventDefault(),
+      onDrop: (event) => {
+        event.preventDefault();
+        const from = dragging.current;
+        dragging.current = null;
+        if (from === null || from === index) return;
+        patch((row) => {
+          const first = row.schema.sections[0];
+          if (first === undefined) return;
+          const moved = first.fields.splice(from, 1)[0];
+          if (moved !== undefined) first.fields.splice(index, 0, moved);
+        });
+      },
+    })),
+    addField: () => setEditing(blankField()),
 
     roles: (settings?.participant_roles ?? []).map((role) => {
       const mark = check(role.enabled);
@@ -380,19 +379,34 @@ export default function FormsPage() {
             const found = entry.participant_roles.find((item) => item.key === role.key);
             if (found !== undefined) found.enabled = !found.enabled;
           }),
+        // Refused at the point of entry, not at save. The incumbent accepted
+        // this combination and then rejected every submission with no
+        // explanation — it is the bug the customer hit on camera.
         onMin: (event) =>
           patchSettings((entry) => {
             const found = entry.participant_roles.find((item) => item.key === role.key);
-            if (found !== undefined) {
-              found.minimum = Math.max(0, Number((event.target as HTMLInputElement).value) || 0);
+            if (found === undefined) return;
+            const wanted = Math.max(0, Number((event.target as HTMLInputElement).value) || 0);
+            if (wanted > found.maximum) {
+              toast(
+                `${found.label}: a minimum of ${wanted} cannot go with a maximum of ${found.maximum}.`,
+              );
+              return;
             }
+            found.minimum = wanted;
           }),
         onMax: (event) =>
           patchSettings((entry) => {
             const found = entry.participant_roles.find((item) => item.key === role.key);
-            if (found !== undefined) {
-              found.maximum = Math.max(1, Number((event.target as HTMLInputElement).value) || 1);
+            if (found === undefined) return;
+            const wanted = Math.max(1, Number((event.target as HTMLInputElement).value) || 1);
+            if (wanted < found.minimum) {
+              toast(
+                `${found.label}: a maximum of ${wanted} cannot go with a minimum of ${found.minimum}.`,
+              );
+              return;
             }
+            found.maximum = wanted;
           }),
       };
     }),
@@ -437,5 +451,26 @@ export default function FormsPage() {
     })),
   };
 
-  return <Forms d={screen} />;
+  return (
+    <>
+      <Forms d={screen} />
+      {editing !== null ? (
+        <FieldEditor
+          field={editing}
+          existingKeys={(section?.fields ?? []).map((entry) => entry.key)}
+          onCancel={() => setEditing(null)}
+          onSave={(saved) => {
+            patch((row) => {
+              const first = row.schema.sections[0];
+              if (first === undefined) return;
+              const at = first.fields.findIndex((entry) => entry.key === saved.key);
+              if (at === -1) first.fields.push(saved);
+              else first.fields[at] = saved;
+            });
+            setEditing(null);
+          }}
+        />
+      ) : null}
+    </>
+  );
 }

@@ -161,7 +161,7 @@
             </div>
             <div style="max-width:720px;display:flex;flex-direction:column;gap:8px">
               <sc-for list="{{ fields }}" as="fd" hint-placeholder-count="4">
-                <div style="display:flex;align-items:center;gap:11px;border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:11px 14px">
+                <div draggable="true" onDragStart="{{ fd.onDragStart }}" onDragOver="{{ fd.onDragOver }}" onDrop="{{ fd.onDrop }}" onClick="{{ fd.onEdit }}" style="display:flex;align-items:center;gap:11px;border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:11px 14px">
                   <span style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);cursor:grab">⠿</span>
                   <div style="flex:1;min-width:0">
                     <div style="display:flex;align-items:center;gap:7px"><span style="font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ fd.n }}</span><span style="color:var(--cn,#D8432B);font:500 12px 'IBM Plex Sans',sans-serif">{{ fd.req }}</span><sc-if value="{{ fd.locked }}" hint-placeholder-val="{{ false }}"><span style="padding:1px 7px;border-radius:99px;background:var(--sk,#EDF1F2);font:500 10px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">locked</span></sc-if><sc-if value="{{ fd.idb }}" hint-placeholder-val="{{ false }}"><span style="padding:1px 7px;border-radius:99px;background:var(--ifw,#E9ECF7);font:500 10px 'IBM Plex Sans',sans-serif;color:var(--if,#47599F)">identity-bearing</span></sc-if></div>
