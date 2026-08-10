@@ -831,3 +831,64 @@ async def test_a_draft_form_does_not_replace_the_live_call_for_papers(
     assert public.status_code == 200
     assert public.json()["form_name"] != "Untitled form"
     assert public.json()["schema"]["sections"] != []
+
+
+async def test_an_internal_note_is_attributed_and_never_public(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """Notes are team chatter. They have to name their author, and they must not
+    appear on any surface a speaker can reach."""
+    headers, event, form = cfp
+    submitted = await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": "Noted proposal",
+            "answers": GOOD,
+            "speaker_email": "noted@example.com",
+            "speaker_name": "Noted Speaker",
+        },
+    )
+    submission_id = submitted.json()["id"]
+    code = submitted.json()["code"]
+
+    added = await client.post(
+        f"/v1/events/{event.id}/submissions/{submission_id}/notes",
+        headers=headers,
+        json={"body": "Strong opener, weak middle."},
+    )
+    listed = await client.get(
+        f"/v1/events/{event.id}/submissions/{submission_id}/notes", headers=headers
+    )
+
+    assert added.status_code == 201
+    assert added.json()["author_name"] != ""
+    assert [row["body"] for row in listed.json()] == ["Strong opener, weak middle."]
+
+    public = await client.get(f"/v1/public/events/{event.slug}/submissions/{code}/status")
+    assert "weak middle" not in public.text
+
+
+async def test_an_empty_note_is_refused(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    headers, event, form = cfp
+    submitted = await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": "Blank note target",
+            "answers": GOOD,
+            "speaker_email": "blank@example.com",
+            "speaker_name": "Blank Note",
+        },
+    )
+    submission_id = submitted.json()["id"]
+
+    response = await client.post(
+        f"/v1/events/{event.id}/submissions/{submission_id}/notes",
+        headers=headers,
+        json={"body": "   "},
+    )
+
+    assert response.status_code == 422

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select
 
 from app.core.deps import DbSession, bind_tenant, require_role
+from app.core.errors import NotFoundError
 from app.core.pagination import ListQueryDep, PageMeta, paginate
 from app.features.submissions import service
 from app.features.submissions.schemas import (
@@ -24,6 +26,7 @@ from app.models import (
     Role,
     Speaker,
     Submission,
+    SubmissionNote,
     SubmissionSpeaker,
     SubmissionStatus,
     User,
@@ -194,3 +197,73 @@ async def promote(
     return PromotedSession(
         id=talk.id, title=talk.title, slug=talk.slug, duration_minutes=talk.duration_minutes
     )
+
+
+class NoteCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    body: str = Field(min_length=1, max_length=5000)
+
+    @field_validator("body")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        # min_length alone lets "   " through, and a note of three spaces is
+        # indistinguishable from a misclick.
+        stripped = value.strip()
+        if stripped == "":
+            raise ValueError("a note needs some text")
+        return stripped
+
+
+class NoteRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    body: str
+    author_name: str
+    created_at: datetime
+
+
+@router.get("/{submission_id}/notes", response_model=list[NoteRead])
+async def list_notes(
+    submission_id: uuid.UUID, session: DbSession, _: User = Depends(require_role(*READ))
+) -> list[NoteRead]:
+    """Internal only. These never reach a speaker-facing surface."""
+    rows = (
+        (
+            await session.execute(
+                select(SubmissionNote, User)
+                .join(User, User.id == SubmissionNote.author_user_id)
+                .where(SubmissionNote.submission_id == submission_id)
+                .order_by(SubmissionNote.created_at.desc())
+            )
+        )
+        .tuples()
+        .all()
+    )
+    return [
+        NoteRead(id=note.id, body=note.body, author_name=author.name, created_at=note.created_at)
+        for note, author in rows
+    ]
+
+
+@router.post("/{submission_id}/notes", response_model=NoteRead, status_code=status.HTTP_201_CREATED)
+async def add_note(
+    submission_id: uuid.UUID,
+    body: NoteCreate,
+    session: DbSession,
+    user: User = Depends(require_role(*READ)),
+) -> NoteRead:
+    """A note the programme team leaves for itself.
+
+    Attributed rather than anonymous: a note nobody owns is a note nobody will
+    act on, and the review record is exactly where accountability matters.
+    """
+    submission = await session.get(Submission, submission_id)
+    if submission is None:
+        raise NotFoundError(f"No submission with id {submission_id}.")
+
+    note = SubmissionNote(submission_id=submission_id, author_user_id=user.id, body=body.body)
+    session.add(note)
+    await session.flush()
+    return NoteRead(id=note.id, body=note.body, author_name=user.name, created_at=note.created_at)
