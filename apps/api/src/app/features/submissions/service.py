@@ -121,6 +121,7 @@ async def save_draft(
     answers: dict[str, object],
     speaker_email: str,
     speaker_name: str,
+    co_speakers: list[tuple[str, str]] | None = None,
     draft_token: uuid.UUID | None = None,
 ) -> Submission:
     """Drafts validate loosely — a half-finished proposal must never lose input.
@@ -171,8 +172,90 @@ async def save_draft(
         submission.title = title
         submission.answers = dict(answers)
 
+    await _sync_co_speakers(
+        session,
+        event=event,
+        form=form,
+        submission=submission,
+        primary=speaker,
+        wanted=co_speakers or [],
+    )
     await session.flush()
     return submission
+
+
+async def _sync_co_speakers(
+    session: AsyncSession,
+    *,
+    event: Event,
+    form: Form,
+    submission: Submission,
+    primary: Speaker,
+    wanted: list[tuple[str, str]],
+) -> None:
+    """Replace the non-primary speakers with the ones named in this save.
+
+    Editing a draft can remove a co-speaker as well as add one, so this is a
+    reconcile rather than an append. The primary is never touched: they are the
+    person holding the draft token.
+    """
+    settings = FormSchema.model_validate(form.schema).settings
+    unique: dict[str, str] = {}
+    for name, email in wanted:
+        if email.casefold() == primary.email.casefold():
+            continue
+        unique.setdefault(email.casefold(), name)
+
+    if not settings.allow_co_speakers and unique:
+        raise ApiError(
+            "This form does not take co-speakers.",
+            code="VALIDATION_FAILED",
+            status_code=422,
+            field="co_speakers",
+        )
+    if len(unique) > settings.max_co_speakers:
+        raise ApiError(
+            f"This form allows {settings.max_co_speakers} co-speaker"
+            f"{'s' if settings.max_co_speakers != 1 else ''}, and {len(unique)} were given.",
+            code="VALIDATION_FAILED",
+            status_code=422,
+            field="co_speakers",
+        )
+
+    existing = (
+        (
+            await session.execute(
+                select(SubmissionSpeaker).where(
+                    SubmissionSpeaker.submission_id == submission.id,
+                    SubmissionSpeaker.is_primary.is_(False),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    keep: set[uuid.UUID] = set()
+    for index, (email, name) in enumerate(unique.items()):
+        person = await upsert_speaker(
+            session, org_id=event.org_id, event_id=event.id, email=email, name=name
+        )
+        keep.add(person.id)
+        already = next((row for row in existing if row.speaker_id == person.id), None)
+        if already is None:
+            session.add(
+                SubmissionSpeaker(
+                    submission_id=submission.id,
+                    speaker_id=person.id,
+                    is_primary=False,
+                    sort_order=index + 1,
+                )
+            )
+        else:
+            already.sort_order = index + 1
+
+    for row in existing:
+        if row.speaker_id not in keep:
+            await session.delete(row)
 
 
 async def submit(
@@ -184,6 +267,7 @@ async def submit(
     answers: dict[str, object],
     speaker_email: str,
     speaker_name: str,
+    co_speakers: list[tuple[str, str]] | None = None,
     draft_token: uuid.UUID | None = None,
 ) -> Submission:
     check_window_open(event, form)
@@ -211,6 +295,7 @@ async def submit(
         answers=answers,
         speaker_email=speaker_email,
         speaker_name=speaker_name,
+        co_speakers=co_speakers,
         draft_token=draft_token,
     )
     submission.status = SubmissionStatus.SUBMITTED

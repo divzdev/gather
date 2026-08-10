@@ -714,3 +714,85 @@ async def test_closing_the_cfp_from_settings_shuts_the_public_form(
     assert public.status_code == 200
     assert public.json()["is_open"] is False
     assert public.json()["closed_reason"] is not None
+
+
+async def test_a_proposal_can_name_co_speakers(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    headers, event, form = cfp
+
+    response = await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": "Two people, one talk",
+            "answers": GOOD,
+            "speaker_email": "lead@example.com",
+            "speaker_name": "Lead Speaker",
+            "co_speakers": [
+                {"name": "Second Speaker", "email": "second@example.com"},
+                {"name": "Third Speaker", "email": "third@example.com"},
+            ],
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    listing = await client.get(f"/v1/events/{event.id}/submissions", headers=headers)
+    row = next(r for r in listing.json()["data"] if r["title"] == "Two people, one talk")
+    names = [person["name"] for person in row["speakers"]]
+    assert names[0] == "Lead Speaker"
+    assert set(names) == {"Lead Speaker", "Second Speaker", "Third Speaker"}
+
+
+async def test_the_submitter_is_never_duplicated_as_their_own_co_speaker(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """Easy to do on a form that pre-fills your own address into the first row."""
+    headers, event, form = cfp
+
+    await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": "Solo really",
+            "answers": GOOD,
+            "speaker_email": "solo@example.com",
+            "speaker_name": "Solo Speaker",
+            "co_speakers": [{"name": "Solo Speaker", "email": "SOLO@example.com"}],
+        },
+    )
+
+    listing = await client.get(f"/v1/events/{event.id}/submissions", headers=headers)
+    row = next(r for r in listing.json()["data"] if r["title"] == "Solo really")
+    assert len(row["speakers"]) == 1
+
+
+async def test_more_co_speakers_than_the_form_allows_is_refused(
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    _headers, event, form = cfp
+    with tenancy_disabled():
+        stored = await session.get(Form, form.id)
+        assert stored is not None
+        schema = dict(stored.schema)
+        schema["settings"] = {**schema.get("settings", {}), "max_co_speakers": 1}
+        stored.schema = schema
+        await session.commit()
+
+    response = await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": "Too many cooks",
+            "answers": GOOD,
+            "speaker_email": "lead2@example.com",
+            "speaker_name": "Lead Two",
+            "co_speakers": [
+                {"name": "A", "email": "a@example.com"},
+                {"name": "B", "email": "b@example.com"},
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["field"] == "co_speakers"

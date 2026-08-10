@@ -14,12 +14,20 @@ class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class CoSpeaker(Strict):
+    name: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+
+
 class DraftRequest(Strict):
     form_id: uuid.UUID
     title: str = Field(min_length=1, max_length=300)
     answers: dict[str, Any] = Field(default_factory=dict)
     speaker_email: EmailStr
     speaker_name: str = Field(min_length=1, max_length=200)
+    #: Everyone else on the talk. The person submitting is always primary; the
+    #: form's own settings decide how many of these are allowed.
+    co_speakers: list[CoSpeaker] = Field(default_factory=list, max_length=20)
     draft_token: uuid.UUID | None = None
 
 
