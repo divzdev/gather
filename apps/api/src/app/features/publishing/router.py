@@ -11,9 +11,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from app.core.deps import DbSession, bind_tenant, require_role
-from app.core.errors import NotFoundError
+from app.core.errors import ApiError, NotFoundError
 from app.features.publishing import snapshot
+from app.features.scheduling import conflicts
 from app.models import (
+    ConflictDismissal,
     ContentStatus,
     Event,
     PublishedSchedule,
@@ -40,6 +42,8 @@ class PublishRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     note: str | None = Field(default=None, max_length=500)
+    #: Publishing over a known double-booking is allowed, but never by accident.
+    acknowledge_conflicts: bool = False
 
 
 class RollbackRequest(BaseModel):
@@ -91,6 +95,30 @@ async def publish(
     user: User = Depends(require_role(*PUBLISH)),
 ) -> dict[str, Any]:
     event = await _event(session, event_id)
+
+    # Organisers do sometimes publish over a clash knowingly, so this is a
+    # confirmation rather than a block — but it has to be a deliberate one.
+    if not body.acknowledge_conflicts:
+        hard = [
+            item
+            for item in await conflicts.detect(
+                session, soft_enabled=event.soft_conflicts_enabled
+            )
+            if item.is_hard
+        ]
+        dismissed = set(
+            (await session.execute(select(ConflictDismissal.conflict_key))).scalars().all()
+        )
+        standing = [item for item in hard if item.conflict_key not in dismissed]
+        if standing:
+            raise ApiError(
+                f"{len(standing)} unresolved double-booking"
+                f"{'s' if len(standing) > 1 else ''}. Resolve them, or publish anyway.",
+                code="UNRESOLVED_CONFLICTS",
+                status_code=409,
+                details={"count": len(standing)},
+            )
+
     published = await snapshot.publish(session, event=event, user_id=user.id, note=body.note)
     return {
         "version": published.version,

@@ -346,3 +346,61 @@ async def test_the_draft_returns_the_whole_grid_in_one_request(
     assert len(body["days"]) == 1
     assert len(body["scheduled"]) == 1
     assert len(body["unscheduled"]) == 2
+
+
+async def test_publishing_over_a_double_booking_takes_a_deliberate_acknowledgement(
+    client: AsyncClient, grid: tuple[dict[str, str], Event, dict[str, uuid.UUID]]
+) -> None:
+    """Not a block. Organisers do publish over a known clash, but never by
+    accident, so the first attempt refuses and names the count."""
+    headers, event, ids = grid
+    await _place(client, headers, event, ids["talk0"], room=ids["main"], day=ids["day"], at=NINE_AM)
+    await _place(
+        client,
+        headers,
+        event,
+        ids["talk2"],
+        room=ids["main"],
+        day=ids["day"],
+        at=NINE_AM + timedelta(minutes=15),
+    )
+
+    refused = await client.post(f"/v1/events/{event.id}/schedule/publish", headers=headers, json={})
+    allowed = await client.post(
+        f"/v1/events/{event.id}/schedule/publish",
+        headers=headers,
+        json={"acknowledge_conflicts": True},
+    )
+
+    assert refused.status_code == 409
+    assert refused.json()["error"]["code"] == "UNRESOLVED_CONFLICTS"
+    assert refused.json()["error"]["details"]["count"] == 1
+    assert allowed.status_code == 201
+
+
+async def test_a_dismissed_conflict_no_longer_blocks_publishing(
+    client: AsyncClient, grid: tuple[dict[str, str], Event, dict[str, uuid.UUID]]
+) -> None:
+    headers, event, ids = grid
+    await _place(client, headers, event, ids["talk0"], room=ids["main"], day=ids["day"], at=NINE_AM)
+    clash = await _place(
+        client,
+        headers,
+        event,
+        ids["talk2"],
+        room=ids["main"],
+        day=ids["day"],
+        at=NINE_AM + timedelta(minutes=15),
+    )
+    key = next(row["conflict_key"] for row in clash["conflicts"] if row["kind"] == "room")
+    await client.post(
+        f"/v1/events/{event.id}/conflicts/dismiss",
+        headers=headers,
+        json={"conflict_key": key, "reason": "Second talk moved to the foyer."},
+    )
+
+    response = await client.post(
+        f"/v1/events/{event.id}/schedule/publish", headers=headers, json={}
+    )
+
+    assert response.status_code == 201
