@@ -78,6 +78,13 @@ class Settings(BaseSettings):
         must not be able to overwrite a real event."""
         return not (self.is_production and not self.demo_mode)
 
+    @property
+    def demo_logins_allowed(self) -> bool:
+        """One-click sign-in exists so an evaluator with no inbox can reach the
+        speaker portal. It must be impossible on a real deployment, guarded here
+        rather than only by whoever set the env var."""
+        return self.demo_mode and not self.is_production
+
     def require_production_secrets(self) -> None:
         """Called at startup. Fails loud rather than booting a footgun."""
         if not self.is_production:

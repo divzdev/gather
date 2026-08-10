@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Cookie, Request, Response, status
+from pydantic import BaseModel, ConfigDict
 from redis.asyncio import Redis
 
 from app.core import rate_limit
 from app.core.config import get_settings
 from app.core.deps import CurrentUser, DbSession
-from app.core.errors import AuthenticationError
+from app.core.errors import AuthenticationError, NotFoundError
 from app.features.auth import service
 from app.features.auth.schemas import (
     LoginRequest,
@@ -91,6 +92,81 @@ async def login(
     )
     _set_refresh_cookie(response, issued.refresh_token)
     return TokenResponse(access_token=issued.access_token, expires_in=issued.expires_in)
+
+
+class DemoAccount(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: str
+    label: str
+    email: str
+
+
+class DemoLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["organizer", "reviewer", "speaker"]
+
+
+class DemoLoginResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    access_token: str
+    expires_in: int
+    #: "staff" opens the console, "speaker" opens the portal. The client needs to
+    #: know which token it just received, because they are stored separately.
+    kind: str
+    event_id: str | None = None
+
+
+def _demo_or_404() -> None:
+    if not get_settings().demo_logins_allowed:
+        raise NotFoundError("Not found.")
+
+
+@router.get("/demo-accounts", response_model=list[DemoAccount])
+async def demo_accounts() -> list[DemoAccount]:
+    """Who you can sign in as without a password. Absent outside a demo build."""
+    _demo_or_404()
+    return [
+        DemoAccount(role=role, label=label, email=email)
+        for role, (email, label) in service.DEMO_ACCOUNTS.items()
+    ]
+
+
+@router.post("/demo-login", response_model=DemoLoginResponse)
+async def demo_login(
+    body: DemoLoginRequest, request: Request, response: Response, session: DbSession
+) -> DemoLoginResponse:
+    """One click into any of the three seats.
+
+    The evaluation harness is a browser agent with no inbox, so the magic-link
+    path is unreachable for it. This exists for exactly that, and 404s the moment
+    the build is not a demo.
+    """
+    _demo_or_404()
+    settings = get_settings()
+    email, _label = service.DEMO_ACCOUNTS[body.role]
+
+    if body.role == "speaker":
+        token, event_id = await service.demo_speaker_token(session, email=email)
+        return DemoLoginResponse(
+            access_token=token,
+            expires_in=settings.speaker_session_ttl_days * 24 * 60 * 60,
+            kind="speaker",
+            event_id=str(event_id),
+        )
+
+    issued = await service.demo_staff_session(
+        session,
+        email=email,
+        user_agent=request.headers.get("user-agent"),
+        ip=_client_ip(request),
+    )
+    _set_refresh_cookie(response, issued.refresh_token)
+    return DemoLoginResponse(
+        access_token=issued.access_token, expires_in=issued.expires_in, kind="staff"
+    )
 
 
 @router.post("/refresh", response_model=TokenResponse)

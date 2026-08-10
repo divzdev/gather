@@ -67,6 +67,14 @@ input::placeholder{color:#99A6AD}
         </div>
 
         <div style="display:flex;flex-direction:column;gap:14px">
+          <sc-if value="{{ hasDemo }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:10px;margin-top:2px"><span style="flex:1;height:1px;background:#E1E7E9"></span><span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:#99A6AD">DEMO DATA</span><span style="flex:1;height:1px;background:#E1E7E9"></span></div>
+            <div style="display:flex;gap:8px">
+              <sc-for list="{{ demos }}" as="dm" hint-placeholder-count="3">
+                <button onClick="{{ dm.on }}" title="{{ dm.title }}" style="flex:1;height:38px;border-radius:999px;border:1px solid #C8D2D5;background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;cursor:pointer;white-space:nowrap" style-hover="background:#EDF1F2">{{ dm.n }}</button>
+              </sc-for>
+            </div>
+          </sc-if>
           <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
             <div>
               <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Your name</div>

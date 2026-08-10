@@ -283,3 +283,68 @@ async def consume_magic_link(session: AsyncSession, *, token: str) -> str:
         expires_in=timedelta(days=settings.speaker_session_ttl_days),
         claims={"event_id": str(link.event_id), "email": link.email},
     )
+
+
+#: The seeded demo identities, by the role an evaluator would ask for. Kept here
+#: rather than imported from `seed` so the endpoint does not depend on the demo
+#: data module being importable in every deployment.
+DEMO_ACCOUNTS: dict[str, tuple[str, str]] = {
+    "organizer": ("sbek-organizer@example.com", "Jordan Alvarez, owner"),
+    "reviewer": ("sbek-reviewer@example.com", "Sam Whitfield, reviewer"),
+    "speaker": ("sbek-speaker@example.com", "Priya Raman, speaker"),
+}
+
+
+async def demo_staff_session(
+    session: AsyncSession, *, email: str, user_agent: str | None = None, ip: str | None = None
+) -> IssuedSession:
+    """Sign in a seeded staff account without its password.
+
+    The caller has already checked `demo_logins_allowed`; this refuses anything
+    that is not one of the known demo addresses so the route can never become a
+    password-free login for a real account.
+    """
+    if email not in {address for address, _label in DEMO_ACCOUNTS.values()}:
+        raise AuthenticationError("That is not a demo account.")
+
+    with tenancy_disabled():
+        user = await session.scalar(select(User).where(User.email == email))
+    if user is None or not user.is_active:
+        raise AuthenticationError("The demo data has not been seeded yet. Run `make seed`.")
+
+    user.last_login_at = _now()
+    return await _issue_session(session, user, user_agent=user_agent, ip=ip)
+
+
+async def demo_speaker_token(session: AsyncSession, *, email: str) -> tuple[str, uuid.UUID]:
+    """A portal session for a seeded speaker, skipping the emailed link.
+
+    Returns the token and the event it is scoped to. Same claims a consumed magic
+    link produces, so the portal cannot tell the difference.
+    """
+    settings = get_settings()
+    if email != DEMO_ACCOUNTS["speaker"][0]:
+        raise AuthenticationError("That is not a demo account.")
+
+    with tenancy_disabled():
+        found = (
+            await session.execute(
+                select(EventSpeaker.speaker_id, EventSpeaker.event_id)
+                .join(Speaker, Speaker.id == EventSpeaker.speaker_id)
+                .where(Speaker.email == email)
+                .order_by(EventSpeaker.created_at.desc())
+            )
+        ).first()
+    if found is None:
+        raise AuthenticationError("The demo data has not been seeded yet. Run `make seed`.")
+
+    speaker_id, event_id = found
+    return (
+        create_access_token(
+            speaker_id,
+            kind="speaker",
+            expires_in=timedelta(days=settings.speaker_session_ttl_days),
+            claims={"event_id": str(event_id), "email": email},
+        ),
+        event_id,
+    )

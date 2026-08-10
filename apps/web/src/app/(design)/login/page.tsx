@@ -1,11 +1,12 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Auth, type AuthData } from "@/components/design/Auth";
 import { ApiError, apiFetch } from "@/lib/api";
-import { setEventId, setToken } from "@/lib/session";
+import { setEventId, setSpeakerToken, setToken } from "@/lib/session";
 
 type Mode = "login" | "register";
 
@@ -23,6 +24,49 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [sent, setSent] = useState<{ title: string; body: string } | null>(null);
   const [busy, setBusy] = useState(false);
+
+  /** Present only on a demo build; the endpoint 404s everywhere else, so an
+   *  empty list is the correct rendering on a real deployment. */
+  const { data: demoAccounts } = useQuery({
+    queryKey: ["demo-accounts"],
+    retry: false,
+    queryFn: () =>
+      apiFetch<{ role: string; label: string; email: string }[]>("/auth/demo-accounts").catch(
+        () => [] as { role: string; label: string; email: string }[],
+      ),
+  });
+
+  const demoSignIn = async (role: string) => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const issued = await apiFetch<{
+        access_token: string;
+        kind: string;
+        event_id: string | null;
+      }>("/auth/demo-login", { method: "POST", body: { role } });
+
+      if (issued.kind === "speaker") {
+        setSpeakerToken(issued.access_token);
+        router.push("/portal");
+        return;
+      }
+      setToken(issued.access_token);
+      const events = await apiFetch<{ id: string }[]>("/events", {
+        headers: { Authorization: `Bearer ${issued.access_token}` },
+      });
+      const first = events[0];
+      if (first !== undefined) setEventId(first.id);
+      router.push(role === "reviewer" ? "/review" : "/admin");
+    } catch (caught) {
+      setError(
+        caught instanceof ApiError ? caught.message : "That demo account is not seeded yet.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const signIn = async () => {
     if (busy) return;
@@ -153,6 +197,13 @@ export default function LoginPage() {
     },
     switchLabel: mode === "login" ? "No account yet?" : "Already have an account?",
     switchCta: mode === "login" ? "Create one" : "Sign in",
+
+    hasDemo: (demoAccounts ?? []).length > 0,
+    demos: (demoAccounts ?? []).map((account) => ({
+      n: account.role.replace(/^./, (letter) => letter.toUpperCase()),
+      title: `Sign in as ${account.label}`,
+      on: () => void demoSignIn(account.role),
+    })),
 
     ssoGoogle: () => unavailable("Google sign-in"),
     ssoGithub: () => unavailable("GitHub sign-in"),

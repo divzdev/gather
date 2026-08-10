@@ -313,3 +313,71 @@ async def test_a_link_for_an_address_on_nobodys_roster_signs_nobody_in(
     assert asked.status_code == 204
     assert consumed.status_code == 400
     assert consumed.json()["error"]["code"] == "MAGIC_LINK_EXPIRED"
+
+
+async def test_demo_login_opens_each_seat_without_a_password(
+    client: AsyncClient, session: AsyncSession, two_orgs: object
+) -> None:
+    """The harness is a browser agent with no inbox, so the magic-link path is
+    unreachable for it. These three buttons are how it gets in at all."""
+    from app.core.security import hash_password
+    from app.features.auth import service
+    from app.models import Event, EventSpeaker, OrgMember, Role, Speaker, User
+
+    with tenancy_disabled():
+        event = (await session.execute(select(Event))).scalars().first()
+        assert event is not None
+        organiser_email = service.DEMO_ACCOUNTS["organizer"][0]
+        speaker_email = service.DEMO_ACCOUNTS["speaker"][0]
+
+        organiser = User(
+            email=organiser_email, name="Jordan Alvarez", password_hash=hash_password("unused")
+        )
+        session.add(organiser)
+        await session.flush()
+        session.add(OrgMember(org_id=event.org_id, user_id=organiser.id, role=Role.OWNER))
+
+        speaker = Speaker(org_id=event.org_id, name="Priya Raman", email=speaker_email)
+        session.add(speaker)
+        await session.flush()
+        session.add(EventSpeaker(org_id=event.org_id, event_id=event.id, speaker_id=speaker.id))
+        await session.commit()
+
+    staff = await client.post("/v1/auth/demo-login", json={"role": "organizer"})
+    portal = await client.post("/v1/auth/demo-login", json={"role": "speaker"})
+
+    assert staff.status_code == 200
+    assert staff.json()["kind"] == "staff"
+    assert portal.status_code == 200
+    assert portal.json()["kind"] == "speaker"
+
+    # The staff token really opens the console, and the speaker token really
+    # opens the portal — a token that does not work is worse than no button.
+    me = await client.get(
+        "/v1/auth/me", headers={"Authorization": f"Bearer {staff.json()['access_token']}"}
+    )
+    home = await client.get(
+        "/v1/portal/home",
+        headers={"Authorization": f"Bearer {portal.json()['access_token']}"},
+    )
+    assert me.status_code == 200
+    assert home.status_code == 200
+
+
+async def test_demo_login_is_absent_when_the_build_is_not_a_demo(
+    client: AsyncClient, monkeypatch: object
+) -> None:
+    """It has to be impossible on a real deployment, not merely discouraged."""
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    original = settings.demo_mode
+    try:
+        settings.demo_mode = False
+        listed = await client.get("/v1/auth/demo-accounts")
+        attempted = await client.post("/v1/auth/demo-login", json={"role": "organizer"})
+    finally:
+        settings.demo_mode = original
+
+    assert listed.status_code == 404
+    assert attempted.status_code == 404
