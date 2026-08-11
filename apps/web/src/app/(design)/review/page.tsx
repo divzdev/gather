@@ -146,7 +146,6 @@ export default function ReviewPage() {
   const hue = TRACK_HUES[0]!;
 
   const screen: ReviewData = {
-
     // Blind review is enforced by the API, which strips identity before it
     // reaches here; the banner reports what the round actually is.
     blindLabel:
@@ -154,11 +153,11 @@ export default function ReviewPage() {
         ? "BLIND REVIEW ON · SPEAKER DETAILS HIDDEN"
         : `${round?.name ?? "Review"} · OPEN`,
     speakerLine:
-      subject?.is_blind === true
-        ? "Hidden by blind review"
-        : (firstSpeakerName(subject) ?? "—"),
+      subject?.is_blind === true ? "Hidden by blind review" : (firstSpeakerName(subject) ?? "—"),
     closesLine:
-      round?.closes_at == null ? "no close date set" : `round closes ${DAY.format(new Date(round.closes_at))}`,
+      round?.closes_at == null
+        ? "no close date set"
+        : `round closes ${DAY.format(new Date(round.closes_at))}`,
 
     working: !finished && queue.length > 0,
     done: finished || queue.length === 0,
@@ -168,7 +167,25 @@ export default function ReviewPage() {
         : `${Math.min(index + 1, queue.length)} of ${queue.length} in your queue`,
     progress: `${scoredCount} of ${queue.length} reviewed`,
     progW: queue.length === 0 ? "0%" : `${Math.round((scoredCount / queue.length) * 100)}%`,
-    doneLine: `You reviewed ${scoredCount} of ${queue.length}.`,
+
+    /* An empty queue and a finished queue are opposite states and used to
+     * render identically: a green tick and "Round 1 complete — you reviewed 0
+     * of 0." A reviewer who has never been given anything was congratulated for
+     * it, and told nothing about what to do next. */
+    roundLabel: round == null ? "Review" : `Review · ${round.name}`,
+    doneTitle:
+      queue.length === 0
+        ? "Nothing assigned to you yet"
+        : `${round?.name ?? "This round"} complete`,
+    doneMark: queue.length === 0 ? "—" : "✓",
+    doneBg: queue.length === 0 ? "var(--sk,#EDF1F2)" : "var(--okw,#E2F1EC)",
+    doneBd: queue.length === 0 ? "var(--ln,#E1E7E9)" : "var(--okl,#C2E0D5)",
+    doneFg: queue.length === 0 ? "var(--i3,#6B7B84)" : "var(--ok,#0E7A5F)",
+    doneLine:
+      queue.length === 0
+        ? "An organiser assigns proposals to reviewers when a round opens. Nothing is waiting on you — you will see your queue here as soon as there is one."
+        : `You reviewed ${scoredCount} of ${queue.length}. Your scores are saved, and the round owner can see your progress.`,
+    canRestart: queue.length > 0,
     restart: () => {
       setFinished(false);
       setIndex(0);

@@ -233,6 +233,16 @@ export default function TasksPage() {
         ? "No deliverables assigned yet. Create a task template and assign it to the roster."
         : `${openRows.length} open across ${waiting.size} speaker${waiting.size === 1 ? "" : "s"}, ${overdue.length} overdue.`,
     allClear: groups.length === 0,
+    // Was the literal "84 speakers, zero open tasks here", printed on any
+    // event and flashed on every load before the data arrived. An empty view
+    // has two very different causes and the operator needs to know which.
+    allClearBg: all.length === 0 ? "var(--sk,#EDF1F2)" : "var(--okw,#E2F1EC)",
+    allClearBd: all.length === 0 ? "var(--ln,#E1E7E9)" : "var(--okl,#C2E0D5)",
+    allClearFg: all.length === 0 ? "var(--i2,#3E4E58)" : "var(--ok,#0E7A5F)",
+    allClearNote:
+      all.length === 0
+        ? "No deliverables have been assigned yet. Build a task template in Program, then assign it to the roster."
+        : `Nothing outstanding in this view — ${all.length} task${all.length === 1 ? "" : "s"} across ${waiting.size} speaker${waiting.size === 1 ? "" : "s"}, all accounted for.`,
 
     tOpen: tile("open", openRows.length),
     tOdT: tile("overdue", overdue.length),
