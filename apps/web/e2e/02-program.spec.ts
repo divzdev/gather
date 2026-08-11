@@ -14,18 +14,21 @@ test.beforeAll(async ({ request }) => {
   test.skip(health === null || !health.ok(), `API not reachable at ${API}.`);
 });
 
-async function openProgram(page: Page) {
+/** Each piece of the program skeleton now has its own screen behind a section
+ *  nav, rather than being one of four editors stacked on a single scroll. */
+type Section = "rooms" | "tracks" | "session-formats" | "days";
+
+async function openProgram(page: Page, section: Section) {
   await page.goto("/login");
   await page.getByRole("button", { name: /^Organizer$/i }).click();
   await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 });
-  await page.goto("/admin/program");
-  await expect(page.getByRole("heading", { name: /program setup/i })).toBeVisible({
-    timeout: 15_000,
-  });
+  await page.goto(`/admin/program/${section}`);
+  await expect(page.getByRole("heading").first()).toBeVisible({ timeout: 15_000 });
 }
 
-function panel(page: Page, title: RegExp): Locator {
-  return page.locator("section").filter({ has: page.getByRole("heading", { name: title }) });
+/** The editor on the current section page. There is only one. */
+function panel(page: Page): Locator {
+  return page.locator("main section, section").last();
 }
 
 /** The row carrying a given name, so assertions never catch a neighbour. */
@@ -39,8 +42,8 @@ async function removeRow(section: Locator, name: string) {
 }
 
 test("18. a room is added, keeps its capacity, and survives a reload", async ({ page }) => {
-  await openProgram(page);
-  const rooms = panel(page, /^Rooms$/);
+  await openProgram(page, "rooms");
+  const rooms = panel(page);
   const name = `Hall ${Date.now()}`;
 
   await rooms.getByLabel(/room name/i).fill(name);
@@ -50,15 +53,15 @@ test("18. a room is added, keeps its capacity, and survives a reload", async ({ 
   await expect(row(rooms, name)).toContainText("seats 240", { timeout: 15_000 });
 
   await page.reload();
-  const after = panel(page, /^Rooms$/);
+  const after = panel(page);
   await expect(row(after, name)).toContainText("seats 240", { timeout: 15_000 });
 
   await removeRow(after, name);
 });
 
 test("19. a track carries a colour", async ({ page }) => {
-  await openProgram(page);
-  const tracks = panel(page, /^Tracks$/);
+  await openProgram(page, "tracks");
+  const tracks = panel(page);
   const name = `Track ${Date.now()}`;
 
   await tracks.getByLabel(/track name/i).fill(name);
@@ -70,8 +73,8 @@ test("19. a track carries a colour", async ({ page }) => {
 });
 
 test("20. a format keeps its default duration", async ({ page }) => {
-  await openProgram(page);
-  const formats = panel(page, /session formats/i);
+  await openProgram(page, "session-formats");
+  const formats = panel(page);
   const name = `Format ${Date.now()}`;
 
   await formats.getByLabel(/format name/i).fill(name);
@@ -83,8 +86,8 @@ test("20. a format keeps its default duration", async ({ page }) => {
 });
 
 test("20b. a nonsense duration is refused with a reason", async ({ page }) => {
-  await openProgram(page);
-  const formats = panel(page, /session formats/i);
+  await openProgram(page, "session-formats");
+  const formats = panel(page);
 
   await formats.getByLabel(/format name/i).fill("Impossible");
   await formats.getByLabel(/default minutes/i).fill("9000");
@@ -94,8 +97,8 @@ test("20b. a nonsense duration is refused with a reason", async ({ page }) => {
 });
 
 test("21. an event day is added and removed again", async ({ page }) => {
-  await openProgram(page);
-  const days = panel(page, /event days/i);
+  await openProgram(page, "days");
+  const days = panel(page);
   const label = `Day ${Date.now()}`;
   // A date far enough out, and jittered, that concurrent or repeated runs cannot
   // collide on the unique (event, date) pair — a collision here fails the add
@@ -123,8 +126,8 @@ test("23-24. an unused track deletes; one in use does not crash the screen", asy
   const events = await request.get(`${API}/v1/events`, { headers });
   const eventId = ((await events.json()) as { id: string }[])[0]!.id;
 
-  await openProgram(page);
-  const tracks = panel(page, /^Tracks$/);
+  await openProgram(page, "tracks");
+  const tracks = panel(page);
 
   // 23. Nothing points at it, so it goes cleanly.
   const throwaway = `Doomed ${Date.now()}`;
