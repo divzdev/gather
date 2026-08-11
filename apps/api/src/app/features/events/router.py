@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import or_, select
 
 from app.core.deps import CurrentUser, DbSession, bind_tenant, require_role
@@ -222,8 +223,33 @@ class EventCreate(BaseModel):
     #: Optional at creation, and the first deadline that matters after it.
     cfp_closes_at: datetime | None = None
 
+    @field_validator("timezone")
+    @classmethod
+    def _known_zone(cls, value: str) -> str:
+        """A real IANA zone, because everything downstream computes with it.
+
+        The agenda's grid and every published time are derived from this; an
+        unknown string would have been stored happily and failed much later,
+        somewhere that looks unrelated.
+        """
+        try:
+            ZoneInfo(value)
+        except Exception as unknown:
+            raise ValueError(f"{value!r} is not a known timezone.") from unknown
+        return value
+
     @model_validator(mode="after")
     def _sane_dates(self) -> EventCreate:
+        # Today in the event's own zone, not the server's: an organiser in
+        # California creating a conference for today at 09:00 local is not
+        # scheduling the past, though UTC has already turned over.
+        #
+        # Creation only. An event that has already happened has dates behind it
+        # by definition, so the same rule on edit would make a past event
+        # impossible to correct.
+        today = datetime.now(ZoneInfo(self.timezone)).date()
+        if self.starts_on < today:
+            raise ValueError("An event cannot start in the past.")
         if self.ends_on < self.starts_on:
             raise ValueError("The event cannot end before it starts.")
         if self.cfp_closes_at is not None:

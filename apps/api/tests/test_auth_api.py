@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date, timedelta
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -332,6 +333,34 @@ async def test_an_owner_can_create_an_event(client: AsyncClient) -> None:
         headers=headers,
     )
     assert backwards.status_code == 422
+
+    # Nor start in the past: a CFP deadline and every speaker reminder hang off
+    # these dates, so a mistyped year silently produces an event nobody can use.
+    yesterday = date.today() - timedelta(days=1)
+    past = await client.post(
+        "/v1/events",
+        json={
+            "name": "Last Year",
+            "starts_on": yesterday.isoformat(),
+            "ends_on": yesterday.isoformat(),
+        },
+        headers=headers,
+    )
+    assert past.status_code == 422, past.text
+
+    # The timezone is what turns those dates into real instants, so an unknown
+    # zone has to fail here rather than at the first scheduled session.
+    unknown_zone = await client.post(
+        "/v1/events",
+        json={
+            "name": "Olympus Summit",
+            "starts_on": "2028-04-11",
+            "ends_on": "2028-04-13",
+            "timezone": "Mars/Olympus",
+        },
+        headers=headers,
+    )
+    assert unknown_zone.status_code == 422, unknown_zone.text
 
 
 async def test_registering_a_taken_email_is_rejected(client: AsyncClient, staff_user: User) -> None:

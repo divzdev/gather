@@ -11,7 +11,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { authed, setEventId } from "@/lib/session";
 
@@ -77,6 +77,17 @@ export default function NewEventPage() {
 
   const publicSlug = slugTouched ? slug : slugify(name);
 
+  /** Today in the event's own zone, which is the floor the API enforces.
+   *
+   *  Taking it from the browser instead would disagree with the server by a day
+   *  for anyone whose clock has turned over and the conference's has not — the
+   *  form would accept a date the API then refuses, or refuse one it would take.
+   *  Recomputed only when the zone changes rather than on every render. */
+  const earliest = useMemo(
+    () => new Date().toLocaleDateString("en-CA", { timeZone: timezone }),
+    [timezone],
+  );
+
   const start = parseDay(startsOn);
   const end = parseDay(endsOn);
   const days =
@@ -111,6 +122,9 @@ export default function NewEventPage() {
   const firstProblem = (): string | null => {
     if (name.trim() === "") return "Give the event a name.";
     if (startsOn === "" || endsOn === "") return "Say when it starts and ends.";
+    // The picker's `min` is a suggestion a keyboard can walk straight past, so
+    // the same rule is stated here and enforced again by the API.
+    if (startsOn < earliest) return "An event cannot start in the past.";
     if (end !== null && start !== null && end < start) return "It cannot end before it starts.";
     return null;
   };
@@ -265,6 +279,7 @@ export default function NewEventPage() {
                   id="ev-starts"
                   type="date"
                   value={startsOn}
+                  min={earliest}
                   onChange={(event) => {
                     setStartsOn(event.target.value);
                     if (endsOn === "" || endsOn < event.target.value) setEndsOn(event.target.value);
@@ -280,7 +295,7 @@ export default function NewEventPage() {
                   id="ev-ends"
                   type="date"
                   value={endsOn}
-                  min={startsOn}
+                  min={startsOn === "" ? earliest : startsOn}
                   onChange={(event) => setEndsOn(event.target.value)}
                   style={field}
                 />

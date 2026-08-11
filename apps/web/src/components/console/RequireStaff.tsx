@@ -39,7 +39,11 @@ export function RequireStaff({ children }: { children: React.ReactNode }) {
   // A brand-new owner has no event, because registering no longer invents one.
   // Every console screen reads an event id, so without this they would land on
   // a console wired to nothing.
-  const { data: events } = useQuery({
+  const {
+    data: events,
+    isPending,
+    isError,
+  } = useQuery({
     queryKey: ["my-events"],
     queryFn: () => authed<{ id: string }[]>("/events"),
     enabled: signedIn,
@@ -66,5 +70,17 @@ export function RequireStaff({ children }: { children: React.ReactNode }) {
   // Nothing rather than a skeleton: the redirect lands within a frame, and a
   // flash of empty console furniture is exactly what this exists to prevent.
   if (!signedIn) return null;
+
+  // The signed-out check is synchronous, but "does this account have an event"
+  // is a round trip — and rendering the console during it is what made a new
+  // account paint a dashboard wired to nothing, fire a screenful of requests
+  // with no event id, and then jump to the setup screen. Waiting is the whole
+  // difference between a flicker and a load.
+  //
+  // The setup screen is exempt because it is where the redirect goes, and an
+  // error is not: a failed /events call shows the console and lets each screen
+  // report its own problem, rather than leaving a permanently blank page.
+  const settingUp = pathname === "/admin/events/new";
+  if (!settingUp && !isError && (isPending || events?.length === 0)) return null;
   return <>{children}</>;
 }
