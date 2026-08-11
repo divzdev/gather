@@ -19,6 +19,7 @@ import { useConsoleChrome } from "@/components/console/chrome";
 import { Agenda, type AgendaData } from "@/components/design/Agenda";
 import { authed, getEventId } from "@/lib/session";
 
+import { allows, parseConstraints } from "./constraints";
 import { AgendaView, type ViewKey } from "./views";
 
 const MINUTES_PER_PX = 1.5;
@@ -108,6 +109,12 @@ export default function AgendaPage() {
   const [query, setQuery] = useState("");
   const [panel, setPanel] = useState<"agent" | "conflicts">("conflicts");
   const [view, setView] = useState<ViewKey>("grid");
+  const [rules, setRules] = useState("");
+  /** Chips are derived from the text, so dropping one has to be remembered
+   *  separately — rewriting what somebody typed under their cursor is worse
+   *  than carrying a small exclusion set. */
+  const [dropped, setDropped] = useState<string[]>([]);
+  const [unplaceable, setUnplaceable] = useState<string[]>([]);
   const [publishOpen, setPublishOpen] = useState(false);
   const [ghosts, setGhosts] = useState<
     { ref: string; sessionId: string; roomIndex: number; minute: number; title: string; duration: number }[]
@@ -340,9 +347,22 @@ export default function AgendaPage() {
     window.addEventListener("mouseup", finish);
   };
 
+  /** What the rules box was understood to say. Derived, so editing the text
+   *  re-reads it immediately and the chips never disagree with the box. */
+  const parsed = useMemo(() => {
+    const dayStart =
+      day === null ? 0 : Number(day.starts_at_local.slice(0, 2)) * 60 + Number(day.starts_at_local.slice(3, 5));
+    const read = parseConstraints(rules, rooms, dayStart);
+    return { ...read, understood: read.understood.filter((rule) => !dropped.includes(rule.label)) };
+  }, [rules, rooms, day, dropped]);
+
   /** Auto-schedule assist: a first-fit pass over the tray that proposes slots
    *  rather than taking them. Nothing moves until the organiser accepts, which
-   *  is the same shape every generated suggestion in this product takes. */
+   *  is the same shape every generated suggestion in this product takes.
+   *
+   *  Deterministic, and the panel says so — the rules box is pattern matching,
+   *  not a model. It used to discard every keystroke, which was the worst of
+   *  both: it looked like it was listening and it was not. */
   const propose = () => {
     if (day === null || rooms.length === 0) {
       toast("Add a room and a day before auto-scheduling.");
@@ -354,10 +374,14 @@ export default function AgendaPage() {
         .map((row) => [minuteOf(row), minuteOf(row) + row.duration_minutes] as const),
     );
     const proposed: typeof ghosts = [];
+    const stuck: string[] = [];
     for (const row of tray) {
       let placed = false;
       for (let minute = 0; minute + row.duration_minutes <= GRID_MINUTES && !placed; minute += 15) {
         for (let index = 0; index < rooms.length && !placed; index += 1) {
+          if (!allows(parsed.understood, { minute, duration: row.duration_minutes, roomIndex: index })) {
+            continue;
+          }
           const clash = (busy[index] ?? []).some(
             ([start, end]) => minute < end && start < minute + row.duration_minutes,
           );
@@ -374,12 +398,16 @@ export default function AgendaPage() {
           placed = true;
         }
       }
+      // Saying which talks the rules left nowhere to go is the whole value of
+      // having rules; silently placing fewer would look like a smaller tray.
+      if (!placed) stuck.push(row.title);
     }
     setGhosts(proposed);
+    setUnplaceable(stuck);
     setPanel("agent");
     toast(
       proposed.length === 0
-        ? "Nothing left to place on this day."
+        ? "Nothing could be placed under those rules."
         : `Proposed ${proposed.length} placement${proposed.length === 1 ? "" : "s"}. Accept the ones you want.`,
     );
   };
@@ -588,14 +616,30 @@ export default function AgendaPage() {
     })),
 
     agentOn: panel === "agent",
-    aiQ: "",
-    onAiQ: () => undefined,
-    aiText:
+    aiQ: rules,
+    onAiQ: (event) => setRules((event.target as HTMLTextAreaElement).value),
+    aiText: [
       ghosts.length > 0
         ? `${ghosts.length} proposed. Accept the ones you want; nothing has moved yet.`
         : "First-fit over everything still in the tray. It proposes slots, it does not take them.",
+      unplaceable.length === 0
+        ? ""
+        : `No slot left for ${unplaceable.length}: ${unplaceable.slice(0, 3).join(", ")}${
+            unplaceable.length > 3 ? "…" : ""
+          }`,
+      // Never silently drop a line. If it was not understood, quote it back.
+      parsed.ignored.length === 0
+        ? ""
+        : `Not understood: "${parsed.ignored[0]}". Try "leave 12:00 free", "nothing before 10:00", "nothing after 17:00", or "keep ${rooms[0]?.name ?? "Main Stage"} empty".`,
+    ]
+      .filter((line) => line !== "")
+      .join("\n\n"),
+    aiHead:
+      ghosts.length === 0
+        ? "✦ NOTHING PROPOSED"
+        : `✦ PROPOSED · ${ghosts.length} PLACEMENT${ghosts.length === 1 ? "" : "S"}`,
     runAi: () => propose(),
-    ran: ghosts.length > 0,
+    ran: ghosts.length > 0 || unplaceable.length > 0 || parsed.ignored.length > 0,
     acceptAll: () => {
       if (ghosts.length > 0) acceptGhosts.mutate(ghosts);
     },
@@ -666,8 +710,11 @@ export default function AgendaPage() {
     trOpts: [],
     newSess: () => toast("Sessions are created by promoting an accepted submission."),
     gridDbl: () => toast("Drag a session from the tray to place it."),
-    chips: [],
-    hasChips: false,
+    chips: parsed.understood.map((rule) => ({
+      t: rule.label,
+      onX: () => setDropped((current) => [...current, rule.label]),
+    })),
+    hasChips: parsed.understood.length > 0,
     ck: selected === null ? "" : "✓",
     ckBg: "var(--cd,#FFFFFF)",
     ckBd: "var(--ls,#C8D2D5)",

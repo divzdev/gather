@@ -478,3 +478,37 @@ test("147. the publishing screen produces a snippet that runs on a third-party p
   ).toBeGreaterThan(10);
   await context.close();
 });
+
+test("the auto-scheduler reads its rules box, and says what it could not read", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /^Organizer$/i }).click();
+  await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 });
+  await page.goto("/admin/agenda");
+  await expect(page.getByText(/CONFLICT/i).first()).toBeVisible({ timeout: 25_000 });
+
+  // The box used to discard every keystroke: aiQ was the empty string and
+  // onAiQ did nothing, so the panel looked like it was listening and was not.
+  await page.getByRole("button", { name: "✕" }).first().click();
+  const box = page.getByPlaceholder(/Leave 12:00 free/i);
+  await box.fill("Leave 12:00 free. Nothing before 10:00. Make it sparkle.");
+
+  // By role, not by text: the panel's own help line quotes these phrasings back
+  // as examples, so a bare text match finds two of each.
+  await expect(page.getByRole("button", { name: /12:00–13:00 stays free/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /nothing before 10:00/ })).toBeVisible();
+  // A line it cannot read is quoted back, never dropped in silence.
+  await expect(page.getByText(/Not understood: "Make it sparkle"/)).toBeVisible();
+
+  await page.getByRole("button", { name: /Draft the empty slots/i }).click();
+  const heading = page.getByText(/PROPOSED · \d+ PLACEMENT|NOTHING PROPOSED/);
+  await expect(heading).toBeVisible({ timeout: 10_000 });
+
+  // Every proposal obeys the rules: the ghost times are what prove it.
+  const ghostTimes = await page
+    .locator("text=/^✦ \\d{2}:\\d{2}$/")
+    .evaluateAll((nodes) => nodes.map((node) => (node.textContent ?? "").replace("✦ ", "").trim()));
+  for (const at of ghostTimes) {
+    expect(at >= "10:00", `proposed ${at}, before the 10:00 rule`).toBe(true);
+    expect(at < "12:00" || at >= "13:00", `proposed ${at}, inside the free hour`).toBe(true);
+  }
+});
