@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { useHotkeys } from "@/lib/hotkeys";
+
 import { useConsoleChrome } from "@/components/console/chrome";
 import { Review, type ReviewData } from "@/components/design/Review";
 import { authed, getEventId } from "@/lib/session";
@@ -142,6 +144,40 @@ export default function ReviewPage() {
     else move(1);
   };
 
+  /** The header has advertised "1-5 scores · ⌘⏎ saves · j / k navigates" since
+   *  this screen was ported, and no keydown listener existed anywhere in the
+   *  app. The panel was already built for it — the focused criterion highlights
+   *  itself and prints "press 1-5" — so only this was missing, and
+   *  `APP_CONTEXT.md` calls a keyboard-driven queue the reviewer's defining
+   *  need: they work a hundred proposals in one sitting and the mouse is the
+   *  slow path.
+   *
+   *  The scale comes from the rubric, so a criterion scored 0-3 binds four keys
+   *  and one scored 1-10 binds ten — a digit outside the range is left alone
+   *  rather than silently recorded. */
+  const focused = criteria[focus];
+  useHotkeys(
+    [
+      // Saving works from inside the comment box too, because that is exactly
+      // where a reviewer's hands are when they finish one.
+      { key: "mod+Enter", run: () => saveAndNext(), whileTyping: true },
+      { key: "j", run: () => move(1) },
+      { key: "k", run: () => move(-1) },
+      ...(focused === undefined
+        ? []
+        : Array.from(
+            { length: focused.scale_max - focused.scale_min + 1 },
+            (_, offset) => focused.scale_min + offset,
+          )
+            .filter((value) => value >= 0 && value <= 9)
+            .map((value) => ({
+              key: String(value),
+              run: () => setScore(focused.id, value),
+            }))),
+    ],
+    queue.length > 0 && !finished,
+  );
+
   const given = current === undefined ? {} : (scores[current.submission_id] ?? {});
   const hue = TRACK_HUES[0]!;
 
@@ -173,6 +209,15 @@ export default function ReviewPage() {
      * of 0." A reviewer who has never been given anything was congratulated for
      * it, and told nothing about what to do next. */
     roundLabel: round == null ? "Review" : `Review · ${round.name}`,
+    /* Was a literal advertising four shortcuts, none of which existed. Three of
+     * them do now; the fourth said "Tab moves criteria", which is not how this
+     * works — scoring advances the focus itself, and Tab is left to the browser
+     * so keyboard and screen-reader users keep it. The range comes from the
+     * rubric, because a round scored 0-3 should not claim 1-5. */
+    shortcutHint:
+      focused === undefined
+        ? "⌘⏎ saves · j / k moves between proposals"
+        : `${focused.scale_min}–${focused.scale_max} scores · ⌘⏎ saves · j / k moves between proposals`,
     doneTitle:
       queue.length === 0
         ? "Nothing assigned to you yet"

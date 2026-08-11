@@ -42,6 +42,7 @@ export type ReviewData = {
   readonly doneFg: string;
   readonly canRestart: boolean;
   readonly roundLabel: React.ReactNode;
+  readonly shortcutHint: React.ReactNode;
   readonly flag: (event: React.SyntheticEvent) => void;
   readonly it: {
     readonly a1: React.ReactNode;
@@ -182,7 +183,7 @@ export function Review({ d }: { d: ReviewData }) {
             <span
               style={{ font: "400 11px 'IBM Plex Mono',monospace", color: "var(--i4,#99A6AD)" }}
             >
-              1–5 scores · Tab moves criteria · ⌘⏎ saves · j / k navigates
+              {d.shortcutHint}
             </span>{" "}
           </div>{" "}
           {d.working ? (
