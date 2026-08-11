@@ -69,6 +69,7 @@ from app.models.review import (
 from app.models.session import (
     ConflictDismissal,
     PublishedSchedule,
+    SavedEmbed,
     Session,
     SessionSpeaker,
 )
@@ -137,6 +138,7 @@ __all__ = [
     "Room",
     "RoomBlackout",
     "RubricCriterion",
+    "SavedEmbed",
     "SavedView",
     "ScheduleBlock",
     "Session",

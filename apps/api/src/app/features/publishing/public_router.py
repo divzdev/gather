@@ -273,6 +273,9 @@ async def embed_script(
     widget: str = Query(default="schedule"),
     theme: str = Query(default="light"),
     track: str | None = Query(default=None, max_length=80),
+    #: How many sessions the `upcoming` strip shows. Bounded because it is a
+    #: number a stranger's page supplies.
+    limit: int = Query(default=5, ge=1, le=25),
 ) -> Response:
     """The embeddable widget, as one self-contained script.
 
@@ -290,6 +293,7 @@ async def embed_script(
         theme=theme if theme in embed.PALETTES else "light",
         track=track,
         mount=f"gather-{widget}",
+        limit=limit,
     )
     return Response(
         content=body,

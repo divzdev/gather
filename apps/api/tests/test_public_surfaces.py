@@ -589,3 +589,81 @@ async def test_two_publishes_at_once_get_two_version_numbers(
     ]
     versions = sorted(r.json()["version"] for r in responses)
     assert len(set(versions)) == 4, f"two publishes took the same version: {versions}"
+
+
+async def test_every_widget_serves_its_own_script(client: AsyncClient, world: World) -> None:
+    """Five widgets for five public surfaces.
+
+    `schedule` and `agenda` are the same sessions as a catalogue and as a grid;
+    `speakers` and `gallery` are the same people as a list and as cards. They
+    were one widget each, which made "does the embed cover every surface"
+    impossible to answer either way.
+    """
+    await _publish(client, world)
+
+    for widget in ("schedule", "agenda", "speakers", "gallery", "upcoming"):
+        response = await client.get(
+            f"/v1/public/events/{world.event.slug}/embed.js?widget={widget}"
+        )
+        assert response.status_code == 200, widget
+        assert f"gather-{widget}" in response.text, widget
+        # Still text, never markup, in every one of them.
+        assert "innerHTML" not in response.text, widget
+
+    speakers = await client.get(f"/v1/public/events/{world.event.slug}/embed.js?widget=gallery")
+    # The gallery resolves faces through the anonymous photo route rather than
+    # carrying image data, so a host page needs no credentials.
+    assert "/speakers/" in speakers.text
+    assert "headshot_file_id" in speakers.text
+
+
+async def test_the_upcoming_strip_takes_a_bounded_count(client: AsyncClient, world: World) -> None:
+    """It is a number a stranger's page supplies."""
+    await _publish(client, world)
+    base = f"/v1/public/events/{world.event.slug}/embed.js?widget=upcoming"
+
+    assert (await client.get(f"{base}&limit=3")).status_code == 200
+    assert (await client.get(f"{base}&limit=999")).status_code == 422
+    assert (await client.get(f"{base}&limit=0")).status_code == 422
+
+
+async def test_a_saved_embed_regenerates_its_snippet_rather_than_storing_it(
+    client: AsyncClient, world: World
+) -> None:
+    """The row holds settings, so a saved embed inherits later fixes to the
+    generator instead of preserving whatever it emitted when it was saved."""
+    headers = world.headers
+    await _publish(client, world)
+
+    created = await client.post(
+        f"/v1/events/{world.event.id}/embeds",
+        json={"name": "Sponsor page", "widget": "gallery", "theme": "dark"},
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    assert "gather-gallery" in created.json()["snippet"]
+    assert "theme=dark" in created.json()["snippet"]
+
+    listed = await client.get(f"/v1/events/{world.event.id}/embeds", headers=headers)
+    assert [row["name"] for row in listed.json()] == ["Sponsor page"]
+    assert listed.json()[0]["snippet"] == created.json()["snippet"]
+
+    gone = await client.delete(
+        f"/v1/events/{world.event.id}/embeds/{created.json()['id']}", headers=headers
+    )
+    assert gone.status_code == 204
+    assert (await client.get(f"/v1/events/{world.event.id}/embeds", headers=headers)).json() == []
+
+
+async def test_a_saved_embed_cannot_name_a_widget_that_does_not_exist(
+    client: AsyncClient, world: World
+) -> None:
+    headers = world.headers
+
+    refused = await client.post(
+        f"/v1/events/{world.event.id}/embeds",
+        json={"name": "Nope", "widget": "payroll"},
+        headers=headers,
+    )
+
+    assert refused.status_code == 422

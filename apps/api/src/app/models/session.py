@@ -142,3 +142,21 @@ class ConflictDismissal(Base, PrimaryKey, Timestamps, EventScoped):
         Uuid, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     dismissed_at: Mapped[datetime] = mapped_column(nullable=False)
+
+
+class SavedEmbed(Base, PrimaryKey, Timestamps, EventScoped):
+    """An embed an organiser generated and kept, stored as settings.
+
+    Never the snippet text: the script is regenerated from these on read, so a
+    saved embed inherits any later fix to the generator rather than preserving
+    whatever was emitted the day it was saved. Nothing on a host page reads this
+    table — deleting a row forgets the record, not the widget.
+    """
+
+    __tablename__ = "saved_embeds"
+
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    widget: Mapped[str] = mapped_column(String(40), nullable=False)
+    theme: Mapped[str] = mapped_column(String(20), nullable=False, default="light")
+    track: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    limit: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
