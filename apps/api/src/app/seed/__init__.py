@@ -55,6 +55,10 @@ EVENT_SLUG = "devflow-conf-2027"
 STAFF = [
     ("Jordan Alvarez", "sbek-organizer@example.com", "SbekTest!2027-org", Role.OWNER),
     ("Sam Whitfield", "sbek-reviewer@example.com", "SbekTest!2027-rev", Role.REVIEWER),
+    # A second reviewer, so the progress dashboard compares two people rather
+    # than describing one, and a score is a mean of two opinions rather than a
+    # single number wearing an average's clothes.
+    ("Noor Haddad", "sbek-reviewer2@example.com", "SbekTest!2027-rev2", Role.REVIEWER),
 ]
 
 SPEAKERS = [
@@ -535,7 +539,8 @@ async def seed() -> None:
     print(
         f"Seeded {EVENT_SLUG}: {counts['speakers']} speakers, "
         f"{counts['submissions']} submissions, {counts['sessions']} sessions "
-        f"({counts['placed']} placed), {counts['tasks']} speaker tasks."
+        f"({counts['placed']} placed), {counts['tasks']} speaker tasks, "
+        f"{counts['scored']} reviews scored, {counts['sent']} decisions already sent."
     )
     print("Sign in with sbek-organizer@example.com / SbekTest!2027-org")
 

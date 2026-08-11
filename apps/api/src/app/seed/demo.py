@@ -21,16 +21,29 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.review import service as review_service
 from app.models import (
     ContentStatus,
     DecisionStatus,
     Event,
     EventDay,
     EventSpeaker,
+    ExpertiseLevel,
     Form,
     FormKind,
     FormStatus,
+    Message,
+    MessageBatch,
+    MessageStatus,
+    OrgMember,
+    Review,
+    ReviewerAssignment,
+    ReviewRound,
+    ReviewScore,
+    ReviewStatus,
+    Role,
     Room,
+    RubricCriterion,
     Session,
     SessionSpeaker,
     SessionStatus,
@@ -43,6 +56,7 @@ from app.models import (
     TaskKind,
     TaskStatus,
     TaskTemplate,
+    User,
 )
 
 TARGET_SPEAKERS = 80
@@ -302,6 +316,48 @@ async def _fill_submissions(
     await session.flush()
 
 
+#: The CFP's wording for a level, and the enum the schedule filters on.
+LEVELS = {
+    "Beginner": ExpertiseLevel.BEGINNER,
+    "Intermediate": ExpertiseLevel.INTERMEDIATE,
+    "Advanced": ExpertiseLevel.ADVANCED,
+}
+
+#: Two or three tags a real programme would carry, derived from the track and
+#: the title rather than sprinkled at random — a filter is only convincing if
+#: the sessions behind it actually belong together.
+TRACK_TAGS = {
+    "AI Engineering": ["agents", "evaluation"],
+    "Platform & Infra": ["infrastructure", "cost"],
+    "Developer Experience": ["tooling", "developer experience"],
+}
+
+TITLE_TAGS = [
+    ("incident", "war story"),
+    ("migrat", "migration"),
+    ("cach", "caching"),
+    ("test", "testing"),
+    ("build", "build systems"),
+    ("observab", "observability"),
+    ("schema", "databases"),
+    ("queue", "databases"),
+    ("flag", "release engineering"),
+]
+
+
+def _tags_for(track: str, title: str) -> list[str]:
+    tags = list(TRACK_TAGS.get(track, []))
+    lowered = title.lower()
+    tags.extend(tag for needle, tag in TITLE_TAGS if needle in lowered)
+    # Order kept, duplicates dropped, and capped: a card carrying nine tags is
+    # noise, and the filter bar becomes unreadable long before that.
+    seen: list[str] = []
+    for tag in tags:
+        if tag not in seen:
+            seen.append(tag)
+    return seen[:3]
+
+
 async def _promote(session: AsyncSession, event: Event) -> list[Session]:
     """Accepted submissions become sessions, which is the explicit second step."""
     have = list(
@@ -348,6 +404,11 @@ async def _promote(session: AsyncSession, event: Event) -> list[Session]:
             duration_minutes=submission.requested_duration_minutes or 30,
             status=SessionStatus.UNSCHEDULED,
             content_status=ContentStatus.APPROVED,
+            # The CFP already asked for a level; a session that dropped it on
+            # promotion left the public schedule with a filter and no values.
+            expertise_level=LEVELS.get(str(submission.answers.get("audience_level") or "")),
+            language="English",
+            tags=_tags_for(str(submission.answers.get("track") or ""), submission.title),
         )
         session.add(talk)
         await session.flush()
@@ -658,6 +719,173 @@ async def _tasks(session: AsyncSession, event: Event, rng: random.Random) -> Non
     await session.flush()
 
 
+#: Scores that agree with the decisions already recorded. A demo where the
+#: accepted talks score 2.1 and the rejected ones 4.6 teaches an organiser to
+#: distrust the column, which is worse than an empty one.
+BAND = {
+    SubmissionStatus.ACCEPTED: (4, 5),
+    SubmissionStatus.WAITLISTED: (3, 4),
+    SubmissionStatus.REJECTED: (1, 3),
+    SubmissionStatus.SUBMITTED: (2, 5),
+    SubmissionStatus.IN_REVIEW: (2, 5),
+}
+
+#: How much of the demo reviewer's queue is left for them to do. Scoring all of
+#: it would empty the screen the reviewer persona exists to demonstrate.
+QUEUE_LEFT = 24
+
+#: Named, not positional. Ordering the reviewers by email put the *other* one
+#: first, so the account the demo signs in as was the one with nothing left.
+DEMO_REVIEWER = "sbek-reviewer@example.com"
+
+
+async def _reviews(session: AsyncSession, event: Event, rng: random.Random) -> int:
+    """Assign the round, then actually score most of it.
+
+    The round, its rubric and its assignments were seeded before the bulk
+    submissions existed, so only the three hand-written proposals were ever
+    assigned and nothing was ever scored: `score_avg` was null on all 214, and
+    the review dashboard, the score column and the sort-by-score control all had
+    nothing to show.
+    """
+    round_ = await session.scalar(
+        select(ReviewRound).where(ReviewRound.event_id == event.id).order_by(ReviewRound.sort_order)
+    )
+    criteria = list(
+        (
+            await session.execute(
+                select(RubricCriterion)
+                .where(RubricCriterion.review_round_id == (round_.id if round_ else None))
+                .order_by(RubricCriterion.sort_order)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    reviewers = list(
+        (
+            await session.execute(
+                select(User)
+                .join(OrgMember, OrgMember.user_id == User.id)
+                .where(OrgMember.org_id == event.org_id, OrgMember.role == Role.REVIEWER)
+                .order_by(User.email)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if round_ is None or not criteria or not reviewers:
+        return 0
+
+    submissions = list(
+        (
+            await session.execute(
+                select(Submission)
+                .where(
+                    Submission.event_id == event.id,
+                    Submission.status != SubmissionStatus.DRAFT,
+                )
+                .order_by(Submission.code)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    already = {
+        (row.submission_id, row.user_id)
+        for row in (
+            await session.execute(select(Review).where(Review.review_round_id == round_.id))
+        )
+        .scalars()
+        .all()
+    }
+    # The round seeds its own assignments for the hand-written proposals before
+    # the bulk ones exist. Reused rather than skipped: a fresh row would trip the
+    # unique index, and ignoring the existing one would leave it open forever
+    # while its review says scored.
+    assigned = {
+        (row.submission_id, row.user_id): row
+        for row in (
+            await session.execute(
+                select(ReviewerAssignment).where(ReviewerAssignment.review_round_id == round_.id)
+            )
+        )
+        .scalars()
+        .all()
+    }
+
+    scored = 0
+    for index, submission in enumerate(submissions):
+        for reviewer in reviewers:
+            if (submission.id, reviewer.id) in already:
+                continue
+            assignment = assigned.get((submission.id, reviewer.id))
+            if assignment is None:
+                assignment = ReviewerAssignment(
+                    org_id=event.org_id,
+                    event_id=event.id,
+                    review_round_id=round_.id,
+                    submission_id=submission.id,
+                    user_id=reviewer.id,
+                )
+                session.add(assignment)
+            # The demo reviewer keeps the tail of the list to work through; the
+            # other has finished, so progress differs between them and the
+            # dashboard has something to say.
+            is_demo = reviewer.email == DEMO_REVIEWER
+            leave_pending = is_demo and index >= len(submissions) - QUEUE_LEFT
+            # One conflict of interest, so the rule that a COI review is excluded
+            # from the mean rather than counted as zero is visible in the data.
+            conflicted = not is_demo and index == 7
+
+            done_at = None if leave_pending else datetime.now(UTC) - timedelta(days=2)
+            assignment.completed_at = done_at
+
+            review = Review(
+                org_id=event.org_id,
+                event_id=event.id,
+                review_round_id=round_.id,
+                submission_id=submission.id,
+                user_id=reviewer.id,
+                status=ReviewStatus.PENDING if leave_pending else ReviewStatus.SCORED,
+                conflict_of_interest=conflicted,
+                comment=None if leave_pending else rng.choice(COMMENTS),
+                submitted_at=done_at,
+            )
+            session.add(review)
+            await session.flush()
+            if leave_pending:
+                continue
+
+            low, high = BAND.get(submission.status, (2, 5))
+            for criterion in criteria:
+                session.add(
+                    ReviewScore(
+                        org_id=event.org_id,
+                        event_id=event.id,
+                        review_id=review.id,
+                        rubric_criterion_id=criterion.id,
+                        value=rng.randint(low, high),
+                    )
+                )
+            scored += 1
+
+    await session.flush()
+    for submission in submissions:
+        await review_service.recompute_score(session, submission.id)
+    await session.flush()
+    return scored
+
+
+COMMENTS = [
+    "Clear thesis, and the failure story is the part people will remember.",
+    "Strong for the track. I would ask for one more concrete number in the abstract.",
+    "Good topic, thin on what is new. Overlaps two other proposals this year.",
+    "Would land better as a lightning talk — one idea, well made.",
+    "The prerequisites are realistic, which is rarer than it should be.",
+]
+
+
 async def _roster_states(session: AsyncSession, event: Event, rng: random.Random) -> None:
     """Move the people who are actually on the programme off `prospective`.
 
@@ -709,6 +937,93 @@ async def _roster_states(session: AsyncSession, event: Event, rng: random.Random
     await session.flush()
 
 
+#: A first wave that has already gone out, so the outbox is not an empty screen
+#: and the delivery states it exists to show have something to show. Kept small
+#: on purpose: the queue that has *not* been sent is the thing the product is
+#: making a point about, and it should stay the larger number by far.
+SENT_WAVE = 18
+
+
+async def _outbox(session: AsyncSession, event: Event) -> int:
+    """One decision send that already happened, with real delivery outcomes.
+
+    Nothing seeded the outbox, so the screen that records what actually left the
+    building opened empty on a demo where 400 decisions were queued — and the
+    resend path, which only offers itself on a failure, could never be shown.
+    """
+    if await session.scalar(select(func.count(Message.id)).where(Message.event_id == event.id)):
+        return 0
+
+    rows = list(
+        (
+            await session.execute(
+                select(Submission, Speaker)
+                .join(SubmissionSpeaker, SubmissionSpeaker.submission_id == Submission.id)
+                .join(Speaker, Speaker.id == SubmissionSpeaker.speaker_id)
+                .where(
+                    Submission.event_id == event.id,
+                    Submission.status == SubmissionStatus.ACCEPTED,
+                    Submission.decision_status == DecisionStatus.PENDING_SEND,
+                    SubmissionSpeaker.is_primary.is_(True),
+                )
+                .order_by(Submission.code)
+                .limit(SENT_WAVE)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    if not rows:
+        return 0
+
+    went = datetime.now(UTC) - timedelta(days=1)
+    batch = MessageBatch(
+        org_id=event.org_id,
+        event_id=event.id,
+        recipient_count=len(rows),
+        segment_description="Decision notices · first wave",
+        status=MessageStatus.SENT,
+    )
+    session.add(batch)
+    await session.flush()
+
+    for index, (submission, speaker) in enumerate(rows):
+        # One hard bounce and one complaint in eighteen. Both states exist in the
+        # model and neither is reachable on a demo where everything succeeded.
+        bounced = index == 4
+        complained = index == 11
+        status = (
+            MessageStatus.BOUNCED
+            if bounced
+            else MessageStatus.COMPLAINED
+            if complained
+            else MessageStatus.SENT
+        )
+        session.add(
+            Message(
+                org_id=event.org_id,
+                event_id=event.id,
+                batch_id=batch.id,
+                to_email=speaker.email,
+                to_speaker_id=speaker.id,
+                subject=f"Your proposal for {event.name} was accepted",
+                body_rendered=(
+                    f"Hello {speaker.name},\n\n"
+                    f"We would like to include \u201c{submission.title}\u201d at {event.name}."
+                ),
+                status=status,
+                sent_at=went + timedelta(minutes=index),
+                delivered_at=None if bounced else went + timedelta(minutes=index, seconds=40),
+                bounced_at=went + timedelta(minutes=index, seconds=20) if bounced else None,
+                error_detail=("550 5.1.1 recipient address does not exist" if bounced else None),
+            )
+        )
+        submission.decision_status = DecisionStatus.SENT
+
+    await session.flush()
+    return len(rows)
+
+
 async def fill(
     session: AsyncSession, event: Event, form: Any, program: dict[str, Any]
 ) -> dict[str, int]:
@@ -721,6 +1036,8 @@ async def fill(
     await _place(session, event, talks)
     await _tasks(session, event, rng)
     await _roster_states(session, event, rng)
+    scored = await _reviews(session, event, rng)
+    sent = await _outbox(session, event)
 
     counts = {
         "speakers": len(people),
@@ -739,6 +1056,8 @@ async def fill(
             )
             or 0
         ),
+        "scored": scored,
+        "sent": sent,
         "tasks": int(
             await session.scalar(
                 select(func.count(SpeakerTask.id)).where(SpeakerTask.event_id == event.id)
