@@ -85,11 +85,15 @@ test: test.api test.e2e ## Run all tests
 
 test.e2e: ## Run Playwright against an isolated stack of its own
 	$(MAKE) e2e.up
-	@trap '$(MAKE) e2e.down' EXIT INT TERM; \
-	cd apps/web && E2E_BASE_URL=http://127.0.0.1:$(E2E_WEB_PORT) \
+	@# The playwright run is a subshell so the trap's shell keeps the repo root,
+	@# and the teardown names the directory anyway: `cd apps/web` in the same
+	@# shell left the trap running `make e2e.down` from a directory with no
+	@# Makefile, so it failed with one line of output and leaked the whole stack.
+	@trap '$(MAKE) -C $(CURDIR) e2e.down' EXIT INT TERM; \
+	( cd apps/web && E2E_BASE_URL=http://127.0.0.1:$(E2E_WEB_PORT) \
 	  E2E_API_URL=http://127.0.0.1:$(E2E_API_PORT) \
 	  E2E_RATE_LIMIT_PREFIX=$(E2E_PREFIX) \
-	  npx playwright test $(ARGS)
+	  npx playwright test $(ARGS) )
 
 e2e.up: ## Start the E2E API and web on their own database
 	@echo "e2e: building $(E2E_DB)"
@@ -98,8 +102,10 @@ e2e.up: ## Start the E2E API and web on their own database
 	  -c 'CREATE DATABASE "$(E2E_DB)"'
 	cd $(API) && DATABASE_URL=$(E2E_DB_URL) uv run alembic upgrade head
 	cd $(API) && DATABASE_URL=$(E2E_DB_URL) uv run python -m app.seed
+	@# The venv's uvicorn rather than `uv run uvicorn`: the wrapper forks, so the
+	@# pid recorded here would be the parent of the process actually serving.
 	@cd $(API) && DATABASE_URL=$(E2E_DB_URL) RATE_LIMIT_PREFIX=$(E2E_PREFIX) \
-	  nohup uv run uvicorn app.main:app --host 127.0.0.1 --port $(E2E_API_PORT) \
+	  nohup .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port $(E2E_API_PORT) \
 	  > /tmp/gather-e2e-api.log 2>&1 & echo $$! > /tmp/gather-e2e-api.pid
 	@API_ORIGIN=http://127.0.0.1:$(E2E_API_PORT) NEXT_DIST_DIR=.next-e2e \
 	  nohup npm run dev --workspace apps/web -- --port $(E2E_WEB_PORT) \
@@ -110,12 +116,18 @@ e2e.up: ## Start the E2E API and web on their own database
 	@echo "e2e: up on $(E2E_WEB_PORT)/$(E2E_API_PORT), database $(E2E_DB)"
 
 e2e.down: ## Stop the E2E stack and drop its database
-	-@pkill -f "port $(E2E_WEB_PORT)" 2>/dev/null || true
-	-@test -f /tmp/gather-e2e-api.pid && kill $$(cat /tmp/gather-e2e-api.pid) 2>/dev/null || true
-	-@test -f /tmp/gather-e2e-web.pid && kill $$(cat /tmp/gather-e2e-web.pid) 2>/dev/null || true
+	@# Whatever is holding the port, not whatever a pid file remembers. `npm run
+	@# dev` forks too, so both recorded pids were wrappers whose children were
+	@# the real servers — killing the parent left the port bound.
+	-@for pid in $$(lsof -ti tcp:$(E2E_WEB_PORT) -i tcp:$(E2E_API_PORT) 2>/dev/null); do \
+	  kill $$pid 2>/dev/null || true; done
+	-@sleep 1
+	-@for pid in $$(lsof -ti tcp:$(E2E_WEB_PORT) -i tcp:$(E2E_API_PORT) 2>/dev/null); do \
+	  kill -9 $$pid 2>/dev/null || true; done
 	-@rm -f /tmp/gather-e2e-api.pid /tmp/gather-e2e-web.pid
 	-@$(COMPOSE) exec -T db psql -U gather -d postgres -q \
 	  -c 'DROP DATABASE IF EXISTS "$(E2E_DB)" WITH (FORCE)' 2>/dev/null || true
+	@echo "e2e: down"
 
 test.api: ## Run API tests
 	cd $(API) && uv run pytest -q
