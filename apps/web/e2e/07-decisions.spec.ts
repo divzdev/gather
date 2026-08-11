@@ -189,3 +189,35 @@ test("93-96. an honest count sends, one row per recipient", async ({ request }) 
   // 96. One outbox row per recipient, not one per batch.
   expect(await outboxSize(request, ctx)).toBe(before + count);
 });
+
+test("the send screen shows the actual mail, per person, before anything goes", async ({
+  page,
+  request,
+}) => {
+  const ctx = await organizer(request);
+  const preview = await request.get(`${API}/v1/events/${ctx.eventId}/messages/decision-recipients`, {
+    headers: ctx.headers,
+  });
+  const { recipients } = (await preview.json()) as {
+    recipients: { name: string; email: string; subject: string; body: string }[];
+  };
+  test.skip(recipients.length < 2, "needs two queued decisions to step through");
+  const [first, second] = recipients;
+
+  await page.goto("/login");
+  await page.getByRole("button", { name: /^Organizer$/i }).click();
+  await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 });
+  await page.goto("/admin/messages");
+
+  // The screen used to show a placeholder here, and an editable subject and body
+  // whose contents were discarded on send. This is the one place in the product
+  // where being vague about what is about to happen costs the most.
+  await expect(page.getByText(first!.email)).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator("textarea")).toHaveValue(first!.body);
+  await expect(page.locator("#messages-subject")).toHaveValue(first!.subject);
+  // Fixed wording, so the field must not invite an edit it would throw away.
+  await expect(page.locator("#messages-subject")).toHaveAttribute("readonly", "");
+
+  await page.getByRole("button", { name: /of \d+/ }).click();
+  await expect(page.locator("textarea")).toHaveValue(second!.body);
+});

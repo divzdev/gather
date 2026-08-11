@@ -93,6 +93,11 @@ class Recipient(BaseModel):
     outcome: SubmissionStatus
     name: str
     email: str
+    #: Rendered from the same constants the send path uses, so the preview is
+    #: the mail rather than a description of it. Showing who without showing
+    #: what makes the confirmation a formality.
+    subject: str
+    body: str
 
 
 class RecipientPreview(BaseModel):
@@ -118,9 +123,25 @@ class SendResult(BaseModel):
     batch_id: uuid.UUID
 
 
+async def _event_name(session: DbSession) -> str:
+    tenant = current_tenant()
+    if tenant.event_id is None:
+        return "the event"
+    event = await session.get(Event, tenant.event_id)
+    return event.name if event else "the event"
+
+
+def _render(outcome: SubmissionStatus, *, name: str, title: str, event: str) -> tuple[str, str]:
+    """The one place a decision email is worded. Preview and send both call it,
+    so what an organiser reads on the screen is what leaves the building."""
+    context = {"name": name, "title": title, "event": event}
+    return SUBJECTS[outcome].format(**context), BODIES[outcome].format(**context)
+
+
 async def _pending(session: DbSession, outcomes: list[SubmissionStatus] | None) -> list[Recipient]:
     """Everyone with a decision recorded and not yet sent, with who to email."""
     wanted = tuple(outcomes) if outcomes else DECIDED
+    event_name = await _event_name(session)
     rows = (
         (
             await session.execute(
@@ -138,17 +159,24 @@ async def _pending(session: DbSession, outcomes: list[SubmissionStatus] | None) 
         .tuples()
         .all()
     )
-    return [
-        Recipient(
-            submission_id=submission.id,
-            code=submission.code,
-            title=submission.title,
-            outcome=submission.status,
-            name=speaker.name,
-            email=speaker.email,
+    prepared: list[Recipient] = []
+    for submission, speaker in rows:
+        subject, body = _render(
+            submission.status, name=speaker.name, title=submission.title, event=event_name
         )
-        for submission, speaker in rows
-    ]
+        prepared.append(
+            Recipient(
+                submission_id=submission.id,
+                code=submission.code,
+                title=submission.title,
+                outcome=submission.status,
+                name=speaker.name,
+                email=speaker.email,
+                subject=subject,
+                body=body,
+            )
+        )
+    return prepared
 
 
 @router.get("/decision-recipients", response_model=RecipientPreview)
@@ -264,8 +292,6 @@ async def send_decisions(
     tenant = current_tenant()
     if tenant.event_id is None:
         raise RecipientCountMismatchError("No event in scope.")
-    event = await session.get(Event, tenant.event_id)
-    event_name = event.name if event else "the event"
     # One batch per send, so the outbox can show what went out together and the
     # count the operator confirmed is recorded next to it.
     batch = MessageBatch(
@@ -280,13 +306,14 @@ async def send_decisions(
     batch_id = batch.id
 
     for recipient in recipients:
-        context = {"name": recipient.name, "title": recipient.title, "event": event_name}
         await mail.queue(
             session,
             event_id=tenant.event_id,
             to_email=recipient.email,
-            subject=SUBJECTS[recipient.outcome].format(**context),
-            body=BODIES[recipient.outcome].format(**context),
+            # Exactly the strings the preview returned, not a second rendering
+            # that could drift from it.
+            subject=recipient.subject,
+            body=recipient.body,
             purpose=PURPOSES[recipient.outcome],
             batch_id=batch_id,
         )

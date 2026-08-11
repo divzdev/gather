@@ -15,6 +15,8 @@ type Recipient = {
   outcome: string;
   name: string;
   email: string;
+  subject: string;
+  body: string;
 };
 type Preview = { total: number; by_outcome: Record<string, number>; recipients: Recipient[] };
 type OutboxRow = {
@@ -50,8 +52,7 @@ export default function MessagesPage() {
   const [whoOpen, setWhoOpen] = useState(false);
   const [includeIcs, setIncludeIcs] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const [previewAt, setPreviewAt] = useState(0);
 
   const { data: preview } = useQuery({
     queryKey: ["decision-recipients", eventId],
@@ -70,6 +71,9 @@ export default function MessagesPage() {
   });
 
   const selected = (preview?.recipients ?? []).filter((row) => chosen.includes(row.outcome));
+  // Clamped rather than reset: changing the outcome filter should not silently
+  // jump the preview back to the first person every time.
+  const shown = selected[Math.min(previewAt, Math.max(0, selected.length - 1))];
 
   const send = useMutation({
     mutationFn: () =>
@@ -169,22 +173,32 @@ export default function MessagesPage() {
     whoOpen,
     whoList: selected.map((row) => `${row.name} · ${row.email} · ${row.code}`).join("\n"),
 
-    subj: subject,
-    onSubj: (event: React.SyntheticEvent) =>
-      setSubject((event.target as HTMLInputElement).value),
-    body,
-    onBody: (event: React.SyntheticEvent) =>
-      setBody((event.target as HTMLTextAreaElement).value),
-    pvSubj:
-      subject.trim() === "" ? "Your proposal for {{event}} was accepted" : subject,
+    // The real mail for one real person, rendered by the API from the same
+    // constants the send path uses. This screen used to show a placeholder and
+    // an editable box whose contents were discarded, which is the worst place
+    // in the product to be vague about what is about to happen.
+    subj: shown?.subject ?? "Nobody is queued",
+    body:
+      shown === undefined
+        ? "Choose an outcome above to see the message its speakers will receive."
+        : shown.body,
+    pvSubj: shown?.subject ?? "Nobody is queued",
     pvBody:
-      body.trim() === ""
-        ? "Each outcome sends its own wording. Editing the copy needs templates, which are not built yet."
-        : body,
-    vars: ["name", "title", "event", "code"].map((name) => ({
-      n: `{{${name}}}`,
-      on: () => setBody((current) => `${current}{{${name}}}`),
-    })),
+      shown === undefined
+        ? "Choose an outcome above to see the message its speakers will receive."
+        : shown.body,
+    // Stepping through the queue one recipient at a time: the wording differs
+    // by outcome and carries a name and a talk title, so one sample is not a
+    // preview of the batch.
+    vars:
+      selected.length < 2
+        ? []
+        : [
+            {
+              n: `◂ ${previewAt + 1} of ${selected.length} ▸`,
+              on: () => setPreviewAt((at) => (at + 1) % selected.length),
+            },
+          ],
 
     ck: confirmed ? "✓" : "",
     ckBg: confirmed ? "var(--sg,#E04E4E)" : "var(--cd,#FFFFFF)",
@@ -239,6 +253,14 @@ export default function MessagesPage() {
     tpls: [],
     tplRows: [],
     tplName: "",
+    pvWho:
+      shown === undefined
+        ? "LIVE PREVIEW"
+        : `LIVE PREVIEW · AS ${shown.name.toUpperCase()} SEES IT`,
+    pvTo: shown?.email ?? "nobody yet",
+    // The wording is fixed per outcome, so there is no template name to quote —
+    // saying which outcomes are queued is the useful sentence instead.
+    sendNote: `emails, one per speaker, worded by outcome (${chosen.join(", ") || "none chosen"}).`,
 
     toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),
   };
