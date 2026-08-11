@@ -17,6 +17,7 @@ from app.features.auth.schemas import (
     LoginRequest,
     MagicLinkConsumeRequest,
     MagicLinkRequest,
+    ProfileUpdate,
     RegisterRequest,
     TokenResponse,
     UserResponse,
@@ -224,6 +225,21 @@ async def consume_magic_link(body: MagicLinkConsumeRequest, session: DbSession) 
         access_token=access_token,
         expires_in=settings.speaker_session_ttl_days * 24 * 60 * 60,
     )
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(body: ProfileUpdate, user: CurrentUser, session: DbSession) -> UserResponse:
+    """Edit your own profile.
+
+    Deliberately narrow: name, avatar and list density. Email is the login
+    identity, and role and organisation are membership someone else granted —
+    neither belongs behind a self-serve form.
+    """
+    for field, value in body.model_dump(exclude_unset=True).items():
+        if value is not None:
+            setattr(user, field, value)
+    await session.flush()
+    return await me(user, session)
 
 
 @router.get("/me", response_model=UserResponse)

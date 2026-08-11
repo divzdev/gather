@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -53,3 +54,16 @@ class UserResponse(Strict):
     #: "Sasha Whitfield, program lead, demo org".
     role: str = ""
     org_name: str | None = None
+
+
+class ProfileUpdate(Strict):
+    """What a person may change about themselves.
+
+    Not the email: it is the login identity and changing it is an account
+    recovery flow, not a profile edit. Not the role or organisation either —
+    those are membership, granted by someone else.
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    avatar_url: str | None = Field(default=None, max_length=500)
+    density_pref: Literal["comfortable", "compact"] | None = None

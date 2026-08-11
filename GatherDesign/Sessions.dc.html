@@ -28,6 +28,10 @@
             <button onClick="{{ doCsv }}" style="width:100%;text-align:left;padding:8px 11px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Export CSV · current view</button>
             <button onClick="{{ doXlsx }}" style="width:100%;text-align:left;padding:8px 11px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Export XLSX · current view</button>
             <button onClick="{{ doFiles }}" style="width:100%;text-align:left;padding:8px 11px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Download all files · zip</button>
+            <div style="height:1px;background:var(--ln,#E1E7E9);margin:5px 0"></div>
+            <button onClick="{{ bulkTrack }}" style="width:100%;text-align:left;padding:8px 11px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Set track · current view</button>
+            <button onClick="{{ bulkFormat }}" style="width:100%;text-align:left;padding:8px 11px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Set format · current view</button>
+            <button onClick="{{ bulkApproval }}" style="width:100%;text-align:left;padding:8px 11px;border-radius:6px;border:none;background:none;font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)" style-hover="background:var(--sk,#EDF1F2)">Set approval · current view</button>
           </div>
         </sc-if>
       </div>
@@ -58,7 +62,7 @@
       </div>
     </div>
     <div style="height:32px;flex:none;display:flex;align-items:center;gap:16px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
-      <a href="Submissions.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">SUB 216</a><span style="color:var(--i4,#99A6AD)">·</span>
+      <a href="Submissions.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">SUB {{ subCount }}</a><span style="color:var(--i4,#99A6AD)">·</span>
       <span style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--ik,#16232B)">SESSIONS {{ total }}</span><span style="color:var(--i4,#99A6AD)">·</span>
       <a href="Agenda.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">SCHEDULED {{ schedN }}</a><span style="color:var(--i4,#99A6AD)">·</span>
       <a href="Agenda.dc.html" style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--cn,#D8432B);text-decoration:none">⚠ 3 CONFLICTS</a>
@@ -467,6 +471,9 @@ class Component extends DCLogic {
       doCsv: () => this.csv(),
       doXlsx: () => { this.setState({ optOpen: false }); this.toast('For Excel sheets: save as CSV, then use Import CSV. Native XLSX lands with the backend.'); },
       doFiles: () => { this.setState({ optOpen: false }); this.toast('Bundles every uploaded file for the current filter into one zip, foldered by speaker.'); },
+      bulkTrack: () => { this.setState({ optOpen: false }); this.toast('Sets the track on every session in the current view, after confirming the count.'); },
+      bulkFormat: () => { this.setState({ optOpen: false }); this.toast('Sets the format on every session in the current view, after confirming the count.'); },
+      bulkApproval: () => { this.setState({ optOpen: false }); this.toast('Sets content approval on every session in the current view, after confirming the count.'); },
       openNew: () => this.setState({ drawer: true, editId: null, dTab: 'det', f: this.blank(), parts: [], stamp: '' }),
       drawer: s.drawer, closeDrawer: () => this.setState({ drawer: false }),
       dTitle: s.editId ? 'Edit ' + s.editId : 'New session',

@@ -93,7 +93,7 @@ export function useConsoleChrome(): {
     closeUser: () => setUserMenu(false),
     profileGo: () => {
       setUserMenu(false);
-      router.push("/admin/settings");
+      router.push("/admin/profile");
     },
     signOut: () => {
       setUserMenu(false);

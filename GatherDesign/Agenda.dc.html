@@ -18,7 +18,7 @@
   <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
     <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
       <span style="display:flex;align-items:center;gap:8px;font:600 13.5px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>AI Engineer 2026</span>
-      <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">/ Agenda · draft</span>
+      <h1 style="margin:0;font:400 11.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">/ Agenda · draft</h1>
       <div style="flex:1"></div>
       <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">drag to place · double-click adds · Delete unschedules · ⌘Z undo</span>
       
@@ -86,22 +86,23 @@
         </div>
       </div>
       <div style="flex:1;overflow:auto;min-width:0;background:var(--pp,#F4F6F7)">
-        <div style="position:sticky;top:0;z-index:6;display:grid;grid-template-columns:56px repeat(4,1fr);background:var(--cd,#FFFFFF);border-bottom:1px solid var(--ln,#E1E7E9);min-width:700px;box-sizing:border-box">
+        <div style="position:sticky;top:0;z-index:6;display:grid;grid-template-columns:56px repeat({{ roomCount }},1fr);background:var(--cd,#FFFFFF);border-bottom:1px solid var(--ln,#E1E7E9);min-width:700px;box-sizing:border-box">
           <div style="height:32px"></div>
-          <div style="height:32px;display:flex;align-items:center;padding:0 10px;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);border-left:1px solid var(--ln,#E1E7E9)">MAIN STAGE</div>
-          <div style="height:32px;display:flex;align-items:center;padding:0 10px;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);border-left:1px solid var(--ln,#E1E7E9)">ROOM 2</div>
-          <div style="height:32px;display:flex;align-items:center;padding:0 10px;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);border-left:1px solid var(--ln,#E1E7E9)">ROOM 3</div>
-          <div style="height:32px;display:flex;align-items:center;padding:0 10px;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);border-left:1px solid var(--ln,#E1E7E9)">WORKSHOP LAB</div>
+          <sc-for list="{{ roomCols }}" as="rc" hint-placeholder-count="4">
+            <div style="height:32px;display:flex;align-items:center;padding:0 10px;font:600 10.5px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.1em;color:var(--i3,#6B7B84);border-left:1px solid var(--ln,#E1E7E9)">{{ rc.n }}</div>
+          </sc-for>
         </div>
-        <div ref="{{ setGrid }}" onDoubleClick="{{ gridDbl }}" style="position:relative;height:720px;min-width:700px;box-sizing:border-box;background-image:repeating-linear-gradient(to bottom,var(--ls,#C8D2D5) 0 1px,transparent 1px 90px),repeating-linear-gradient(to bottom,var(--ln,#E1E7E9) 0 1px,transparent 1px 45px)">
+        <div ref="{{ setGrid }}" data-agenda-grid onDoubleClick="{{ gridDbl }}" style="position:relative;height:720px;min-width:700px;box-sizing:border-box;background-image:repeating-linear-gradient(to bottom,var(--ls,#C8D2D5) 0 1px,transparent 1px 90px),repeating-linear-gradient(to bottom,var(--ln,#E1E7E9) 0 1px,transparent 1px 45px)">
           <sc-for list="{{ hours }}" as="h" hint-placeholder-count="8">
             <div style="position:absolute;left:0;width:56px;top:{{ h.top }};padding-top:3px;text-align:center;font:400 10.5px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ h.label }}</div>
           </sc-for>
           <div style="position:absolute;top:0;bottom:0;left:56px;width:1px;background:var(--ln,#E1E7E9)"></div>
-          <div style="position:absolute;top:0;bottom:0;left:calc(56px + (100% - 56px) * 0.25);width:1px;background:var(--ln,#E1E7E9)"></div>
-          <div style="position:absolute;top:0;bottom:0;left:calc(56px + (100% - 56px) * 0.5);width:1px;background:var(--ln,#E1E7E9)"></div>
-          <div style="position:absolute;top:0;bottom:0;left:calc(56px + (100% - 56px) * 0.75);width:1px;background:var(--ln,#E1E7E9)"></div>
-          <div style="position:absolute;left:56px;right:0;top:270px;height:67px;background:var(--sk,#EDF1F2);border-top:1px solid var(--ln,#E1E7E9);border-bottom:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--i4,#99A6AD)">LUNCH · 12:00–12:45</div>
+          <sc-for list="{{ roomRules }}" as="rr" hint-placeholder-count="3">
+            <div style="position:absolute;top:0;bottom:0;left:{{ rr.left }};width:1px;background:var(--ln,#E1E7E9)"></div>
+          </sc-for>
+          <sc-for list="{{ blocks }}" as="bk" hint-placeholder-count="1">
+            <div style="position:absolute;left:{{ bk.left }};right:0;width:{{ bk.w }};top:{{ bk.top }};height:{{ bk.h }};background:var(--sk,#EDF1F2);border-top:1px solid var(--ln,#E1E7E9);border-bottom:1px solid var(--ln,#E1E7E9);display:flex;align-items:center;justify-content:center;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:var(--i4,#99A6AD)">{{ bk.label }}</div>
+          </sc-for>
           <sc-for list="{{ ribbons }}" as="rb" hint-placeholder-count="1">
             <div style="position:absolute;left:{{ rb.left }};width:{{ rb.w }};top:{{ rb.top }};height:{{ rb.h }};background:repeating-linear-gradient(-45deg,rgba(216,67,43,.13) 0 6px,rgba(216,67,43,.04) 6px 12px);border-top:2px solid var(--cn,#D8432B);border-bottom:2px solid var(--cn,#D8432B);pointer-events:none;z-index:1"></div>
           </sc-for>
