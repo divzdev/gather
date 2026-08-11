@@ -155,12 +155,14 @@ test("117. a session is created with no proposal behind it", async ({ request })
     const listing = await request.get(`${API}/v1/events/${ctx.eventId}/sessions`, {
       headers: ctx.headers,
     });
-    const found = ((await listing.json()) as {
-      id: string;
-      submission_id: string | null;
-      duration_minutes: number;
-      speakers: unknown[];
-    }[]).find((row) => row.id === talk.id);
+    const found = (
+      (await listing.json()) as {
+        id: string;
+        submission_id: string | null;
+        duration_minutes: number;
+        speakers: unknown[];
+      }[]
+    ).find((row) => row.id === talk.id);
 
     expect(found, "the created session is not in the list").toBeDefined();
     expect(found!.submission_id, "an invited session invented a proposal").toBeNull();
@@ -308,20 +310,32 @@ test("129. every view mode in the switcher is a real view", async ({ page }) => 
   // Track, List and Week used to be wired to the same handler as the conflicts
   // button. The grid stayed on screen underneath, so "does the page still have
   // text" passed for all three. Each mode now has to show something only it
-  // shows, and the drag canvas has to be gone when it is not the grid.
+  // shows, and the drag canvas has to be gone when it is not the day grid.
+  //
+  // The five names are the brief's own words — "viewable by list, day, week,
+  // track, or room" — so the switcher is checked against that list, not against
+  // whatever the design prototype happened to label them.
   const canvas = page.locator("[data-agenda-grid]");
   const proof: Record<string, RegExp> = {
-    Grid: /MAIN STAGE|UNSCHEDULED/i,
-    Track: /DEVELOPER EXPERIENCE|NO TRACK/i,
     List: /THIS DAY, IN ORDER/i,
+    Day: /MAIN STAGE|UNSCHEDULED/i,
     Week: /DAY 1/i,
+    Track: /DEVELOPER EXPERIENCE|NO TRACK/i,
+    Room: /MAIN STAGE|NO ROOM/i,
   };
 
   for (const [mode, expected] of Object.entries(proof)) {
-    await page.getByRole("button", { name: new RegExp(`^${mode}$`, "i") }).first().click();
+    await page
+      .getByRole("button", { name: new RegExp(`^${mode}$`, "i") })
+      .first()
+      .click();
     await expect(page.getByText(expected).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: mode })).toHaveAttribute("aria-pressed", "true");
-    await expect(canvas).toHaveCount(mode === "Grid" ? 1 : 0);
+    // exact, or "Day" also matches the "Day 1"/"Day 2" date tabs beside it.
+    await expect(page.getByRole("button", { name: mode, exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(canvas).toHaveCount(mode === "Day" ? 1 : 0);
   }
 });
 
@@ -479,7 +493,9 @@ test("147. the publishing screen produces a snippet that runs on a third-party p
   await context.close();
 });
 
-test("the auto-scheduler reads its rules box, and says what it could not read", async ({ page }) => {
+test("the auto-scheduler reads its rules box, and says what it could not read", async ({
+  page,
+}) => {
   await page.goto("/login");
   await page.getByRole("button", { name: /^Organizer$/i }).click();
   await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 });
@@ -540,7 +556,10 @@ test("the publishing screen shows snapshot history and can put an old one back",
   await expect(page.getByText(`version ${latest}`)).toBeVisible({ timeout: 20_000 });
 
   // Rolling back changes what the public reads, so it asks first.
-  await page.getByRole("button", { name: /^Restore$/ }).first().click();
+  await page
+    .getByRole("button", { name: /^Restore$/ })
+    .first()
+    .click();
   await expect(page.getByText(/public again\?/)).toBeVisible();
   await page.getByRole("button", { name: /Yes, restore it/ }).click();
 

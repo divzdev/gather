@@ -15,7 +15,9 @@
 
 import type { CSSProperties } from "react";
 
-export type ViewKey = "grid" | "track" | "list" | "week";
+/** The five the brief names — "day" is the hourly room×time grid, which is the
+ *  one view that is also the editor, so it stays in the design component. */
+export type ViewKey = "day" | "list" | "week" | "track" | "room";
 
 export type ViewSession = {
   id: string;
@@ -275,6 +277,28 @@ export function AgendaView({ input }: { input: ViewInput }) {
           </section>
         ) : null}
       </div>
+    );
+  }
+
+  if (input.view === "room") {
+    const today = input.scheduled.filter((row) => row.event_day_id === input.dayId);
+    const roomless = today.filter((row) => row.room_id === null);
+    return (
+      <Columns
+        input={input}
+        meta={(row) => track(row.track_id)?.name ?? "no track"}
+        groups={[
+          ...input.rooms.map((room) => ({
+            key: room.id,
+            title: room.name,
+            hue: "var(--ls)",
+            rows: today.filter((row) => row.room_id === room.id),
+          })),
+          ...(roomless.length > 0
+            ? [{ key: "none", title: "No room", hue: "var(--ls)", rows: roomless }]
+            : []),
+        ]}
+      />
     );
   }
 

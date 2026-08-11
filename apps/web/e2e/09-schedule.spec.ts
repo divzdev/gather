@@ -174,10 +174,12 @@ test("131-135. publish, change, publish again, roll back", async ({ request }) =
   expect(target).toBeDefined();
 
   const renamed = `${target!.title} (edited)`;
-  const patched = await request.patch(
-    `${API}/v1/events/${ctx.eventId}/sessions/${target!.id}/approval`,
-    { headers: ctx.headers, data: { content_status: "approved" } },
-  ).catch(() => null);
+  const patched = await request
+    .patch(`${API}/v1/events/${ctx.eventId}/sessions/${target!.id}/approval`, {
+      headers: ctx.headers,
+      data: { content_status: "approved" },
+    })
+    .catch(() => null);
   expect(patched === null || patched.status() < 500).toBe(true);
   void renamed;
 
@@ -246,9 +248,9 @@ test("142. nothing rejected or unapproved reaches a public surface", async ({ re
   const sessions = await request.get(`${API}/v1/events/${ctx.eventId}/sessions`, {
     headers: ctx.headers,
   });
-  const unapproved = ((await sessions.json()) as { title: string; content_status: string }[]).filter(
-    (row) => row.content_status !== "approved",
-  );
+  const unapproved = (
+    (await sessions.json()) as { title: string; content_status: string }[]
+  ).filter((row) => row.content_status !== "approved");
   for (const row of unapproved.slice(0, 10)) {
     expect(published, `an unapproved session is public: ${row.title}`).not.toContain(row.title);
   }
@@ -285,4 +287,106 @@ test("148-151. the embed snippet renders from a file on disk", async ({ browser 
   // 151. And it is legible at 375px, where the container is only that wide.
   expect(text.trim().length, "the embed rendered nothing").toBeGreaterThan(10);
   await context.close();
+});
+
+/** Sessions that never went through the CFP.
+ *
+ *  "+ New session" opened nothing at all: the sheet behind it was hard-coded
+ *  shut and the button raised a toast saying to promote a submission instead —
+ *  advice with no way to follow it on an event that has no submissions yet.
+ */
+test("a session can be created from the agenda, placed and unplaced", async ({ request, page }) => {
+  const ctx = await organizer(request);
+  const list = async () =>
+    (await (
+      await request.get(`${API}/v1/events/${ctx.eventId}/sessions`, { headers: ctx.headers })
+    ).json()) as { id: string; title: string; room_id: string | null; starts_at: string | null }[];
+  const drop = async (title: string) => {
+    const found = (await list()).find((row) => row.title === title);
+    if (found !== undefined) {
+      await request.delete(`${API}/v1/events/${ctx.eventId}/sessions/${found.id}`, {
+        headers: ctx.headers,
+      });
+    }
+  };
+
+  const placed = `E2E keynote placed ${Date.now()}`;
+  const waiting = `E2E keynote waiting ${Date.now()}`;
+  await openAgenda(page);
+  // The rooms and days the sheet offers come from the draft, so wait for a card
+  // rather than for the chrome around it.
+  const loaded = () =>
+    expect(page.locator("[data-agenda-grid]")).toContainText(/\d\d:\d\d–\d\d:\d\d/, {
+      timeout: 25_000,
+    });
+  await loaded();
+
+  // "double-click adds" is printed at the top of the screen, so it has to.
+  const grid = page.locator("[data-agenda-grid]");
+  const box = (await grid.boundingBox())!;
+  // ~09:45 — the gap between the 09:00 and 10:00 rows, so this lands on the
+  // canvas rather than on a card, where the first press would start a drag.
+  await grid.dblclick({ position: { x: box.width - 40, y: 70 } });
+  const starts = page.getByLabel("Starts", { exact: true });
+  await expect(starts, "double-click opened nothing").toBeVisible({ timeout: 10_000 });
+  expect(await starts.inputValue(), "opened without the slot that was clicked").not.toBe("");
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  // Placed: the sheet writes the session and its slot in one action.
+  await page.getByRole("button", { name: "+ New session" }).click();
+  await page.getByLabel("Title", { exact: true }).fill(placed);
+  await page.getByLabel("Starts", { exact: true }).selectOption("450");
+  await page.getByRole("button", { name: "Add to agenda" }).click();
+
+  await expect(
+    page.locator("[data-agenda-grid]"),
+    "the new card never reached the grid",
+  ).toContainText(placed, { timeout: 15_000 });
+  const onGrid = (await list()).find((row) => row.title === placed);
+  expect(onGrid?.starts_at, "created but left unplaced").not.toBeNull();
+  expect(onGrid?.room_id, "created without a room").not.toBeNull();
+  await drop(placed);
+
+  // Unplaced: a keynote with no slot yet is a legitimate outcome, not an error.
+  await page.reload();
+  await loaded();
+  await page.getByRole("button", { name: "+ New session" }).click();
+  await page.getByLabel("Title", { exact: true }).fill(waiting);
+  await page.getByLabel("Starts", { exact: true }).selectOption("");
+  await page.getByRole("button", { name: "Add to agenda" }).click();
+
+  await expect(
+    page.getByText(/waiting in the tray/i),
+    "no confirmation of what happened",
+  ).toBeVisible({
+    timeout: 15_000,
+  });
+  const inTray = (await list()).find((row) => row.title === waiting);
+  expect(inTray?.starts_at, "an unplaced session was given a time anyway").toBeNull();
+  await drop(waiting);
+});
+
+/** The publish dialog's acknowledgement was wired to unschedule the selected
+ *  session, so confirming you had read the change list quietly took a talk off
+ *  the grid. */
+test("the publish acknowledgement gates publishing and moves nothing", async ({
+  request,
+  page,
+}) => {
+  const ctx = await organizer(request);
+  const before = (await (
+    await request.get(`${API}/v1/events/${ctx.eventId}/schedule/draft`, { headers: ctx.headers })
+  ).json()) as { scheduled: unknown[] };
+
+  await openAgenda(page);
+  await page.locator("[data-agenda-grid] > div").filter({ hasText: /·/ }).first().click();
+  await page.getByRole("button", { name: /Publish schedule/i }).click();
+  await page.getByText(/I have reviewed the change list/i).click();
+
+  const after = (await (
+    await request.get(`${API}/v1/events/${ctx.eventId}/schedule/draft`, { headers: ctx.headers })
+  ).json()) as { scheduled: unknown[] };
+  expect(after.scheduled.length, "ticking the box unscheduled a session").toBe(
+    before.scheduled.length,
+  );
 });

@@ -13,7 +13,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
 import { Agenda, type AgendaData } from "@/components/design/Agenda";
@@ -25,14 +25,7 @@ import { AgendaView, type ViewKey } from "./views";
 const MINUTES_PER_PX = 1.5;
 const GRID_MINUTES = 480;
 const SNAP = 5;
-const TRACK_HUES = [
-  "#3E8896",
-  "#A85788",
-  "#5A6BA8",
-  "#7E5CB8",
-  "#C4703A",
-  "#34526B",
-] as const;
+const TRACK_HUES = ["#3E8896", "#A85788", "#5A6BA8", "#7E5CB8", "#C4703A", "#34526B"] as const;
 
 type GridSession = {
   id: string;
@@ -89,6 +82,42 @@ type Dragging = {
   minute: number;
 };
 
+/** A session being written, before it exists.
+ *
+ *  `startMinute` null is the important case: a keynote can be created with
+ *  nowhere to go — a brand-new event has no rooms and no days yet — and it
+ *  lands in the unscheduled tray rather than being refused.
+ */
+type Compose = {
+  title: string;
+  abstract: string;
+  speakerId: string;
+  trackId: string | null;
+  //: Null is "whatever the agenda is showing", resolved on every render rather
+  //: than snapshotted when the sheet opened. The draft query can still be in
+  //: flight at that moment, and freezing an empty day here meant picking a time
+  //: and getting an unplaced session with no explanation.
+  dayId: string | null;
+  roomId: string | null;
+  startMinute: number | null;
+  duration: number;
+};
+
+/** The same sheet with its blanks filled in — what actually gets written. */
+type Resolved = Omit<Compose, "dayId" | "roomId"> & { dayId: string; roomId: string };
+
+/** A placement, and where the card was before it — which is the whole of what
+ *  undo needs. `from` is absent when there is nothing to go back to. */
+type Move = {
+  id: string;
+  roomIndex: number;
+  minute: number;
+  duration?: number;
+  from?: { roomIndex: number; minute: number; fromTray: boolean };
+};
+
+const SLOT_MINUTES = 15;
+
 const CLOCK = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
@@ -108,7 +137,7 @@ export default function AgendaPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [panel, setPanel] = useState<"agent" | "conflicts">("conflicts");
-  const [view, setView] = useState<ViewKey>("grid");
+  const [view, setView] = useState<ViewKey>("day");
   const [rules, setRules] = useState("");
   /** Chips are derived from the text, so dropping one has to be remembered
    *  separately — rewriting what somebody typed under their cursor is worse
@@ -116,8 +145,23 @@ export default function AgendaPage() {
   const [dropped, setDropped] = useState<string[]>([]);
   const [unplaceable, setUnplaceable] = useState<string[]>([]);
   const [publishOpen, setPublishOpen] = useState(false);
+  /** Publishing is one of the four things the product refuses to do
+   *  optimistically, so the acknowledgement is real state and the button reads
+   *  it. It used to be wired to unschedule whatever was selected. */
+  const [acknowledged, setAcknowledged] = useState(false);
+  /** The new-session sheet. Null is closed, so there is no second flag that can
+   *  disagree with the contents. */
+  const [compose, setCompose] = useState<Compose | null>(null);
+  const composeOpen = compose !== null;
   const [ghosts, setGhosts] = useState<
-    { ref: string; sessionId: string; roomIndex: number; minute: number; title: string; duration: number }[]
+    {
+      ref: string;
+      sessionId: string;
+      roomIndex: number;
+      minute: number;
+      title: string;
+      duration: number;
+    }[]
   >([]);
   const [drag, setDrag] = useState<Dragging | null>(null);
   const dragRef = useRef<Dragging | null>(null);
@@ -128,6 +172,14 @@ export default function AgendaPage() {
     queryFn: () => authed<Draft>(`/events/${eventId}/schedule/draft`),
   });
 
+  /** Who can be put on a session. Only fetched once the sheet is open: the grid
+   *  itself never needs the roster, and most visits never open the sheet. */
+  const { data: roster } = useQuery({
+    queryKey: ["agenda-roster", eventId],
+    enabled: eventId !== null && compose !== null,
+    queryFn: () => authed<{ speaker_id: string; name: string }[]>(`/events/${eventId}/speakers`),
+  });
+
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ["agenda", eventId] });
   };
@@ -136,33 +188,54 @@ export default function AgendaPage() {
   const rooms = useMemo(() => data?.rooms ?? [], [data]);
   const day = days[Math.min(dayIndex, Math.max(0, days.length - 1))] ?? null;
 
-  /** Minute zero of the visible grid, in UTC. Everything else is an offset. */
+  /** Minute zero of a day's grid, in UTC. Everything else is an offset.
+   *
+   *  The sheet can place a session on a day other than the one being looked at,
+   *  so this takes an id rather than closing over the visible one. */
+  const startOfDay = (dayId: string | null | undefined): number => {
+    const entry = days.find((row) => row.id === dayId);
+    return entry === undefined ? 0 : Date.parse(`${entry.day_date}T${entry.starts_at_local}Z`);
+  };
+
+  /** Minute zero of the visible grid, in UTC. */
   const windowStart = useMemo(
     () => (day === null ? 0 : Date.parse(`${day.day_date}T${day.starts_at_local}Z`)),
     [day],
   );
 
   const place = useMutation({
-    mutationFn: (move: { id: string; roomIndex: number; minute: number; duration?: number }) =>
-      authed<{ conflicts: Conflict[] }>(
-        `/events/${eventId}/sessions/${move.id}/placement`,
-        {
-          method: "PATCH",
-          body: {
-            event_day_id: day?.id,
-            room_id: rooms[move.roomIndex]?.id,
-            starts_at: new Date(windowStart + move.minute * 60_000).toISOString(),
-            ...(move.duration === undefined ? {} : { duration_minutes: move.duration }),
-          },
+    mutationFn: (move: Move) =>
+      authed<{ conflicts: Conflict[] }>(`/events/${eventId}/sessions/${move.id}/placement`, {
+        method: "PATCH",
+        body: {
+          event_day_id: day?.id,
+          room_id: rooms[move.roomIndex]?.id,
+          starts_at: new Date(windowStart + move.minute * 60_000).toISOString(),
+          ...(move.duration === undefined ? {} : { duration_minutes: move.duration }),
         },
-      ),
-    onSuccess: (result) => {
+      }),
+    onSuccess: (result, move) => {
       refresh();
       const hard = result.conflicts.filter((row) => row.severity === "hard");
+      // The undo puts the card back where it was and offers no undo of its own,
+      // so the toast chain ends rather than becoming a redo nobody asked for.
+      const previous = move.from;
+      const revert =
+        previous === undefined
+          ? undefined
+          : previous.fromTray
+            ? () => unschedule.mutate(move.id)
+            : () =>
+                place.mutate({
+                  id: move.id,
+                  roomIndex: previous.roomIndex,
+                  minute: previous.minute,
+                });
       toast(
         hard.length === 0
           ? "Placed."
           : `Placed, with ${hard.length} clash${hard.length === 1 ? "" : "es"}. Open the inspector to resolve.`,
+        revert,
       );
     },
     onError: (problem: Error) => toast(problem.message),
@@ -209,6 +282,57 @@ export default function AgendaPage() {
       refresh();
       toast(`Placed ${rows.length} session${rows.length === 1 ? "" : "s"}.`);
     },
+    onError: (problem: Error) => toast(problem.message),
+  });
+
+  /** A session with no proposal behind it: the keynote nobody submitted, the
+   *  sponsor slot, the panel invented in a planning meeting.
+   *
+   *  Two calls, because creating and placing are separate concerns in the API
+   *  and a session with nowhere to go is a legitimate outcome. If the placement
+   *  fails the session still exists — it is in the tray, which is recoverable,
+   *  where a rollback would have thrown the typing away. */
+  const create = useMutation({
+    mutationFn: async (draft: Resolved) => {
+      const made = await authed<{ id: string; title: string }>(`/events/${eventId}/sessions`, {
+        method: "POST",
+        body: {
+          title: draft.title.trim(),
+          abstract: draft.abstract.trim() === "" ? null : draft.abstract.trim(),
+          track_id: draft.trackId,
+          duration_minutes: draft.duration,
+          speaker_ids: draft.speakerId === "" ? [] : [draft.speakerId],
+        },
+      });
+      const placing = draft.startMinute !== null && draft.dayId !== "" && draft.roomId !== "";
+      if (placing) {
+        await authed(`/events/${eventId}/sessions/${made.id}/placement`, {
+          method: "PATCH",
+          body: {
+            event_day_id: draft.dayId,
+            room_id: draft.roomId,
+            starts_at: new Date(
+              startOfDay(draft.dayId) + (draft.startMinute ?? 0) * 60_000,
+            ).toISOString(),
+          },
+        });
+      }
+      return { title: made.title, placed: placing, elsewhere: placing && draft.dayId !== day?.id };
+    },
+    onSuccess: (result) => {
+      setCompose(null);
+      refresh();
+      // Naming the other day matters: the card is real but off-screen, and
+      // "added to the grid" with no visible change reads as a failure.
+      toast(
+        !result.placed
+          ? `Added ${result.title}. It is waiting in the tray.`
+          : result.elsewhere
+            ? `Added ${result.title} to another day. Switch days to see it.`
+            : `Added ${result.title} to the grid.`,
+      );
+    },
+    // The sheet stays open on failure so what was typed is still there.
     onError: (problem: Error) => toast(problem.message),
   });
 
@@ -290,11 +414,12 @@ export default function AgendaPage() {
 
   /** Pointer position to a (room, minute) slot. The grid is found from the event
    *  rather than a ref, because the generated markup owns the element. */
-  const slotAt = (event: React.MouseEvent | MouseEvent): { roomIndex: number; minute: number } | null => {
+  const slotAt = (
+    event: React.MouseEvent | MouseEvent,
+  ): { roomIndex: number; minute: number } | null => {
     const target = event.target as HTMLElement | null;
     const grid =
-      target?.closest("[data-agenda-grid]") ??
-      document.querySelector("[data-agenda-grid]");
+      target?.closest("[data-agenda-grid]") ?? document.querySelector("[data-agenda-grid]");
     if (grid === null) return null;
     const box = grid.getBoundingClientRect();
     const usable = box.width - 56;
@@ -306,11 +431,51 @@ export default function AgendaPage() {
     return { roomIndex, minute: Math.max(0, Math.min(GRID_MINUTES - SNAP, raw)) };
   };
 
-  const beginDrag = (
-    event: React.MouseEvent,
-    row: GridSession,
-    fromTray: boolean,
-  ) => {
+  /** "Delete unschedules", as the header has claimed all along.
+   *
+   *  Not while the sheet is open, and not while a field has focus — Backspace
+   *  belongs to whatever is being typed into. */
+  const removeSelected = unschedule.mutate;
+  const undoable = toasts.findLast((entry) => entry.revert !== undefined);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const typing =
+        (event.target as HTMLElement | null)?.closest("input, textarea, select") !== null;
+      if (typing || composeOpen) return;
+
+      // ⌘Z runs the same revert the toast offers, rather than a second undo
+      // stack that could disagree with it.
+      if (event.key.toLowerCase() === "z" && (event.metaKey || event.ctrlKey)) {
+        if (undoable === undefined) return;
+        event.preventDefault();
+        undoable.revert?.();
+        dismiss(undoable.id);
+        return;
+      }
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      if (selected === null) return;
+      event.preventDefault();
+      removeSelected(selected);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selected, composeOpen, removeSelected, undoable, dismiss]);
+
+  /** Open the sheet, optionally on the slot that was double-clicked. */
+  const openCompose = (at?: { roomIndex: number; minute: number }) => {
+    setCompose({
+      title: "",
+      abstract: "",
+      speakerId: "",
+      trackId: null,
+      dayId: null,
+      roomId: at === undefined ? null : (rooms[at.roomIndex]?.id ?? null),
+      startMinute: at?.minute ?? null,
+      duration: 30,
+    });
+  };
+
+  const beginDrag = (event: React.MouseEvent, row: GridSession, fromTray: boolean) => {
     if (row.is_locked) {
       toast(`${row.title} is locked. Unlock it before moving it.`);
       return;
@@ -340,7 +505,12 @@ export default function AgendaPage() {
       dragRef.current = null;
       setDrag(null);
       if (landed !== null && landed.roomIndex >= 0) {
-        place.mutate({ id: landed.id, roomIndex: landed.roomIndex, minute: landed.minute });
+        place.mutate({
+          id: landed.id,
+          roomIndex: landed.roomIndex,
+          minute: landed.minute,
+          from: { roomIndex: started.roomIndex, minute: started.minute, fromTray },
+        });
       }
     };
     window.addEventListener("mousemove", move);
@@ -351,7 +521,9 @@ export default function AgendaPage() {
    *  re-reads it immediately and the chips never disagree with the box. */
   const parsed = useMemo(() => {
     const dayStart =
-      day === null ? 0 : Number(day.starts_at_local.slice(0, 2)) * 60 + Number(day.starts_at_local.slice(3, 5));
+      day === null
+        ? 0
+        : Number(day.starts_at_local.slice(0, 2)) * 60 + Number(day.starts_at_local.slice(3, 5));
     const read = parseConstraints(rules, rooms, dayStart);
     return { ...read, understood: read.understood.filter((rule) => !dropped.includes(rule.label)) };
   }, [rules, rooms, day, dropped]);
@@ -379,7 +551,9 @@ export default function AgendaPage() {
       let placed = false;
       for (let minute = 0; minute + row.duration_minutes <= GRID_MINUTES && !placed; minute += 15) {
         for (let index = 0; index < rooms.length && !placed; index += 1) {
-          if (!allows(parsed.understood, { minute, duration: row.duration_minutes, roomIndex: index })) {
+          if (
+            !allows(parsed.understood, { minute, duration: row.duration_minutes, roomIndex: index })
+          ) {
             continue;
           }
           const clash = (busy[index] ?? []).some(
@@ -449,8 +623,63 @@ export default function AgendaPage() {
   })();
   const hardCount = conflicts.filter((row) => row.severity === "hard").length;
 
-  const screen: AgendaData = {
+  /** What the sheet's chosen slot would collide with. A warning and never a
+   *  refusal, matching the rule the drag path already follows: the API accepts
+   *  a clashing placement and reports it. */
+  const canPlace = days.length > 0 && rooms.length > 0;
 
+  /** The sheet's choices with the blanks filled in from what the agenda is
+   *  currently showing. Everything downstream — the selects, the warning, the
+   *  footer, the write — reads this rather than the raw choice, so a day that
+   *  loaded late is picked up everywhere at once. */
+  const draft =
+    compose === null
+      ? null
+      : {
+          ...compose,
+          dayId: compose.dayId ?? day?.id ?? "",
+          roomId: compose.roomId ?? rooms[0]?.id ?? "",
+        };
+
+  const composeClash = ((): string | null => {
+    if (draft === null || draft.startMinute === null || draft.dayId === "") return null;
+    const from = draft.startMinute;
+    const to = from + draft.duration;
+    const onThatDay = (data?.scheduled ?? []).filter((row) => row.event_day_id === draft.dayId);
+    const dayStart = startOfDay(draft.dayId);
+
+    for (const row of onThatDay) {
+      const start =
+        row.starts_at === null ? 0 : Math.round((Date.parse(row.starts_at) - dayStart) / 60_000);
+      // Half-open, exactly as the server does it: touching is not overlapping.
+      if (!(from < start + row.duration_minutes && start < to)) continue;
+      if (row.room_id === draft.roomId) {
+        return `${rooms.find((entry) => entry.id === draft.roomId)?.name ?? "That room"} is taken then`;
+      }
+      if (draft.speakerId !== "" && row.speaker_ids.includes(draft.speakerId)) {
+        return "That speaker is already on at that time";
+      }
+    }
+    return null;
+  })();
+
+  const composeWhen = ((): string => {
+    if (draft === null) return "";
+    if (!canPlace) return "No rooms or days yet — it goes to the tray.";
+    if (draft.startMinute === null) return "Unplaced. It goes to the tray.";
+    const index = days.findIndex((entry) => entry.id === draft.dayId);
+    const dayLabel = days[index]?.label ?? `Day ${index + 1}`;
+    const room = rooms.find((entry) => entry.id === draft.roomId)?.name ?? "";
+    const base = startOfDay(draft.dayId);
+    return `${dayLabel} · ${room} · ${clockAt(base, draft.startMinute)}–${clockAt(base, draft.startMinute + draft.duration)}`;
+  })();
+
+  /** Edit one field of the sheet. Guarded on null so a stale click after the
+   *  sheet closed cannot resurrect it half-filled. */
+  const editCompose = (patch: Partial<Compose>) =>
+    setCompose((current) => (current === null ? current : { ...current, ...patch }));
+
+  const screen: AgendaData = {
     roomCount: String(columns),
     roomCols: rooms.map((room) => ({ n: room.name.toUpperCase() })),
     roomRules: rooms.slice(1).map((_room, index) => ({
@@ -501,7 +730,10 @@ export default function AgendaPage() {
             ? clockAt(windowStart, minute)
             : `${clockAt(windowStart, minute)}–${clockAt(windowStart, minute + row.duration_minutes)} · ${row.duration_minutes} min`,
         left: columnLeft(
-          Math.max(0, rooms.findIndex((room) => room.id === row.room_id)),
+          Math.max(
+            0,
+            rooms.findIndex((room) => room.id === row.room_id),
+          ),
           lane.lane,
           lane.of,
         ),
@@ -513,10 +745,7 @@ export default function AgendaPage() {
           : selected === row.id
             ? "1.5px solid var(--sg,#E04E4E)"
             : "1px solid var(--ln,#E1E7E9)",
-        sh:
-          selected === row.id
-            ? "0 4px 12px rgba(16,19,25,.14)"
-            : "0 1px 2px rgba(13,16,32,.06)",
+        sh: selected === row.id ? "0 4px 12px rgba(16,19,25,.14)" : "0 1px 2px rgba(13,16,32,.06)",
         op: drag?.id === row.id ? "0.35" : "1",
         onDown: (event) => beginDrag(event as React.MouseEvent, row, false),
         onClick: (event) => {
@@ -643,14 +872,16 @@ export default function AgendaPage() {
     acceptAll: () => {
       if (ghosts.length > 0) acceptGhosts.mutate(ghosts);
     },
-    gridOn: view === "grid",
-    views: (["grid", "track", "list", "week"] as const).map((key) => ({
-      label: key === "grid" ? "Grid" : key === "track" ? "Track" : key === "list" ? "List" : "Week",
+    gridOn: view === "day",
+    // The five the brief asks for, in the order it lists them. Only "day" is the
+    // drag-and-drop grid; the rest are read-only groupings of the same data.
+    views: (["list", "day", "week", "track", "room"] as const).map((key) => ({
+      label: key[0]!.toUpperCase() + key.slice(1),
       active: view === key,
       on: () => setView(key),
     })),
     alt:
-      view === "grid" ? null : (
+      view === "day" ? null : (
         <AgendaView
           input={{
             view,
@@ -671,9 +902,18 @@ export default function AgendaPage() {
       ),
 
     pub: publishOpen,
-    openPub: () => setPublishOpen(true),
+    openPub: () => {
+      setAcknowledged(false);
+      setPublishOpen(true);
+    },
     closePub: () => setPublishOpen(false),
-    doPub: () => publish.mutate(hardCount > 0),
+    doPub: () => {
+      if (!acknowledged) {
+        toast("Tick the box to confirm you have read the change list.");
+        return;
+      }
+      publish.mutate(hardCount > 0);
+    },
     pubLabel: hardCount > 0 ? `Publish with ${hardCount} clash` : "Publish",
     pubBg: "var(--bt,#FF6B6B)",
     pubFg: "var(--bf,#331313)",
@@ -684,43 +924,88 @@ export default function AgendaPage() {
       toast("Reloaded from the server.");
     },
 
-    // The compose sheet and the track filter are the design's; neither has an
-    // endpoint behind it yet, so they stay inert rather than pretending.
-    compOn: false,
-    compX: () => undefined,
-    compAdd: () => undefined,
-    cT: "",
-    onCT: () => undefined,
-    cSp: "",
-    onCSp: () => undefined,
-    cNo: "",
-    onCNo: () => undefined,
-    cDay: "",
-    onCDay: () => undefined,
-    cRoom: "",
-    onCRoom: () => undefined,
-    cStart: "",
-    onCStart: () => undefined,
-    cDur: "",
-    onCDur: () => undefined,
-    cWarn: "",
-    cWarnOn: false,
-    cWhen: "",
-    startOpts: [],
-    trOpts: [],
-    newSess: () => toast("Sessions are created by promoting an accepted submission."),
-    gridDbl: () => toast("Drag a session from the tray to place it."),
+    /** The new-session sheet.
+     *
+     *  Promotion covers the sessions that came from the CFP. It cannot cover the
+     *  keynote nobody submitted, and it covers nothing at all on a new event
+     *  with no submissions yet — which is where an organiser starts. */
+    compOn: compose !== null,
+    compX: () => setCompose(null),
+    compAdd: () => {
+      if (draft === null) return;
+      if (draft.title.trim() === "") {
+        toast("Give it a title first.");
+        return;
+      }
+      create.mutate(draft);
+    },
+    cT: compose?.title ?? "",
+    onCT: (event) => editCompose({ title: (event.target as HTMLInputElement).value }),
+    cNo: compose?.abstract ?? "",
+    onCNo: (event) => editCompose({ abstract: (event.target as HTMLTextAreaElement).value }),
+    cSp: compose?.speakerId ?? "",
+    onCSp: (event) => editCompose({ speakerId: (event.target as HTMLSelectElement).value }),
+    spOpts: (roster ?? []).map((person) => ({ v: person.speaker_id, l: person.name })),
+    cDay: draft?.dayId ?? "",
+    onCDay: (event) => editCompose({ dayId: (event.target as HTMLSelectElement).value }),
+    dayOpts: days.map((entry, index) => ({ v: entry.id, l: entry.label ?? `Day ${index + 1}` })),
+    cRoom: draft?.roomId ?? "",
+    onCRoom: (event) => editCompose({ roomId: (event.target as HTMLSelectElement).value }),
+    roomOpts: rooms.map((room) => ({ v: room.id, l: room.name })),
+    cStart: compose === null || compose.startMinute === null ? "" : String(compose.startMinute),
+    onCStart: (event) => {
+      const raw = (event.target as HTMLSelectElement).value;
+      editCompose({ startMinute: raw === "" ? null : Number(raw) });
+    },
+    // "Leave it unplaced" is first because it is the only option that always
+    // works — a new event has no rooms and no days to place anything in.
+    startOpts: canPlace
+      ? [
+          { v: "", l: "Leave it in the tray" },
+          ...Array.from({ length: GRID_MINUTES / SLOT_MINUTES }, (_entry, index) => ({
+            v: String(index * SLOT_MINUTES),
+            l: clockAt(startOfDay(draft?.dayId), index * SLOT_MINUTES),
+          })),
+        ]
+      : [{ v: "", l: "Set up rooms and days in Program first" }],
+    cDur: String(compose?.duration ?? 30),
+    onCDur: (event) => editCompose({ duration: Number((event.target as HTMLSelectElement).value) }),
+    trOpts: (data?.tracks ?? []).map((entry) => {
+      const hue = trackHue(entry.id);
+      const chosen = compose?.trackId === entry.id;
+      return {
+        n: entry.name,
+        col: hue,
+        bd: chosen ? hue : "var(--ls,#C8D2D5)",
+        bg: chosen ? "var(--sk,#EDF1F2)" : "var(--cd,#FFFFFF)",
+        wt: chosen ? "600" : "500",
+        // Clicking the chosen track again clears it: a session without a track
+        // is valid, and there was otherwise no way back to one.
+        on: () => editCompose({ trackId: chosen ? null : entry.id }),
+      };
+    }),
+    cWarn: composeClash ?? "",
+    cWarnOn: composeClash !== null,
+    cWhen: composeWhen,
+    newSess: () => openCompose(),
+    // The header has promised "double-click adds" all along.
+    gridDbl: (event) => {
+      const slot = slotAt(event as React.MouseEvent);
+      openCompose(slot ?? undefined);
+    },
     chips: parsed.understood.map((rule) => ({
       t: rule.label,
       onX: () => setDropped((current) => [...current, rule.label]),
     })),
     hasChips: parsed.understood.length > 0,
-    ck: selected === null ? "" : "✓",
-    ckBg: "var(--cd,#FFFFFF)",
-    ckBd: "var(--ls,#C8D2D5)",
-    togCk: () => {
-      if (selected !== null) unschedule.mutate(selected);
-    },
+    /** "I have reviewed the change list and the notification recipients."
+     *
+     *  This was bound to unschedule the selected session, so ticking the box in
+     *  the publish dialog quietly took a talk off the grid. */
+    ck: acknowledged ? "✓" : "",
+    ckBg: acknowledged ? "var(--bt,#FF6B6B)" : "var(--cd,#FFFFFF)",
+    ckBd: acknowledged ? "var(--bt,#FF6B6B)" : "var(--ls,#C8D2D5)",
+    togCk: () => setAcknowledged((current) => !current),
 
     toasts: toasts.map((entry) => ({
       msg: entry.msg,
