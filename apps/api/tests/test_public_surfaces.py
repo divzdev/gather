@@ -562,3 +562,30 @@ async def test_a_snapshot_published_before_facets_existed_still_serves(
     assert response.status_code == 200
     assert response.json()["sessions"] == []
     assert response.json()["facets"] == {"tags": [], "languages": [], "levels": []}
+
+
+async def test_two_publishes_at_once_get_two_version_numbers(
+    client: AsyncClient, world: World
+) -> None:
+    """Version was read as max()+1 and then inserted, with a unique index on
+    (event_id, version) waiting for the two to interleave. The console polls the
+    version list while an organiser presses publish, and a rollback is itself a
+    publish, so this collided in practice and returned a 500."""
+    import asyncio
+
+    responses = await asyncio.gather(
+        *[
+            client.post(
+                f"/v1/events/{world.event.id}/schedule/publish",
+                json={"acknowledge_conflicts": True},
+                headers={**world.headers, "Idempotency-Key": f"race-{n}"},
+            )
+            for n in range(4)
+        ]
+    )
+
+    assert [r.status_code for r in responses] == [201, 201, 201, 201], [
+        r.text for r in responses if r.status_code != 201
+    ]
+    versions = sorted(r.json()["version"] for r in responses)
+    assert len(set(versions)) == 4, f"two publishes took the same version: {versions}"

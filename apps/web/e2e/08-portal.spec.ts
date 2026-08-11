@@ -26,15 +26,28 @@ test.beforeAll(async ({ request }) => {
 
 test("99-101. a speaker signs in with no password and sees their own everything", async ({
   page,
+  request,
 }) => {
+  // Asserted against the payload rather than against words that might appear
+  // on the page: "does the body contain the word task" passed for the wrong
+  // reasons and failed for reasons nobody could reconstruct afterwards.
+  const token = await speakerToken(request);
+  const home = await request.get(`${API}/v1/portal/home`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const { event, speaker } = (await home.json()) as {
+    event: { name: string };
+    speaker: { name: string };
+  };
+
   await page.goto("/login");
   await page.getByRole("button", { name: /^Speaker$/i }).click();
   await expect(page).toHaveURL(/\/portal/, { timeout: 20_000 });
 
-  const body = await page.locator("body").innerText();
-  // 100. Event, tasks and progress in one payload, on one screen.
-  expect(body).toMatch(/DevFlow|AI Engineer/i);
-  expect(body.toLowerCase()).toMatch(/task|waiting on you|outstanding|nothing/);
+  // 100. Event, speaker and tasks in one payload, on one screen — their own
+  // conference and their own name, not a prototype's.
+  await expect(page.getByText(event.name).first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(speaker.name.split(" ")[0]!).first()).toBeVisible();
 });
 
 test("107. a speaker cannot reach another speaker's task or file", async ({ request }) => {

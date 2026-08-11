@@ -160,13 +160,28 @@ async def build(session: AsyncSession, event: Event) -> dict[str, Any]:
     }
 
 
+async def _next_version(session: AsyncSession, event: Event) -> int:
+    """The next version number, allocated under a lock on the event row.
+
+    Read-the-max-then-insert is a race, and this table has a unique index on
+    (event_id, version) that turns the race into a 500. Two publishes a second
+    apart are not hypothetical here: the console polls the version list while an
+    organiser presses publish, and rolling back is itself a publish. Locking the
+    event serialises publishes per event and leaves every other event alone.
+    """
+    await session.execute(select(Event.id).where(Event.id == event.id).with_for_update())
+    highest = await session.scalar(
+        select(func.max(PublishedSchedule.version)).where(PublishedSchedule.event_id == event.id)
+    )
+    return int(highest or 0) + 1
+
+
 async def publish(
     session: AsyncSession, *, event: Event, user_id: uuid.UUID | None, note: str | None = None
 ) -> PublishedSchedule:
-    latest = await session.scalar(select(func.max(PublishedSchedule.version)))
     published = PublishedSchedule(
         event_id=event.id,
-        version=int(latest or 0) + 1,
+        version=await _next_version(session, event),
         snapshot=await build(session, event),
         published_at=datetime.now(UTC),
         published_by_user_id=user_id,
@@ -201,10 +216,9 @@ async def rollback(
     if target is None:
         raise NotFoundError(f"No published version {version}.")
 
-    highest = await session.scalar(select(func.max(PublishedSchedule.version)))
     restored = PublishedSchedule(
         event_id=event.id,
-        version=int(highest or 0) + 1,
+        version=await _next_version(session, event),
         snapshot=dict(target.snapshot),
         published_at=datetime.now(UTC),
         published_by_user_id=user_id,

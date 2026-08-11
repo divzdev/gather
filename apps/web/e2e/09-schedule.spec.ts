@@ -97,8 +97,10 @@ test("122. the clash shows before the drop lands", async ({ page, request }) => 
   await openAgenda(page);
 
   // A tray item, by its own text: the tray lists unscheduled sessions with a
-  // "No track · N min" line under each.
-  const trayItem = page.getByText(/No track · \d+ min/).first();
+  // Every tray card carries a "<track> · N min" line, and the track may be a
+  // real one — this used to look for "No track", which only passed while the
+  // fixture happened to leave an untracked session unplaced.
+  const trayItem = page.getByText(/· \d+ min$/).first();
   await expect(trayItem).toBeVisible({ timeout: 20_000 });
 
   // Any card already on the grid is something to collide with.

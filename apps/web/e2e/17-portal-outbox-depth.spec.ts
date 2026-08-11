@@ -36,9 +36,11 @@ test("97. a failed message can be retried, and a delivered one cannot", async ({
   const outbox = await request.get(`${API}/v1/events/${ctx.eventId}/messages/outbox?per_page=200`, {
     headers: ctx.headers,
   });
-  const rows = ((await outbox.json()) as {
+  const before = (await outbox.json()) as {
     data: { id: string; status: string; to_email: string }[];
-  }).data;
+    meta: { total: number };
+  };
+  const rows = before.data;
   expect(rows.length, "the outbox is empty, so there is nothing to retry").toBeGreaterThan(0);
 
   // Resending something that arrived is how one person gets told twice, so the
@@ -53,7 +55,14 @@ test("97. a failed message can be retried, and a delivered one cannot", async ({
     expect(await refused.text()).toMatch(/nothing to retry|sent|queued/i);
   }
 
-  const failed = rows.find((row) => row.status === "failed" || row.status === "bounced");
+  // Asked for by status rather than hoped for on the first page: once a send has
+  // put hundreds of delivered rows in front of them, the failures are the only
+  // rows that matter and the only ones nobody can reach.
+  const failures = await request.get(
+    `${API}/v1/events/${ctx.eventId}/messages/outbox?per_page=50&filter[status]=bounced,failed`,
+    { headers: ctx.headers },
+  );
+  const failed = ((await failures.json()) as { data: { id: string; status: string }[] }).data[0];
   test.skip(failed === undefined, "nothing in the outbox has failed");
 
   const retried = await request.post(
@@ -66,11 +75,21 @@ test("97. a failed message can be retried, and a delivered one cannot", async ({
   const after = await request.get(`${API}/v1/events/${ctx.eventId}/messages/outbox?per_page=200`, {
     headers: ctx.headers,
   });
-  const now = ((await after.json()) as { data: { id: string; status: string }[] }).data;
-  expect(now.find((row) => row.id === failed!.id)?.status, "the failure was overwritten").toBe(
+  const body = (await after.json()) as {
+    data: { id: string; status: string }[];
+    meta: { total: number };
+  };
+  const still = await request.get(
+    `${API}/v1/events/${ctx.eventId}/messages/outbox?per_page=50&filter[status]=bounced,failed`,
+    { headers: ctx.headers },
+  );
+  const kept = ((await still.json()) as { data: { id: string; status: string }[] }).data;
+  expect(kept.find((row) => row.id === failed!.id)?.status, "the failure was overwritten").toBe(
     failed!.status,
   );
-  expect(now.length, "the retry did not appear in the outbox").toBeGreaterThan(rows.length);
+  // Counted against the total, not the page: once the outbox passes 200 rows the
+  // page length stops moving and this compared 200 to 200 forever.
+  expect(body.meta.total, "the retry did not appear in the outbox").toBeGreaterThan(before.meta.total);
 });
 
 test("98. deciding and sending move the same proposal through its notified state", async ({

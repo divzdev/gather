@@ -220,6 +220,11 @@ async def outbox(
     the rest existed — in the one place that records what actually went out.
     """
     statement = select(Message).order_by(Message.created_at.desc())
+    # `filter[status]=bounced,failed` — the outbox exists to show delivery state,
+    # and on a real send the handful that went wrong are buried under hundreds
+    # that did not.
+    if statuses := query.filters.get("status"):
+        statement = statement.where(Message.status.in_(statuses))
     rows, meta = await paginate(session, statement, query)
     return OutboxPage(data=[OutboxRow.model_validate(row) for row in rows], meta=meta)
 

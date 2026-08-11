@@ -115,8 +115,12 @@ async def list_submissions(
         "score_avg": Submission.score_avg,
         "submitted_at": Submission.submitted_at,
     }
+    # Nulls last in both directions. Postgres puts them first on a descending
+    # sort, so "best score first" opened with every unreviewed proposal — the
+    # ones with no score at all — above the highest-scoring talk in the event.
+    # An absent score is not a high one, and it is not a low one either.
     ordering: list[Any] = [
-        column.desc() if field.descending else column.asc()
+        column.desc().nulls_last() if field.descending else column.asc().nulls_last()
         for field in query.sort
         if (column := sortable.get(field.name)) is not None
     ]

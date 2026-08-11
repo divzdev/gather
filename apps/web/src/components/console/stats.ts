@@ -6,8 +6,9 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
-import { authed, getEventId } from "@/lib/session";
+import { authed, getEventId, setEventId } from "@/lib/session";
 
 type Row = { status: string; decision_status: string };
 type Page = { data: Row[]; meta: { total: number } };
@@ -39,7 +40,29 @@ export type ProgramStats = {
 const DECIDED = new Set(["accepted", "waitlisted", "rejected"]);
 
 export function useProgramStats(): { stats: ProgramStats; eventId: string | null } {
-  const eventId = typeof window === "undefined" ? null : getEventId();
+  const stored = typeof window === "undefined" ? null : getEventId();
+  const [eventId, setCurrent] = useState(stored);
+
+  /** A stored id can outlive the event it names — the database was reset, the
+   *  event was deleted, or the token now belongs to a different organisation.
+   *  Every screen then read an event that 404s and rendered empty forever, with
+   *  the switcher stuck on "Loading…" and nothing saying why. Adopting the first
+   *  event the account can actually see is the recovery. */
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const mine = await authed<{ id: string }[]>("/events").catch(() => null);
+      if (cancelled || mine === null) return;
+      const known = mine.some((row) => row.id === eventId);
+      const first = mine[0];
+      if (known || first === undefined) return;
+      setEventId(first.id);
+      setCurrent(first.id);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
 
   const { data } = useQuery({
     queryKey: ["program-stats", eventId],
