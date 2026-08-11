@@ -1002,3 +1002,88 @@ async def test_editing_stops_once_a_reviewer_has_it(
 
     assert refused.status_code == 409
     assert refused.json()["error"]["code"] == "SUBMISSION_LOCKED"
+
+
+async def _submit(
+    client: AsyncClient, event: Event, form: Form, *, title: str, name: str, email: str
+) -> str:
+    created = await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": title,
+            "answers": GOOD,
+            "speaker_email": email,
+            "speaker_name": name,
+        },
+    )
+    assert created.status_code == 201, created.text
+    return str(created.json()["code"])
+
+
+async def test_search_matches_the_title_the_code_and_the_speaker(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """All three, because all three are what somebody has in front of them.
+
+    The console filtered on these in the browser, over whatever slice it had
+    fetched. Moving the list to the server would otherwise have quietly narrowed
+    search to titles while the box went on looking the same.
+    """
+    headers, event, form = cfp
+    code = await _submit(
+        client, event, form, title="Taming CI", name="Priya Raman", email="priya@example.com"
+    )
+    await _submit(
+        client, event, form, title="Caching Deeply", name="Jordan Alvarez", email="j@example.com"
+    )
+
+    async def search(term: str) -> list[str]:
+        found = await client.get(
+            f"/v1/events/{event.id}/submissions", params={"q": term}, headers=headers
+        )
+        assert found.status_code == 200, found.text
+        return [row["title"] for row in found.json()["data"]]
+
+    assert await search("taming") == ["Taming CI"]
+    assert await search(code) == ["Taming CI"]
+    assert await search("Alvarez") == ["Caching Deeply"]
+    assert await search("nobody at all") == []
+
+
+async def test_a_track_filter_narrows_the_list_and_the_total(
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """The count has to move with the rows.
+
+    A filter that pages 25 of 608 while the total still says 608 is how a list
+    lies about what it is showing.
+    """
+    headers, event, form = cfp
+    await _submit(
+        client, event, form, title="On the track", name="Priya Raman", email="priya@example.com"
+    )
+    await _submit(
+        client, event, form, title="Off the track", name="Jordan Alvarez", email="j@example.com"
+    )
+
+    track_id = (
+        await client.post(f"/v1/events/{event.id}/tracks", json={"name": "AI"}, headers=headers)
+    ).json()["id"]
+
+    listed = await client.get(f"/v1/events/{event.id}/submissions", headers=headers)
+    target = next(row for row in listed.json()["data"] if row["title"] == "On the track")
+    with tenancy_disabled():
+        row = await session.get(Submission, uuid.UUID(target["id"]))
+        assert row is not None
+        row.track_id = uuid.UUID(track_id)
+        await session.commit()
+
+    filtered = await client.get(
+        f"/v1/events/{event.id}/submissions",
+        params={"filter[track_id]": track_id},
+        headers=headers,
+    )
+
+    assert [r["title"] for r in filtered.json()["data"]] == ["On the track"]
+    assert filtered.json()["meta"]["total"] == 1

@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from app.core.deps import DbSession, bind_tenant, require_role
 from app.core.errors import NotFoundError
@@ -106,8 +106,26 @@ async def list_submissions(
 
     if statuses := query.filters.get("status"):
         statement = statement.where(Submission.status.in_(statuses))
+    if tracks := query.filters.get("track_id"):
+        statement = statement.where(Submission.track_id.in_(tracks))
     if query.q:
-        statement = statement.where(Submission.title.ilike(f"%{query.q}%"))
+        # Title, code and speaker name — the three things somebody has in front
+        # of them when they search. Matching only the title would have been the
+        # quiet cost of moving this list to the server: the console filtered all
+        # three in the browser, over a slice of the rows.
+        term = f"%{query.q}%"
+        by_speaker = (
+            select(SubmissionSpeaker.submission_id)
+            .join(Speaker, Speaker.id == SubmissionSpeaker.speaker_id)
+            .where(Speaker.name.ilike(term))
+        )
+        statement = statement.where(
+            or_(
+                Submission.title.ilike(term),
+                Submission.code.ilike(term),
+                Submission.id.in_(by_speaker),
+            )
+        )
 
     sortable: dict[str, Any] = {
         "title": Submission.title,
