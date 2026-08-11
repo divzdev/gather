@@ -300,7 +300,11 @@ export default function PortalPage() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["portal-home"] });
-      say("Uploaded. You can replace it any time; we keep every version.");
+      void queryClient.invalidateQueries({ queryKey: ["portal-file-comments"] });
+      // Names the Feedback tab at the one moment it is relevant. Someone who
+      // has just uploaded is the person most likely to want to say something
+      // about the file, and a tab nobody opens is a feature nobody has.
+      say("Uploaded. Every version is kept — add a note about it under Feedback.");
     },
     onError: (problem: Error) => say(problem.message),
   });
@@ -677,10 +681,31 @@ export default function PortalPage() {
  *  write against a strict allowlist — `features/pages/service.py`. Nothing on
  *  this path may ever render HTML that did not come through there.
  */
+/** The Portal prototype carries an inline `min-height:100vh`, so any tab
+ *  rendered as its sibling starts a full screen below the fold — the speaker
+ *  taps Resources and sees an empty screen. Measured at 1280×800: the section
+ *  began at y=870. Inline styles beat a stylesheet, hence `!important`; scoped
+ *  to this tab so the prototype is untouched everywhere else. Same fix, and the
+ *  same marker pattern, as the Feedback tab in `comments.tsx`. */
+function AboveTheFold() {
+  return (
+    <style
+      dangerouslySetInnerHTML={{
+        __html:
+          'body:has([data-portal-resources]) [data-screen-label="Speaker portal"]{min-height:0!important}',
+      }}
+    />
+  );
+}
+
 function PortalResources({ pages }: { pages: readonly PortalPage[] }) {
   if (pages.length === 0) {
     return (
-      <section style={{ maxWidth: 760, margin: "0 auto", padding: "28px 20px 80px" }}>
+      <section
+        data-portal-resources
+        style={{ maxWidth: 760, margin: "0 auto", padding: "28px 20px 80px" }}
+      >
+        <AboveTheFold />
         <p style={{ font: "400 14px var(--font-plex-sans)", color: "var(--i3,#6B7B84)" }}>
           Nothing here yet. Guides, templates and run-of-show notes from the organisers will appear
           on this tab.
@@ -690,7 +715,11 @@ function PortalResources({ pages }: { pages: readonly PortalPage[] }) {
   }
 
   return (
-    <section style={{ maxWidth: 760, margin: "0 auto", padding: "28px 20px 80px" }}>
+    <section
+      data-portal-resources
+      style={{ maxWidth: 760, margin: "0 auto", padding: "28px 20px 80px" }}
+    >
+      <AboveTheFold />
       {pages.map((page) => (
         <article key={page.id} style={{ marginBottom: 36 }}>
           <h2
