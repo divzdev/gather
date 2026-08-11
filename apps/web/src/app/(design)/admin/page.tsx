@@ -3,7 +3,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { openCommandPalette } from "@/components/console/CommandPalette";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { useProgramStats } from "@/components/console/stats";
 import { Overview, type OverviewData } from "@/components/design/Overview";
@@ -148,10 +147,6 @@ export default function OverviewPage() {
     legendReviews: legend(1, "Reviews close"),
     legendDecisions: legend(2, "Decisions out"),
 
-    ...chrome,
-
-    kToast: () => openCommandPalette(),
-    bell: () => toast(`${unreviewed} proposals are waiting on review.`),
     nudge: () => toast("Nudges are queued in Messages. Nothing sends until you confirm."),
     toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),
   };

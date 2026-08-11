@@ -72,7 +72,7 @@ function bar(row: Row): string {
 }
 
 export default function TasksPage() {
-  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { toasts, toast, dismiss } = useConsoleChrome();
   const { stats, eventId } = useProgramStats();
   const queryClient = useQueryClient();
 
@@ -201,7 +201,6 @@ export default function TasksPage() {
   const bySpeakerStyle = toggle(groupBy === "speaker");
 
   const screen: TasksData = {
-    ...chrome,
     ...stripData(stats),
 
     odCount: overdue.length,

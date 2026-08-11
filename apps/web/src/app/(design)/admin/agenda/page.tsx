@@ -97,7 +97,7 @@ function clockAt(windowStart: number, minute: number): string {
 }
 
 export default function AgendaPage() {
-  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { toasts, toast, dismiss } = useConsoleChrome();
   const queryClient = useQueryClient();
   const eventId = typeof window === "undefined" ? null : getEventId();
 
@@ -419,7 +419,6 @@ export default function AgendaPage() {
   const hardCount = conflicts.filter((row) => row.severity === "hard").length;
 
   const screen: AgendaData = {
-    ...chrome,
 
     roomCount: String(columns),
     roomCols: rooms.map((room) => ({ n: room.name.toUpperCase() })),

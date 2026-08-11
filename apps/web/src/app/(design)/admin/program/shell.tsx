@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import { Rail } from "@/components/console/Rail";
 
 export type SectionKey = "overview" | "rooms" | "tracks" | "session-formats" | "days";
@@ -100,7 +101,7 @@ export function ProgramShell({ children }: { children: React.ReactNode }) {
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "auto auto minmax(0,1fr)",
+        gridTemplateColumns: "auto minmax(0,1fr)",
         height: "100vh",
         overflow: "hidden",
         background: "var(--pp)",
@@ -109,48 +110,58 @@ export function ProgramShell({ children }: { children: React.ReactNode }) {
     >
       <Rail active="Program" style={{ height: "100%", minHeight: 0 }} />
 
-      <nav
-        aria-label="Program setup"
-        style={{
-          width: 208,
-          borderRight: "1px solid var(--ln)",
-          background: "var(--cd)",
-          padding: "18px 10px",
-          overflowY: "auto",
-          display: "grid",
-          alignContent: "start",
-          gap: 2,
-        }}
-      >
-        <p
-          style={{
-            font: "600 10px var(--font-plex-sans)",
-            letterSpacing: "0.12em",
-            color: "var(--i4)",
-            margin: "0 0 8px 12px",
-          }}
-        >
-          PROGRAM SETUP
-        </p>
-        {item(SECTIONS[0]!)}
-        {groups.map((group) => (
-          <div key={group} style={{ display: "grid", gap: 2, marginTop: 14 }}>
+      {/* The header spans the section nav as well as the content, which is how
+          Settings and the form builder already treat their own second column.
+          Sitting it beside the nav instead would make Program the one console
+          screen whose header starts 208px in. */}
+      <div style={{ display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
+        <ConsoleHeader />
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          <nav
+            aria-label="Program setup"
+            style={{
+              width: 208,
+              flex: "none",
+              borderRight: "1px solid var(--ln)",
+              background: "var(--cd)",
+              padding: "18px 10px",
+              overflowY: "auto",
+              display: "grid",
+              alignContent: "start",
+              gap: 2,
+            }}
+          >
             <p
               style={{
                 font: "600 10px var(--font-plex-sans)",
-                letterSpacing: "0.1em",
+                letterSpacing: "0.12em",
                 color: "var(--i4)",
-                margin: "0 0 2px 12px",
+                margin: "0 0 8px 12px",
               }}
             >
-              {group.toUpperCase()}
+              PROGRAM SETUP
             </p>
-            {SECTIONS.filter((entry) => entry.group === group).map(item)}
-          </div>
-        ))}
-      </nav>
+            {item(SECTIONS[0]!)}
+            {groups.map((group) => (
+              <div key={group} style={{ display: "grid", gap: 2, marginTop: 14 }}>
+                <p
+                  style={{
+                    font: "600 10px var(--font-plex-sans)",
+                    letterSpacing: "0.1em",
+                    color: "var(--i4)",
+                    margin: "0 0 2px 12px",
+                  }}
+                >
+                  {group.toUpperCase()}
+                </p>
+                {SECTIONS.filter((entry) => entry.group === group).map(item)}
+              </div>
+            ))}
+          </nav>
 
-      <div style={{ overflowY: "auto" }}>{children}</div>
+          <div style={{ flex: 1, overflowY: "auto", minWidth: 0 }}>{children}</div>
+        </div>
+      </div>
     </div>
   );
 }

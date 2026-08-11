@@ -11,6 +11,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 
+import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import { Rail } from "@/components/console/Rail";
 import { useProgramStats } from "@/components/console/stats";
 import { card, EmptyState, PageHead, pill, quietPill, StatTiles } from "@/components/ui";
@@ -213,73 +214,76 @@ export default function DirectoryPage() {
       }}
     >
       <Rail active="Directory" style={{ height: "100%", minHeight: 0 }} />
-      <div style={{ overflowY: "auto", padding: "20px 28px 80px" }}>
-        <PageHead
-          title="Speaker directory"
-          summary={`${all.length} people across every event this organisation has run. ${visible.length} shown.`}
-          right={
-            <div style={{ display: "flex", gap: 8 }}>
-              <button style={quietPill} onClick={() => fileInput.current?.click()}>
-                Import CSV
-              </button>
+      <div style={{ display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
+        <ConsoleHeader />
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px 80px" }}>
+          <PageHead
+            crumbs={["Speakers", "Across events"]}
+            title="Speaker directory"
+            summary={`${all.length} people across every event this organisation has run. ${visible.length} shown.`}
+            right={
+              <div style={{ display: "flex", gap: 8 }}>
+                <button style={quietPill} onClick={() => fileInput.current?.click()}>
+                  Import CSV
+                </button>
+                <button
+                  style={quietPill}
+                  onClick={() => {
+                    void download(`/orgs/${orgId}/directory/export.csv`, "directory.csv");
+                  }}
+                >
+                  Export
+                </button>
+                <button
+                  style={{ ...pill, opacity: selected.length === 0 ? 0.5 : 1 }}
+                  disabled={selected.length === 0}
+                  onClick={() => setComposing(true)}
+                >
+                  Email {selected.length > 0 ? selected.length : ""}
+                </button>
+              </div>
+            }
+          />
+
+          <StatTiles
+            tiles={tiles}
+            active={stage}
+            // Clicking the active tile deselects it, which for this screen means
+            // "everyone" rather than "nobody".
+            onSelect={(key) => setStage(key ?? "all")}
+          />
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "16px 0" }}>
+            <input
+              value={query}
+              onChange={(entry) => setQuery(entry.target.value)}
+              placeholder="Search name, company or tag"
+              style={{
+                flex: 1,
+                minWidth: 220,
+                height: 34,
+                padding: "0 14px",
+                borderRadius: 999,
+                border: "1px solid var(--ls,#C8D2D5)",
+                background: "var(--cd,#FFFFFF)",
+                font: "400 13px var(--font-plex-sans), sans-serif",
+                color: "var(--ik)",
+              }}
+            />
+            {tags.map((entry) => (
               <button
-                style={quietPill}
-                onClick={() => {
-                  void download(`/orgs/${orgId}/directory/export.csv`, "directory.csv");
+                key={entry}
+                onClick={() => setTag((current) => (current === entry ? null : entry))}
+                style={{
+                  ...quietPill,
+                  height: 34,
+                  background: tag === entry ? "var(--sw,#FFEAE6)" : "none",
+                  color: tag === entry ? "var(--sg,#E04E4E)" : "var(--i2,#3E4E58)",
                 }}
               >
-                Export
+                {entry}
               </button>
-              <button
-                style={{ ...pill, opacity: selected.length === 0 ? 0.5 : 1 }}
-                disabled={selected.length === 0}
-                onClick={() => setComposing(true)}
-              >
-                Email {selected.length > 0 ? selected.length : ""}
-              </button>
-            </div>
-          }
-        />
-
-        <StatTiles
-          tiles={tiles}
-          active={stage}
-          // Clicking the active tile deselects it, which for this screen means
-          // "everyone" rather than "nobody".
-          onSelect={(key) => setStage(key ?? "all")}
-        />
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "16px 0" }}>
-          <input
-            value={query}
-            onChange={(entry) => setQuery(entry.target.value)}
-            placeholder="Search name, company or tag"
-            style={{
-              flex: 1,
-              minWidth: 220,
-              height: 34,
-              padding: "0 14px",
-              borderRadius: 999,
-              border: "1px solid var(--ls,#C8D2D5)",
-              background: "var(--cd,#FFFFFF)",
-              font: "400 13px var(--font-plex-sans), sans-serif",
-              color: "var(--ik)",
-            }}
-          />
-          {tags.map((entry) => (
-            <button
-              key={entry}
-              onClick={() => setTag((current) => (current === entry ? null : entry))}
-              style={{
-                ...quietPill,
-                height: 34,
-                background: tag === entry ? "var(--sw,#FFEAE6)" : "none",
-                color: tag === entry ? "var(--sg,#E04E4E)" : "var(--i2,#3E4E58)",
-              }}
-            >
-              {entry}
-            </button>
-          ))}
+            ))}
         </div>
 
         {notice !== "" ? (
@@ -486,6 +490,7 @@ export default function DirectoryPage() {
             </div>
           </div>
         ) : null}
+        </div>
       </div>
     </div>
   );

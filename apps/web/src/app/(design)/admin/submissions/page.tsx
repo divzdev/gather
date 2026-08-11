@@ -8,7 +8,7 @@ import { openCommandPalette } from "@/components/console/CommandPalette";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Submissions, type SubmissionsData } from "@/components/design/Submissions";
-import { authed, download, setEventId } from "@/lib/session";
+import { authed, download } from "@/lib/session";
 
 type Speaker = { name: string; organisation: string | null };
 type Submission = {
@@ -63,7 +63,7 @@ function initials(name: string): string {
 }
 
 export default function SubmissionsPage() {
-  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { toasts, toast, dismiss } = useConsoleChrome();
   const queryClient = useQueryClient();
   const { stats, eventId } = useProgramStats();
 
@@ -84,10 +84,6 @@ export default function SubmissionsPage() {
   const [noteDraft, setNoteDraft] = useState("");
   const [notes, setNotes] = useState<Record<string, { a: string; t: string; x: string }[]>>({});
 
-  const { data: events } = useQuery({
-    queryKey: ["my-events"],
-    queryFn: () => authed<{ id: string; name: string; status: string; starts_on: string }[]>("/events"),
-  });
 
   const { data, isPending } = useQuery({
     queryKey: ["submissions", eventId],
@@ -260,7 +256,6 @@ export default function SubmissionsPage() {
   const rejected = decidedAs("rejected", "i3,#6B7B84", "i3,#6B7B84", "ls,#C8D2D5");
 
   const screen: SubmissionsData = {
-    ...chrome,
     ...stripData(stats),
     pendingCount: stats.pendingSend,
 
@@ -484,27 +479,11 @@ export default function SubmissionsPage() {
 
     togTrack: () => setPopover((current) => (current === "track" ? null : "track")),
     togStatus: () => setPopover((current) => (current === "status" ? null : "status")),
-    togSwitch: () => setPopover((current) => (current === "switch" ? null : "switch")),
     togHelp: () => setPopover((current) => (current === "help" ? null : "help")),
     closePop: () => setPopover(null),
     popTrack: popover === "track",
     popStatus: popover === "status",
-    popSwitch: popover === "switch",
     popHelp: popover === "help",
-    events: (events ?? []).map((entry) => {
-      const current = entry.id === eventId;
-      return {
-        n: entry.name,
-        meta: `${entry.starts_on} · ${entry.status.replace("_", " ")}`,
-        dot: current ? "var(--ok,#0E7A5F)" : "var(--i4,#99A6AD)",
-        bg: current ? "var(--sw,#FFEAE6)" : "none",
-        on: () => {
-          // A stale event id left every screen showing zeros with no way back.
-          setEventId(entry.id);
-          window.location.reload();
-        },
-      };
-    }),
 
     hsAll: () => setView("All"),
     hsUnrev: () => setView("Needs review"),

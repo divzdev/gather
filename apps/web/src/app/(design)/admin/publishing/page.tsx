@@ -61,7 +61,7 @@ const CLOCK = new Intl.DateTimeFormat("en-GB", {
 });
 
 export default function PublishingPage() {
-  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { toasts, toast, dismiss } = useConsoleChrome();
   const { eventId } = useProgramStats();
 
   const [widget, setWidget] = useState<"schedule" | "speakers">("schedule");
@@ -112,7 +112,6 @@ export default function PublishingPage() {
   const notPublished = error !== null;
 
   const screen: PublishingData = {
-    ...chrome,
 
     widgets: (
       [

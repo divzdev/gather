@@ -54,7 +54,7 @@ function answer(subject: Subject | undefined, key: string): string {
  *  rubric. Blind rounds arrive already stripped of identity by the API, so
  *  there is nothing to hide here. */
 export default function ReviewPage() {
-  const { chrome, toasts, dismiss, toast } = useConsoleChrome();
+  const { toasts, dismiss, toast } = useConsoleChrome();
   const queryClient = useQueryClient();
   const eventId = typeof window === "undefined" ? null : getEventId();
 
@@ -146,7 +146,6 @@ export default function ReviewPage() {
   const hue = TRACK_HUES[0]!;
 
   const screen: ReviewData = {
-    ...chrome,
 
     // Blind review is enforced by the API, which strips identity before it
     // reaches here; the banner reports what the round actually is.

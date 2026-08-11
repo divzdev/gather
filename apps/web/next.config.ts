@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
   // Standalone output keeps the deploy image small.
   output: "standalone",
   typedRoutes: true,
+  // Dev only. Next allows "localhost" out of the box and nothing else, so a
+  // browser pointed at 127.0.0.1 — which is what the terminal prints, what the
+  // API uses, and what Playwright defaults to — gets 403 on every /_next chunk
+  // and renders a page that never hydrates. The two are the same machine here.
+  allowedDevOrigins: ["127.0.0.1"],
   // The API is served under the app's own origin. That is not cosmetic: the
   // refresh token is an httpOnly SameSite=Lax cookie, which a browser will not
   // send to a different site — so a split-origin setup silently loses the

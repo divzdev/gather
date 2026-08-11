@@ -69,10 +69,11 @@ test("171. back after a mutation shows the mutation, not a stale row", async ({ 
 
   // Add a room, navigate away, come back — the browser's cache of the previous
   // page must not resurrect the pre-add list.
-  await page.goto("/admin/program");
-  const rooms = page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: /^Rooms$/ }) });
+  // Rooms moved to its own route when program setup gained a section nav, and
+  // the heading now sits in PageHead, outside the editor's <section>.
+  await page.goto("/admin/program/rooms");
+  await expect(page.getByRole("heading", { name: /^Rooms$/ })).toBeVisible({ timeout: 20_000 });
+  const rooms = page.locator("section").first();
   const name = `Back ${Date.now()}`;
 
   await rooms.getByLabel(/room name/i).fill(name);
@@ -83,9 +84,7 @@ test("171. back after a mutation shows the mutation, not a stale row", async ({ 
   await expect(page.getByRole("heading").first()).toBeVisible({ timeout: 20_000 });
   await page.goBack();
 
-  const after = page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: /^Rooms$/ }) });
+  const after = page.locator("section").first();
   await expect(
     after.getByText(name, { exact: false }).first(),
     "going back showed the list from before the add",
@@ -101,10 +100,9 @@ test("172. double-submitting never creates two records", async ({ page, request 
 
   // A real form in the console: two clicks on Add, one room.
   await signIn(page);
-  await page.goto("/admin/program");
-  const rooms = page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: /^Rooms$/ }) });
+  await page.goto("/admin/program/rooms");
+  await expect(page.getByRole("heading", { name: /^Rooms$/ })).toBeVisible({ timeout: 20_000 });
+  const rooms = page.locator("section").first();
   const name = `Twice ${Date.now()}`;
 
   await rooms.getByLabel(/room name/i).fill(name);

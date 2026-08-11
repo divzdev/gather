@@ -41,7 +41,7 @@ const WHEN = new Intl.DateTimeFormat("en-GB", {
 });
 
 export default function MessagesPage() {
-  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { toasts, toast, dismiss } = useConsoleChrome();
   const queryClient = useQueryClient();
   const eventId = typeof window === "undefined" ? null : getEventId();
 
@@ -111,7 +111,6 @@ export default function MessagesPage() {
   const notBuilt = (what: string) => () => toast(`${what} is not built yet.`);
 
   const screen: MessagesData = {
-    ...chrome,
 
     tabs: (
       [

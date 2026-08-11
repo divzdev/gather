@@ -68,7 +68,7 @@ type SortKey = "name" | "done" | "pace" | "bias";
 /** Review progress across the round: who is assigned what, who has finished,
  *  and who needs chasing. Nudging is the one write on this screen. */
 export default function EvaluationsPage() {
-  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { toasts, toast, dismiss } = useConsoleChrome();
   const queryClient = useQueryClient();
   const eventId = typeof window === "undefined" ? null : getEventId();
 
@@ -272,7 +272,6 @@ export default function EvaluationsPage() {
   const roundCount = rounds?.length ?? 0;
 
   const screen: EvaluationsData = {
-    ...chrome,
 
     tPlans: tile(view === "plans", roundCount, () => setView("plans")),
     tEvalsT: tile(view === "eval", reviewers.length, () => setView("eval")),

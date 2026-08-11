@@ -7,7 +7,7 @@
  */
 
 export type ThemeMode = "system" | "light" | "dark";
-export type AccentName = "Coral" | "Sunset" | "Sky" | "Slate" | "Graphite";
+export type AccentName = "Coral" | "Jade" | "Sky" | "Slate" | "Graphite";
 
 type AccentVars = { sg: string; sw: string; sl: string; bt: string; bf: string };
 
@@ -17,10 +17,17 @@ export const ACCENTS: Record<AccentName, { dot: string; l: AccentVars; d: Accent
     l: { sg: "#E04E4E", sw: "#FFEAE6", sl: "#FFC9C0", bt: "#FF6B6B", bf: "#331313" },
     d: { sg: "#FF8E8E", sw: "#3A1D1D", sl: "#66302E", bt: "#FF6B6B", bf: "#331313" },
   },
-  Sunset: {
-    dot: "#F2915B",
-    l: { sg: "#BE5F1F", sw: "#FCEFE4", sl: "#F5CFB2", bt: "#F2915B", bf: "#331A0A" },
-    d: { sg: "#F5AA7E", sw: "#3A2414", sl: "#664028", bt: "#F2915B", bf: "#331A0A" },
+  /* Replaced Sunset (10 Aug). #00C59E is Ordel's accent exactly, given as
+     lab(69.7163% -60.7207 5.19905). Not the dull teals this palette rejected
+     (#2E6E7A, #47818C): at OKLCH chroma 0.143 it is half again as saturated.
+     It does share a hue with the "clear/done" status (172 vs 170), so the two
+     are told apart by weight, not hue — the status greens sit at chroma 0.10
+     and only ever appear as small chips, while the accent is reserved for
+     buttons and links. */
+  Jade: {
+    dot: "#00C59E",
+    l: { sg: "#00775B", sw: "#DFF9EF", sl: "#A1E5CE", bt: "#00C59E", bf: "#002118" },
+    d: { sg: "#48DAB3", sw: "#063126", sl: "#0B5E4A", bt: "#00C59E", bf: "#002118" },
   },
   Sky: {
     dot: "#4A9BD8",

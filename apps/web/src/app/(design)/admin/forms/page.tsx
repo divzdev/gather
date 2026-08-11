@@ -102,7 +102,7 @@ function check(on: boolean) {
 }
 
 export default function FormsPage() {
-  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { toasts, toast, dismiss } = useConsoleChrome();
   const { stats, eventId } = useProgramStats();
   const queryClient = useQueryClient();
 
@@ -202,7 +202,6 @@ export default function FormsPage() {
   const adminCheck = check(settings?.notify_admins_on_submit ?? true);
 
   const screen: FormsData = {
-    ...chrome,
     ...stripData(stats),
 
     inList: !inBuilder,

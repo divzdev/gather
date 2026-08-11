@@ -204,7 +204,11 @@ export function EventSwitcher() {
           border: "1px solid var(--ln,#E1E7E9)",
           font: "600 13.5px var(--font-plex-sans), sans-serif",
           color: "var(--ik,#16232B)",
-          maxWidth: 320,
+          /* Fixed, not content-sized. Everything to the right of this capsule is
+             flexed, so a content width would move the search field as the event
+             query resolves — "Loading…" is 60px narrower than a real name — and
+             again for every event with a longer name than the last. */
+          width: 236,
         }}
       >
         <span
@@ -222,11 +226,24 @@ export function EventSwitcher() {
         >
           {(active?.name ?? org).slice(0, 1).toUpperCase()}
         </span>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            textAlign: "left",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {active?.name ?? "Loading…"}
         </span>
         <span
-          style={{ font: "400 11px var(--font-plex-sans), sans-serif", color: "var(--i4,#99A6AD)" }}
+          style={{
+            flex: "none",
+            font: "400 11px var(--font-plex-sans), sans-serif",
+            color: "var(--i4,#99A6AD)",
+          }}
         >
           ▾
         </span>

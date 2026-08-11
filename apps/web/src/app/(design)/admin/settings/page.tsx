@@ -74,7 +74,7 @@ function endOfDay(value: string): string | null {
 }
 
 export default function SettingsPage() {
-  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { toasts, toast, dismiss } = useConsoleChrome();
   const theme = useTheme();
   const queryClient = useQueryClient();
   const eventId = typeof window === "undefined" ? null : getEventId();
@@ -150,7 +150,6 @@ export default function SettingsPage() {
     event === undefined ? "" : `${window.location.origin}/e/${event.slug}`;
 
   const screen: SettingsData = {
-    ...chrome,
 
     panels: PANELS.map((entry) => {
       const active = panel === entry.key;

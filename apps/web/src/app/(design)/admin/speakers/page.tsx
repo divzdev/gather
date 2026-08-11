@@ -67,7 +67,7 @@ function initials(name: string): string {
 }
 
 export default function SpeakersPage() {
-  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { toasts, toast, dismiss } = useConsoleChrome();
   const { stats, eventId } = useProgramStats();
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -210,7 +210,6 @@ export default function SpeakersPage() {
 
 
   const screen: SpeakersData = {
-    ...chrome,
     ...stripData(stats),
 
     rows: filtered.map((row) => {

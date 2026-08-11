@@ -77,7 +77,7 @@ const WHEN = new Intl.DateTimeFormat("en-GB", {
 });
 
 export default function SessionsPage() {
-  const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const { toasts, toast, dismiss } = useConsoleChrome();
   const { stats, eventId } = useProgramStats();
   const queryClient = useQueryClient();
 
@@ -254,7 +254,6 @@ export default function SessionsPage() {
   const impPreview = useMemo(() => previewRows(impRaw), [impRaw]);
 
   const screen: SessionsData = {
-    ...chrome,
     ...stripData(stats),
     total: all.length,
 

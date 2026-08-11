@@ -34,25 +34,67 @@ export const quietPill: CSSProperties = {
 export function PageHead({
   title,
   summary,
+  crumbs,
   right,
 }: {
   title: string;
   summary: string;
+  /** Where this page sits, coarse to fine. The page itself is not repeated in
+   *  the trail — the title directly beneath it already says that. */
+  crumbs?: readonly string[];
   right?: ReactNode;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 22 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
+        {crumbs === undefined || crumbs.length === 0 ? null : (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              font: "500 11px var(--font-plex-mono), monospace",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--i4)",
+              margin: "0 0 9px",
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "var(--sg)",
+                flex: "none",
+              }}
+            />
+            {crumbs.map((crumb, at) => (
+              <span key={crumb} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                {at > 0 ? <span aria-hidden="true">&rsaquo;</span> : null}
+                {crumb}
+              </span>
+            ))}
+          </div>
+        )}
         <h1
           style={{
-            font: "600 24px var(--font-plex-sans), sans-serif",
+            font: "600 30px/1.15 var(--font-plex-sans), sans-serif",
+            letterSpacing: "-0.02em",
             color: "var(--ik)",
             margin: 0,
           }}
         >
           {title}
         </h1>
-        <p style={{ font: "400 13px var(--font-plex-sans)", color: "var(--i3)", margin: "6px 0 0" }}>
+        <p
+          style={{
+            font: "400 14px/1.55 var(--font-plex-sans)",
+            color: "var(--i3)",
+            margin: "8px 0 0",
+            maxWidth: "68ch",
+          }}
+        >
           {summary}
         </p>
       </div>
