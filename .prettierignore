@@ -1,0 +1,4 @@
+# Converter output from tools/dc2tsx.py: the markup is the prototype verbatim on
+# one line per screen. Prettier expands it to ~1700 lines, which buries the few
+# hand-bound edits in an unreviewable diff.
+apps/web/src/components/design/

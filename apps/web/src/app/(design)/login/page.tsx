@@ -128,9 +128,7 @@ function LoginPage() {
       setEventId(first.id);
       router.push(next ?? "/admin");
     } catch (caught) {
-      setError(
-        caught instanceof ApiError ? caught.message : "Could not sign in. Try again.",
-      );
+      setError(caught instanceof ApiError ? caught.message : "Could not sign in. Try again.");
     } finally {
       setBusy(false);
     }
@@ -183,6 +181,19 @@ function LoginPage() {
     });
   };
 
+  /** "Forgot it?" used to send a speaker magic link and say a link was on its
+   *  way. A speaker link cannot sign a staff user in, so the screen was telling
+   *  every locked-out organiser to go and wait for mail that would not help.
+   *  There is no staff reset in this build; saying so is the honest fix. */
+  const noStaffReset = () => {
+    setSent({
+      title: "There is no password reset yet",
+      body:
+        "Staff sign-in is password-only, and this build has no reset by email — the magic link below is for speakers and cannot sign a staff account in. " +
+        "Ask an owner on your team to add you again, or use a demo account from the bar above to look around.",
+    });
+  };
+
   const unavailable = (what: string) => {
     setError(`${what} is not part of this build. Create a workspace with an email and password.`);
   };
@@ -211,13 +222,11 @@ function LoginPage() {
         : "Create account",
 
     email,
-    onEmail: (event: React.SyntheticEvent) =>
-      setEmail((event.target as HTMLInputElement).value),
+    onEmail: (event: React.SyntheticEvent) => setEmail((event.target as HTMLInputElement).value),
     emailBd: error === "" ? "var(--ls,#C8D2D5)" : "var(--cn,#D8432B)",
 
     pw: password,
-    onPw: (event: React.SyntheticEvent) =>
-      setPassword((event.target as HTMLInputElement).value),
+    onPw: (event: React.SyntheticEvent) => setPassword((event.target as HTMLInputElement).value),
     pwBd: error === "" ? "var(--ls,#C8D2D5)" : "var(--cn,#D8432B)",
     pwType: reveal ? "text" : "password",
     pwToggle: reveal ? "Hide" : "Show",
@@ -235,7 +244,7 @@ function LoginPage() {
 
     submit: () => void (mode === "register" ? createWorkspace() : signIn()),
     magic: () => void sendMagicLink(),
-    forgot: () => void sendMagicLink(),
+    forgot: () => noStaffReset(),
     resetFlow: () => setSent(null),
 
     switchMode: () => {

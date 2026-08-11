@@ -19,6 +19,8 @@ import { useConsoleChrome } from "@/components/console/chrome";
 import { Agenda, type AgendaData } from "@/components/design/Agenda";
 import { authed, getEventId } from "@/lib/session";
 
+import { AgendaView, type ViewKey } from "./views";
+
 const MINUTES_PER_PX = 1.5;
 const GRID_MINUTES = 480;
 const SNAP = 5;
@@ -105,6 +107,7 @@ export default function AgendaPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [panel, setPanel] = useState<"agent" | "conflicts">("conflicts");
+  const [view, setView] = useState<ViewKey>("grid");
   const [publishOpen, setPublishOpen] = useState(false);
   const [ghosts, setGhosts] = useState<
     { ref: string; sessionId: string; roomIndex: number; minute: number; title: string; duration: number }[]
@@ -596,7 +599,32 @@ export default function AgendaPage() {
     acceptAll: () => {
       if (ghosts.length > 0) acceptGhosts.mutate(ghosts);
     },
-    viewToast: () => setPanel("conflicts"),
+    gridOn: view === "grid",
+    views: (["grid", "track", "list", "week"] as const).map((key) => ({
+      label: key === "grid" ? "Grid" : key === "track" ? "Track" : key === "list" ? "List" : "Week",
+      active: view === key,
+      on: () => setView(key),
+    })),
+    alt:
+      view === "grid" ? null : (
+        <AgendaView
+          input={{
+            view,
+            days,
+            rooms,
+            tracks: (data?.tracks ?? []).map((entry, index) => ({
+              id: entry.id,
+              name: entry.name,
+              hue: TRACK_HUES[index % TRACK_HUES.length] ?? "#3E8896",
+            })),
+            scheduled: data?.scheduled ?? [],
+            unscheduled: data?.unscheduled ?? [],
+            conflicted,
+            dayId: day?.id ?? null,
+            onSelect: (id) => setSelected(id),
+          }}
+        />
+      ),
 
     pub: publishOpen,
     openPub: () => setPublishOpen(true),

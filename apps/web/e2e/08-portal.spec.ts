@@ -182,3 +182,32 @@ test("112-115. the task board chases, and a second nudge does not double-send", 
   expect(two.skipped, "the second nudge skipped nobody").toBeGreaterThan(0);
   expect(one.sent + one.skipped).toBeGreaterThan(0);
 });
+
+test("a speaker confirms and declines their own participation", async ({ page, request }) => {
+  // Whatever a previous run left behind, start from "accepted, not answered" —
+  // the state an acceptance email actually drops a speaker into.
+  const token = await speakerToken(request);
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  await request.put(`${API}/v1/portal/participation`, {
+    headers,
+    data: { status: "declined", reason: "resetting the fixture" },
+  });
+
+  await page.goto("/login");
+  await page.getByRole("button", { name: /^Speaker$/i }).click();
+  await expect(page).toHaveURL(/\/portal/, { timeout: 20_000 });
+
+  await page.getByRole("button", { name: /Actually, I can make it/i }).click();
+  await expect(page.getByText(/You are confirmed/i)).toBeVisible({ timeout: 10_000 });
+
+  // And the answer is the speaker's to take back.
+  await page.getByRole("button", { name: /Something has changed/i }).click();
+  await page.getByLabel(/Why you cannot make it/i).fill("Travel budget pulled.");
+  await page.getByRole("button", { name: /^Send it$/i }).click();
+  await expect(page.getByText(/You told us you cannot make it/i)).toBeVisible({ timeout: 10_000 });
+
+  const after = await request.get(`${API}/v1/portal/participation`, { headers });
+  expect((await after.json()).decline_reason).toBe("Travel budget pulled.");
+
+  await request.put(`${API}/v1/portal/participation`, { headers, data: { status: "confirmed" } });
+});

@@ -298,32 +298,31 @@ test("124-127. each conflict class is detected, named, and clears when resolved"
   }
 });
 
-test("129. the agenda renders in each view mode it offers", async ({ page }) => {
+test("129. every view mode in the switcher is a real view", async ({ page }) => {
   await page.goto("/login");
   await page.getByRole("button", { name: /^Organizer$/i }).click();
   await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 });
   await page.goto("/admin/agenda");
   await expect(page.getByText(/CONFLICT/i).first()).toBeVisible({ timeout: 25_000 });
 
-  // Whatever modes the screen offers must all render — a mode in the switcher
-  // that shows nothing is worse than one that is not there.
-  const modes = await page
-    .getByRole("button")
-    .evaluateAll((nodes) =>
-      nodes
-        .map((node) => (node.textContent ?? "").trim())
-        .filter((label) => /^(grid|list|day|week|track|room)$/i.test(label)),
-    );
-  expect(modes.length, "the agenda offers no view modes at all").toBeGreaterThan(0);
+  // Track, List and Week used to be wired to the same handler as the conflicts
+  // button. The grid stayed on screen underneath, so "does the page still have
+  // text" passed for all three. Each mode now has to show something only it
+  // shows, and the drag canvas has to be gone when it is not the grid.
+  const canvas = page.locator("[data-agenda-grid]");
+  const proof: Record<string, RegExp> = {
+    Grid: /MAIN STAGE|UNSCHEDULED/i,
+    Track: /DEVELOPER EXPERIENCE|NO TRACK/i,
+    List: /THIS DAY, IN ORDER/i,
+    Week: /DAY 1/i,
+  };
 
-  const blank: string[] = [];
-  for (const mode of modes) {
+  for (const [mode, expected] of Object.entries(proof)) {
     await page.getByRole("button", { name: new RegExp(`^${mode}$`, "i") }).first().click();
-    await page.waitForTimeout(500);
-    const text = (await page.locator("main, [data-agenda-grid]").first().innerText()).trim();
-    if (text.length < 40) blank.push(mode);
+    await expect(page.getByText(expected).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: mode })).toHaveAttribute("aria-pressed", "true");
+    await expect(canvas).toHaveCount(mode === "Grid" ? 1 : 0);
   }
-  expect(blank, "view modes that render nothing").toEqual([]);
 });
 
 test("130. the whole programme is placed without the grid falling over", async ({

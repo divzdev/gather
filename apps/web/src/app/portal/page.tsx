@@ -8,6 +8,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
 import { Portal, type PortalData } from "@/components/design/Portal";
+
+import { ParticipationBand, type Participation as ParticipationState } from "./participation";
 import { useTheme } from "@/components/ThemeProvider";
 import { API_BASE_URL } from "@/lib/api";
 import { getSpeakerToken, portal } from "@/lib/session";
@@ -69,7 +71,9 @@ type Home = {
   }[];
   tasks: Task[];
   progress: { total: number; complete: number; outstanding: number; overdue: number };
+  participation: ParticipationState;
 };
+
 
 type Submission = {
   id: string;
@@ -132,6 +136,32 @@ function calendarLink(
         `&dates=${stamp(starts)}/${stamp(ends)}&location=${where}`
     : `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose` +
         `&subject=${title}&startdt=${starts.toISOString()}&enddt=${ends.toISOString()}&location=${where}`;
+}
+
+/** "12–14 Oct · Fort Mason, SF" from whatever this event actually is. */
+function eventWhen(event: { starts_on: string; ends_on: string; location: string | null }): string {
+  const from = new Date(`${event.starts_on}T00:00:00Z`);
+  const to = new Date(`${event.ends_on}T00:00:00Z`);
+  const day = (at: Date) => at.getUTCDate();
+  const month = (at: Date) => MONTH.format(at).toUpperCase();
+  const span =
+    month(from) === month(to)
+      ? `${day(from)}–${day(to)} ${month(to)}`
+      : `${day(from)} ${month(from)} – ${day(to)} ${month(to)}`;
+  return event.location === null ? span : `${span} · ${event.location.toUpperCase()}`;
+}
+
+/** The date the earliest outstanding task is due — the honest version of the
+ *  prototype's fixed "ALL EDITABLE UNTIL 5 OCT". */
+function openDeadline(open: Task[]): string {
+  const due = open
+    .map((task) => task.due_at)
+    .filter((at): at is string => at !== null)
+    .sort();
+  const first = due[0];
+  return first === undefined
+    ? "NO DEADLINES SET"
+    : `FIRST DUE ${DAY.format(new Date(first)).toUpperCase()}`;
 }
 
 function greeting(hour: number): string {
@@ -403,6 +433,19 @@ export default function PortalPage() {
       window.location.href = `mailto:?subject=${encodeURIComponent(home?.event.name ?? "")}`;
     },
 
+    // The prototype hardcoded all six of these. A speaker was shown "AI Engineer
+    // 2026", "Opening keynote" and a 5 October deadline whichever conference,
+    // talk and dates were actually theirs.
+    evName: home?.event.name ?? "",
+    evWhen: home === undefined ? "" : eventWhen(home.event),
+    sessTitle: talk?.title ?? "No session yet",
+    sessMeta:
+      talk === null
+        ? "It will appear here once the organisers schedule you."
+        : `${talk.duration_minutes} min${talk.room === null ? "" : ` · ${talk.room}`}`,
+    editUntil: openDeadline(open),
+    contactRole: "Your organiser · replies within a day",
+
     sessTime:
       talk === null
         ? "Your session time is not set yet."
@@ -511,6 +554,7 @@ export default function PortalPage() {
 
   return (
     <>
+      <ParticipationBand state={home?.participation} />
       <Portal d={screen} />
       <input
         ref={upload}

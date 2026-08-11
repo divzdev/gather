@@ -658,6 +658,57 @@ async def _tasks(session: AsyncSession, event: Event, rng: random.Random) -> Non
     await session.flush()
 
 
+async def _roster_states(session: AsyncSession, event: Event, rng: random.Random) -> None:
+    """Move the people who are actually on the programme off `prospective`.
+
+    Every seeded speaker used to sit at `prospective` regardless of whether their
+    talk had been accepted, promoted, scheduled and given deliverables — so the
+    roster contradicted every other screen. Promotion is what makes someone a
+    speaker at this event, so it is what sets `accepted` here.
+
+    A handful then answer for themselves, because `accepted` and `confirmed` mean
+    different things and a demo where nobody has ever replied cannot show it.
+    """
+    on_programme = (
+        (
+            await session.execute(
+                select(EventSpeaker)
+                .join(SessionSpeaker, SessionSpeaker.speaker_id == EventSpeaker.speaker_id)
+                .where(
+                    EventSpeaker.event_id == event.id,
+                    EventSpeaker.status == SpeakerStatus.PROSPECTIVE,
+                )
+                .distinct()
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not on_programme:
+        return
+
+    answered = datetime.now(UTC) - timedelta(days=3)
+    for index, link in enumerate(sorted(on_programme, key=lambda row: str(row.speaker_id))):
+        link.status = SpeakerStatus.ACCEPTED
+        # Two in three have replied; one of those says no. The rest are exactly
+        # what an organiser is chasing on the tasks screen.
+        if index % 3 == 0:
+            continue
+        if index % 9 == 4:
+            link.status = SpeakerStatus.DECLINED
+            link.decline_reason = rng.choice(
+                [
+                    "My employer pulled travel budget for the quarter.",
+                    "I am on parental leave that week.",
+                    "Clashes with a customer launch I cannot move.",
+                ]
+            )
+        else:
+            link.status = SpeakerStatus.CONFIRMED
+        link.responded_at = answered
+    await session.flush()
+
+
 async def fill(
     session: AsyncSession, event: Event, form: Any, program: dict[str, Any]
 ) -> dict[str, int]:
@@ -669,6 +720,7 @@ async def fill(
     talks = await _promote(session, event)
     await _place(session, event, talks)
     await _tasks(session, event, rng)
+    await _roster_states(session, event, rng)
 
     counts = {
         "speakers": len(people),
