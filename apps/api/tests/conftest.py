@@ -1,3 +1,13 @@
+"""Test wiring.
+
+Everything here is per-run rather than shared. One machine can have several
+suites going at once — this one, a Playwright run against the dev API, another
+agent's — and every shared name between them is a way for one run to corrupt
+another's results. A single `gather_test` meant two runs raced to drop and
+recreate the same schema and deadlocked before either executed a test; a single
+`ratelimit:` namespace meant clearing counters cleared everybody's.
+"""
+
 from __future__ import annotations
 
 import os
@@ -5,19 +15,27 @@ import uuid
 from collections.abc import AsyncGenerator
 from datetime import date
 
-import asyncpg
-import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+#: Set before anything imports app config, which caches settings on first read.
+RUN_ID = os.environ.get("PYTEST_RUN_ID", str(os.getpid()))
+os.environ["RATE_LIMIT_PREFIX"] = f"ratelimit-test-{RUN_ID}"
 
-from app.models import Base, Event, EventStatus, Organization, User
+import asyncpg  # noqa: E402
+import pytest  # noqa: E402
+from httpx import AsyncClient  # noqa: E402
+from sqlalchemy.ext.asyncio import (  # noqa: E402
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+
+from app.models import Base, Event, EventStatus, Organization, User  # noqa: E402
 
 # Tests never touch the development database.
 DEV_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql+asyncpg://gather:gather@localhost:5441/gather",
 )
-TEST_DB = "gather_test"
+TEST_DB = f"gather_test_{RUN_ID}"
 _ADMIN_DSN = DEV_URL.replace("postgresql+asyncpg://", "postgresql://").rsplit("/", 1)[0]
 TEST_URL = f"{DEV_URL.rsplit('/', 1)[0]}/{TEST_DB}"
 
@@ -39,15 +57,28 @@ async def _ensure_test_database() -> None:
         await conn.close()
 
 
+async def _drop_test_database() -> None:
+    conn = await asyncpg.connect(f"{_ADMIN_DSN}/postgres")
+    try:
+        await conn.execute(f'DROP DATABASE IF EXISTS "{TEST_DB}" WITH (FORCE)')
+    finally:
+        await conn.close()
+
+
 @pytest.fixture(scope="session")
 async def engine() -> AsyncGenerator[object, None]:
+    """A database of this run's own, created empty and dropped after.
+
+    No `drop_all` on the way in: the database is new, so there is nothing to
+    drop, and dropping is what two concurrent runs used to deadlock on.
+    """
     await _ensure_test_database()
     eng = create_async_engine(TEST_URL, pool_pre_ping=True)
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield eng
     await eng.dispose()
+    await _drop_test_database()
 
 
 @pytest.fixture
@@ -93,13 +124,20 @@ async def client(engine: object) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture(autouse=True)
 async def _clear_rate_limits() -> AsyncGenerator[None, None]:
-    """Rate-limit counters live in Redis and would leak between tests."""
+    """Rate-limit counters live in Redis and would leak between tests.
+
+    Only this run's counters. The pattern used to be `ratelimit:*`, which also
+    reset the dev API's and any Playwright run's — so a browser suite sweeping
+    on a timer could clear the budget a login test was mid-way through
+    asserting, and the failure landed wherever the timer happened to fall.
+    """
     import redis.asyncio as aioredis
 
     from app.core.config import get_settings
 
-    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
-    keys = [k async for k in redis.scan_iter("ratelimit:*")]
+    settings = get_settings()
+    redis = aioredis.from_url(settings.redis_url, decode_responses=True)
+    keys = [k async for k in redis.scan_iter(f"{settings.rate_limit_prefix}:*")]
     if keys:
         await redis.delete(*keys)
     yield

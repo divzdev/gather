@@ -24,6 +24,12 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://gather:gather@localhost:5441/gather"
     redis_url: str = "redis://localhost:6379/0"
+    #: Namespace for rate-limit counters. One Redis serves the dev API, the
+    #: pytest suite and the Playwright run at once, and each of the last two
+    #: clears the counters it knows about — which used to be all of them, so a
+    #: browser run silently reset the budget a login test was mid-way through
+    #: asserting. Per-run prefixes make "clear my counters" mean only mine.
+    rate_limit_prefix: str = "ratelimit"
 
     # Intentional local-only default so the app boots with no credentials.
     # require_production_secrets() refuses to start if this survives to production.

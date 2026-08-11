@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from redis.asyncio import Redis
 
+from app.core.config import get_settings
 from app.core.errors import RateLimitedError
 
 
@@ -33,7 +34,7 @@ PUBLIC_READ = Limit(attempts=300, window_seconds=60)
 
 async def enforce(redis: Redis, limit: Limit, *, bucket: str, identifier: str) -> None:
     """Count one attempt against `bucket:identifier`, raising once over the limit."""
-    key = f"ratelimit:{bucket}:{identifier}"
+    key = f"{get_settings().rate_limit_prefix}:{bucket}:{identifier}"
     count = await redis.incr(key)
     if count == 1:
         await redis.expire(key, limit.window_seconds)
