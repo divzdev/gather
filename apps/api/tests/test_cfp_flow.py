@@ -892,3 +892,113 @@ async def test_an_empty_note_is_refused(
     )
 
     assert response.status_code == 422
+
+
+async def _submitted(client: AsyncClient, event: Event, form: Form) -> tuple[str, str]:
+    """A proposal that is in, with the token that lets its author back in."""
+    draft = await client.post(
+        f"/v1/public/events/{event.slug}/submissions/draft",
+        json={
+            "form_id": str(form.id),
+            "title": "Taming 40-Minute CI",
+            "answers": GOOD,
+            "speaker_email": "editor@example.com",
+            "speaker_name": "Edie Torres",
+        },
+    )
+    token = draft.json()["draft_token"]
+    submitted = await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": "Taming 40-Minute CI",
+            "answers": GOOD,
+            "speaker_email": "editor@example.com",
+            "speaker_name": "Edie Torres",
+            "draft_token": token,
+        },
+    )
+    assert submitted.status_code == 201, submitted.text
+    return submitted.json()["code"], token
+
+
+async def test_a_submitter_fixes_their_proposal_while_the_call_is_open(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    headers, event, form = cfp
+    code, token = await _submitted(client, event, form)
+
+    status = await client.get(f"/v1/public/events/{event.slug}/submissions/{code}/status")
+    assert status.json()["can_edit"] is True
+
+    edited = await client.put(
+        f"/v1/public/events/{event.slug}/submissions/{code}",
+        json={"draft_token": token, "title": "Taming 40-Minute CI, properly", "answers": GOOD},
+    )
+
+    assert edited.status_code == 200, edited.text
+    listed = await client.get(f"/v1/events/{event.id}/submissions", headers=headers)
+    assert listed.json()["data"][0]["title"] == "Taming 40-Minute CI, properly"
+
+
+async def test_the_code_alone_does_not_let_you_edit_somebody_elses_proposal(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """A code is a lookup key and deliberately not a secret, so it cannot be what
+    authorises a write. The wrong token gets the same 404 as a wrong code —
+    telling them apart is what would turn the code into a credential."""
+    _headers, event, form = cfp
+    code, _token = await _submitted(client, event, form)
+
+    response = await client.put(
+        f"/v1/public/events/{event.slug}/submissions/{code}",
+        json={"draft_token": str(uuid.uuid4()), "title": "Hijacked", "answers": GOOD},
+    )
+
+    assert response.status_code == 404
+
+
+async def test_the_deadline_closes_editing_as_well_as_submitting(
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """The refusal is the feature: an edit form left open over the deadline must
+    not be able to save through it."""
+    _headers, event, form = cfp
+    code, token = await _submitted(client, event, form)
+    with tenancy_disabled():
+        live = await session.get(Form, form.id)
+        assert live is not None
+        live.closes_at = datetime.now(UTC) - timedelta(minutes=1)
+        await session.commit()
+
+    status = await client.get(f"/v1/public/events/{event.slug}/submissions/{code}/status")
+    refused = await client.put(
+        f"/v1/public/events/{event.slug}/submissions/{code}",
+        json={"draft_token": token, "title": "Too late", "answers": GOOD},
+    )
+
+    assert status.json()["can_edit"] is False
+    assert refused.status_code == 403
+    assert refused.json()["error"]["code"] == "CFP_CLOSED"
+
+
+async def test_editing_stops_once_a_reviewer_has_it(
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """A reviewer who scored one abstract must not find a different one under
+    their score."""
+    _headers, event, form = cfp
+    code, token = await _submitted(client, event, form)
+    with tenancy_disabled():
+        row = await session.scalar(select(Submission).where(Submission.code == code))
+        assert row is not None
+        row.status = SubmissionStatus.IN_REVIEW
+        await session.commit()
+
+    refused = await client.put(
+        f"/v1/public/events/{event.slug}/submissions/{code}",
+        json={"draft_token": token, "title": "Rewritten mid-review", "answers": GOOD},
+    )
+
+    assert refused.status_code == 409
+    assert refused.json()["error"]["code"] == "SUBMISSION_LOCKED"

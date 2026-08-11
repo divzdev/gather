@@ -20,6 +20,9 @@ from app.features.submissions import service
 from app.features.submissions.schemas import (
     DraftRequest,
     DraftResponse,
+    EditRequest,
+    OpenRequest,
+    OpenResponse,
     PublicStatus,
     SubmitRequest,
     SubmittedResponse,
@@ -151,4 +154,78 @@ async def submission_status(code: str, event: PublicEvent, session: DbSession) -
     submission = await session.scalar(select(Submission).where(Submission.code == code.upper()))
     if submission is None:
         raise NotFoundError("No proposal with that code.")
-    return PublicStatus.model_validate(service.public_status(submission))
+    form = await session.get(Form, submission.form_id)
+    return PublicStatus.model_validate(
+        {
+            **service.public_status(submission),
+            "can_edit": form is not None and service.is_editable(event, form, submission),
+        }
+    )
+
+
+@router.post("/submissions/{code}/open", response_model=OpenResponse)
+async def open_submission(
+    code: str, body: OpenRequest, event: PublicEvent, session: DbSession
+) -> OpenResponse:
+    """The submitter's own answers back, for the edit form to start from.
+
+    Separate from `/status`, which anyone holding a code can read and which
+    therefore never carries answers.
+    """
+    submission = await session.scalar(select(Submission).where(Submission.code == code.upper()))
+    if submission is None or submission.draft_token != body.draft_token:
+        raise NotFoundError("No proposal with that code.")
+    form = await session.get(Form, submission.form_id)
+    return OpenResponse(
+        code=submission.code,
+        title=submission.title,
+        answers=dict(submission.answers),
+        stage=str(service.public_status(submission)["stage"]),
+        can_edit=form is not None and service.is_editable(event, form, submission),
+    )
+
+
+@router.put("/submissions/{code}", response_model=SubmittedResponse)
+async def edit_submission(
+    code: str,
+    body: EditRequest,
+    request: Request,
+    event: PublicEvent,
+    session: DbSession,
+) -> SubmittedResponse:
+    """Correct a proposal that is already in, until the call closes.
+
+    Rate-limited like a draft save rather than like a submission: this is the
+    same person editing the same row, not a new proposal arriving.
+    """
+    await rate_limit.enforce(
+        request.app.state.redis,
+        rate_limit.PUBLIC_DRAFT_SAVE,
+        bucket="edit",
+        identifier=str(body.draft_token),
+    )
+    submission = await session.scalar(select(Submission).where(Submission.code == code.upper()))
+    # One 404 for "no such proposal" and for "not your proposal". A code is a
+    # lookup key, not a secret, and the difference between those two answers is
+    # exactly what would turn it into one.
+    if submission is None or submission.draft_token != body.draft_token:
+        raise NotFoundError("No proposal with that code.")
+
+    form = await session.get(Form, submission.form_id)
+    if form is None:  # pragma: no cover - a submission always has its form
+        raise NotFoundError("This proposal's form is missing.")
+
+    await service.edit_submitted(
+        session,
+        event=event,
+        form=form,
+        submission=submission,
+        title=body.title,
+        answers=body.answers,
+    )
+    return SubmittedResponse(
+        id=submission.id,
+        code=submission.code,
+        status=submission.status,
+        confirmation_message="Your changes are saved.",
+    )

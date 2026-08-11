@@ -111,3 +111,33 @@ class PublicStatus(Strict):
     stage: str
     outcome: str | None
     submitted_at: datetime | None
+    #: Whether the edit endpoint would take a change right now — the call is
+    #: still open and review has not started. The page asks before offering a
+    #: form rather than letting someone retype an abstract into a refusal.
+    can_edit: bool = False
+
+
+class OpenRequest(Strict):
+    """The token travels in the body, not the query string. It arrives in a URL
+    from the confirmation email, which cannot be helped, but it does not have to
+    end up in the API's access log as well."""
+
+    draft_token: uuid.UUID
+
+
+class OpenResponse(Strict):
+    code: str
+    title: str
+    answers: dict[str, Any]
+    stage: str
+    can_edit: bool
+
+
+class EditRequest(Strict):
+    """The proposal's own resume token is the credential. `code` is a lookup key
+    and explicitly not a secret, so it cannot be the thing that authorises a
+    write to somebody else's proposal."""
+
+    draft_token: uuid.UUID
+    title: str = Field(min_length=1, max_length=300)
+    answers: dict[str, Any]

@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import mail
+from app.core.config import get_settings
 from app.core.errors import (
     ApiError,
     CfpClosedError,
@@ -327,6 +328,12 @@ async def submit(
             f"<p>Thanks {speaker.name}, your proposal <strong>{submission.title}</strong> "
             f"is in.</p><p>Your reference is <strong>{submission.code}</strong>. "
             f"You can check its status any time with that code.</p>"
+            # The token, not the code, is what authorises an edit — so the link
+            # that carries it is the only way back in from another device. The
+            # page refuses the edit itself once the call closes.
+            f'<p><a href="{get_settings().web_origin}/e/{event.slug}/submissions/'
+            f'{submission.code}?t={submission.draft_token}">View or edit your proposal</a> '
+            f"until the call for papers closes.</p>"
         ),
     )
     await session.flush()
@@ -443,6 +450,53 @@ async def promote(session: AsyncSession, *, submission_id: uuid.UUID) -> Session
     return talk
 
 
+async def edit_submitted(
+    session: AsyncSession,
+    *,
+    event: Event,
+    form: Form,
+    submission: Submission,
+    title: str,
+    answers: dict[str, object],
+) -> Submission:
+    """Change a proposal that is already in, while the call is still open.
+
+    Sessionboard lets a submitter come back and fix a typo until the deadline.
+    We had drafts and we had submitting, and nothing in between: the only way to
+    correct a submitted proposal was to ask an organiser.
+
+    Two refusals, and they are the point of the feature rather than edge cases.
+    The window is checked against the server clock, so an edit form left open
+    over the deadline cannot save through it. And editing stops once review
+    starts: a reviewer who scored one abstract must not find a different one
+    underneath their score.
+    """
+    check_window_open(event, form)
+    if submission.status not in (SubmissionStatus.DRAFT, SubmissionStatus.SUBMITTED):
+        raise ApiError(
+            "This proposal is being reviewed and can no longer be edited. "
+            "Contact the organisers if something is wrong.",
+            code="SUBMISSION_LOCKED",
+            status_code=409,
+        )
+
+    schema = FormSchema.model_validate(form.schema)
+    errors = validate_answers(schema, dict(answers))
+    if errors:
+        raise ApiError(
+            "Some answers are not valid.",
+            code="VALIDATION_FAILED",
+            status_code=422,
+            field=errors[0].field,
+            details={"errors": [{"field": e.field, "message": e.message} for e in errors]},
+        )
+
+    submission.title = title
+    submission.answers = dict(answers)
+    await session.flush()
+    return submission
+
+
 def public_status(submission: Submission) -> dict[str, object]:
     """Public status view. Deliberately thin: never scores, reviewer comments, or
     anything about anyone else's proposal — and never the outcome before it is sent.
@@ -461,3 +515,15 @@ def public_status(submission: Submission) -> dict[str, object]:
         "outcome": submission.status.value if released else None,
         "submitted_at": submission.submitted_at,
     }
+
+
+def is_editable(event: Event, form: Form, submission: Submission) -> bool:
+    """Whether the edit endpoint would accept a change right now. Returned on the
+    status payload so the page can offer the form instead of finding out on save."""
+    if submission.status not in (SubmissionStatus.DRAFT, SubmissionStatus.SUBMITTED):
+        return False
+    try:
+        check_window_open(event, form)
+    except CfpClosedError:
+        return False
+    return True

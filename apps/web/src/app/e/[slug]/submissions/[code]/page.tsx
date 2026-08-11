@@ -1,0 +1,305 @@
+"use client";
+
+/** A submitter's own proposal: where it stands, and how to fix it.
+ *
+ *  Two things had an API and no way in. Status by code has existed since the
+ *  first sprint and nothing on the web ever called it, so "check your status any
+ *  time with that code" was true only of the API. And a submitted proposal could
+ *  not be corrected at all — a typo in a title meant asking an organiser.
+ *
+ *  The code is a lookup key and explicitly not a secret, so it gets the status
+ *  and nothing else. Editing needs the proposal's own resume token, which the
+ *  confirmation email carries and the browser that submitted it kept.
+ */
+
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { use, useState, useSyncExternalStore } from "react";
+
+import { ApiError, apiFetch } from "@/lib/api";
+import { resolveVisibility, type FormSchema } from "@/lib/formLogic";
+
+type Status = {
+  code: string;
+  title: string;
+  stage: string;
+  outcome: string | null;
+  submitted_at: string | null;
+  can_edit: boolean;
+};
+
+type Opened = {
+  code: string;
+  title: string;
+  answers: Record<string, unknown>;
+  stage: string;
+  can_edit: boolean;
+};
+
+type PublicForm = { schema: FormSchema; event_name: string };
+
+const DRAFT_KEY = "gather.cfp-draft";
+
+/** The link in the confirmation email carries the token; the browser that
+ *  submitted kept one too. Either gets you in, which is what makes this work
+ *  from a phone that was not the phone you submitted on.
+ *
+ *  Read through `useSyncExternalStore` rather than an effect: neither the query
+ *  string nor localStorage changes while this page is open, so there is nothing
+ *  to subscribe to, and the server render has no browser to ask. */
+const subscribeToken = () => () => {};
+const readToken = () =>
+  new URLSearchParams(window.location.search).get("t") ?? window.localStorage.getItem(DRAFT_KEY);
+const noTokenOnTheServer = () => null;
+
+const STAGE: Record<string, string> = {
+  submitted: "Received. It has not gone to reviewers yet.",
+  in_review: "With the reviewers.",
+  decided: "A decision has been sent to you by email.",
+};
+
+const OUTCOME: Record<string, { label: string; fg: string; bg: string }> = {
+  accepted: { label: "Accepted", fg: "var(--ok)", bg: "var(--okw)" },
+  waitlisted: { label: "Waitlisted", fg: "var(--pd)", bg: "var(--pdw)" },
+  rejected: { label: "Not this time", fg: "var(--i3)", bg: "var(--sk)" },
+  withdrawn: { label: "Withdrawn", fg: "var(--i3)", bg: "var(--sk)" },
+};
+
+const LINE_TYPES = new Set(["short_text", "url", "email", "number", "date"]);
+const CHOICE_TYPES = new Set(["select", "radio"]);
+const HTML_INPUT: Record<string, string> = {
+  url: "url",
+  email: "email",
+  number: "number",
+  date: "date",
+};
+
+const shell: React.CSSProperties = {
+  maxWidth: 720,
+  margin: "0 auto",
+  padding: "48px 20px 80px",
+  font: "400 15px/1.6 var(--font-plex-sans)",
+  color: "var(--ik)",
+};
+
+const field: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "1px solid var(--ls)",
+  background: "var(--cd)",
+  font: "400 14px var(--font-plex-sans)",
+  color: "var(--ik)",
+};
+
+const button: React.CSSProperties = {
+  height: 42,
+  padding: "0 20px",
+  borderRadius: 999,
+  border: "none",
+  background: "var(--bt)",
+  color: "var(--bf)",
+  font: "600 14px var(--font-plex-sans)",
+  cursor: "pointer",
+};
+
+export default function SubmissionPage({
+  params,
+}: {
+  params: Promise<{ slug: string; code: string }>;
+}) {
+  const { slug, code } = use(params);
+  const token = useSyncExternalStore(subscribeToken, readToken, noTokenOnTheServer);
+  const [edits, setEdits] = useState<{ title: string; answers: Record<string, unknown> } | null>(
+    null,
+  );
+  const [saved, setSaved] = useState(false);
+  const [problem, setProblem] = useState("");
+
+  const { data: status } = useQuery({
+    queryKey: ["submission-status", slug, code],
+    queryFn: () => apiFetch<Status>(`/public/events/${slug}/submissions/${code}/status`),
+  });
+
+  const { data: form } = useQuery({
+    queryKey: ["cfp-form", slug],
+    queryFn: () => apiFetch<PublicForm>(`/public/events/${slug}/cfp-form`),
+  });
+
+  const { data: opened } = useQuery({
+    queryKey: ["submission-open", slug, code, token],
+    enabled: token !== null,
+    retry: false,
+    queryFn: () =>
+      apiFetch<Opened>(`/public/events/${slug}/submissions/${code}/open`, {
+        method: "POST",
+        body: { draft_token: token },
+      }).catch(() => null),
+  });
+
+  /** What the boxes show: the submitter's unsaved edits if they have typed
+   *  anything, otherwise whatever the server last handed back. Derived rather
+   *  than copied into state, so a refetch cannot leave the form showing a stale
+   *  answer nobody edited. */
+  const draft = edits ?? (opened ? { title: opened.title, answers: { ...opened.answers } } : null);
+
+  const save = useMutation({
+    // Most CFP forms carry their own title field, and the submission's title
+    // column is meant to mirror it. Offering both boxes invites them to
+    // disagree, so the schema's field wins where it exists.
+    mutationFn: () =>
+      apiFetch(`/public/events/${slug}/submissions/${code}`, {
+        method: "PUT",
+        body: {
+          draft_token: token,
+          title: String(draft?.answers.title ?? draft?.title ?? ""),
+          answers: draft?.answers ?? {},
+        },
+      }),
+    onSuccess: () => {
+      setSaved(true);
+      setProblem("");
+    },
+    onError: (error: Error) =>
+      setProblem(error instanceof ApiError ? error.message : "Could not save. Try again."),
+  });
+
+  if (status === undefined) {
+    return <main style={shell}>Looking up {code}…</main>;
+  }
+
+  const outcome = status.outcome === null ? null : OUTCOME[status.outcome];
+  const editable = status.can_edit && opened?.can_edit === true && draft !== null;
+  const fields = (form?.schema.sections ?? []).flatMap((section) => section.fields);
+  // The same visibility rules the CFP form uses, so a field the logic hides on
+  // the way in cannot reappear on the way back to edit it.
+  const visible =
+    draft === null || form === undefined
+      ? new Set<string>()
+      : resolveVisibility(form.schema, draft.answers).visible;
+
+  return (
+    <main style={shell}>
+      <p
+        style={{ font: "500 11px var(--font-plex-mono), monospace", color: "var(--i4)", margin: 0 }}
+      >
+        {(form?.event_name ?? "").toUpperCase()} · PROPOSAL {status.code}
+      </p>
+      <h1 style={{ font: "600 28px/1.2 var(--font-plex-sans)", margin: "8px 0 12px" }}>
+        {status.title}
+      </h1>
+
+      <p style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 6px" }}>
+        {outcome === undefined || outcome === null ? null : (
+          <span
+            style={{
+              padding: "3px 10px",
+              borderRadius: 999,
+              background: outcome.bg,
+              color: outcome.fg,
+              font: "600 12px var(--font-plex-sans)",
+            }}
+          >
+            {outcome.label}
+          </span>
+        )}
+        <span style={{ color: "var(--i2)" }}>{STAGE[status.stage] ?? "Received."}</span>
+      </p>
+      {status.submitted_at === null ? null : (
+        <p style={{ color: "var(--i4)", font: "400 13px var(--font-plex-sans)", margin: 0 }}>
+          Submitted {new Date(status.submitted_at).toLocaleDateString()}
+        </p>
+      )}
+
+      {editable ? (
+        <section style={{ marginTop: 32 }}>
+          <h2 style={{ font: "600 17px var(--font-plex-sans)", margin: "0 0 4px" }}>
+            Change something
+          </h2>
+          <p
+            style={{
+              color: "var(--i3)",
+              font: "400 13px var(--font-plex-sans)",
+              margin: "0 0 18px",
+            }}
+          >
+            You can edit this until the call for papers closes. After that, and once reviewing
+            starts, it is fixed.
+          </p>
+
+          {fields
+            .filter((entry) => visible.has(entry.key))
+            .map((entry) => {
+              const value = draft.answers[entry.key];
+              const set = (next: unknown) =>
+                setEdits({ ...draft, answers: { ...draft.answers, [entry.key]: next } });
+              return (
+                <label key={entry.key} style={{ display: "block", marginBottom: 14 }}>
+                  <span
+                    style={{
+                      display: "block",
+                      font: "500 13px var(--font-plex-sans)",
+                      marginBottom: 5,
+                    }}
+                  >
+                    {entry.label}
+                    {entry.required === true ? " *" : ""}
+                  </span>
+                  {CHOICE_TYPES.has(entry.type) ? (
+                    <select
+                      value={String(value ?? "")}
+                      onChange={(e) => set(e.target.value)}
+                      style={field}
+                    >
+                      <option value="">Choose one</option>
+                      {(entry.choices ?? []).map((choice) => (
+                        <option key={choice.value} value={choice.value}>
+                          {choice.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : LINE_TYPES.has(entry.type) ? (
+                    <input
+                      type={HTML_INPUT[entry.type] ?? "text"}
+                      value={String(value ?? "")}
+                      onChange={(e) => set(e.target.value)}
+                      style={field}
+                    />
+                  ) : (
+                    <textarea
+                      rows={6}
+                      value={String(value ?? "")}
+                      onChange={(e) => set(e.target.value)}
+                      style={{ ...field, resize: "vertical" }}
+                    />
+                  )}
+                </label>
+              );
+            })}
+
+          {problem === "" ? null : (
+            <p role="alert" style={{ color: "var(--cn)", font: "400 13px var(--font-plex-sans)" }}>
+              {problem}
+            </p>
+          )}
+          <button style={button} disabled={save.isPending} onClick={() => save.mutate()}>
+            {save.isPending ? "Saving…" : "Save changes"}
+          </button>
+          {saved ? (
+            <span
+              style={{ marginLeft: 12, color: "var(--ok)", font: "500 13px var(--font-plex-sans)" }}
+            >
+              Saved. The organisers see the new version.
+            </span>
+          ) : null}
+        </section>
+      ) : (
+        <p style={{ marginTop: 28, color: "var(--i3)", font: "400 13.5px var(--font-plex-sans)" }}>
+          {status.can_edit
+            ? "Open the link in your confirmation email on this device to make changes."
+            : "This proposal can no longer be edited — the call for papers has closed, or reviewing has started."}
+        </p>
+      )}
+    </main>
+  );
+}

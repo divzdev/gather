@@ -248,3 +248,51 @@ test("61-62. a closed call for papers refuses and explains itself", async ({ pag
     });
   }
 });
+
+test("a submitter finds their proposal by code and corrects it while the call is open", async ({
+  page,
+  request,
+}) => {
+  const form = await request.get(`${API}/v1/public/events/${SLUG}/cfp-form`);
+  const { form_id } = (await form.json()) as { form_id: string };
+  const body = {
+    form_id,
+    title: `E2E edit ${Date.now()}`,
+    answers: {
+      title: `E2E edit ${Date.now()}`,
+      abstract: "An abstract long enough to satisfy the validator, with several words in it.",
+      track: "AI Engineering",
+      format: "Talk (30 min)",
+      speaker_bio: "Short bio.",
+    },
+    speaker_email: `e2e-edit-${Date.now()}@example.com`,
+    speaker_name: "Edie Torres",
+  };
+  const draft = await request.post(`${API}/v1/public/events/${SLUG}/submissions/draft`, {
+    data: body,
+  });
+  const token = ((await draft.json()) as { draft_token: string }).draft_token;
+  const submitted = await request.post(`${API}/v1/public/events/${SLUG}/submissions`, {
+    data: { ...body, draft_token: token },
+  });
+  expect(submitted.status(), await submitted.text()).toBe(201);
+  const code = ((await submitted.json()) as { code: string }).code;
+
+  // The link the confirmation email carries. The code alone gets the status;
+  // the token is what makes the form appear.
+  await page.goto(`/e/${SLUG}/submissions/${code}?t=${token}`);
+  await expect(page.getByRole("heading", { name: body.title })).toBeVisible({ timeout: 20_000 });
+
+  const title = page.getByLabel(/Session title/i);
+  await title.fill("Corrected after submitting");
+  await page.getByRole("button", { name: /Save changes/i }).click();
+  await expect(page.getByText(/Saved\./i)).toBeVisible({ timeout: 10_000 });
+
+  const after = await request.get(`${API}/v1/public/events/${SLUG}/submissions/${code}/status`);
+  expect(((await after.json()) as { title: string }).title).toBe("Corrected after submitting");
+
+  // Without the token there is a status and no form — a code is a lookup key,
+  // not a credential.
+  await page.goto(`/e/${SLUG}/submissions/${code}`);
+  await expect(page.getByText(/confirmation email/i)).toBeVisible({ timeout: 15_000 });
+});
