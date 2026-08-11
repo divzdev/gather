@@ -124,6 +124,43 @@ const CLOCK = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
+/** `GET /schedule/diff`, in the terms an organiser thinks in. */
+type ScheduleDiff = {
+  added: string[];
+  removed: string[];
+  moved: { title: string; to: { starts_at: string | null; room: string | null } }[];
+  duration_changed: string[];
+  speakers_changed: string[];
+  has_changes: boolean;
+  notify_count: number;
+};
+
+/** One line per kind of change, naming the talks while the list is short
+ *  enough to read. A count alone tells an operator nothing they can check. */
+function describeDiff(diff: ScheduleDiff): string[] {
+  const naming = (titles: string[], verb: string): string | null => {
+    if (titles.length === 0) return null;
+    const head = titles.slice(0, 3).join(", ");
+    const rest = titles.length - 3;
+    return `${titles.length} ${titles.length === 1 ? "session" : "sessions"} ${verb}: ${head}${rest > 0 ? ` and ${rest} more` : ""}`;
+  };
+  // The API calls any change of (starts_at, room) a move, but a session whose
+  // new time is null is not moving anywhere — it is leaving the public
+  // schedule, and the operator has to be told that, not something softer.
+  const pulled = diff.moved.filter((row) => row.to.starts_at === null);
+  const shifted = diff.moved.filter((row) => row.to.starts_at !== null);
+  return [
+    naming(diff.added, "added"),
+    naming([...diff.removed, ...pulled.map((row) => row.title)], "taken off the public schedule"),
+    naming(
+      shifted.map((row) => row.title),
+      "moved",
+    ),
+    naming(diff.duration_changed, "changed length"),
+    naming(diff.speakers_changed, "changed speaker"),
+  ].filter((line): line is string => line !== null);
+}
+
 function clockAt(windowStart: number, minute: number): string {
   return CLOCK.format(new Date(windowStart + minute * 60_000));
 }
@@ -149,6 +186,10 @@ export default function AgendaPage() {
    *  optimistically, so the acknowledgement is real state and the button reads
    *  it. It used to be wired to unschedule whatever was selected. */
   const [acknowledged, setAcknowledged] = useState(false);
+  /** Off by default, and it is the API's default too: most publishes are a
+   *  tidy-up, and mailing eighty speakers about nothing is how an organiser
+   *  teaches them to ignore the next one. */
+  const [notifyAffected, setNotifyAffected] = useState(false);
   /** The new-session sheet. Null is closed, so there is no second flag that can
    *  disagree with the contents. */
   const [compose, setCompose] = useState<Compose | null>(null);
@@ -336,17 +377,35 @@ export default function AgendaPage() {
     onError: (problem: Error) => toast(problem.message),
   });
 
+  /** What the public would actually see change. The dialog used to state its
+   *  consequence as literal text — "7 speakers have changed times" — on the one
+   *  action `APP_CONTEXT.md` names as never-optimistic. Fetched only while the
+   *  dialog is open, because it rebuilds the whole snapshot to answer. */
+  const { data: pending, isPending: diffLoading } = useQuery({
+    queryKey: ["schedule-diff", eventId],
+    enabled: eventId !== null && publishOpen,
+    queryFn: () => authed<ScheduleDiff>(`/events/${eventId}/schedule/diff`),
+  });
+
   const publish = useMutation({
     mutationFn: (acknowledge: boolean) =>
-      authed<{ version: number; sessions: number }>(`/events/${eventId}/schedule/publish`, {
-        method: "POST",
-        body: { acknowledge_conflicts: acknowledge },
-        idempotencyKey: crypto.randomUUID(),
-      }),
+      authed<{ version: number; sessions: number; notified: number }>(
+        `/events/${eventId}/schedule/publish`,
+        {
+          method: "POST",
+          body: { acknowledge_conflicts: acknowledge, notify_affected: notifyAffected },
+          idempotencyKey: crypto.randomUUID(),
+        },
+      ),
     onSuccess: (result) => {
       setPublishOpen(false);
       refresh();
-      toast(`Published version ${result.version}. ${result.sessions} sessions are live.`);
+      toast(
+        `Published version ${result.version}. ${result.sessions} sessions are live` +
+          (result.notified > 0
+            ? `, and ${result.notified} ${result.notified === 1 ? "speaker was" : "speakers were"} emailed.`
+            : "."),
+      );
     },
     onError: (problem: Error) => {
       setPublishOpen(false);
@@ -902,8 +961,25 @@ export default function AgendaPage() {
       ),
 
     pub: publishOpen,
+    pubBlurb: diffLoading
+      ? "Working out what would change…"
+      : pending === undefined
+        ? "Could not read the pending changes. Publishing is still allowed, but you would be doing it blind."
+        : !pending.has_changes
+          ? "Nothing has changed since the last publish. Publishing again is harmless — it just writes another version."
+          : "This replaces the public schedule and the embeds with what is on the grid now. Rolling back means republishing an earlier version.",
+    pubChanges: pending === undefined ? [] : describeDiff(pending),
+    notifyOn: notifyAffected,
+    togNotify: () => setNotifyAffected((on) => !on),
+    notifyLabel:
+      pending === undefined || pending.notify_count === 0
+        ? "Email the speakers whose session changed — nobody's has, so this would send nothing."
+        : `Email the ${pending.notify_count} ${pending.notify_count === 1 ? "speaker" : "speakers"} whose session changed, with the new details and a fresh calendar invite.`,
+    ckOn: acknowledged,
+    ckLabel: "I have reviewed the change list above",
     openPub: () => {
       setAcknowledged(false);
+      setNotifyAffected(false);
       setPublishOpen(true);
     },
     closePub: () => setPublishOpen(false),

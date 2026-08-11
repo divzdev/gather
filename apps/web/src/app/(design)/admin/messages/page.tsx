@@ -50,7 +50,6 @@ export default function MessagesPage() {
   const [tab, setTab] = useState<"compose" | "outbox" | "templates">("compose");
   const [chosen, setChosen] = useState<string[]>(["accepted", "waitlisted", "rejected"]);
   const [whoOpen, setWhoOpen] = useState(false);
-  const [includeIcs, setIncludeIcs] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [previewAt, setPreviewAt] = useState(0);
 
@@ -115,7 +114,6 @@ export default function MessagesPage() {
   const notBuilt = (what: string) => () => toast(`${what} is not built yet.`);
 
   const screen: MessagesData = {
-
     tabs: (
       [
         ["compose", "Send decisions"],
@@ -201,18 +199,24 @@ export default function MessagesPage() {
           ],
 
     ck: confirmed ? "✓" : "",
+    ckOn: confirmed,
+    ckLabel:
+      selected.length === 0
+        ? "I have reviewed the recipient list"
+        : `I have reviewed the ${selected.length} ${selected.length === 1 ? "person" : "people"} above`,
     ckBg: confirmed ? "var(--sg,#E04E4E)" : "var(--cd,#FFFFFF)",
     ckBd: confirmed ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
     togCk: () => setConfirmed((on) => !on),
 
-    ics: includeIcs,
-    icsCk: includeIcs ? "✓" : "",
-    icsBg: includeIcs ? "var(--sg,#E04E4E)" : "var(--cd,#FFFFFF)",
-    icsBd: includeIcs ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
-    togIcs: () => {
-      setIncludeIcs((on) => !on);
-      toast("Calendar invites arrive with the schedule, which is not built yet.");
-    },
+    // Was a checkbox reading "Attach calendar invite (.ics)". It was never in
+    // the send payload — `SendRequest` forbids unknown fields, so it could not
+    // have been — and a decision notice is the wrong place for one anyway:
+    // accepting does not create a session and creating one does not place it,
+    // so at decision time there is no time to invite anyone to. The invite that
+    // does exist goes out from the agenda, and now the screen says so.
+    icsNote:
+      "No calendar invite goes with a decision — an accepted talk has no time yet. " +
+      "Invites are sent from the agenda when you publish the schedule.",
 
     doSend: () => {
       if (selected.length === 0) {
@@ -225,12 +229,9 @@ export default function MessagesPage() {
       }
       send.mutate();
     },
-    sendLabel: send.isPending
-      ? "Sending…"
-      : `Send to ${selected.length}`,
+    sendLabel: send.isPending ? "Sending…" : `Send to ${selected.length}`,
     sendBg: sendable ? "var(--bt,#FF6B6B)" : "var(--ls,#C8D2D5)",
     sendFg: sendable ? "var(--bf,#331313)" : "var(--i3,#6B7B84)",
-    sendTest: notBuilt("Sending yourself a test"),
 
     outbox: queued.map((row) => {
       const failed = row.status === "bounced" || row.status === "failed";

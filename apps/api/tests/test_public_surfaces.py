@@ -360,7 +360,36 @@ async def test_diff_is_quiet_when_nothing_changed(client: AsyncClient, world: Wo
 
     response = await client.get(f"/v1/events/{world.event.id}/schedule/diff", headers=world.headers)
 
-    assert response.json()["has_changes"] is False
+    body = response.json()
+    assert body["has_changes"] is False
+    assert body["notify_count"] == 0
+
+
+async def test_diff_counts_who_would_be_emailed(
+    client: AsyncClient, session: AsyncSession, world: World
+) -> None:
+    """The publish dialog has to state its own consequence before it happens.
+
+    It used to read "7 speakers have changed times and receive an updated
+    calendar invite" as literal text — on the one action the product refuses to
+    do optimistically. This is the number `notify_affected` would really mail,
+    from the same function that would do the mailing."""
+    await _publish(client, world)
+
+    before = (
+        await client.get(f"/v1/events/{world.event.id}/schedule/diff", headers=world.headers)
+    ).json()
+    with tenancy_disabled():
+        talk = await session.get(Session, world.sessions[0])
+        assert talk is not None
+        talk.starts_at = datetime(2027, 5, 12, 16, 0, tzinfo=UTC)
+        await session.commit()
+    after = (
+        await client.get(f"/v1/events/{world.event.id}/schedule/diff", headers=world.headers)
+    ).json()
+
+    assert before["notify_count"] == 0
+    assert after["notify_count"] >= 1
 
 
 async def test_rollback_republishes_an_earlier_version(

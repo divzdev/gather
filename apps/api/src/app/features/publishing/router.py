@@ -87,10 +87,17 @@ async def diff(
     """What the world would see change if you published right now."""
     event = await _event(session, event_id)
     published = await snapshot.latest(session)
-    return snapshot.diff(
-        await snapshot.build(session, event),
-        dict(published.snapshot) if published else None,
-    )
+    current = await snapshot.build(session, event)
+    previous = dict(published.snapshot) if published else None
+    return {
+        **snapshot.diff(current, previous),
+        # The confirmation dialog has to be able to state its own consequence.
+        # It used to read "7 speakers have changed times and receive an updated
+        # calendar invite" as literal text, on the one action the product calls
+        # never-optimistic. This is the number `notify_affected` would actually
+        # mail, computed by the same function that would do the mailing.
+        "notify_count": len(notify.affected(current, previous)),
+    }
 
 
 @router.post("/publish", status_code=status.HTTP_201_CREATED)
