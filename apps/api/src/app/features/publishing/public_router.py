@@ -24,10 +24,27 @@ from app.models.file import File as FileRecord
 router = APIRouter(prefix="/v1/public/events/{event_slug}", tags=["public"])
 
 
-def _matches(session: dict[str, Any], track: str | None, day: str | None, q: str | None) -> bool:
+def _matches(
+    session: dict[str, Any],
+    track: str | None,
+    day: str | None,
+    q: str | None,
+    *,
+    tag: str | None = None,
+    level: str | None = None,
+    language: str | None = None,
+) -> bool:
     if track and session.get("track") != track:
         return False
     if day and session.get("day") != day:
+        return False
+    # `.get` throughout: a snapshot published before these fields existed is
+    # still served, and must not start 500ing because the schema grew.
+    if tag and tag.casefold() not in {t.casefold() for t in session.get("tags") or []}:
+        return False
+    if level and session.get("expertise_level") != level:
+        return False
+    if language and (session.get("language") or "").casefold() != language.casefold():
         return False
     if q:
         haystack = " ".join(
@@ -42,6 +59,22 @@ def _matches(session: dict[str, Any], track: str | None, day: str | None, q: str
     return True
 
 
+#: Ordered, not alphabetical: a level filter that reads advanced, beginner,
+#: intermediate is sorted correctly and still wrong.
+_LEVELS = ("beginner", "intermediate", "advanced")
+
+
+def _facets(sessions: list[dict[str, Any]]) -> dict[str, list[str]]:
+    tags = {t for s in sessions for t in (s.get("tags") or [])}
+    languages = {s["language"] for s in sessions if s.get("language")}
+    levels = {s["expertise_level"] for s in sessions if s.get("expertise_level")}
+    return {
+        "tags": sorted(tags),
+        "languages": sorted(languages),
+        "levels": [level for level in _LEVELS if level in levels],
+    }
+
+
 @router.get("/schedule")
 async def sessions_list(
     event: PublicEvent,
@@ -49,6 +82,9 @@ async def sessions_list(
     track: str | None = Query(default=None),
     day: str | None = Query(default=None),
     q: str | None = Query(default=None, max_length=200),
+    tag: str | None = Query(default=None, max_length=40),
+    level: str | None = Query(default=None, max_length=20),
+    language: str | None = Query(default=None, max_length=40),
 ) -> dict[str, Any]:
     """Every published session, filterable. The 'sessions list' widget."""
     data = await snapshot.require_latest(session)
@@ -56,7 +92,14 @@ async def sessions_list(
         "event": data["event"],
         "tracks": data["tracks"],
         "days": data["days"],
-        "sessions": [s for s in data["sessions"] if _matches(s, track, day, q)],
+        # What this schedule actually uses, so the filter bar offers the four
+        # tags this conference has rather than every tag the product allows.
+        "facets": _facets(data["sessions"]),
+        "sessions": [
+            s
+            for s in data["sessions"]
+            if _matches(s, track, day, q, tag=tag, level=level, language=language)
+        ],
     }
 
 

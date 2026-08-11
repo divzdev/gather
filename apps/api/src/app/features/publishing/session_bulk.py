@@ -1,9 +1,9 @@
-"""Editing and creating sessions in bulk.
+"""Editing sessions in bulk, and importing a programme from a spreadsheet.
 
 Two jobs an organiser does on the sessions table and nowhere else: set one field
-across a selection, and bring an existing programme in from a spreadsheet. Both
-share the same lookup-by-name helpers, and neither belongs in the publishing
-router, which is about snapshots.
+across a selection, and bring an existing programme in from CSV. Both share the
+same lookup-by-name helpers, and neither belongs in the publishing router, which
+is about snapshots. Single-session create, edit and delete are in `session_crud`.
 
 Import matches on title within the event, so re-running the same file corrects
 rows instead of duplicating them — the second run of an import is the common
@@ -25,9 +25,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import DbSession, bind_tenant, require_role
 from app.core.errors import ApiError, NotFoundError
+from app.features.publishing.session_crud import (
+    MAX_DURATION,
+    MIN_DURATION,
+    STAFF,
+    _require,
+    _unique_slug,
+)
 from app.models import (
     ContentStatus,
-    Role,
+    ExpertiseLevel,
     Session,
     SessionFormat,
     SessionSpeaker,
@@ -42,11 +49,7 @@ router = APIRouter(
     dependencies=[Depends(bind_tenant)],
 )
 
-STAFF = (Role.OWNER, Role.ADMIN, Role.COORDINATOR)
-
 MAX_IMPORT_ROWS = 500
-MIN_DURATION = 5
-MAX_DURATION = 600
 
 # "Ada Lovelace <ada@example.com>" or a bare address.
 _SPEAKER = re.compile(r"^\s*(?:(?P<name>[^<]+?)\s*)?<?(?P<email>[^<>\s@]+@[^<>\s@]+)>?\s*$")
@@ -55,9 +58,11 @@ _SPEAKER = re.compile(r"^\s*(?:(?P<name>[^<]+?)\s*)?<?(?P<email>[^<>\s@]+@[^<>\s
 class BulkEdit(BaseModel):
     """Every field optional; whichever are present are applied to every id.
 
-    Deliberately not a general patch endpoint — the four fields here are the ones
-    that are genuinely the same across a selection. Title and abstract are not,
-    and offering them would only invite overwriting five talks with one name.
+    Deliberately not a general patch endpoint — the fields here are the ones that
+    are genuinely the same across a selection. Title and abstract are not, and
+    offering them would only invite overwriting five talks with one name. Tags
+    are not either: setting them in bulk means replacing whatever each session
+    already carried, which is the opposite of what "tag these" sounds like.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -67,6 +72,8 @@ class BulkEdit(BaseModel):
     session_format_id: uuid.UUID | None = None
     duration_minutes: int | None = Field(default=None, ge=MIN_DURATION, le=MAX_DURATION)
     content_status: ContentStatus | None = None
+    expertise_level: ExpertiseLevel | None = None
+    language: str | None = Field(default=None, max_length=40)
     clear_track: bool = False
 
     @model_validator(mode="after")
@@ -76,6 +83,8 @@ class BulkEdit(BaseModel):
             self.session_format_id,
             self.duration_minutes,
             self.content_status,
+            self.expertise_level,
+            self.language,
         )
         if all(value is None for value in changes) and not self.clear_track:
             raise ValueError("Name at least one field to change.")
@@ -114,78 +123,6 @@ class ImportRequest(BaseModel):
 
     csv_text: str = Field(max_length=1_000_000)
     dry_run: bool = False
-
-
-class SessionCreate(BaseModel):
-    """A session with no proposal behind it.
-
-    Keynotes and invited talks never go through the CFP, so promotion cannot be
-    the only way a session comes into being.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    title: str = Field(min_length=1, max_length=300)
-    abstract: str | None = Field(default=None, max_length=10_000)
-    track_id: uuid.UUID | None = None
-    session_format_id: uuid.UUID | None = None
-    duration_minutes: int = Field(default=30, ge=MIN_DURATION, le=MAX_DURATION)
-    speaker_ids: list[uuid.UUID] = Field(default_factory=list, max_length=20)
-
-
-@router.post("", status_code=201)
-async def create_session(
-    body: SessionCreate,
-    session: DbSession,
-    _: User = Depends(require_role(*STAFF)),
-) -> dict[str, Any]:
-    if body.track_id is not None:
-        await _require(session, Track, body.track_id, "track")
-    if body.session_format_id is not None:
-        await _require(session, SessionFormat, body.session_format_id, "session format")
-
-    talk = Session(
-        title=body.title,
-        abstract=body.abstract,
-        slug=await _unique_slug(session, body.title),
-        track_id=body.track_id,
-        session_format_id=body.session_format_id,
-        duration_minutes=body.duration_minutes,
-    )
-    session.add(talk)
-    await session.flush()
-
-    for index, speaker_id in enumerate(body.speaker_ids):
-        await _require(session, Speaker, speaker_id, "speaker")
-        session.add(SessionSpeaker(session_id=talk.id, speaker_id=speaker_id, sort_order=index))
-    await session.flush()
-
-    return {"id": str(talk.id), "title": talk.title, "slug": talk.slug}
-
-
-@router.delete("/{session_id}", status_code=204)
-async def delete_session(
-    session_id: uuid.UUID,
-    session: DbSession,
-    _: User = Depends(require_role(*STAFF)),
-) -> None:
-    """Removing a session from the draft.
-
-    Allowed even when it is on the published schedule: the public site reads a
-    snapshot, so nothing changes out there until the next publish, and an
-    organiser who has cancelled a talk needs to act before then.
-    """
-    talk = await session.get(Session, session_id)
-    if talk is None:
-        raise NotFoundError(f"No session in this event with id {session_id}.")
-    if talk.is_locked:
-        raise ApiError(
-            f"{talk.title!r} is locked. Unlock it first.",
-            code="SESSION_LOCKED",
-            status_code=409,
-        )
-    await session.delete(talk)
-    await session.flush()
 
 
 @router.post("/bulk", response_model=BulkResult)
@@ -232,6 +169,10 @@ async def bulk_edit(
             row.duration_minutes = body.duration_minutes
         if body.content_status is not None:
             row.content_status = body.content_status
+        if body.expertise_level is not None:
+            row.expertise_level = body.expertise_level
+        if body.language is not None:
+            row.language = body.language
         updated += 1
 
     await session.flush()
@@ -415,20 +356,3 @@ async def _set_speakers(session: AsyncSession, talk: Session, raw: str) -> None:
 async def _by_name(session: AsyncSession, model: Any) -> dict[str, uuid.UUID]:
     rows = (await session.execute(select(model))).scalars().all()
     return {row.name.strip().lower(): row.id for row in rows}
-
-
-async def _require(session: AsyncSession, model: Any, item_id: uuid.UUID, label: str) -> None:
-    if await session.get(model, item_id) is None:
-        raise NotFoundError(f"No {label} in this event with id {item_id}.")
-
-
-async def _unique_slug(session: AsyncSession, title: str) -> str:
-    """Slugs are the public URL, so a collision would make one session
-    unreachable rather than merely ugly."""
-    base = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60] or "session"
-    taken = set(
-        (await session.execute(select(Session.slug).where(Session.slug.like(f"{base}%")))).scalars()
-    )
-    if base not in taken:
-        return base
-    return next(f"{base}-{n}" for n in range(2, 1000) if f"{base}-{n}" not in taken)

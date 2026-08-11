@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
@@ -24,6 +25,7 @@ from app.models import (
     EventStatus,
     Organization,
     OrgMember,
+    PublishedSchedule,
     Role,
     Room,
     Session,
@@ -501,3 +503,62 @@ async def test_a_calendar_needs_no_credentials(client: AsyncClient, world: World
 
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "*"
+
+
+async def test_the_public_schedule_filters_and_advertises_its_own_facets(
+    client: AsyncClient, world: World
+) -> None:
+    """A filter bar has to be built from what this conference actually used, not
+    from every value the product allows."""
+    await client.patch(
+        f"/v1/events/{world.event.id}/sessions/{world.sessions[0]}",
+        headers=world.headers,
+        json={"tags": ["CI", "Testing"], "expertise_level": "beginner", "language": "English"},
+    )
+    await client.patch(
+        f"/v1/events/{world.event.id}/sessions/{world.sessions[1]}",
+        headers=world.headers,
+        json={"tags": ["Agents"], "expertise_level": "advanced", "language": "English"},
+    )
+    await _publish(client, world)
+
+    slug = world.event.slug
+    everything = (await client.get(f"/v1/public/events/{slug}/schedule")).json()
+    tagged = (await client.get(f"/v1/public/events/{slug}/schedule?tag=agents")).json()
+    beginners = (await client.get(f"/v1/public/events/{slug}/schedule?level=beginner")).json()
+
+    assert everything["facets"] == {
+        "tags": ["Agents", "CI", "Testing"],
+        "languages": ["English"],
+        # Ordered by difficulty. Sorted alphabetically it would read advanced first.
+        "levels": ["beginner", "advanced"],
+    }
+    # Tags match case-insensitively: the URL is typed by people, not generated.
+    assert [s["title"] for s in tagged["sessions"]] == ["Agents That Ship"]
+    assert [s["title"] for s in beginners["sessions"]] == ["Taming CI"]
+
+
+async def test_a_snapshot_published_before_facets_existed_still_serves(
+    client: AsyncClient, session: AsyncSession, world: World
+) -> None:
+    """Old snapshots are immutable and stay in the table. The filter reads them
+    with `.get`, so a schema that grew must not start 500ing on history."""
+    await _publish(client, world)
+    with tenancy_disabled():
+        row = await session.scalar(
+            select(PublishedSchedule).order_by(PublishedSchedule.version.desc())
+        )
+        assert row is not None
+        stripped = dict(row.snapshot)
+        stripped["sessions"] = [
+            {k: v for k, v in s.items() if k not in ("tags", "expertise_level", "language")}
+            for s in stripped["sessions"]
+        ]
+        row.snapshot = stripped
+        await session.commit()
+
+    response = await client.get(f"/v1/public/events/{world.event.slug}/schedule?tag=anything")
+
+    assert response.status_code == 200
+    assert response.json()["sessions"] == []
+    assert response.json()["facets"] == {"tags": [], "languages": [], "levels": []}

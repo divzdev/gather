@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, File, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
@@ -28,10 +28,12 @@ from app.features.publishing import ics
 from app.features.tasks import service as tasks
 from app.models import (
     Event,
+    EventSpeaker,
     Room,
     Session,
     SessionSpeaker,
     Speaker,
+    SpeakerStatus,
     SpeakerTask,
     Submission,
     SubmissionSpeaker,
@@ -144,11 +146,23 @@ class Progress(BaseModel):
     overdue: int
 
 
+class Participation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: SpeakerStatus
+    responded_at: datetime | None
+    decline_reason: str | None
+    #: False once they have been withdrawn, or before an organiser has accepted
+    #: them — there is nothing to answer yet in either case.
+    can_respond: bool
+
+
 class Home(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     event: EventRead
     speaker: ProfileRead
+    participation: Participation
     sessions: list[SessionRead]
     tasks: list[TaskRead]
     progress: Progress
@@ -159,6 +173,38 @@ class TaskSubmit(BaseModel):
 
     form_response: dict[str, Any] | None = None
     acknowledged: bool = False
+
+
+class ParticipationUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    #: Only the two a speaker can choose. `prospective` and `withdrawn` are the
+    #: organiser's to set, and typing them here would let a speaker un-decline
+    #: themselves back into a state nobody put them in.
+    status: Literal[SpeakerStatus.CONFIRMED, SpeakerStatus.DECLINED]
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+#: Answering is possible from the moment an organiser accepts them, and stays
+#: possible afterwards: a speaker who confirms in March and breaks their leg in
+#: April has to be able to say so.
+RESPONDABLE = (SpeakerStatus.ACCEPTED, SpeakerStatus.CONFIRMED, SpeakerStatus.DECLINED)
+
+
+async def _participation(session: DbSession, speaker_id: uuid.UUID) -> EventSpeaker:
+    row = await session.scalar(select(EventSpeaker).where(EventSpeaker.speaker_id == speaker_id))
+    if row is None:
+        raise NotFoundError("You are not on this event's speaker roster.")
+    return row
+
+
+def _participation_read(row: EventSpeaker) -> Participation:
+    return Participation(
+        status=row.status,
+        responded_at=row.responded_at,
+        decline_reason=row.decline_reason,
+        can_respond=row.status in RESPONDABLE,
+    )
 
 
 async def _speaker(session: DbSession, speaker_id: uuid.UUID) -> Speaker:
@@ -301,6 +347,7 @@ async def home(session: DbSession, speaker: PortalSpeaker) -> Home:
             location=event.location,
         ),
         speaker=_profile(person),
+        participation=_participation_read(await _participation(session, speaker.speaker_id)),
         sessions=[
             SessionRead(
                 id=talk.id,
@@ -461,6 +508,41 @@ async def download_own_file(
         media_type=record.content_type,
         headers={"Content-Disposition": f'attachment; filename="{record.filename}"'},
     )
+
+
+@router.get("/participation", response_model=Participation)
+async def read_participation(session: DbSession, speaker: PortalSpeaker) -> Participation:
+    return _participation_read(await _participation(session, speaker.speaker_id))
+
+
+@router.put("/participation", response_model=Participation)
+async def set_participation(
+    body: ParticipationUpdate, session: DbSession, speaker: PortalSpeaker
+) -> Participation:
+    """The speaker answers for themselves.
+
+    Until this existed the roster only ever moved by an organiser's hand, which
+    meant `confirmed` recorded an assumption rather than an answer. Declining
+    deliberately does not touch their sessions: a co-speaker may still be giving
+    the talk, and unscheduling someone else's session on one person's word is
+    not a decision this endpoint gets to make. The roster shows the change and
+    the organiser decides what happens to the slot.
+    """
+    row = await _participation(session, speaker.speaker_id)
+    if row.status not in RESPONDABLE:
+        raise ApiError(
+            "You have not been accepted for this event yet, so there is nothing to confirm."
+            if row.status is SpeakerStatus.PROSPECTIVE
+            else "Your participation was withdrawn. Contact the organisers to change it.",
+            code="PARTICIPATION_LOCKED",
+            status_code=409,
+        )
+
+    row.status = body.status
+    row.responded_at = datetime.now(UTC)
+    row.decline_reason = body.reason if body.status is SpeakerStatus.DECLINED else None
+    await session.flush()
+    return _participation_read(row)
 
 
 @router.get("/profile", response_model=ProfileRead)

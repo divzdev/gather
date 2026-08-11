@@ -65,6 +65,10 @@ class SpeakerRead(BaseModel):
     #: The roster could not show a face without this. Uploading worked, storing
     #: worked, and nothing on the staff side ever returned it.
     headshot_file_id: uuid.UUID | None = None
+    #: Set only when the speaker answered from the portal. `status == confirmed`
+    #: with this null is an organiser's assumption, and the roster says so.
+    responded_at: Any = None
+    decline_reason: str | None = None
 
 
 class SpeakerCreate(BaseModel):
@@ -138,6 +142,8 @@ async def _roster(session: DbSession) -> list[SpeakerRead]:
             status=link.status,
             submission_count=int(counts.get(speaker.id, 0)),
             portal_last_seen_at=link.portal_last_seen_at,
+            responded_at=link.responded_at,
+            decline_reason=link.decline_reason,
         )
         for link, speaker in rows
     ]

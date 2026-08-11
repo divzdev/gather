@@ -19,6 +19,7 @@ from app.models import (
     ConflictDismissal,
     ContentStatus,
     Event,
+    ExpertiseLevel,
     PublishedSchedule,
     Role,
     Session,
@@ -214,6 +215,9 @@ class SessionRead(BaseModel):
     is_locked: bool
     status: SessionStatus
     content_status: ContentStatus
+    tags: list[str] = Field(default_factory=list)
+    expertise_level: ExpertiseLevel | None = None
+    language: str | None = None
     speakers: list[SessionSpeakerRead] = Field(default_factory=list)
 
 
@@ -268,6 +272,9 @@ async def list_sessions(
             is_locked=row.is_locked,
             status=row.status,
             content_status=row.content_status,
+            tags=row.tags,
+            expertise_level=row.expertise_level,
+            language=row.language,
             speakers=by_session.get(row.id, []),
         )
         for row in rows

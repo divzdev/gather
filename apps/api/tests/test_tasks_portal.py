@@ -269,3 +269,96 @@ async def test_a_speaker_token_for_another_event_is_refused(
     response = await client.get("/v1/portal/home", headers=_token(rosa.id, uuid.uuid4()))
 
     assert response.status_code == 401
+
+
+async def test_a_speaker_confirms_their_own_participation(
+    client: AsyncClient, onboarding: tuple[dict[str, str], Event, Speaker, Speaker, str]
+) -> None:
+    _headers, event, rosa, _tomas, _template_id = onboarding
+
+    response = await client.put(
+        "/v1/portal/participation",
+        headers=_token(rosa.id, event.id),
+        json={"status": "confirmed"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "confirmed"
+    # The timestamp is what separates "they told us" from an organiser's guess.
+    assert response.json()["responded_at"] is not None
+
+
+async def test_declining_keeps_the_reason_and_confirming_again_clears_it(
+    client: AsyncClient, onboarding: tuple[dict[str, str], Event, Speaker, Speaker, str]
+) -> None:
+    _headers, event, rosa, _tomas, _template_id = onboarding
+    headers = _token(rosa.id, event.id)
+
+    declined = await client.put(
+        "/v1/portal/participation",
+        headers=headers,
+        json={"status": "declined", "reason": "Clashes with a client launch."},
+    )
+    assert declined.json()["decline_reason"] == "Clashes with a client launch."
+
+    # A speaker whose plans change back must not be stuck behind their own answer.
+    again = await client.put(
+        "/v1/portal/participation", headers=headers, json={"status": "confirmed"}
+    )
+
+    assert again.json()["status"] == "confirmed"
+    assert again.json()["decline_reason"] is None
+
+
+async def test_a_speaker_who_was_never_accepted_has_nothing_to_confirm(
+    client: AsyncClient,
+    session: AsyncSession,
+    onboarding: tuple[dict[str, str], Event, Speaker, Speaker, str],
+) -> None:
+    _headers, event, rosa, _tomas, _template_id = onboarding
+    with tenancy_disabled():
+        link = await session.scalar(select(EventSpeaker).where(EventSpeaker.speaker_id == rosa.id))
+        assert link is not None
+        link.status = SpeakerStatus.PROSPECTIVE
+        await session.commit()
+
+    response = await client.put(
+        "/v1/portal/participation",
+        headers=_token(rosa.id, event.id),
+        json={"status": "confirmed"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "PARTICIPATION_LOCKED"
+
+
+async def test_a_speaker_cannot_set_a_status_that_is_the_organisers_to_set(
+    client: AsyncClient, onboarding: tuple[dict[str, str], Event, Speaker, Speaker, str]
+) -> None:
+    _headers, event, rosa, _tomas, _template_id = onboarding
+
+    response = await client.put(
+        "/v1/portal/participation",
+        headers=_token(rosa.id, event.id),
+        json={"status": "withdrawn"},
+    )
+
+    assert response.status_code == 422
+
+
+async def test_the_roster_shows_whether_the_speaker_answered_themselves(
+    client: AsyncClient, onboarding: tuple[dict[str, str], Event, Speaker, Speaker, str]
+) -> None:
+    headers, event, rosa, tomas, _template_id = onboarding
+    await client.put(
+        "/v1/portal/participation",
+        headers=_token(rosa.id, event.id),
+        json={"status": "confirmed"},
+    )
+
+    roster = (await client.get(f"/v1/events/{event.id}/speakers", headers=headers)).json()
+    answered = next(row for row in roster if row["speaker_id"] == str(rosa.id))
+    silent = next(row for row in roster if row["speaker_id"] == str(tomas.id))
+
+    assert answered["responded_at"] is not None
+    assert silent["responded_at"] is None

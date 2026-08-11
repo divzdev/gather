@@ -17,7 +17,13 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, EventScoped, PrimaryKey, Timestamps, Uuid, pg_enum
-from app.models.enums import ConflictKind, ContentStatus, SessionSpeakerRole, SessionStatus
+from app.models.enums import (
+    ConflictKind,
+    ContentStatus,
+    ExpertiseLevel,
+    SessionSpeakerRole,
+    SessionStatus,
+)
 
 
 class Session(Base, PrimaryKey, Timestamps, EventScoped):
@@ -67,6 +73,15 @@ class Session(Base, PrimaryKey, Timestamps, EventScoped):
     )
     materials_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     recording_embed_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # What an attendee filters the published schedule by, beyond day and track.
+    # Tags are free-form and per-event; level and language are not, because a
+    # filter built from free text grows a separate option per typo.
+    tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    expertise_level: Mapped[ExpertiseLevel | None] = mapped_column(
+        pg_enum(ExpertiseLevel, "expertise_level"), nullable=True
+    )
+    language: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
 
 class SessionSpeaker(Base, PrimaryKey, Timestamps, EventScoped):

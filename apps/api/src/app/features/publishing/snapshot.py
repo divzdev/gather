@@ -130,6 +130,9 @@ async def build(session: AsyncSession, event: Event) -> dict[str, Any]:
                 "day": day_dates.get(s.event_day_id) if s.event_day_id else None,
                 "room": room_names.get(s.room_id) if s.room_id else None,
                 "track": track_names.get(s.track_id) if s.track_id else None,
+                "tags": s.tags,
+                "expertise_level": s.expertise_level.value if s.expertise_level else None,
+                "language": s.language,
                 "speakers": speakers_by_session.get(s.id, []),
             }
             for s in sessions

@@ -62,3 +62,9 @@ class EventSpeaker(Base, PrimaryKey, Timestamps, EventScoped):
         index=True,
     )
     portal_last_seen_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    # Set when the speaker themselves answers from the portal, not when an
+    # organiser sets the status by hand — the roster has to be able to tell
+    # "they told us" apart from "we assumed".
+    responded_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    decline_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

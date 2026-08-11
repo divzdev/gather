@@ -526,3 +526,92 @@ async def test_the_calendar_entry_keeps_one_uid_and_climbs_the_sequence() -> Non
     # escaped, or the entry parses as several broken properties.
     assert r"Serving LLMs\; on spot fleets\, without tears" in first
     assert "DTEND:20270512T094500Z" in first
+
+
+async def test_editing_a_session_keeps_its_public_url(
+    client: AsyncClient, grid: tuple[dict[str, str], Event, dict[str, uuid.UUID]]
+) -> None:
+    headers, event, ids = grid
+    before = await client.get(f"/v1/events/{event.id}/sessions", headers=headers)
+    slug = next(row["slug"] for row in before.json() if row["id"] == str(ids["talk0"]))
+
+    response = await client.patch(
+        f"/v1/events/{event.id}/sessions/{ids['talk0']}",
+        headers=headers,
+        json={"title": "Opening keynote, revised"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "Opening keynote, revised"
+    # A published schedule puts the slug in inboxes and calendar entries.
+    assert response.json()["slug"] == slug
+
+
+async def test_a_patch_sets_facets_and_an_explicit_null_clears_the_track(
+    client: AsyncClient, grid: tuple[dict[str, str], Event, dict[str, uuid.UUID]]
+) -> None:
+    headers, event, ids = grid
+
+    await client.patch(
+        f"/v1/events/{event.id}/sessions/{ids['talk1']}",
+        headers=headers,
+        json={
+            "tags": ["Kubernetes", "kubernetes ", "Cost"],
+            "expertise_level": "advanced",
+            "language": "English",
+            "track_id": None,
+        },
+    )
+
+    rows = (await client.get(f"/v1/events/{event.id}/sessions", headers=headers)).json()
+    edited = next(row for row in rows if row["id"] == str(ids["talk1"]))
+    # Case- and whitespace-duplicates collapse, or the public filter grows a
+    # checkbox per typo.
+    assert edited["tags"] == ["Kubernetes", "Cost"]
+    assert edited["expertise_level"] == "advanced"
+    assert edited["language"] == "English"
+    assert edited["track_id"] is None
+
+
+async def test_a_locked_session_keeps_its_length_but_not_its_typos(
+    client: AsyncClient,
+    session: AsyncSession,
+    grid: tuple[dict[str, str], Event, dict[str, uuid.UUID]],
+) -> None:
+    """Locking pins a session's footprint on the grid. It was never a reason to
+    make an organiser live with a misspelled title."""
+    headers, event, ids = grid
+    with tenancy_disabled():
+        talk = await session.get(Session, ids["talk2"])
+        assert talk is not None
+        talk.is_locked = True
+        await session.commit()
+
+    refused = await client.patch(
+        f"/v1/events/{event.id}/sessions/{ids['talk2']}",
+        headers=headers,
+        json={"duration_minutes": 60},
+    )
+    allowed = await client.patch(
+        f"/v1/events/{event.id}/sessions/{ids['talk2']}",
+        headers=headers,
+        json={"abstract": "Now with an abstract."},
+    )
+
+    assert refused.status_code == 409
+    assert refused.json()["error"]["code"] == "SESSION_LOCKED"
+    assert allowed.status_code == 200
+
+
+async def test_patching_a_session_that_is_not_in_this_event_is_a_404(
+    client: AsyncClient, grid: tuple[dict[str, str], Event, dict[str, uuid.UUID]]
+) -> None:
+    headers, event, _ids = grid
+
+    response = await client.patch(
+        f"/v1/events/{event.id}/sessions/{uuid.uuid4()}",
+        headers=headers,
+        json={"title": "Nowhere"},
+    )
+
+    assert response.status_code == 404

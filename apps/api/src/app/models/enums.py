@@ -98,6 +98,16 @@ class SessionStatus(StrEnum):
     CONFIRMED = "confirmed"
 
 
+class ExpertiseLevel(StrEnum):
+    """How much an attendee needs to know already. Three levels, not a free
+    string, because the public schedule filters on it and "Intermediate",
+    "intermediate " and "Mid-level" would each be their own filter option."""
+
+    BEGINNER = "beginner"
+    INTERMEDIATE = "intermediate"
+    ADVANCED = "advanced"
+
+
 class SessionSpeakerRole(StrEnum):
     SPEAKER = "speaker"
     MODERATOR = "moderator"
