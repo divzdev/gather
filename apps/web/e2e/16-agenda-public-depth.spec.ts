@@ -512,3 +512,37 @@ test("the auto-scheduler reads its rules box, and says what it could not read", 
     expect(at < "12:00" || at >= "13:00", `proposed ${at}, inside the free hour`).toBe(true);
   }
 });
+
+test("the publishing screen shows snapshot history and can put an old one back", async ({
+  page,
+  request,
+}) => {
+  const ctx = await organizer(request);
+  // Two versions, so there is something to roll back to.
+  for (let n = 0; n < 2; n += 1) {
+    await request.post(`${API}/v1/events/${ctx.eventId}/schedule/publish`, {
+      headers: { ...ctx.headers, "Idempotency-Key": `e2e-history-${n}-${Date.now()}` },
+      data: { acknowledge_conflicts: true },
+    });
+  }
+  const before = await request.get(`${API}/v1/events/${ctx.eventId}/schedule/versions`, {
+    headers: ctx.headers,
+  });
+  const latest = ((await before.json()) as { version: number }[])[0]!.version;
+
+  await page.goto("/login");
+  await page.getByRole("button", { name: /^Organizer$/i }).click();
+  await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 });
+  await page.goto("/admin/publishing");
+
+  // The API has kept every snapshot since the first migration; this screen was
+  // the embed builder only, so none of it was reachable.
+  await expect(page.getByText(`version ${latest}`)).toBeVisible({ timeout: 20_000 });
+
+  // Rolling back changes what the public reads, so it asks first.
+  await page.getByRole("button", { name: /^Restore$/ }).first().click();
+  await expect(page.getByText(/public again\?/)).toBeVisible();
+  await page.getByRole("button", { name: /Yes, restore it/ }).click();
+
+  await expect(page.getByText(`version ${latest + 1}`)).toBeVisible({ timeout: 15_000 });
+});

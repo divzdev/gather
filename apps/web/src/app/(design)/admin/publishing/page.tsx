@@ -17,6 +17,8 @@ import { Publishing, type PublishingData } from "@/components/design/Publishing"
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { authed } from "@/lib/session";
 
+import { PublishedVersions } from "./versions";
+
 type PublicSession = {
   title: string;
   starts_at: string | null;
@@ -197,6 +199,7 @@ export default function PublishingPage() {
         .toUpperCase(),
     })),
 
+    aside: <PublishedVersions eventId={eventId} onDone={toast} />,
     codeText: code,
     copyCode: () => {
       void navigator.clipboard?.writeText(code);
