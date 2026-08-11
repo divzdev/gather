@@ -54,9 +54,9 @@ export function RequireStaff({ children }: { children: React.ReactNode }) {
       router.replace(`/login?next=${encodeURIComponent(wanted)}`);
       return;
     }
-    if (events === undefined || pathname === "/admin/welcome") return;
+    if (events === undefined || pathname === "/admin/events/new") return;
     if (events.length === 0) {
-      router.replace("/admin/welcome");
+      router.replace("/admin/events/new");
       return;
     }
     // Remember one, so a screen that reads the id has something to read.

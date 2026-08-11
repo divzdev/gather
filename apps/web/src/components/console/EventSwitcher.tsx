@@ -185,6 +185,9 @@ export function EventSwitcher() {
 
   return (
     <span style={{ position: "relative", flex: "none" }}>
+      {/* A bordered capsule rather than bare text: the header's leftmost element
+          is the answer to "which event am I looking at", and it has to hold its
+          own against a 40px search field beside it. */}
       <button
         onClick={() => setOpen((shown) => !shown)}
         aria-label="Switch event"
@@ -193,31 +196,37 @@ export function EventSwitcher() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
-          height: 32,
-          padding: "0 10px",
-          borderRadius: 6,
-          background: open ? "var(--sk,#EDF1F2)" : "none",
-          border: "none",
+          gap: 10,
+          height: 42,
+          padding: "0 12px 0 7px",
+          borderRadius: 12,
+          background: open ? "var(--sk,#EDF1F2)" : "var(--cd,#FFFFFF)",
+          border: "1px solid var(--ln,#E1E7E9)",
           font: "600 13.5px var(--font-plex-sans), sans-serif",
           color: "var(--ik,#16232B)",
-          maxWidth: 280,
+          maxWidth: 320,
         }}
       >
         <span
           style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            background: "var(--ok,#0E7A5F)",
+            width: 28,
+            height: 28,
             flex: "none",
+            borderRadius: 8,
+            background: "var(--sw,#FFEAE6)",
+            color: "var(--sg,#E04E4E)",
+            display: "grid",
+            placeItems: "center",
+            font: "700 11px var(--font-plex-sans), sans-serif",
           }}
-        />
+        >
+          {(active?.name ?? org).slice(0, 1).toUpperCase()}
+        </span>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {active?.name ?? "Loading…"}
         </span>
         <span
-          style={{ font: "400 10px var(--font-plex-sans), sans-serif", color: "var(--i4,#99A6AD)" }}
+          style={{ font: "400 11px var(--font-plex-sans), sans-serif", color: "var(--i4,#99A6AD)" }}
         >
           ▾
         </span>
@@ -240,7 +249,7 @@ export function EventSwitcher() {
           <div
             style={{
               position: "absolute",
-              top: 38,
+              top: 50,
               left: 0,
               width: "min(560px, calc(100vw - 32px))",
               zIndex: 41,
@@ -383,7 +392,7 @@ export function EventSwitcher() {
                   )}
                 </div>
                 <Link
-                  href="/admin/welcome"
+                  href="/admin/events/new"
                   onClick={close}
                   style={{
                     display: "flex",

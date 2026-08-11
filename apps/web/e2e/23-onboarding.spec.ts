@@ -20,14 +20,14 @@ test("signing up asks for the event rather than inventing it", async ({ page }) 
   await page.getByRole("button", { name: /create account/i }).click();
 
   // Straight to onboarding, not to a console describing an event nobody chose.
-  await expect(page).toHaveURL(/\/admin\/welcome/, { timeout: 25_000 });
-  await expect(page.getByRole("heading", { name: /what are you running/i })).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/events\/new/, { timeout: 25_000 });
+  await expect(page.getByRole("heading", { name: /let.s make an event/i })).toBeVisible();
 
-  await page.getByLabel(/event name/i).fill(`Testfest ${stamp}`);
-  await page.getByLabel(/^starts$/i).fill("2027-09-14");
-  await page.getByLabel(/^ends$/i).fill("2027-09-16");
+  await page.getByLabel(/what is it called/i).fill(`Testfest ${stamp}`);
+  await page.getByLabel(/first day/i).fill("2027-09-14");
+  await page.getByLabel(/last day/i).fill("2027-09-16");
   await page.getByLabel(/timezone/i).selectOption("Europe/London");
-  await page.getByLabel(/location/i).fill("Barbican, London");
+  await page.getByLabel(/^where/i).fill("Barbican, London");
   await page.getByRole("button", { name: /create the event/i }).click();
 
   await expect(page).toHaveURL(/\/admin$/, { timeout: 25_000 });
@@ -46,5 +46,5 @@ test("an owner who already has an event is not asked again", async ({ page }) =>
   await page.goto("/login");
   await page.getByRole("button", { name: /^Organizer$/i }).click();
   await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 });
-  await expect(page).not.toHaveURL(/welcome/);
+  await expect(page).not.toHaveURL(/events\/new/);
 });

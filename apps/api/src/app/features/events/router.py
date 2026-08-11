@@ -215,11 +215,21 @@ class EventCreate(BaseModel):
     ends_on: date
     timezone: str = Field(default="UTC", min_length=1, max_length=64)
     location: str | None = Field(default=None, max_length=300)
+    description: str | None = Field(default=None, max_length=2000)
+    #: The public address. Derived from the name when absent, because most
+    #: organisers do not want to think about it and the ones who do, do.
+    slug: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-z0-9-]+$")
+    #: Optional at creation, and the first deadline that matters after it.
+    cfp_closes_at: datetime | None = None
 
     @model_validator(mode="after")
     def _sane_dates(self) -> EventCreate:
         if self.ends_on < self.starts_on:
             raise ValueError("The event cannot end before it starts.")
+        if self.cfp_closes_at is not None:
+            closes = self.cfp_closes_at.date()
+            if closes > self.ends_on:
+                raise ValueError("The call for papers cannot close after the event ends.")
         return self
 
 
@@ -241,11 +251,13 @@ async def create_event(body: EventCreate, user: CurrentUser, session: DbSession)
         event = Event(
             org_id=org_id,
             name=body.name,
-            slug=await _unique_event_slug(session, body.name),
+            slug=await _unique_event_slug(session, body.slug or body.name),
             timezone=body.timezone,
             location=body.location,
+            description=body.description,
             starts_on=body.starts_on,
             ends_on=body.ends_on,
+            cfp_closes_at=body.cfp_closes_at,
             status=EventStatus.DRAFT,
         )
         session.add(event)
