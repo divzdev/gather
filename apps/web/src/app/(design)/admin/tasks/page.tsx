@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Tasks, type TasksData } from "@/components/design/Tasks";
+import { FileThreads, type FileThread } from "@/components/FileThreads";
 import { API_BASE_URL } from "@/lib/api";
 import { authed, getToken } from "@/lib/session";
 
@@ -79,6 +80,7 @@ export default function TasksPage() {
   const [groupBy, setGroupBy] = useState<"task" | "speaker">("task");
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [only, setOnly] = useState<"open" | "overdue" | "all">("open");
+  const [showComments, setShowComments] = useState(false);
 
   // The clock is read once, when the rows arrive. Reading it during render makes
   // "3d overdue" depend on which re-render you happened to catch.
@@ -94,6 +96,24 @@ export default function TasksPage() {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["tasks", eventId] });
   };
+
+  const { data: threads } = useQuery({
+    queryKey: ["file-comments", eventId],
+    enabled: eventId !== null,
+    queryFn: () => authed<FileThread[]>(`/events/${eventId}/file-comments`),
+  });
+
+  const comment = useMutation({
+    mutationFn: ({ fileId, body }: { fileId: string; body: string }) =>
+      authed(`/events/${eventId}/files/${fileId}/comments`, {
+        method: "POST",
+        body: { body },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["file-comments", eventId] });
+      toast("Comment posted. The speaker can see it in their portal.");
+    },
+  });
 
   const nudge = useMutation({
     mutationFn: (speakerIds: string[] | null) =>
@@ -156,7 +176,11 @@ export default function TasksPage() {
   const perTemplate = useMemo(() => {
     const buckets = new Map<string, { name: string; done: number; total: number }>();
     for (const row of all) {
-      const bucket = buckets.get(row.task_template_id) ?? { name: row.task_name, done: 0, total: 0 };
+      const bucket = buckets.get(row.task_template_id) ?? {
+        name: row.task_name,
+        done: 0,
+        total: 0,
+      };
       bucket.total += 1;
       if (row.status === "complete") bucket.done += 1;
       buckets.set(row.task_template_id, bucket);
@@ -303,5 +327,85 @@ export default function TasksPage() {
     })),
   };
 
-  return <Tasks d={screen} />;
+  const commentCount = (threads ?? []).reduce((total, thread) => total + thread.comments.length, 0);
+
+  return (
+    <>
+      <Tasks d={screen} />
+      {/* Rendered alongside the prototype rather than inside it: the Tasks
+       *  design is regenerated and exposes no per-row affordance, and the panel
+       *  is per-file while its rows are per-task-per-speaker. */}
+      <button
+        type="button"
+        onClick={() => setShowComments((open) => !open)}
+        style={{
+          position: "fixed",
+          right: "16px",
+          bottom: "16px",
+          zIndex: 91,
+          height: "36px",
+          padding: "0 16px",
+          borderRadius: "999px",
+          border: "1px solid var(--ln,#E1E7E9)",
+          background: "var(--cd,#FFFFFF)",
+          boxShadow: "0 12px 32px rgba(16,19,25,.16)",
+          font: "600 12.5px 'IBM Plex Sans',sans-serif",
+          color: "var(--ik,#16232B)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {showComments
+          ? "Close comments"
+          : `File comments${commentCount > 0 ? ` · ${commentCount}` : ""}`}
+      </button>
+      {showComments ? (
+        <aside
+          aria-label="File comments"
+          style={{
+            position: "fixed",
+            top: "0",
+            right: "0",
+            bottom: "0",
+            width: "min(480px, 100vw)",
+            zIndex: 90,
+            display: "flex",
+            flexDirection: "column",
+            background: "var(--pp,#F4F6F7)",
+            borderLeft: "1px solid var(--ln,#E1E7E9)",
+            boxShadow: "-16px 0 40px rgba(16,19,25,.12)",
+          }}
+        >
+          <header style={{ padding: "18px 18px 10px" }}>
+            <h2
+              style={{
+                font: "600 18px 'IBM Plex Sans',sans-serif",
+                color: "var(--ik,#16232B)",
+                margin: "0 0 4px",
+              }}
+            >
+              File comments
+            </h2>
+            <p
+              style={{
+                font: "400 12.5px 'IBM Plex Sans',sans-serif",
+                color: "var(--i3,#6B7B84)",
+                margin: "0",
+              }}
+            >
+              Speakers read these in their portal and can reply. For notes only staff should see,
+              use the submission&rsquo;s internal notes.
+            </p>
+          </header>
+          <div style={{ flex: "1", overflowY: "auto", padding: "0 18px 72px" }}>
+            <FileThreads
+              threads={threads ?? []}
+              viewer="staff"
+              sending={comment.isPending}
+              onSend={(fileId, body) => comment.mutateAsync({ fileId, body })}
+            />
+          </div>
+        </aside>
+      ) : null}
+    </>
+  );
 }

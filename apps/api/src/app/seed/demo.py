@@ -59,6 +59,7 @@ from app.models import (
     TaskTemplate,
     User,
 )
+from app.seed import deliverables
 
 TARGET_SPEAKERS = 80
 TARGET_SUBMISSIONS = 214
@@ -1053,6 +1054,7 @@ async def fill(
     talks = await _promote(session, event)
     await _place(session, event, talks)
     await _tasks(session, event, rng)
+    await deliverables.fill(session, event)
     await _roster_states(session, event, rng)
     scored = await _reviews(session, event, rng)
     sent = await _outbox(session, event)

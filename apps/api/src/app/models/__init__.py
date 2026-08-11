@@ -11,6 +11,7 @@ from app.models.enums import (
     ActorKind,
     AiProposalKind,
     AiProposalStatus,
+    CommentAuthorKind,
     ConflictKind,
     ContentStatus,
     CriterionKind,
@@ -38,6 +39,7 @@ from app.models.enums import (
 )
 from app.models.event import Event, EventMember
 from app.models.file import File
+from app.models.file_comment import FileComment
 from app.models.form import Form, FormFieldStats
 from app.models.message import Message, MessageBatch, MessageTemplate
 from app.models.ops import (
@@ -92,6 +94,7 @@ __all__ = [
     "AiScore",
     "AuthSession",
     "Base",
+    "CommentAuthorKind",
     "ConflictDismissal",
     "ConflictKind",
     "ContentStatus",
@@ -107,6 +110,7 @@ __all__ = [
     "EventStatus",
     "ExpertiseLevel",
     "File",
+    "FileComment",
     "Form",
     "FormFieldStats",
     "FormKind",

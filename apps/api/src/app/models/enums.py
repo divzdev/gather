@@ -122,6 +122,14 @@ class ContentStatus(StrEnum):
     CHANGES_REQUESTED = "changes_requested"
 
 
+class CommentAuthorKind(StrEnum):
+    """Who wrote a file comment. Staff and speakers read the same thread, so the
+    side a message came from is what makes it legible."""
+
+    STAFF = "staff"
+    SPEAKER = "speaker"
+
+
 class ConflictKind(StrEnum):
     ROOM = "room"
     SPEAKER = "speaker"

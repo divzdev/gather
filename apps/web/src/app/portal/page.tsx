@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 import { Portal, type PortalData } from "@/components/design/Portal";
 
 import { ParticipationBand, type Participation as ParticipationState } from "./participation";
+import { PortalComments, useFeedbackCount } from "./comments";
 import { useTheme } from "@/components/ThemeProvider";
 import { API_BASE_URL } from "@/lib/api";
 import { getSpeakerToken, portal } from "@/lib/session";
@@ -74,7 +75,6 @@ type Home = {
   participation: ParticipationState;
 };
 
-
 type Submission = {
   id: string;
   code: string;
@@ -83,7 +83,18 @@ type Submission = {
   submitted_at: string | null;
 };
 
-type Tab = "home" | "subs" | "profile";
+type Tab = "home" | "subs" | "profile" | "resources" | "feedback";
+
+/** A resource page as the portal receives it. The HTML in an `embed` block was
+ *  sanitised server-side on write against an allowlist, which is the only
+ *  reason it can be rendered here at all. */
+type PortalPage = {
+  id: string;
+  title: string;
+  slug: string;
+  blocks: ({ type: "text"; text: string } | { type: "embed"; html: string })[];
+  is_pinned_in_portal: boolean;
+};
 
 /** The profile form, held locally so typing never round-trips. */
 type Draft = {
@@ -101,13 +112,48 @@ const MONTH = new Intl.DateTimeFormat("en-GB", { month: "short" });
 const BIO_TARGET = 600;
 
 const SUBMISSION_LOOK: Record<string, { label: string; fg: string; bg: string; bar: string }> = {
-  draft: { label: "Draft", fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)", bar: "var(--ls,#C8D2D5)" },
-  submitted: { label: "Submitted", fg: "var(--if,#47599F)", bg: "var(--ifw,#E9ECF7)", bar: "var(--if,#47599F)" },
-  in_review: { label: "In review", fg: "var(--pd,#B96A1F)", bg: "var(--pdw,#F9EDDF)", bar: "var(--pd,#B96A1F)" },
-  accepted: { label: "Accepted", fg: "var(--ok,#0E7A5F)", bg: "var(--okw,#E2F1EC)", bar: "var(--ok,#0E7A5F)" },
-  waitlisted: { label: "Waitlisted", fg: "var(--pd,#B96A1F)", bg: "var(--pdw,#F9EDDF)", bar: "var(--pd,#B96A1F)" },
-  rejected: { label: "Not this time", fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)", bar: "var(--ls,#C8D2D5)" },
-  withdrawn: { label: "Withdrawn", fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)", bar: "var(--ls,#C8D2D5)" },
+  draft: {
+    label: "Draft",
+    fg: "var(--i3,#6B7B84)",
+    bg: "var(--sk,#EDF1F2)",
+    bar: "var(--ls,#C8D2D5)",
+  },
+  submitted: {
+    label: "Submitted",
+    fg: "var(--if,#47599F)",
+    bg: "var(--ifw,#E9ECF7)",
+    bar: "var(--if,#47599F)",
+  },
+  in_review: {
+    label: "In review",
+    fg: "var(--pd,#B96A1F)",
+    bg: "var(--pdw,#F9EDDF)",
+    bar: "var(--pd,#B96A1F)",
+  },
+  accepted: {
+    label: "Accepted",
+    fg: "var(--ok,#0E7A5F)",
+    bg: "var(--okw,#E2F1EC)",
+    bar: "var(--ok,#0E7A5F)",
+  },
+  waitlisted: {
+    label: "Waitlisted",
+    fg: "var(--pd,#B96A1F)",
+    bg: "var(--pdw,#F9EDDF)",
+    bar: "var(--pd,#B96A1F)",
+  },
+  rejected: {
+    label: "Not this time",
+    fg: "var(--i3,#6B7B84)",
+    bg: "var(--sk,#EDF1F2)",
+    bar: "var(--ls,#C8D2D5)",
+  },
+  withdrawn: {
+    label: "Withdrawn",
+    fg: "var(--i3,#6B7B84)",
+    bg: "var(--sk,#EDF1F2)",
+    bar: "var(--ls,#C8D2D5)",
+  },
 };
 
 const CTA: Record<Task["kind"], string> = {
@@ -121,7 +167,12 @@ const CTA: Record<Task["kind"], string> = {
  *  than files. The brief names all three targets; only iCal is ever a download. */
 function calendarLink(
   which: "google" | "outlook",
-  talk: { title: string; starts_at: string | null; duration_minutes: number; room: string | null } | null,
+  talk: {
+    title: string;
+    starts_at: string | null;
+    duration_minutes: number;
+    room: string | null;
+  } | null,
   eventName: string,
 ): string | null {
   if (talk === null || talk.starts_at === null) return null;
@@ -203,6 +254,12 @@ export default function PortalPage() {
     enabled: signedIn,
     queryFn: () => portal<Submission[]>("/submissions"),
   });
+  const { data: pages } = useQuery({
+    queryKey: ["portal-pages"],
+    enabled: signedIn,
+    queryFn: () => portal<PortalPage[]>("/pages"),
+  });
+  const feedbackCount = useFeedbackCount(signedIn);
 
   const home = data?.home;
   const now = data?.now ?? 0;
@@ -237,8 +294,7 @@ export default function PortalPage() {
       });
       if (!response.ok) {
         const problem = (await response.json().catch(() => undefined)) as
-          | { error?: { message?: string } }
-          | undefined;
+          { error?: { message?: string } } | undefined;
         throw new Error(problem?.error?.message ?? "That upload was refused.");
       }
     },
@@ -276,7 +332,9 @@ export default function PortalPage() {
           <strong style={{ font: "600 18px 'IBM Plex Sans',sans-serif" }}>
             This portal needs your sign-in link
           </strong>
-          <span>Speakers never have a password. Ask for a fresh link and open it on this device.</span>
+          <span>
+            Speakers never have a password. Ask for a fresh link and open it on this device.
+          </span>
           <a href="/login" style={{ color: "var(--sg,#E04E4E)" }}>
             Send me a link
           </a>
@@ -355,6 +413,8 @@ export default function PortalPage() {
       [
         { key: "home", n: "Home", c: open.length },
         { key: "subs", n: "My submissions", c: submissions?.length ?? 0 },
+        { key: "resources", n: "Resources", c: pages?.length ?? 0 },
+        { key: "feedback", n: "Feedback", c: feedbackCount },
         { key: "profile", n: "Profile", c: 0 },
       ] as const
     ).map((entry) => ({
@@ -451,14 +511,13 @@ export default function PortalPage() {
         ? "Your session time is not set yet."
         : talk.starts_at === null
           ? `${talk.title} · time to be confirmed`
-          : `${DAY.format(new Date(talk.starts_at))} · ${new Date(talk.starts_at).toLocaleTimeString(
-              "en-GB",
-              {
-                hour: "2-digit",
-                minute: "2-digit",
-                timeZone: localTz ? undefined : (home?.event.timezone ?? "UTC"),
-              },
-            )} · ${talk.room ?? "room to come"}`,
+          : `${DAY.format(new Date(talk.starts_at))} · ${new Date(
+              talk.starts_at,
+            ).toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: localTz ? undefined : (home?.event.timezone ?? "UTC"),
+            })} · ${talk.room ?? "room to come"}`,
     togCal: () => setCalOpen((current) => !current),
     calOpen,
     dlIcs: () => {
@@ -537,8 +596,7 @@ export default function PortalPage() {
     onWeb: (event) => setDraft({ ...fields, web: (event.target as HTMLInputElement).value }),
     onLi: (event) => setDraft({ ...fields, li: (event.target as HTMLInputElement).value }),
     bioCount: `${fields.bio.length} / ${BIO_TARGET}`,
-    bioCountFg:
-      fields.bio.length > BIO_TARGET ? "var(--cn,#D8432B)" : "var(--i4,#99A6AD)",
+    bioCountFg: fields.bio.length > BIO_TARGET ? "var(--cn,#D8432B)" : "var(--i4,#99A6AD)",
     pfStamp: saveProfile.isPending ? "Saving…" : "Saved as you type",
     pvName: home?.speaker.name ?? "",
     pvRole: [fields.title, fields.co].filter(Boolean).join(" · "),
@@ -556,6 +614,13 @@ export default function PortalPage() {
     <>
       <ParticipationBand state={home?.participation} />
       <Portal d={screen} />
+      {/* Rendered here rather than through the Portal prototype, which has no
+       *  Resources tab and is regenerated from the design. The tab strip is
+       *  data-driven, so adding the tab costs nothing there; every one of the
+       *  prototype's own tab bodies is gated on a boolean that is false while
+       *  this tab is selected, so it has the screen to itself. */}
+      {tab === "resources" ? <PortalResources pages={pages ?? []} /> : null}
+      {tab === "feedback" ? <PortalComments /> : null}
       <input
         ref={upload}
         type="file"
@@ -601,5 +666,77 @@ export default function PortalPage() {
         </div>
       ) : null}
     </>
+  );
+}
+
+/** The event's resource and wiki pages, as a speaker reads them.
+ *
+ *  `embed` blocks are injected as HTML because that is the feature: an
+ *  organiser pastes the run-of-show table or a walkthrough video and speakers
+ *  see it rendered. It is safe here only because the API sanitises that HTML on
+ *  write against a strict allowlist — `features/pages/service.py`. Nothing on
+ *  this path may ever render HTML that did not come through there.
+ */
+function PortalResources({ pages }: { pages: readonly PortalPage[] }) {
+  if (pages.length === 0) {
+    return (
+      <section style={{ maxWidth: 760, margin: "0 auto", padding: "28px 20px 80px" }}>
+        <p style={{ font: "400 14px var(--font-plex-sans)", color: "var(--i3,#6B7B84)" }}>
+          Nothing here yet. Guides, templates and run-of-show notes from the organisers will appear
+          on this tab.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section style={{ maxWidth: 760, margin: "0 auto", padding: "28px 20px 80px" }}>
+      {pages.map((page) => (
+        <article key={page.id} style={{ marginBottom: 36 }}>
+          <h2
+            style={{
+              font: "600 19px var(--font-plex-sans)",
+              color: "var(--ik,#16232B)",
+              margin: "0 0 4px",
+            }}
+          >
+            {page.title}
+          </h2>
+          {page.is_pinned_in_portal ? (
+            <p
+              style={{
+                font: "500 10px var(--font-plex-mono), monospace",
+                letterSpacing: "0.08em",
+                color: "var(--sg,#E04E4E)",
+                margin: "0 0 10px",
+              }}
+            >
+              START HERE
+            </p>
+          ) : null}
+          {page.blocks.map((block, index) =>
+            block.type === "text" ? (
+              <p
+                key={index}
+                style={{
+                  font: "400 14px/1.7 var(--font-plex-sans)",
+                  color: "var(--i2,#3E4E58)",
+                  whiteSpace: "pre-line",
+                  margin: "0 0 12px",
+                }}
+              >
+                {block.text}
+              </p>
+            ) : (
+              <div
+                key={index}
+                style={{ margin: "0 0 12px", maxWidth: "100%", overflowX: "auto" }}
+                dangerouslySetInnerHTML={{ __html: block.html }}
+              />
+            ),
+          )}
+        </article>
+      ))}
+    </section>
   );
 }
