@@ -162,3 +162,73 @@ async def test_only_a_failed_message_can_be_resent(
     original = next(row for row in rows if row["id"] == message_id)
     assert original["status"] == "bounced"
     assert original["error_detail"] == "550 mailbox unavailable"
+
+
+async def test_a_decision_records_why_and_keeps_it_internal(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """The reason is an internal note, not a field on the submission.
+
+    Decisions get changed, and the sequence of reasons is what somebody needs
+    three weeks later — a column would be overwritten on the second decision.
+    """
+    headers, event, form = cfp
+    submission_id = await _submit(client, event, form, "Taming CI", "ada@example.com")
+    decide = f"/v1/events/{event.id}/submissions/{submission_id}/decision"
+
+    await client.post(
+        decide,
+        json={"outcome": "waitlisted", "reason": "Strong talk, but we already have two on CI."},
+        headers=headers,
+    )
+    await client.post(
+        decide,
+        json={"outcome": "accepted", "reason": "A CI slot opened when Okafor withdrew."},
+        headers=headers,
+    )
+
+    notes = await client.get(
+        f"/v1/events/{event.id}/submissions/{submission_id}/notes", headers=headers
+    )
+
+    # Both reasons survive, each tagged with the decision it explains.
+    body = notes.json()
+    assert [n["decision_outcome"] for n in body] == ["accepted", "waitlisted"]
+    assert "already have two on CI" in body[1]["body"]
+    assert all(n["author_name"] for n in body)
+
+    # ...and none of it reaches the speaker, whose only view is status-by-code.
+    detail = await client.get(f"/v1/events/{event.id}/submissions/{submission_id}", headers=headers)
+    code = detail.json()["code"]
+    public = await client.get(f"/v1/public/events/{event.slug}/submissions/{code}/status")
+
+    assert public.status_code == 200
+    assert "already have two on CI" not in public.text
+    assert "CI slot opened" not in public.text
+
+
+async def test_a_bulk_decision_explains_every_row_not_just_the_first(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """A bulk waitlist is the decision somebody asks about later."""
+    headers, event, form = cfp
+    ids = [
+        await _submit(client, event, form, f"Talk {n}", f"speaker{n}@example.com") for n in range(3)
+    ]
+
+    await client.post(
+        f"/v1/events/{event.id}/submissions/bulk-decision",
+        json={
+            "submission_ids": ids,
+            "outcome": "waitlisted",
+            "reason": "Track is oversubscribed; revisit if a slot frees up.",
+        },
+        headers=headers,
+    )
+
+    for submission_id in ids:
+        notes = await client.get(
+            f"/v1/events/{event.id}/submissions/{submission_id}/notes", headers=headers
+        )
+        assert [n["decision_outcome"] for n in notes.json()] == ["waitlisted"], submission_id
+        assert "oversubscribed" in notes.json()[0]["body"]

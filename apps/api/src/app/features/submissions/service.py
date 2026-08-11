@@ -28,13 +28,16 @@ from app.models import (
     FormStatus,
     MessagePurpose,
     Session,
+    SessionFormat,
     SessionSpeaker,
     SessionStatus,
     Speaker,
     SpeakerStatus,
     Submission,
+    SubmissionNote,
     SubmissionSpeaker,
     SubmissionStatus,
+    Track,
 )
 
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no I/O/0/1 — these get read aloud
@@ -185,6 +188,7 @@ async def save_draft(
         submission.title = title
         submission.answers = dict(answers)
 
+    await _route_by_category(session, form=form, submission=submission)
     await _sync_co_speakers(
         session,
         event=event,
@@ -195,6 +199,49 @@ async def save_draft(
     )
     await session.flush()
     return submission
+
+
+async def _route_by_category(session: AsyncSession, *, form: Form, submission: Submission) -> None:
+    """File the proposal under the track and format its answers name.
+
+    Without this a form's "Track" question is a string in a JSONB blob: the
+    organiser's track filter finds nothing, the agenda has no colour to draw,
+    and somebody re-keys 200 proposals by hand. Routing is what makes the
+    category answer mean the same thing as the category.
+
+    Matching is on the option's label, case- and space-insensitive, because the
+    two lists are maintained on different screens and "AI Engineering" will meet
+    "ai engineering" eventually. An answer that matches nothing leaves the
+    existing value alone rather than clearing it — an organiser who has already
+    filed a proposal by hand outranks a stale dropdown.
+    """
+    schema = FormSchema.model_validate(form.schema)
+    routing = [f for f in schema.all_fields() if f.routes_to is not None]
+    if not routing:
+        return
+
+    def normalise(value: str) -> str:
+        return " ".join(value.split()).casefold()
+
+    for field in routing:
+        answer = submission.answers.get(field.key)
+        if not isinstance(answer, str) or not answer.strip():
+            continue
+        # The submitter sends the option's value; the label is what an organiser
+        # named the track, so try both.
+        chosen = next((c.label for c in field.choices if c.value == answer), answer)
+        wanted = normalise(chosen)
+
+        if field.routes_to == "track":
+            rows = (await session.execute(select(Track))).scalars().all()
+            match = next((t for t in rows if normalise(t.name) == wanted), None)
+            if match is not None:
+                submission.track_id = match.id
+        else:
+            formats = (await session.execute(select(SessionFormat))).scalars().all()
+            match_format = next((f for f in formats if normalise(f.name) == wanted), None)
+            if match_format is not None:
+                submission.session_format_id = match_format.id
 
 
 async def _sync_co_speakers(
@@ -353,11 +400,19 @@ async def decide(
     submission_id: uuid.UUID,
     outcome: SubmissionStatus,
     user_id: uuid.UUID,
+    reason: str | None = None,
 ) -> Submission:
     """Records the decision and sends nothing.
 
     This is the separation the whole product is built around: a decision is a
     state change, notifying people is a separate, explicit, confirmed action.
+
+    `reason` is written as a `SubmissionNote` in this same transaction rather
+    than onto the submission. Two reasons: notes are internal-only *by
+    construction*, so an internal rationale can never surface on a speaker-facing
+    page by accident; and decisions get changed, so what matters three weeks
+    later is the sequence — a column would be overwritten the moment a talk moves
+    from accepted to waitlisted.
     """
     if outcome not in DECIDED:
         raise ApiError(f"{outcome.value!r} is not a decision outcome.", field="outcome")
@@ -367,6 +422,18 @@ async def decide(
     submission.decision_status = DecisionStatus.PENDING_SEND
     submission.decided_at = _now()
     submission.decided_by_user_id = user_id
+
+    if reason is not None and reason.strip():
+        session.add(
+            SubmissionNote(
+                org_id=submission.org_id,
+                event_id=submission.event_id,
+                submission_id=submission.id,
+                author_user_id=user_id,
+                body=reason.strip(),
+                decision_outcome=outcome,
+            )
+        )
     await session.flush()
     return submission
 

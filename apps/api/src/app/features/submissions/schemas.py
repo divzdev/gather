@@ -77,11 +77,15 @@ class SubmissionRead(Strict):
 
 class DecisionRequest(Strict):
     outcome: SubmissionStatus
+    #: Why. Recorded as an internal note, never shown to the speaker — what the
+    #: speaker is told is written when the decision email is composed.
+    reason: str | None = Field(default=None, max_length=4000)
 
 
 class BulkDecisionRequest(Strict):
     submission_ids: list[uuid.UUID] = Field(min_length=1, max_length=500)
     outcome: SubmissionStatus
+    reason: str | None = Field(default=None, max_length=4000)
 
 
 class BulkDecisionResponse(Strict):

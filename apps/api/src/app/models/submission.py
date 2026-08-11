@@ -133,3 +133,9 @@ class SubmissionNote(Base, PrimaryKey, Timestamps, EventScoped):
         Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    #: Set when this note is the rationale recorded with a decision, so the
+    #: thread can read "Waitlisted — because…" rather than showing an
+    #: unattached comment. Null for an ordinary note.
+    decision_outcome: Mapped[SubmissionStatus | None] = mapped_column(
+        pg_enum(SubmissionStatus, "submission_status"), nullable=True
+    )

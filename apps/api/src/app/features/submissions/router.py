@@ -108,6 +108,14 @@ async def list_submissions(
         statement = statement.where(Submission.status.in_(statuses))
     if tracks := query.filters.get("track_id"):
         statement = statement.where(Submission.track_id.in_(tracks))
+    if reviewed := query.filters.get("reviewed"):
+        # "Ready to decide" is the one console view that is not a status: in
+        # review *and* somebody has actually scored it. Without this the view
+        # can only be approximated in the browser, which stops being possible
+        # the moment the list is paged.
+        statement = statement.where(
+            Submission.review_count > 0 if reviewed[0] == "true" else Submission.review_count == 0
+        )
     if query.q:
         # Title, code and speaker name — the three things somebody has in front
         # of them when they search. Matching only the title would have been the
@@ -188,7 +196,11 @@ async def decide(
 ) -> SubmissionRead:
     """Records the decision. Sends nothing — that is a separate, confirmed action."""
     submission = await service.decide(
-        session, submission_id=submission_id, outcome=body.outcome, user_id=user.id
+        session,
+        submission_id=submission_id,
+        outcome=body.outcome,
+        user_id=user.id,
+        reason=body.reason,
     )
     return (await _with_speakers(session, [submission]))[0]
 
@@ -215,9 +227,16 @@ async def bulk_decide(
     session: DbSession,
     user: User = Depends(require_role(*DECIDE)),
 ) -> BulkDecisionResponse:
+    # The reason is written against every row, not just the first: a bulk
+    # waitlist is exactly the decision somebody asks about later, and a thread
+    # that is silent on the forty while explaining the one is worse than useless.
     for submission_id in body.submission_ids:
         await service.decide(
-            session, submission_id=submission_id, outcome=body.outcome, user_id=user.id
+            session,
+            submission_id=submission_id,
+            outcome=body.outcome,
+            user_id=user.id,
+            reason=body.reason,
         )
     pending = await session.scalar(
         select(func.count(Submission.id)).where(
@@ -264,6 +283,9 @@ class NoteRead(BaseModel):
     body: str
     author_name: str
     created_at: datetime
+    #: Set when this note is the rationale recorded with a decision, so the
+    #: thread can distinguish "why we waitlisted it" from ordinary commentary.
+    decision_outcome: SubmissionStatus | None = None
 
 
 @router.get("/{submission_id}/notes", response_model=list[NoteRead])
@@ -284,7 +306,13 @@ async def list_notes(
         .all()
     )
     return [
-        NoteRead(id=note.id, body=note.body, author_name=author.name, created_at=note.created_at)
+        NoteRead(
+            id=note.id,
+            body=note.body,
+            author_name=author.name,
+            created_at=note.created_at,
+            decision_outcome=note.decision_outcome,
+        )
         for note, author in rows
     ]
 
