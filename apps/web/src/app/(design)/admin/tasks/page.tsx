@@ -8,7 +8,7 @@ import { stripData, useProgramStats } from "@/components/console/stats";
 import { Tasks, type TasksData } from "@/components/design/Tasks";
 import { FileThreads, type FileThread } from "@/components/FileThreads";
 import { API_BASE_URL } from "@/lib/api";
-import { authed, getToken } from "@/lib/session";
+import { authed, download, getToken } from "@/lib/session";
 
 type Row = {
   id: string;
@@ -327,7 +327,7 @@ export default function TasksPage() {
     })),
   };
 
-  const commentCount = (threads ?? []).reduce((total, thread) => total + thread.comments.length, 0);
+  const fileCount = (threads ?? []).length;
 
   return (
     <>
@@ -355,12 +355,12 @@ export default function TasksPage() {
         }}
       >
         {showComments
-          ? "Close comments"
-          : `File comments${commentCount > 0 ? ` · ${commentCount}` : ""}`}
+          ? "Close files"
+          : `Files${fileCount > 0 ? ` · ${fileCount}` : ""}`}
       </button>
       {showComments ? (
         <aside
-          aria-label="File comments"
+          aria-label="Files"
           style={{
             position: "fixed",
             top: "0",
@@ -383,7 +383,7 @@ export default function TasksPage() {
                 margin: "0 0 4px",
               }}
             >
-              File comments
+              Files
             </h2>
             <p
               style={{
@@ -392,8 +392,9 @@ export default function TasksPage() {
                 margin: "0",
               }}
             >
-              Speakers read these in their portal and can reply. For notes only staff should see,
-              use the submission&rsquo;s internal notes.
+              Every deliverable uploaded to this event, each with its versions and its
+              conversation. Speakers read these comments in their portal and can reply; for notes
+              only staff should see, use the submission&rsquo;s internal notes.
             </p>
           </header>
           <div style={{ flex: "1", overflowY: "auto", padding: "0 18px 72px" }}>
@@ -402,6 +403,11 @@ export default function TasksPage() {
               viewer="staff"
               sending={comment.isPending}
               onSend={(fileId, body) => comment.mutateAsync({ fileId, body })}
+              onDownload={(fileId, filename) => {
+                void download(`/events/${eventId}/files/${fileId}/download`, filename).catch(
+                  (problem: Error) => toast(problem.message),
+                );
+              }}
             />
           </div>
         </aside>

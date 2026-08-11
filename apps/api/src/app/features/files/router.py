@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.deps import DbSession, PortalSpeaker, bind_tenant, require_role
 from app.features.files import comments
-from app.features.files.schemas import CommentCreate, CommentRead, FileThread
+from app.features.files.schemas import CommentCreate, CommentRead, FileThread, FileVersion
 from app.models import CommentAuthorKind, Role, Speaker, User
 
 # Reviewers are deliberately absent: deliverables are post-acceptance work and
@@ -84,17 +84,27 @@ async def add_own_comment(
 
 async def _threads(session: DbSession, *, speaker_id: uuid.UUID | None = None) -> list[FileThread]:
     threads = []
-    for record, task_name, speaker_name in await comments.deliverables(
-        session, speaker_id=speaker_id
-    ):
-        messages = await comments.thread(session, record.version_group_id)
+    for item in await comments.deliverables(session, speaker_id=speaker_id):
+        current = item.current
+        messages = await comments.thread(session, current.version_group_id)
         threads.append(
             FileThread(
-                file_id=record.id,
-                filename=record.filename,
-                version=record.version,
-                task_name=task_name,
-                speaker_name=speaker_name,
+                file_id=current.id,
+                filename=current.filename,
+                version=current.version,
+                task_name=item.task_name,
+                speaker_name=item.speaker_name,
+                versions=[
+                    # `uploaded_at` rather than the row's `created_at`: the name
+                    # an organiser reads should say what the date means.
+                    FileVersion(
+                        id=v.id,
+                        version=v.version,
+                        byte_size=v.byte_size,
+                        uploaded_at=v.created_at,
+                    )
+                    for v in item.versions
+                ],
                 comments=[CommentRead.model_validate(m) for m in messages],
             )
         )

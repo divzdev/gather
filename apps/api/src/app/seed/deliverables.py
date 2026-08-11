@@ -119,6 +119,12 @@ async def fill(session: AsyncSession, event: Event) -> int:
                 content_type="application/pdf",
                 uploaded_by_speaker_id=speaker.id,
             )
+            # Both rows are written in the same second, which makes a version
+            # history that reads as though nothing ever changed. Space them so
+            # the replacement lands just before the speaker says it is up: the
+            # messages below assert that order, and a demo that contradicts its
+            # own story is worse than a bare one.
+            record.created_at = now - timedelta(days=6)
             if replaced:
                 newer = await files.store(
                     session,
@@ -128,6 +134,7 @@ async def fill(session: AsyncSession, event: Event) -> int:
                     version_group_id=record.version_group_id,
                     uploaded_by_speaker_id=speaker.id,
                 )
+                newer.created_at = now - timedelta(days=3) + timedelta(hours=4)
 
         # Ids are explicit because the seed runs with automatic tenancy off.
         links = [record.id, newer.id] if replaced else [record.id]

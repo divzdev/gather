@@ -11,6 +11,7 @@ conversation forward instead of stranding it on the superseded row.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -93,17 +94,35 @@ async def add(
     return comment
 
 
+@dataclass(frozen=True, slots=True)
+class Deliverable:
+    """One logical file: every version of it, plus who and what it answers.
+
+    `versions` is newest first, so `versions[0]` is the current one. Keeping the
+    whole group rather than only the newest is what lets an organiser see that a
+    deck was replaced — and get at the version it replaced.
+    """
+
+    versions: list[File]
+    task_name: str
+    speaker_name: str
+
+    @property
+    def current(self) -> File:
+        return self.versions[0]
+
+
 async def deliverables(
     session: AsyncSession, *, speaker_id: uuid.UUID | None = None
-) -> list[tuple[File, str, str]]:
-    """Deliverables with the newest version of each, as (file, task, speaker).
+) -> list[Deliverable]:
+    """Every deliverable in scope, each with its full version history.
 
     Both sides read this. Passing `speaker_id` is the portal; omitting it is the
     organiser, and the event scope comes from tenancy filtering `SpeakerTask`
     rather than from a predicate here.
 
-    Labelled in one payload on purpose — a speaker is on a phone, and an
-    organiser opening a feedback panel should not pay a request per file.
+    One payload on purpose — a speaker is on a phone, and an organiser opening a
+    files panel should not pay a request per file, nor a second per version.
     """
     query = (
         select(File, TaskTemplate.name, Speaker.name)
@@ -116,7 +135,12 @@ async def deliverables(
     if speaker_id is not None:
         query = query.where(SpeakerTask.speaker_id == speaker_id)
     rows = await session.execute(query)
-    newest: dict[uuid.UUID, tuple[File, str, str]] = {}
+
+    groups: dict[uuid.UUID, Deliverable] = {}
     for record, task_name, speaker_name in rows.tuples():
-        newest.setdefault(record.version_group_id, (record, task_name, speaker_name))
-    return list(newest.values())
+        found = groups.get(record.version_group_id)
+        if found is None:
+            groups[record.version_group_id] = Deliverable([record], task_name, speaker_name)
+        else:
+            found.versions.append(record)
+    return list(groups.values())

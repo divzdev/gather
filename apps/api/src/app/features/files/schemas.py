@@ -33,8 +33,21 @@ class CommentCreate(BaseModel):
         return stripped
 
 
+class FileVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    version: int
+    byte_size: int
+    uploaded_at: datetime
+
+
 class FileThread(BaseModel):
-    """A deliverable and everything said about it, newest version first."""
+    """A deliverable: what it is, every version of it, and the conversation.
+
+    One object because that is how an organiser thinks about it — "Priya's deck"
+    is the versions and the thread together, not three screens.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -43,4 +56,6 @@ class FileThread(BaseModel):
     version: int
     task_name: str
     speaker_name: str
+    #: Newest first; the first entry is the current version.
+    versions: list[FileVersion]
     comments: list[CommentRead]

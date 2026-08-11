@@ -18,14 +18,29 @@ export type FileComment = {
   created_at: string;
 };
 
+export type FileVersion = {
+  id: string;
+  version: number;
+  byte_size: number;
+  uploaded_at: string;
+};
+
 export type FileThread = {
   file_id: string;
   filename: string;
   version: number;
   task_name: string;
   speaker_name: string;
+  /** Newest first; the first entry is the current version. */
+  versions: FileVersion[];
   comments: FileComment[];
 };
+
+function sizeOf(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 const WHEN = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
@@ -39,11 +54,14 @@ export function FileThreads({
   viewer,
   onSend,
   sending,
+  onDownload,
 }: {
   threads: readonly FileThread[];
   viewer: "staff" | "speaker";
   onSend: (fileId: string, body: string) => Promise<unknown>;
   sending: boolean;
+  /** Absent means versions are listed without a download control. */
+  onDownload?: (fileId: string, filename: string) => void;
 }) {
   if (threads.length === 0) {
     return (
@@ -70,6 +88,7 @@ export function FileThreads({
           viewer={viewer}
           onSend={onSend}
           sending={sending}
+          onDownload={onDownload}
         />
       ))}
     </div>
@@ -81,9 +100,11 @@ function Thread({
   viewer,
   onSend,
   sending,
+  onDownload,
 }: {
   thread: FileThread;
   viewer: "staff" | "speaker";
+  onDownload?: (fileId: string, filename: string) => void;
   onSend: (fileId: string, body: string) => Promise<unknown>;
   sending: boolean;
 }) {
@@ -153,6 +174,90 @@ function Thread({
           {thread.filename} · v{thread.version}
         </span>
       </header>
+
+      {/* Nothing is ever overwritten, so "the deck" is a stack. Showing only the
+       *  current one hides both that it was replaced and what it replaced. */}
+      <ul
+        style={{
+          listStyle: "none",
+          margin: "0",
+          padding: "8px 14px",
+          borderBottom: "1px solid var(--ln,#E1E7E9)",
+          background: "var(--pp,#F4F6F7)",
+        }}
+      >
+        <li
+          style={{
+            font: "500 10.5px 'IBM Plex Mono',monospace",
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            color: "var(--i4,#99A6AD)",
+            marginBottom: "4px",
+          }}
+        >
+          {thread.versions.length} version{thread.versions.length === 1 ? "" : "s"}
+        </li>
+        {thread.versions.map((file, index) => (
+          <li
+            key={file.id}
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: "8px",
+              flexWrap: "wrap",
+              padding: "3px 0",
+            }}
+          >
+            <span
+              style={{
+                font: "500 12px 'IBM Plex Mono',monospace",
+                color: index === 0 ? "var(--ik,#16232B)" : "var(--i3,#6B7B84)",
+              }}
+            >
+              v{file.version}
+            </span>
+            {index === 0 ? (
+              <span
+                style={{
+                  font: "500 10px 'IBM Plex Mono',monospace",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  padding: "1px 6px",
+                  borderRadius: "4px",
+                  background: "var(--okw,#E2F1EC)",
+                  color: "var(--ok,#0E7A5F)",
+                }}
+              >
+                Current
+              </span>
+            ) : null}
+            <span
+              style={{
+                font: "400 11.5px 'IBM Plex Sans',sans-serif",
+                color: "var(--i4,#99A6AD)",
+              }}
+            >
+              {WHEN.format(new Date(file.uploaded_at))} · {sizeOf(file.byte_size)}
+            </span>
+            <span style={{ flex: "1" }} />
+            {onDownload === undefined ? null : (
+              <button
+                type="button"
+                onClick={() => onDownload(file.id, thread.filename)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: "0",
+                  font: "500 11.5px 'IBM Plex Sans',sans-serif",
+                  color: "var(--sg,#E04E4E)",
+                }}
+              >
+                Download
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
 
       <ol style={{ listStyle: "none", margin: "0", padding: "0" }}>
         {thread.comments.map((comment) => (

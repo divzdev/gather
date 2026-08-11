@@ -138,6 +138,30 @@ async def test_the_portal_lists_every_thread_in_one_payload(
     assert [c["body"] for c in threads[0]["comments"]] == ["Bump the font."]
 
 
+async def test_a_replaced_file_lists_both_versions_newest_first(
+    client: AsyncClient, onboarding: Onboarding
+) -> None:
+    """The organiser needs to see that a deck was replaced, and reach the one it
+    replaced — a current-version-only list cannot show either."""
+    headers, event, rosa, _tomas, _template = onboarding
+    first = await _upload(client, rosa, event, b"%PDF-1.4 v1")
+    second = await _upload(client, rosa, event, b"%PDF-1.4 v2")
+
+    listed = await client.get(f"/v1/events/{event.id}/file-comments", headers=headers)
+
+    thread = listed.json()[0]
+    assert [v["version"] for v in thread["versions"]] == [2, 1]
+    assert [v["id"] for v in thread["versions"]] == [second, first]
+    assert thread["file_id"] == second, "the thread should hang off the current version"
+    assert all(v["uploaded_at"] for v in thread["versions"])
+    assert all(v["byte_size"] > 0 for v in thread["versions"])
+
+    # ...and the superseded version is still individually downloadable.
+    old = await client.get(f"/v1/events/{event.id}/files/{first}/download", headers=headers)
+    assert old.status_code == 200
+    assert old.content == b"%PDF-1.4 v1"
+
+
 async def test_the_organiser_sees_every_deliverable_not_just_one_speakers(
     client: AsyncClient, onboarding: Onboarding
 ) -> None:
