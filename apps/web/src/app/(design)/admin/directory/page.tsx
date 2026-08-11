@@ -14,7 +14,7 @@ import { useMemo, useRef, useState } from "react";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import { Rail } from "@/components/console/Rail";
 import { useProgramStats } from "@/components/console/stats";
-import { card, EmptyState, PageHead, pill, quietPill, StatTiles } from "@/components/ui";
+import { EmptyState, PAGE_ICON, PageHead, StatTiles, card, pill, quietPill } from "@/components/ui";
 import { API_BASE_URL } from "@/lib/api";
 import { authed, download, getToken } from "@/lib/session";
 
@@ -218,6 +218,7 @@ export default function DirectoryPage() {
         <ConsoleHeader />
         <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px 80px" }}>
           <PageHead
+            icon={PAGE_ICON.directory}
             crumbs={["Speakers", "Across events"]}
             title="Speaker directory"
             summary={`${all.length} people across every event this organisation has run. ${visible.length} shown.`}

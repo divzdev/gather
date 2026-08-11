@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
 import { Settings, type SettingsData } from "@/components/design/Settings";
+import { SETTINGS_ICON } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
 import { ACCENT_NAMES, ACCENTS } from "@/lib/theme";
 import { API_BASE_URL } from "@/lib/api";
@@ -146,11 +147,9 @@ export default function SettingsPage() {
   const whenComplete = (value: string, build: (value: string) => Record<string, unknown>) =>
     /^\d{4}-\d{2}-\d{2}$/.test(value) ? build(value) : null;
 
-  const publicUrl =
-    event === undefined ? "" : `${window.location.origin}/e/${event.slug}`;
+  const publicUrl = event === undefined ? "" : `${window.location.origin}/e/${event.slug}`;
 
   const screen: SettingsData = {
-
     panels: PANELS.map((entry) => {
       const active = panel === entry.key;
       return {
@@ -189,11 +188,7 @@ export default function SettingsPage() {
     ),
 
     // The design has no save button; text fields commit when they lose focus.
-    stamp: save.isPending
-      ? "Saving…"
-      : event === undefined
-        ? "Loading"
-        : `Editing ${event.name}`,
+    stamp: save.isPending ? "Saving…" : event === undefined ? "Loading" : `Editing ${event.name}`,
 
     copyUrl: () => {
       void navigator.clipboard.writeText(publicUrl);
@@ -243,6 +238,12 @@ export default function SettingsPage() {
       toast("Copied the API base URL.");
     },
     testHook: () => toast("Outbound webhooks are not part of this build."),
+
+    // A mark per panel, matching the tile every other console head now carries.
+    iEvent: SETTINGS_ICON.event,
+    iBrand: SETTINGS_ICON.brand,
+    iEmail: SETTINGS_ICON.email,
+    iInteg: SETTINGS_ICON.integrations,
 
     toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),
   };

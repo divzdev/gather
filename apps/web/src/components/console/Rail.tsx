@@ -82,11 +82,24 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     display: value === 0 ? "none" : "inline-block",
   });
   const submissions = badge(stats.total);
-  const sessions = badge(stats.accepted);
+  // Sessions in the programme, not accepted submissions. An accepted proposal
+  // is not a session until somebody promotes it, so this badge read 62 under a
+  // "Sessions" label on an event with 61 sessions — right about a number nobody
+  // asked for.
+  const sessions = badge(stats.sessions);
   const review = badge(stats.unreviewed);
   // The conflict count is the number the customer complained the incumbent hides
   // until you reload, so it belongs where it is visible from every screen.
+  //
+  // Hard conflicts only — room and speaker double-bookings. The agenda lists all
+  // three classes including soft track collisions, which organisers often create
+  // on purpose, so the two numbers differ by design and the badge says which it
+  // means rather than leaving the reader to guess.
   const conflicts = badge(stats.conflicts);
+  const conflictLabel =
+    stats.conflictsAll > stats.conflicts
+      ? `${stats.conflicts} to resolve · ${stats.conflictsAll - stats.conflicts} track overlap${stats.conflictsAll - stats.conflicts === 1 ? "" : "s"} allowed`
+      : `${stats.conflicts} to resolve`;
   const overdue = badge(stats.overdueTasks);
 
   const item = (name: NavName) =>
@@ -94,10 +107,13 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
       ? {
           bg: "var(--sw,#FFEAE6)",
           fg: "var(--sg,#E04E4E)",
-          wt: "600",
+          wt: "700",
           dot: collapsed ? "none" : "inline-block",
+          // Unlike the dot, the bar survives collapsing: it is the only thing
+          // left saying where you are once the labels go.
+          bar: "block",
         }
-      : { bg: "none", fg: "var(--i2,#3E4E58)", wt: "500", dot: "none" };
+      : { bg: "none", fg: "var(--i2,#3E4E58)", wt: "600", dot: "none", bar: "none" };
 
   const data: ConsoleRailData = {
     youInitials: initials,
@@ -128,13 +144,14 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     rvBadgeD: review.display,
     agBadge: conflicts.text,
     agBadgeD: conflicts.display,
+    agBadgeTitle: conflictLabel,
     tkBadge: overdue.text,
     tkBadgeD: overdue.display,
     exp: !collapsed,
     col: collapsed,
-    railW: collapsed ? "64px" : "216px",
-    navPad: collapsed ? "4px 12px 14px" : "4px 10px 14px",
-    iPad: collapsed ? "0" : "0 13px",
+    railW: collapsed ? "64px" : "256px",
+    navPad: collapsed ? "4px 12px 14px" : "4px 12px 16px",
+    iPad: collapsed ? "0" : "0 12px",
     iJus: collapsed ? "center" : "flex-start",
     lblD: collapsed ? "none" : "flex",
     eyeD: collapsed ? "none" : "block",

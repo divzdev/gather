@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Rail } from "@/components/console/Rail";
-import { card, PageHead, pill } from "@/components/ui";
+import { PAGE_ICON, PageHead, card, pill } from "@/components/ui";
 import { authed } from "@/lib/session";
 
 type Me = {
@@ -77,7 +77,11 @@ export default function ProfilePage() {
       <Rail active="Settings" style={{ height: "100%", minHeight: 0 }} />
       <div style={{ overflowY: "auto", background: "var(--pp)" }}>
         <div style={{ padding: "20px 28px 80px", maxWidth: 640 }}>
-          <PageHead title="Your profile" summary="How you appear to the rest of the team." />
+          <PageHead
+            icon={PAGE_ICON.profile}
+            title="Your profile"
+            summary="How you appear to the rest of the team."
+          />
 
           <div style={{ ...card, padding: 20, display: "grid", gap: 16 }}>
             {field(

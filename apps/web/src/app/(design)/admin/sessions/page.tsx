@@ -5,7 +5,9 @@ import { useMemo, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
+import { SideDrawer } from "@/components/console/SideDrawer";
 import { Sessions, type SessionsData } from "@/components/design/Sessions";
+import { Pager, pill, quietPill } from "@/components/ui";
 import { authed, download } from "@/lib/session";
 
 type SessionRow = {
@@ -79,6 +81,18 @@ const WHEN = new Intl.DateTimeFormat("en-GB", {
   minute: "2-digit",
 });
 
+const fieldLabel = { font: "600 12.5px var(--font-plex-sans)", color: "var(--ik)" } as const;
+
+const fieldInput = {
+  height: 38,
+  padding: "0 12px",
+  borderRadius: 9,
+  border: "1px solid var(--ls)",
+  background: "var(--cd)",
+  color: "var(--ik)",
+  font: "400 13.5px var(--font-plex-sans)",
+} as const;
+
 export default function SessionsPage() {
   const { toasts, toast, dismiss } = useConsoleChrome();
   const { stats, eventId } = useProgramStats();
@@ -89,6 +103,8 @@ export default function SessionsPage() {
   const [trackFilter, setTrackFilter] = useState<string[]>([]);
   const [formatFilter, setFormatFilter] = useState<string[]>([]);
   const [filterPop, setFilterPop] = useState(false);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [openId, setOpenId] = useState<string | null>(null);
   const [tab, setTab] = useState<"detail" | "participants">("detail");
   const [sortKey, setSortKey] = useState<SortKey>("title");
@@ -103,6 +119,14 @@ export default function SessionsPage() {
    *  Edits are held here until Save, so typing never round-trips and closing
    *  without saving throws them away, which is what a drawer implies. */
   const [edits, setEdits] = useState<Record<string, unknown>>({});
+  const [adding, setAdding] = useState(false);
+  const [newSession, setNewSession] = useState({
+    title: "",
+    track_id: "",
+    session_format_id: "",
+    duration_minutes: "30",
+  });
+  const [addError, setAddError] = useState<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ["sessions", eventId],
@@ -110,13 +134,51 @@ export default function SessionsPage() {
     queryFn: async () => {
       const [sessions, tracks, formats, rooms] = await Promise.all([
         authed<SessionRow[]>(`/events/${eventId}/sessions`),
-        authed<{ data: Named[] }>(`/events/${eventId}/tracks?per_page=100`),
-        authed<{ data: Named[] }>(`/events/${eventId}/session-formats?per_page=100`),
-        authed<{ data: Named[] }>(`/events/${eventId}/rooms?per_page=100`),
+        authed<Named[]>(`/events/${eventId}/tracks?per_page=100`),
+        authed<Named[]>(`/events/${eventId}/session-formats?per_page=100`),
+        authed<Named[]>(`/events/${eventId}/rooms?per_page=100`),
       ]);
-      return { sessions, tracks: tracks.data, formats: formats.data, rooms: rooms.data };
+      return { sessions, tracks, formats, rooms };
     },
   });
+
+  /** A session with no proposal behind it. Keynotes and invited talks never go
+   *  through the CFP, so promotion cannot be the only way one comes into being —
+   *  and this library is the first place somebody looks for it. Creating is not
+   *  placing: it lands in the unscheduled tray for the agenda to position. */
+  const createSession = useMutation({
+    mutationFn: () =>
+      authed(`/events/${eventId}/sessions`, {
+        method: "POST",
+        body: {
+          title: newSession.title.trim(),
+          duration_minutes: Number(newSession.duration_minutes),
+          ...(newSession.track_id === "" ? {} : { track_id: newSession.track_id }),
+          ...(newSession.session_format_id === ""
+            ? {}
+            : { session_format_id: newSession.session_format_id }),
+        },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["sessions", eventId] });
+      void queryClient.invalidateQueries({ queryKey: ["program-stats", eventId] });
+      toast(`“${newSession.title.trim()}” is in the library, waiting for a slot on the agenda.`);
+      setNewSession({ title: "", track_id: "", session_format_id: "", duration_minutes: "30" });
+      setAddError(null);
+      setAdding(false);
+    },
+    onError: (error: Error) => setAddError(error.message),
+  });
+
+  const submitSession = () => {
+    if (newSession.title.trim() === "") return setAddError("A session needs a title.");
+    const minutes = Number(newSession.duration_minutes);
+    if (!Number.isFinite(minutes) || minutes < 5 || minutes > 600) {
+      return setAddError("Duration must be between 5 and 600 minutes.");
+    }
+    setAddError(null);
+    return createSession.mutate();
+  };
 
   const approve = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -190,14 +252,8 @@ export default function SessionsPage() {
   });
 
   const all = useMemo(() => data?.sessions ?? [], [data]);
-  const trackById = useMemo(
-    () => new Map((data?.tracks ?? []).map((t) => [t.id, t])),
-    [data],
-  );
-  const formatById = useMemo(
-    () => new Map((data?.formats ?? []).map((f) => [f.id, f])),
-    [data],
-  );
+  const trackById = useMemo(() => new Map((data?.tracks ?? []).map((t) => [t.id, t])), [data]);
+  const formatById = useMemo(() => new Map((data?.formats ?? []).map((f) => [f.id, f])), [data]);
   const roomById = useMemo(() => new Map((data?.rooms ?? []).map((r) => [r.id, r])), [data]);
 
   const trackName = (row: SessionRow) =>
@@ -250,9 +306,19 @@ export default function SessionsPage() {
     ck: on ? "✓" : "",
     ckBg: on ? "var(--sg,#E04E4E)" : "var(--cd,#FFFFFF)",
   });
+  /** The endpoint returns the whole programme, so this pages what is already
+   *  in hand. A hundred and twenty-one rows is not a list anybody scrolls. */
+  const pageRows = filtered.slice((page - 1) * perPage, page * perPage);
+
+  /** Changing what is being looked at returns you to its first page. */
+  const refilter = (change: () => void) => {
+    change();
+    setPage(1);
+  };
+
   const tile = (name: View) => ({
     c: counts[name],
-    on: () => setView(name),
+    on: () => refilter(() => setView(name)),
     bd: view === name ? "var(--sg,#E04E4E)" : "var(--ln,#E1E7E9)",
     ring: view === name ? "0 0 0 3px var(--sw,#FFEAE6)" : "0 1px 2px rgba(13,16,32,.04)",
     numFg: view === name ? "var(--sg,#E04E4E)" : "var(--ik,#16232B)",
@@ -302,7 +368,7 @@ export default function SessionsPage() {
     ...stripData(stats),
     total: all.length,
 
-    rows: filtered.map((row) => ({
+    rows: pageRows.map((row) => ({
       id: row.slug.slice(-6).toUpperCase(),
       t: row.title,
       sp: row.speakers.map((speaker) => speaker.name).join(", ") || "No speaker yet",
@@ -331,13 +397,26 @@ export default function SessionsPage() {
     tPe: tile("Needs approval"),
 
     q: query,
-    onQ: (event: React.SyntheticEvent) => setQuery((event.target as HTMLInputElement).value),
-    countLine: `${filtered.length} of ${all.length} sessions`,
+    onQ: (event: React.SyntheticEvent) =>
+      refilter(() => setQuery((event.target as HTMLInputElement).value)),
+    // The pager already says "1 — 25 of 121". What it cannot say is what the
+    // filter removed, which is the number somebody is checking for.
+    countLine: filtered.length === all.length ? "" : `filtered from ${all.length}`,
+    pager: (
+      <Pager
+        page={page}
+        perPage={perPage}
+        total={filtered.length}
+        noun="sessions"
+        onPage={setPage}
+        onPerPage={(next) => refilter(() => setPerPage(next))}
+      />
+    ),
     sumLine: `${counts.Scheduled} placed · ${counts.Unscheduled} still to schedule · ${counts["Needs approval"]} awaiting approval`,
     schedN: counts.Scheduled,
     // The filtered length, not the whole list: filtering to nothing used to
     // render a blank table with no explanation and no way back.
-    empty: filtered.length === 0,
+    empty: pageRows.length === 0,
 
     soTitle: sorter("title"),
     soCode: sorter("code"),
@@ -386,7 +465,10 @@ export default function SessionsPage() {
       setEdits({});
     },
     isEdit: false,
-    openNew: notBuilt("Creating an invited session"),
+    // Was a toast saying this was not built, on a button that has been on
+    // screen the whole time. `POST /events/:id/sessions` exists; the screen
+    // simply never called it.
+    openNew: () => setAdding(true),
     dTitle: open?.title ?? "",
     dStamp:
       open === null
@@ -603,6 +685,121 @@ export default function SessionsPage() {
   return (
     <>
       <Sessions d={screen} />
+      <SideDrawer
+        open={adding}
+        title="Add a session"
+        subtitle="For a talk with no proposal behind it — a keynote, an invited speaker, a sponsor slot. It joins the library unscheduled; the agenda is where it gets a room and a time."
+        onClose={() => setAdding(false)}
+        footer={
+          <>
+            <button type="button" style={quietPill} onClick={() => setAdding(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              style={{ ...pill, opacity: createSession.isPending ? 0.6 : 1 }}
+              disabled={createSession.isPending}
+              onClick={submitSession}
+            >
+              {createSession.isPending ? "Adding…" : "Add session"}
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="session-title" style={fieldLabel}>
+              Title
+            </label>
+            <input
+              id="session-title"
+              value={newSession.title}
+              onChange={(event) =>
+                setNewSession((current) => ({ ...current, title: event.target.value }))
+              }
+              style={fieldInput}
+            />
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="session-track" style={fieldLabel}>
+              Track
+            </label>
+            <select
+              id="session-track"
+              value={newSession.track_id}
+              onChange={(event) =>
+                setNewSession((current) => ({ ...current, track_id: event.target.value }))
+              }
+              style={fieldInput}
+            >
+              <option value="">No track</option>
+              {(data?.tracks ?? []).map((track) => (
+                <option key={track.id} value={track.id}>
+                  {track.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="session-format" style={fieldLabel}>
+              Format
+            </label>
+            <select
+              id="session-format"
+              value={newSession.session_format_id}
+              onChange={(event) =>
+                setNewSession((current) => ({
+                  ...current,
+                  session_format_id: event.target.value,
+                }))
+              }
+              style={fieldInput}
+            >
+              <option value="">No format</option>
+              {(data?.formats ?? []).map((format) => (
+                <option key={format.id} value={format.id}>
+                  {format.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="session-duration" style={fieldLabel}>
+              Duration in minutes
+            </label>
+            <input
+              id="session-duration"
+              type="number"
+              min={5}
+              max={600}
+              value={newSession.duration_minutes}
+              onChange={(event) =>
+                setNewSession((current) => ({
+                  ...current,
+                  duration_minutes: event.target.value,
+                }))
+              }
+              style={fieldInput}
+            />
+            <span style={{ font: "400 11.5px var(--font-plex-sans)", color: "var(--i4)" }}>
+              How much of the grid it takes up. The format&rsquo;s default is a starting point, not
+              a rule.
+            </span>
+          </div>
+
+          {addError === null ? null : (
+            <p
+              role="alert"
+              style={{ font: "500 12.5px var(--font-plex-sans)", color: "var(--cn)", margin: 0 }}
+            >
+              {addError}
+            </p>
+          )}
+        </div>
+      </SideDrawer>
       {bulk === null ? null : (
         <BulkDialog
           field={bulk}

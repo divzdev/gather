@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { useProgramStats } from "@/components/console/stats";
-import { PageHead } from "@/components/ui";
+import { PAGE_ICON, PageHead } from "@/components/ui";
 import { authed } from "@/lib/session";
 
 import { ProgramShell, SECTIONS } from "./shell";
@@ -59,6 +59,7 @@ export default function ProgramOverviewPage() {
     <ProgramShell>
       <div style={{ padding: "20px 28px 80px" }}>
         <PageHead
+          icon={PAGE_ICON.program}
           crumbs={["Program", "Setup"]}
           title="Program setup"
           summary="The agenda is drawn from these. Until they exist there is nothing to drag a session onto."

@@ -98,6 +98,29 @@ export async function authed<T>(
   }
 }
 
+/** An authenticated file as an object URL, for showing rather than saving.
+ *
+ *  An `<img src>` cannot carry the bearer token, so a headshot pointed straight
+ *  at the download route renders as a broken image — the request comes back 401
+ *  and the tag has no way to say so. Fetching the bytes first is the only way to
+ *  put an authenticated image on screen.
+ */
+export async function blobUrl(path: string): Promise<string> {
+  const request = (token: string | null): Promise<Response> =>
+    fetch(`${API_BASE_URL}${path}`, {
+      credentials: "include",
+      headers: token === null ? {} : { Authorization: `Bearer ${token}` },
+    });
+
+  let response = await request(getToken());
+  if (response.status === 401) {
+    const token = await refreshAccessToken();
+    if (token !== null) response = await request(token);
+  }
+  if (!response.ok) throw new Error("That image could not be loaded.");
+  return URL.createObjectURL(await response.blob());
+}
+
 /** Download a file from an authenticated endpoint.
  *
  *  `window.open` cannot carry the bearer token, so every export that reached for
@@ -134,8 +157,7 @@ export async function download(
   }
   if (!response.ok) {
     const body = (await response.json().catch(() => undefined)) as
-      | { error?: { message?: string } }
-      | undefined;
+      { error?: { message?: string } } | undefined;
     throw new Error(body?.error?.message ?? `Could not build ${filename}.`);
   }
 

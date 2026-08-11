@@ -22,6 +22,18 @@ type Event = {
 type Conflict = { severity: string; label: string; detail?: string | null };
 type TaskRow = { status: string };
 
+/** Every status the lifecycle has, so a count can never quietly omit one. */
+export const STATUSES = [
+  "draft",
+  "submitted",
+  "in_review",
+  "accepted",
+  "waitlisted",
+  "rejected",
+  "withdrawn",
+] as const;
+export type SubmissionStatus = (typeof STATUSES)[number];
+
 export type ProgramStats = {
   total: number;
   unreviewed: number;
@@ -29,15 +41,30 @@ export type ProgramStats = {
   accepted: number;
   drafts: number;
   pendingSend: number;
+  //: One entry per status, counted by the database rather than by whatever
+  //: subset of rows the client happened to fetch.
+  byStatus: Record<SubmissionStatus, number>;
+  //: In review and actually scored — the only console view that is not a
+  //: status, so it is the only one that needs its own count.
+  readyToDecide: number;
   cfpDays: number | null;
+  //: Sessions in the programme. Not the same as accepted submissions — an
+  //: accepted proposal is not a session until somebody promotes it, and the
+  //: rail badge sat under a "Sessions" label reading the submission count.
+  sessions: number;
+  //: Hard conflicts only: room and speaker double-bookings, the ones that must
+  //: be resolved. Track collisions are frequently deliberate.
   conflicts: number;
+  //: Every class, which is what the agenda's own list shows. Two numbers under
+  //: one word was the bug; two numbers that each say what they count is not.
+  conflictsAll: number;
   //: The few worth naming on Overview, not just the count.
   conflictList: { label: string; detail: string }[];
   overdueTasks: number;
   event: Event | null;
 };
 
-const DECIDED = new Set(["accepted", "waitlisted", "rejected"]);
+const DECIDED_STATUSES = ["accepted", "waitlisted", "rejected"] as const;
 
 export function useProgramStats(): { stats: ProgramStats; eventId: string | null } {
   const stored = typeof window === "undefined" ? null : getEventId();
@@ -71,22 +98,49 @@ export function useProgramStats(): { stats: ProgramStats; eventId: string | null
     queryFn: async () => {
       // A reviewer can read submissions but not the agenda or the task board, so
       // each badge source falls back to empty rather than failing the whole rail.
-      const [page, event, conflicts, tasks] = await Promise.all([
-        authed<Page>(`/events/${eventId}/submissions?per_page=200`),
+      // Counted per status by the API, not derived from a page of rows. These
+      // numbers drive the rail badges and the Overview pulse, and they used to
+      // be computed from the first 200 submissions — so on a 608-row event
+      // every one of them silently stopped at 200.
+      const counts = Promise.all(
+        STATUSES.map(async (status) => {
+          const slice = await authed<Page>(
+            `/events/${eventId}/submissions?per_page=1&filter[status]=${status}`,
+          );
+          return [status, slice.meta.total] as const;
+        }),
+      );
+      const [page, event, conflicts, sessions, tasks, byStatusPairs, pending, ready] =
+        await Promise.all([
+        authed<Page>(`/events/${eventId}/submissions?per_page=1`),
         authed<Event>(`/events/${eventId}`),
         authed<Conflict[]>(`/events/${eventId}/conflicts`).catch(() => [] as Conflict[]),
+        authed<{ id: string }[]>(`/events/${eventId}/sessions`).catch(() => [] as { id: string }[]),
         authed<TaskRow[]>(`/events/${eventId}/tasks/summary`).catch(() => [] as TaskRow[]),
+        counts,
+        authed<{ total: number }>(`/events/${eventId}/submissions/pending-decisions`).catch(() => ({
+          total: 0,
+        })),
+        authed<Page>(
+          `/events/${eventId}/submissions?per_page=1&filter[status]=in_review&filter[reviewed]=true`,
+        ),
       ]);
       // Computed here rather than in render: the countdown reads the clock, and
       // an impure read during render is a re-render hazard.
-      const closesAt = event.cfp_closes_at === null ? null : new Date(event.cfp_closes_at).getTime();
+      const closesAt =
+        event.cfp_closes_at === null ? null : new Date(event.cfp_closes_at).getTime();
       const cfpDays =
         closesAt === null ? null : Math.max(0, Math.ceil((closesAt - Date.now()) / 86_400_000));
       return {
         page,
         event,
+        byStatus: Object.fromEntries(byStatusPairs) as Record<SubmissionStatus, number>,
+        readyToDecide: ready.meta.total,
+        pendingSend: pending.total,
         cfpDays,
+        sessions: sessions.length,
         conflicts: conflicts.filter((row) => row.severity === "hard").length,
+        conflictsAll: conflicts.length,
         conflictList: conflicts.slice(0, 3).map((row) => ({
           label: row.label,
           detail: row.detail ?? row.label,
@@ -96,19 +150,28 @@ export function useProgramStats(): { stats: ProgramStats; eventId: string | null
     },
   });
 
-  const rows = data?.page.data ?? [];
+  const empty = Object.fromEntries(STATUSES.map((s) => [s, 0])) as Record<SubmissionStatus, number>;
+  const byStatus = data?.byStatus ?? empty;
+  const decided = DECIDED_STATUSES.reduce((sum, status) => sum + byStatus[status], 0);
 
   return {
     eventId,
     stats: {
       total: data?.page.meta.total ?? 0,
-      unreviewed: rows.filter((row) => row.status === "submitted").length,
-      decided: rows.filter((row) => DECIDED.has(row.status)).length,
-      accepted: rows.filter((row) => row.status === "accepted").length,
-      drafts: rows.filter((row) => row.status === "draft").length,
-      pendingSend: rows.filter((row) => row.decision_status === "pending_send").length,
+      unreviewed: byStatus.submitted,
+      decided,
+      accepted: byStatus.accepted,
+      drafts: byStatus.draft,
+      byStatus,
+      readyToDecide: data?.readyToDecide ?? 0,
+      //: The only figure still read off a page of rows. `decision_status` is not
+      //: a status filter, so there is nothing to count it by yet; Overview reads
+      //: the real number from /submissions/pending-decisions.
+      pendingSend: data?.pendingSend ?? 0,
       cfpDays: data?.cfpDays ?? null,
+      sessions: data?.sessions ?? 0,
       conflicts: data?.conflicts ?? 0,
+      conflictsAll: data?.conflictsAll ?? 0,
       conflictList: data?.conflictList ?? [],
       overdueTasks: data?.overdueTasks ?? 0,
       event: data?.event ?? null,

@@ -10,9 +10,8 @@
 import { notFound, useParams } from "next/navigation";
 
 import { useProgramStats } from "@/components/console/stats";
-import { PageHead } from "@/components/ui";
 
-import { List, PANELS } from "../panels";
+import { PANELS, ProgramSection } from "../panels";
 import { ProgramShell, SECTIONS } from "../shell";
 
 export default function ProgramSectionPage() {
@@ -26,12 +25,11 @@ export default function ProgramSectionPage() {
   return (
     <ProgramShell>
       <div style={{ padding: "20px 28px 80px" }}>
-        <PageHead
+        <ProgramSection
+          panel={panel}
           crumbs={["Program", "Setup", section.label]}
-          title={section.label}
-          summary={section.blurb}
+          eventId={eventId}
         />
-        <List panel={panel} eventId={eventId} />
       </div>
     </ProgramShell>
   );
