@@ -187,3 +187,178 @@ async def test_unknown_fields_are_rejected(
     )
 
     assert response.status_code == 422
+
+
+async def _placed_session(
+    client: AsyncClient, headers: dict[str, str], event: Event, *, day: str = "2027-05-12"
+) -> tuple[str, str, str]:
+    """A session on a day, in a room, at a time — the shape every cascade acts on."""
+    room_id = (
+        await client.post(f"/v1/events/{event.id}/rooms", json={"name": "Hall"}, headers=headers)
+    ).json()["id"]
+    day_id = (
+        await client.post(
+            f"/v1/events/{event.id}/days",
+            json={"day_date": day, "starts_at_local": "09:00", "ends_at_local": "18:00"},
+            headers=headers,
+        )
+    ).json()["id"]
+    session_id = (
+        await client.post(
+            f"/v1/events/{event.id}/sessions", json={"title": "Keynote"}, headers=headers
+        )
+    ).json()["id"]
+    placed = await client.patch(
+        f"/v1/events/{event.id}/sessions/{session_id}/placement",
+        json={
+            "event_day_id": day_id,
+            "room_id": room_id,
+            "starts_at": f"{day}T09:00:00Z",
+        },
+        headers=headers,
+    )
+    assert placed.status_code == 200, placed.text
+    return day_id, room_id, session_id
+
+
+async def test_deleting_a_day_with_sessions_on_it_is_refused(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    """Days had no guard at all.
+
+    `sessions.event_day_id` is SET NULL while the time, the room and the
+    scheduled status stay, so the session became undrawable: not on any day's
+    tab, and not in the tray either.
+    """
+    headers, event = coordinator
+    day_id, _room_id, session_id = await _placed_session(client, headers, event)
+
+    refused = await client.delete(f"/v1/events/{event.id}/days/{day_id}", headers=headers)
+
+    assert refused.status_code == 409
+    assert refused.json()["error"]["code"] == "CONFLICT"
+    assert "1 session" in refused.json()["error"]["message"]
+
+    still_there = await client.get(f"/v1/events/{event.id}/sessions", headers=headers)
+    placed = next(row for row in still_there.json() if row["id"] == session_id)
+    assert placed["event_day_id"] == day_id
+
+
+async def test_deleting_a_room_in_use_names_what_is_in_it(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    headers, event = coordinator
+    _day_id, room_id, _session_id = await _placed_session(client, headers, event)
+
+    refused = await client.delete(f"/v1/events/{event.id}/rooms/{room_id}", headers=headers)
+
+    assert refused.status_code == 409
+    # The old message said "still use this" for every resource; a room holding a
+    # session and a room holding a break are different problems to fix.
+    assert "in this room" in refused.json()["error"]["message"]
+
+
+async def test_a_day_that_moves_takes_its_sessions_with_it(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    """`starts_at` is absolute UTC and does not follow the day row.
+
+    Editing the date without shifting them left every talk sitting on the old
+    date, still marked scheduled, invisible on the tab it belonged to.
+    """
+    headers, event = coordinator
+    day_id, _room_id, session_id = await _placed_session(client, headers, event)
+
+    moved = await client.patch(
+        f"/v1/events/{event.id}/days/{day_id}", json={"day_date": "2027-05-14"}, headers=headers
+    )
+    assert moved.status_code == 200
+
+    listing = await client.get(f"/v1/events/{event.id}/sessions", headers=headers)
+    row = next(entry for entry in listing.json() if entry["id"] == session_id)
+    assert row["starts_at"].startswith("2027-05-14T09:00")
+
+
+async def test_editing_a_day_without_moving_it_leaves_sessions_alone(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    headers, event = coordinator
+    day_id, _room_id, session_id = await _placed_session(client, headers, event)
+
+    renamed = await client.patch(
+        f"/v1/events/{event.id}/days/{day_id}", json={"label": "Workshop day"}, headers=headers
+    )
+    assert renamed.status_code == 200
+
+    listing = await client.get(f"/v1/events/{event.id}/sessions", headers=headers)
+    row = next(entry for entry in listing.json() if entry["id"] == session_id)
+    assert row["starts_at"].startswith("2027-05-12T09:00")
+
+
+async def test_an_unused_day_still_deletes(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    """The guard refuses what is in use and nothing else."""
+    headers, event = coordinator
+    day_id = (
+        await client.post(
+            f"/v1/events/{event.id}/days",
+            json={"day_date": "2027-05-13", "starts_at_local": "09:00", "ends_at_local": "18:00"},
+            headers=headers,
+        )
+    ).json()["id"]
+
+    assert (
+        await client.delete(f"/v1/events/{event.id}/days/{day_id}", headers=headers)
+    ).status_code == 204
+
+
+async def test_every_row_carries_what_it_would_cost_to_remove(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    """The count is the warning. The 409 is enforcement, and it arrives too late
+    to be one — a screen has to be able to say "2 sessions" beside the button."""
+    headers, event = coordinator
+    day_id, room_id, _session_id = await _placed_session(client, headers, event)
+
+    days = (await client.get(f"/v1/events/{event.id}/days", headers=headers)).json()
+    rooms = (await client.get(f"/v1/events/{event.id}/rooms", headers=headers)).json()
+
+    assert next(row for row in days if row["id"] == day_id)["session_count"] == 1
+    assert next(row for row in rooms if row["id"] == room_id)["session_count"] == 1
+
+    spare = await client.post(
+        f"/v1/events/{event.id}/rooms", json={"name": "Empty room"}, headers=headers
+    )
+    assert spare.json()["session_count"] == 0
+
+    # The edit reports what it touched: moving a day returns the count of what
+    # moved with it, so a screen can confirm rather than predict.
+    moved = await client.patch(
+        f"/v1/events/{event.id}/days/{day_id}", json={"day_date": "2027-05-15"}, headers=headers
+    )
+    assert moved.json()["session_count"] == 1
+
+
+async def test_a_day_cannot_be_edited_to_end_before_it_starts(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    """A one-sided edit: only the start moves, and it lands after the stored end."""
+    headers, event = coordinator
+    day_id = (
+        await client.post(
+            f"/v1/events/{event.id}/days",
+            json={"day_date": "2027-05-12", "starts_at_local": "09:00", "ends_at_local": "18:00"},
+            headers=headers,
+        )
+    ).json()["id"]
+
+    refused = await client.patch(
+        f"/v1/events/{event.id}/days/{day_id}", json={"starts_at_local": "19:00"}, headers=headers
+    )
+
+    assert refused.status_code == 422
+    assert refused.json()["error"]["code"] == "VALIDATION_FAILED"
+
+    unchanged = (await client.get(f"/v1/events/{event.id}/days/{day_id}", headers=headers)).json()
+    assert unchanged["starts_at_local"] == "09:00:00"

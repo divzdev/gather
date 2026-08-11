@@ -13,6 +13,11 @@ class Strict(BaseModel):
 class Read(BaseModel):
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 
+    #: How many sessions point at this row. Present on every program resource so
+    #: a screen can say what removing it would cost *before* it is clicked —
+    #: the delete guard refuses afterwards, which is enforcement, not a warning.
+    session_count: int = 0
+
 
 # --- tracks ------------------------------------------------------------------
 
@@ -118,6 +123,15 @@ class EventDayUpdate(Strict):
     ends_at_local: time | None = None
     label: str | None = Field(default=None, max_length=100)
     sort_order: int | None = None
+
+    @model_validator(mode="after")
+    def _ordered(self) -> EventDayUpdate:
+        """Only when the edit carries both. One-sided edits are checked against
+        the stored row in the router, where the other half is known."""
+        both = self.starts_at_local is not None and self.ends_at_local is not None
+        if both and self.starts_at_local >= self.ends_at_local:  # type: ignore[operator]
+            raise ValueError("starts_at_local must be before ends_at_local")
+        return self
 
 
 class EventDayRead(Read):
