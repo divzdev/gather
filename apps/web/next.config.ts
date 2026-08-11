@@ -6,6 +6,11 @@ const API_ORIGIN = process.env.API_ORIGIN ?? "http://127.0.0.1:8051";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // The E2E stack runs a second dev server against its own database. Next
+  // refuses to start two for one project — it finds the first through its build
+  // directory — so the isolated one is given a directory of its own rather than
+  // the suite being pointed back at the developer's server and its data.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // Standalone output keeps the deploy image small.
   output: "standalone",
   typedRoutes: true,
