@@ -23,6 +23,9 @@ type SessionRow = {
   is_locked: boolean;
   status: string;
   content_status: string;
+  tags: string[];
+  expertise_level: string | null;
+  language: string | null;
   speakers: { id: string; name: string; role: string }[];
 };
 type Named = { id: string; name: string; hue_index?: number };
@@ -96,6 +99,10 @@ export default function SessionsPage() {
   const [impRaw, setImpRaw] = useState("");
   const [impErr, setImpErr] = useState("");
   const [bulk, setBulk] = useState<BulkField | null>(null);
+  /** The drawer's fields were all inert — every one of them raised "not built".
+   *  Edits are held here until Save, so typing never round-trips and closing
+   *  without saving throws them away, which is what a drawer implies. */
+  const [edits, setEdits] = useState<Record<string, unknown>>({});
 
   const { data } = useQuery({
     queryKey: ["sessions", eventId],
@@ -120,6 +127,18 @@ export default function SessionsPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["sessions", eventId] });
       toast("Content approval updated. Only approved content reaches the public site.");
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  const patch = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
+      authed(`/events/${eventId}/sessions/${id}`, { method: "PATCH", body }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["sessions", eventId] });
+      void queryClient.invalidateQueries({ queryKey: ["agenda", eventId] });
+      setEdits({});
+      toast("Saved.");
     },
     onError: (error: Error) => toast(error.message),
   });
@@ -253,6 +272,32 @@ export default function SessionsPage() {
   const notBuilt = (what: string) => () => toast(`${what} is not built yet.`);
   const impPreview = useMemo(() => previewRows(impRaw), [impRaw]);
 
+  const dirty = Object.keys(edits).length > 0;
+
+  /** What the field shows: the unsaved edit if there is one, else the record. */
+  const field = (key: string, saved: string): string =>
+    key in edits ? String(edits[key] ?? "") : saved;
+
+  const edit =
+    (key: string, parse: (value: string) => unknown) => (event: React.SyntheticEvent) => {
+      const value = (event.target as HTMLInputElement | HTMLSelectElement).value;
+      setEdits((current) => ({ ...current, [key]: parse(value) }));
+    };
+
+  const tagText = "tags" in edits ? String(edits.tags ?? "") : (open?.tags ?? []).join(", ");
+
+  /** The wire shape. Only `tags` differs from what the drawer holds. */
+  const patchBody = (): Record<string, unknown> =>
+    "tags" in edits
+      ? {
+          ...edits,
+          tags: String(edits.tags ?? "")
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean),
+        }
+      : edits;
+
   const screen: SessionsData = {
     ...stripData(stats),
     total: all.length,
@@ -275,6 +320,8 @@ export default function SessionsPage() {
       onOpen: () => {
         setOpenId(row.id);
         setTab("detail");
+        // Edits belong to the session that was open, not to the next one.
+        setEdits({});
       },
     })),
 
@@ -334,7 +381,10 @@ export default function SessionsPage() {
     },
 
     drawer: open !== null,
-    closeDrawer: () => setOpenId(null),
+    closeDrawer: () => {
+      setOpenId(null);
+      setEdits({});
+    },
     isEdit: false,
     openNew: notBuilt("Creating an invited session"),
     dTitle: open?.title ?? "",
@@ -346,34 +396,62 @@ export default function SessionsPage() {
           : "promoted from a proposal",
     titleCount: `${(open?.title ?? "").length}/300`,
     titleBd: "var(--ls,#C8D2D5)",
-    save: () =>
-      open === null
-        ? undefined
-        : approve.mutate({
-            id: open.id,
-            status: open.content_status === "approved" ? "pending" : "approved",
-          }),
-    saveLabel:
-      open?.content_status === "approved" ? "Withdraw approval" : "Approve for the public site",
+    // One primary action, two meanings: unsaved edits outrank approving, because
+    // approving content you have half-rewritten publishes the old wording.
+    save: () => {
+      if (open === null) return;
+      if (dirty) {
+        patch.mutate({ id: open.id, body: patchBody() });
+        return;
+      }
+      approve.mutate({
+        id: open.id,
+        status: open.content_status === "approved" ? "pending" : "approved",
+      });
+    },
+    saveLabel: dirty
+      ? patch.isPending
+        ? "Saving…"
+        : "Save changes"
+      : open?.content_status === "approved"
+        ? "Withdraw approval"
+        : "Approve for the public site",
 
     f: {
-      t: open?.title ?? "",
-      desc: open?.abstract ?? "",
-      tr: open === null ? "" : trackName(open),
-      fmt: open === null ? "" : formatName(open),
+      t: field("title", open?.title ?? ""),
+      desc: field("abstract", open?.abstract ?? ""),
+      tr: field("track_id", open?.track_id ?? ""),
+      fmt: field("session_format_id", open?.session_format_id ?? ""),
       room: open?.room_id == null ? "Not placed" : (roomById.get(open.room_id)?.name ?? ""),
       starts: open?.starts_at == null ? "Not scheduled" : WHEN.format(new Date(open.starts_at)),
-      cap: String(open?.duration_minutes ?? ""),
+      cap: field("duration_minutes", String(open?.duration_minutes ?? "")),
       st: open === null ? "" : (STATUS[open.status] ?? STATUS.unscheduled!).label,
+      level: field("expertise_level", open?.expertise_level ?? ""),
+      language: field("language", open?.language ?? ""),
+      tags: tagText,
     },
-    onT: notBuilt("Renaming a session"),
-    onDesc: notBuilt("Editing the abstract"),
-    onTr: notBuilt("Changing the track"),
-    onFmt: notBuilt("Changing the format"),
-    onRoom: notBuilt("Placing a session"),
-    onStarts: notBuilt("Scheduling"),
-    onCap: notBuilt("Changing the duration"),
-    onSt: notBuilt("Changing the status"),
+    trackOpts: [
+      { v: "", l: "No track" },
+      ...(data?.tracks ?? []).map((entry) => ({ v: entry.id, l: entry.name })),
+    ],
+    formatOpts: [
+      { v: "", l: "No format" },
+      ...(data?.formats ?? []).map((entry) => ({ v: entry.id, l: entry.name })),
+    ],
+    onT: edit("title", (value) => value),
+    onDesc: edit("abstract", (value) => value),
+    onTr: edit("track_id", (value) => (value === "" ? null : value)),
+    onFmt: edit("session_format_id", (value) => (value === "" ? null : value)),
+    onCap: edit("duration_minutes", (value) => Number(value)),
+    onLevel: edit("expertise_level", (value) => (value === "" ? null : value)),
+    onLanguage: edit("language", (value) => (value.trim() === "" ? null : value)),
+    // Held as raw text and split only on save: parsing every keystroke ate the
+    // comma the moment it was typed, so a separator could never be entered.
+    onTags: edit("tags", (value) => value),
+    // Placement is the agenda's, and saying where it lives beats a flat refusal.
+    onRoom: notBuilt("Placing a session is the agenda's job — drag it there"),
+    onStarts: notBuilt("Scheduling is the agenda's job — drag it there"),
+    onSt: notBuilt("A session's status follows its placement"),
 
     tabs: [
       { key: "detail", label: "Detail" },

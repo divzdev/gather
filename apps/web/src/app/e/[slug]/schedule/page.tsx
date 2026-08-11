@@ -8,13 +8,22 @@ type Session = {
   id: string; slug: string; title: string; abstract: string | null;
   starts_at: string | null; room: string | null; track: string | null;
   duration_minutes: number; speakers: { id: string; name: string }[];
+  tags?: string[]; expertise_level?: string | null; language?: string | null;
 };
 type Payload = { event: EventInfo; sessions: Session[]; tracks: { id: string; name: string }[] };
 
 /** Narrowing lives in the query string, so this page stays a Server Component,
  *  works with JavaScript off, and a filtered view is a link someone can send.
  *  Sixty sessions across two days is unreadable as one flat list. */
-type Filters = { day?: string; track?: string; room?: string; q?: string };
+type Filters = {
+  day?: string;
+  track?: string;
+  room?: string;
+  q?: string;
+  tag?: string;
+  level?: string;
+  language?: string;
+};
 
 const DAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
 
@@ -26,6 +35,11 @@ function matches(session: Session, filters: Filters): boolean {
   if (filters.day !== undefined && dayOf(session) !== filters.day) return false;
   if (filters.track !== undefined && (session.track ?? "") !== filters.track) return false;
   if (filters.room !== undefined && (session.room ?? "") !== filters.room) return false;
+  // `?? []` throughout: a snapshot published before these fields existed is
+  // still served, and must filter to nothing rather than throw.
+  if (filters.tag !== undefined && !(session.tags ?? []).includes(filters.tag)) return false;
+  if (filters.level !== undefined && (session.expertise_level ?? "") !== filters.level) return false;
+  if (filters.language !== undefined && (session.language ?? "") !== filters.language) return false;
   if (filters.q !== undefined && filters.q.trim() !== "") {
     const needle = filters.q.trim().toLowerCase();
     const hay = [session.title, session.abstract ?? "", ...session.speakers.map((s) => s.name)]
@@ -117,6 +131,9 @@ export default async function SessionsList({
   const filters: Filters = {
     day: one("day"),
     track: one("track"),
+    tag: one("tag"),
+    level: one("level"),
+    language: one("language"),
     room: one("room"),
     q: one("q"),
   };
@@ -144,6 +161,13 @@ export default async function SessionsList({
     [...new Set(values.filter((value): value is string => value !== null && value !== ""))].sort();
   const days = unique(data.sessions.map(dayOf));
   const tracks = unique(data.sessions.map((session) => session.track));
+  const tags = unique(data.sessions.flatMap((session) => session.tags ?? []));
+  const languages = unique(data.sessions.map((session) => session.language ?? null));
+  // Ordered by difficulty. Alphabetical would read advanced, beginner,
+  // intermediate, which is sorted and still wrong.
+  const levels = ["beginner", "intermediate", "advanced"].filter((level) =>
+    data.sessions.some((session) => session.expertise_level === level),
+  );
   const rooms = unique(data.sessions.map((session) => session.room));
 
   const shown = data.sessions.filter((session) => matches(session, filters));
@@ -195,6 +219,9 @@ export default async function SessionsList({
 
         <Row label="DAY" options={days} slug={slug} filters={filters} name="day" />
         <Row label="TRACK" options={tracks} slug={slug} filters={filters} name="track" />
+        <Row label="LEVEL" options={levels} slug={slug} filters={filters} name="level" />
+        <Row label="TAG" options={tags} slug={slug} filters={filters} name="tag" />
+        <Row label="LANG" options={languages} slug={slug} filters={filters} name="language" />
         <Row label="ROOM" options={rooms} slug={slug} filters={filters} name="room" />
       </div>
 
