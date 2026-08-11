@@ -24,7 +24,6 @@ from app.core.tenancy import tenancy_disabled, tenant_scope
 from app.models import (
     AuthSession,
     Event,
-    EventMember,
     EventSpeaker,
     MagicLink,
     MagicLinkPurpose,
@@ -100,16 +99,23 @@ async def register(
     user_agent: str | None = None,
     ip: str | None = None,
 ) -> IssuedSession:
-    """Create an organisation, its first owner, and a draft event to work in.
+    """Create an organisation and its first owner.
 
-    Signing up with no event would drop the new owner into a console with
-    nothing to configure, so the event is part of the same transaction.
+    No event. Signing up used to invent one, named after the organisation and
+    dated ninety days out, so a new owner's first screen described a conference
+    they had never agreed to. Choosing the name and the dates is the first real
+    decision of running an event, and it belongs to onboarding, not to a
+    side effect of creating an account.
     """
     with tenancy_disabled():
         if await session.scalar(select(User).where(User.email == email)) is not None:
             raise EmailTakenError("An account with that email already exists.")
 
-        org = Organization(name=organisation, slug=await _unique_org_slug(session, organisation))
+        # Optional at signup: plenty of organisers run one event and have no
+        # organisation to speak of, and demanding one is a question they cannot
+        # answer yet. It is editable in Settings afterwards.
+        org_name = (organisation or "").strip() or f"{name}'s workspace"
+        org = Organization(name=org_name, slug=await _unique_org_slug(session, org_name))
         session.add(org)
         await session.flush()
 
@@ -118,19 +124,6 @@ async def register(
         await session.flush()
 
         session.add(OrgMember(org_id=org.id, user_id=user.id, role=Role.OWNER))
-
-        today = _now().date()
-        event = Event(
-            org_id=org.id,
-            name=f"{organisation} {today.year}",
-            slug=_slugify(f"{organisation}-{today.year}", fallback=f"event-{today.year}"),
-            timezone="UTC",
-            starts_on=today + timedelta(days=90),
-            ends_on=today + timedelta(days=92),
-        )
-        session.add(event)
-        await session.flush()
-        session.add(EventMember(org_id=org.id, event_id=event.id, user_id=user.id, role=Role.OWNER))
 
         issued = await _issue_session(session, user, user_agent=user_agent, ip=ip)
         # Flush before the scope closes. The request commits during dependency

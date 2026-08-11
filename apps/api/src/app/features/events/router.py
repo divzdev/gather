@@ -10,7 +10,7 @@ import uuid
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import or_, select
 
 from app.core.deps import CurrentUser, DbSession, bind_tenant, require_role
@@ -197,6 +197,76 @@ async def list_members(event_id: uuid.UUID, session: DbSession) -> list[MemberRe
         for member, user in org_rows
     }
     return sorted(by_user.values(), key=lambda member: member.name)
+
+
+class EventCreate(BaseModel):
+    """A new event in the caller's organisation.
+
+    Nothing could create one until now: an event only ever came into being as a
+    side effect of registering, named after the organisation and given dates
+    ninety days out that nobody chose. So an organiser could neither run a
+    second event nor correct the first one's premise.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=200)
+    starts_on: date
+    ends_on: date
+    timezone: str = Field(default="UTC", min_length=1, max_length=64)
+    location: str | None = Field(default=None, max_length=300)
+
+    @model_validator(mode="after")
+    def _sane_dates(self) -> EventCreate:
+        if self.ends_on < self.starts_on:
+            raise ValueError("The event cannot end before it starts.")
+        return self
+
+
+@router.post("", response_model=EventDetail, status_code=201)
+async def create_event(body: EventCreate, user: CurrentUser, session: DbSession) -> Event:
+    """Create an event and make the caller its owner.
+
+    Outside tenancy on purpose: there is no event in scope yet, which is the
+    whole point. The organisation comes from the caller's membership rather
+    than the request, so this cannot be used to write into someone else's org.
+    """
+    with tenancy_disabled():
+        org_id = await session.scalar(
+            select(OrgMember.org_id).where(OrgMember.user_id == user.id).limit(1)
+        )
+        if org_id is None:
+            raise RoleRequiredError("You do not belong to an organisation yet.")
+
+        event = Event(
+            org_id=org_id,
+            name=body.name,
+            slug=await _unique_event_slug(session, body.name),
+            timezone=body.timezone,
+            location=body.location,
+            starts_on=body.starts_on,
+            ends_on=body.ends_on,
+            status=EventStatus.DRAFT,
+        )
+        session.add(event)
+        await session.flush()
+        session.add(EventMember(org_id=org_id, event_id=event.id, user_id=user.id, role=Role.OWNER))
+        await session.flush()
+    return event
+
+
+async def _unique_event_slug(session: DbSession, name: str) -> str:
+    """The slug is the public address, so a collision would make one event's
+    programme unreachable rather than merely ugly."""
+    import re
+
+    base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:60] or "event"
+    taken = set(
+        (await session.execute(select(Event.slug).where(Event.slug.like(f"{base}%")))).scalars()
+    )
+    if base not in taken:
+        return base
+    return next(f"{base}-{n}" for n in range(2, 500) if f"{base}-{n}" not in taken)
 
 
 @router.get("", response_model=list[EventSummary])

@@ -19,7 +19,9 @@ class LoginRequest(Strict):
 
 class RegisterRequest(Strict):
     name: str = Field(min_length=1, max_length=200)
-    organisation: str = Field(min_length=1, max_length=200)
+    #: Optional: an organiser running a single event has none, and Settings
+    #: can name it later.
+    organisation: str = Field(default="", max_length=200)
     email: EmailStr
     # Long enough to matter, capped so a huge string cannot burn Argon2 time.
     password: str = Field(min_length=12, max_length=200)

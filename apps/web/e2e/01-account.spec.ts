@@ -58,10 +58,10 @@ test("4-6. registration: happy path, duplicate email, malformed email", async ({
   await page.getByRole("button", { name: /create one/i }).click();
 
   await page.getByLabel(/your name/i).fill("Test Owner");
-  await page.getByLabel(/event or organization/i).fill("Testers Inc");
+  await page.getByLabel(/^organization/i).fill("Testers Inc");
   await page.getByLabel(/work email/i).fill(unique);
   await page.getByLabel(/^password$/i).fill("a-long-enough-passphrase");
-  await page.getByRole("button", { name: /create workspace/i }).click();
+  await page.getByRole("button", { name: /create account/i }).click();
 
   // 4. lands in the console
   await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 });
@@ -73,10 +73,10 @@ test("4-6. registration: happy path, duplicate email, malformed email", async ({
   await second.goto("/login");
   await second.getByRole("button", { name: /create one/i }).click();
   await second.getByLabel(/your name/i).fill("Test Owner");
-  await second.getByLabel(/event or organization/i).fill("Testers Inc");
+  await second.getByLabel(/^organization/i).fill("Testers Inc");
   await second.getByLabel(/work email/i).fill(unique);
   await second.getByLabel(/^password$/i).fill("a-long-enough-passphrase");
-  await second.getByRole("button", { name: /create workspace/i }).click();
+  await second.getByRole("button", { name: /create account/i }).click();
   await expect(second.getByText(/already exists|already registered|taken/i)).toBeVisible({
     timeout: 15_000,
   });
@@ -92,10 +92,10 @@ test("6. a malformed email is caught before it reaches the server", async ({ pag
   await page.goto("/login");
   await page.getByRole("button", { name: /create one/i }).click();
   await page.getByLabel(/your name/i).fill("Test Owner");
-  await page.getByLabel(/event or organization/i).fill("Testers Inc");
+  await page.getByLabel(/^organization/i).fill("Testers Inc");
   await page.getByLabel(/work email/i).fill("not-an-email");
   await page.getByLabel(/^password$/i).fill("a-long-enough-passphrase");
-  await page.getByRole("button", { name: /create workspace/i }).click();
+  await page.getByRole("button", { name: /create account/i }).click();
 
   await page.waitForTimeout(1500);
   expect(posted, "a malformed address was sent to the server").toBe(false);

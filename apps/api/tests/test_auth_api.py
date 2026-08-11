@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -238,7 +237,14 @@ async def test_speaker_token_cannot_open_a_staff_route(
     assert response.status_code == 401
 
 
-async def test_registration_creates_an_org_an_owner_and_an_event(client: AsyncClient) -> None:
+async def test_registration_creates_an_org_and_an_owner_but_no_event(client: AsyncClient) -> None:
+    """Signing up no longer invents a conference.
+
+    It used to create one named after the organisation and dated ninety days
+    out, so a new owner's first screen described an event they had never agreed
+    to. Naming it is the first real decision of running one, and it belongs to
+    onboarding.
+    """
     response = await client.post(
         "/v1/auth/register",
         json={
@@ -252,13 +258,80 @@ async def test_registration_creates_an_org_an_owner_and_an_event(client: AsyncCl
     assert response.status_code == 201
     token = response.json()["access_token"]
 
-    # The whole point of the regression: the response used to succeed while the
-    # rows were rejected at commit, so read it back through a second request.
+    # Read it back through a second request: the response used to succeed while
+    # the rows were rejected at commit.
     events = await client.get("/v1/events", headers={"Authorization": f"Bearer {token}"})
     assert events.status_code == 200
-    year = datetime.now(UTC).year
-    assert [event["name"] for event in events.json()] == [f"Northbound Conf {year}"]
-    assert events.json()[0]["status"] == "draft"
+    assert events.json() == []
+
+    me = await client.get("/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.json()["org_name"] == "Northbound Conf"
+    assert me.json()["role"] == "owner"
+
+
+async def test_registering_without_an_organisation_still_works(client: AsyncClient) -> None:
+    """Plenty of organisers run a single event and have no organisation to name.
+
+    Demanding one is a question they cannot answer at signup, so it is optional
+    and falls back to something recognisable until Settings renames it.
+    """
+    response = await client.post(
+        "/v1/auth/register",
+        json={
+            "name": "Solo Organiser",
+            "email": "solo@example.com",
+            "password": "a-long-enough-passphrase",
+        },
+    )
+
+    assert response.status_code == 201
+    me = await client.get(
+        "/v1/auth/me",
+        headers={"Authorization": f"Bearer {response.json()['access_token']}"},
+    )
+    assert me.json()["org_name"] == "Solo Organiser's workspace"
+
+
+async def test_an_owner_can_create_an_event(client: AsyncClient) -> None:
+    """The API had no POST at all, so the event invented at signup was the only
+    one an organiser would ever have."""
+    registered = await client.post(
+        "/v1/auth/register",
+        json={
+            "name": "Ada Organiser",
+            "organisation": "Northbound",
+            "email": "ada-events@example.com",
+            "password": "a-long-enough-passphrase",
+        },
+    )
+    headers = {"Authorization": f"Bearer {registered.json()['access_token']}"}
+
+    created = await client.post(
+        "/v1/events",
+        json={
+            "name": "Northbound 2028",
+            "starts_on": "2028-04-11",
+            "ends_on": "2028-04-13",
+            "timezone": "Europe/London",
+            "location": "Barbican",
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["name"] == "Northbound 2028"
+    assert created.json()["timezone"] == "Europe/London"
+    assert created.json()["status"] == "draft"
+
+    listed = await client.get("/v1/events", headers=headers)
+    assert [event["name"] for event in listed.json()] == ["Northbound 2028"]
+
+    # An event cannot end before it starts.
+    backwards = await client.post(
+        "/v1/events",
+        json={"name": "Backwards", "starts_on": "2028-04-13", "ends_on": "2028-04-11"},
+        headers=headers,
+    )
+    assert backwards.status_code == 422
 
 
 async def test_registering_a_taken_email_is_rejected(client: AsyncClient, staff_user: User) -> None:

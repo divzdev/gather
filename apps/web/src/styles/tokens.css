@@ -10,7 +10,15 @@
  * file.
  */
 
-:root {
+/* The auth and CFP screens are painted in hardcoded light hexes, so they render
+   light whatever the theme is. Re-declaring the light map on their own roots
+   pins the tokens to match: without it they inherit the dark map from :root,
+   and every token-driven global rule — selection, focus ring, placeholder, link
+   colour — resolves dark against their white surfaces. That is how selected
+   text in the sign-in form came out dark-on-dark. */
+:root,
+[data-screen-label="Auth"],
+[data-screen-label="Public CFP wizard"] {
   /* Console light. Cool neutrals, no beige. */
   --pp: #f4f6f7; /* page */
   --cd: #ffffff; /* card */
@@ -118,4 +126,22 @@
     --dur-base: 0ms;
     --dur-slow: 0ms;
   }
+}
+
+/* Native form controls do not follow a CSS variable, so the date picker's own
+   icon stays near-black and disappears against a dark field. Inverting it is
+   the only way to reach it: the pseudo-element takes no colour, only a filter.
+   Light mode is left alone, where dark-on-white is correct. */
+:root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+:root[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator,
+:root[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+:root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator:hover,
+:root[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator:hover,
+:root[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }

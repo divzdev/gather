@@ -72,7 +72,7 @@ input::placeholder{color:#99A6AD}
               <label for="auth-your-name" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Your name</label><input id="auth-your-name" value="{{ name }}" onChange="{{ onName }}" placeholder="Sasha Whitfield" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
             </div>
             <div>
-              <label for="auth-event-or-organization" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Event or organization</label><input id="auth-event-or-organization" value="{{ org }}" onChange="{{ onOrg }}" placeholder="AI Engineer 2026" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+              <label for="auth-event-or-organization" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Organization <span style="color:#99A6AD">optional</span></label><input id="auth-event-or-organization" value="{{ org }}" onChange="{{ onOrg }}" placeholder="Your company or community" style="width:100%;box-sizing:border-box;height:44px;padding:0 14px;border-radius:9px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
             </div>
           </sc-if>
           <div>
@@ -101,14 +101,15 @@ input::placeholder{color:#99A6AD}
           <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
             <div style="font:400 11.5px/1.6 'IBM Plex Sans',sans-serif;color:#99A6AD;text-align:center">Free while in beta. No credit card. By continuing you agree to the <a href="#terms" style="color:#6B7B84">terms</a> and <a href="#privacy" style="color:#6B7B84">privacy policy</a>.</div>
           </sc-if>
+          <div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:6px">
+            <span style="font:400 13px 'IBM Plex Sans',sans-serif;color:#6B7B84">{{ switchLabel }}</span>
+            <button onClick="{{ switchMode }}" style="background:none;border:none;padding:0;font:600 13px 'IBM Plex Sans',sans-serif;color:#E04E4E;cursor:pointer" style-hover="color:#C93E3E">{{ switchCta }}</button>
+          </div>
         </div>
       </sc-if>
     </div>
 
-    <div style="display:flex;align-items:center;gap:8px">
-      <span style="font:400 13px 'IBM Plex Sans',sans-serif;color:#6B7B84">{{ switchLabel }}</span>
-      <button onClick="{{ switchMode }}" style="background:none;border:none;padding:0;font:600 13px 'IBM Plex Sans',sans-serif;color:#E04E4E;cursor:pointer" style-hover="color:#C93E3E">{{ switchCta }}</button>
-      <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;justify-content:flex-end">
       <span style="font:400 11px 'IBM Plex Mono',monospace;color:#99A6AD">open source · MIT</span>
     </div>
   </div>

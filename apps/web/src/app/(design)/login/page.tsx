@@ -25,7 +25,6 @@ function firstProblem(fields: {
   password: string;
 }): string | null {
   if (fields.name.trim() === "") return "Your name is needed.";
-  if (fields.organisation.trim() === "") return "An event or organisation name is needed.";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email.trim())) {
     return "That email address does not look right.";
   }
@@ -198,18 +197,18 @@ function LoginPage() {
     doneBack: "Back to sign in",
     doneConsole: false,
 
-    title: mode === "login" ? "Sign in to Gather" : "Create your workspace",
+    title: mode === "login" ? "Sign in to Gather" : "Create your account",
     subtitle:
       mode === "login"
         ? "The console for your speaker programme."
-        : "Your organisation, your first event, and you as its owner.",
+        : "Your account and your organisation. You name your event next.",
     cta: busy
       ? mode === "login"
         ? "Signing in…"
         : "Creating…"
       : mode === "login"
         ? "Sign in"
-        : "Create workspace",
+        : "Create account",
 
     email,
     onEmail: (event: React.SyntheticEvent) =>
