@@ -429,7 +429,7 @@ export function Messages({ d }: { d: MessagesData }) {
                           background: "var(--sk,#EDF1F2)",
                           font: "400 13px 'IBM Plex Sans',sans-serif",
                           color: "var(--ik,#16232B)",
-                          outlineColor: "#E04E4E",
+                          outlineColor: "var(--sg, #E04E4E)",
                           marginBottom: "12px",
                         }}
                       />{" "}
@@ -506,7 +506,7 @@ export function Messages({ d }: { d: MessagesData }) {
                           font: "400 13px/20px 'IBM Plex Sans',sans-serif",
                           color: "var(--ik,#16232B)",
                           resize: "vertical",
-                          outlineColor: "#E04E4E",
+                          outlineColor: "var(--sg, #E04E4E)",
                         }}
                       ></textarea>{" "}
                       <p

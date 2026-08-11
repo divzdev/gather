@@ -9,12 +9,17 @@
 export type ThemeMode = "system" | "light" | "dark";
 export type AccentName = "Coral" | "Jade" | "Sky" | "Slate" | "Graphite";
 
+/** `sg` is the accent as **text** and `bt` the accent as a **fill**, which is
+ *  why they differ. Text carries the AA burden: measured on screen, Coral's
+ *  #E04E4E was 3.38:1 on its own tint and Sky's #2B77B3 was 4.18:1, so both are
+ *  darker here while the buttons stay exactly as vivid as they were. Jade,
+ *  Slate and Graphite already passed and are untouched. */
 type AccentVars = { sg: string; sw: string; sl: string; bt: string; bf: string };
 
 export const ACCENTS: Record<AccentName, { dot: string; l: AccentVars; d: AccentVars }> = {
   Coral: {
     dot: "#FF6B6B",
-    l: { sg: "#E04E4E", sw: "#FFEAE6", sl: "#FFC9C0", bt: "#FF6B6B", bf: "#331313" },
+    l: { sg: "#D02525", sw: "#FFEAE6", sl: "#FFC9C0", bt: "#FF6B6B", bf: "#331313" },
     d: { sg: "#FF8E8E", sw: "#3A1D1D", sl: "#66302E", bt: "#FF6B6B", bf: "#331313" },
   },
   /* Replaced Sunset (10 Aug). #00C59E is Ordel's accent exactly, given as
@@ -31,7 +36,7 @@ export const ACCENTS: Record<AccentName, { dot: string; l: AccentVars; d: Accent
   },
   Sky: {
     dot: "#4A9BD8",
-    l: { sg: "#2B77B3", sw: "#E7F1FA", sl: "#BFDCF1", bt: "#4A9BD8", bf: "#0D2333" },
+    l: { sg: "#2971A9", sw: "#E7F1FA", sl: "#BFDCF1", bt: "#4A9BD8", bf: "#0D2333" },
     d: { sg: "#7FBCE8", sw: "#152A3A", sl: "#2C4E66", bt: "#4A9BD8", bf: "#0D2333" },
   },
   Slate: {

@@ -519,7 +519,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                     background: "var(--cd,#FFFFFF)",
                     font: "400 12px 'IBM Plex Sans',sans-serif",
                     color: "var(--ik,#16232B)",
-                    outlineColor: "#E04E4E",
+                    outlineColor: "var(--sg, #E04E4E)",
                   }}
                 />
               </div>{" "}
@@ -986,7 +986,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                         font: "400 12.5px/18px 'IBM Plex Sans',sans-serif",
                         color: "var(--ik,#16232B)",
                         resize: "vertical",
-                        outlineColor: "#E04E4E",
+                        outlineColor: "var(--sg, #E04E4E)",
                       }}
                     ></textarea>{" "}
                     {d.hasChips ? (
@@ -1560,7 +1560,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                     background: "var(--cd,#FFFFFF)",
                     font: "400 13.5px 'IBM Plex Sans',sans-serif",
                     color: "var(--ik,#16232B)",
-                    outlineColor: "#E04E4E",
+                    outlineColor: "var(--sg, #E04E4E)",
                     marginBottom: "14px",
                   }}
                 />{" "}
@@ -1598,7 +1598,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                         background: "var(--cd,#FFFFFF)",
                         font: "400 13px 'IBM Plex Sans',sans-serif",
                         color: "var(--ik,#16232B)",
-                        outlineColor: "#E04E4E",
+                        outlineColor: "var(--sg, #E04E4E)",
                       }}
                     >
                       <option value="">To be confirmed</option>
@@ -1634,7 +1634,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                         background: "var(--cd,#FFFFFF)",
                         font: "400 13px 'IBM Plex Sans',sans-serif",
                         color: "var(--ik,#16232B)",
-                        outlineColor: "#E04E4E",
+                        outlineColor: "var(--sg, #E04E4E)",
                       }}
                     >
                       {(d.dayOpts ?? []).map((o, oIndex) => (
@@ -1732,7 +1732,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                         background: "var(--cd,#FFFFFF)",
                         font: "400 13px 'IBM Plex Sans',sans-serif",
                         color: "var(--ik,#16232B)",
-                        outlineColor: "#E04E4E",
+                        outlineColor: "var(--sg, #E04E4E)",
                       }}
                     >
                       {(d.roomOpts ?? []).map((o, oIndex) => (
@@ -1767,7 +1767,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                         background: "var(--cd,#FFFFFF)",
                         font: "400 13px 'IBM Plex Sans',sans-serif",
                         color: "var(--ik,#16232B)",
-                        outlineColor: "#E04E4E",
+                        outlineColor: "var(--sg, #E04E4E)",
                       }}
                     >
                       {(d.startOpts ?? []).map((so, soIndex) => (
@@ -1802,7 +1802,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                         background: "var(--cd,#FFFFFF)",
                         font: "400 13px 'IBM Plex Sans',sans-serif",
                         color: "var(--ik,#16232B)",
-                        outlineColor: "#E04E4E",
+                        outlineColor: "var(--sg, #E04E4E)",
                       }}
                     >
                       <option value="10">10 min · lightning</option>
@@ -1840,7 +1840,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                     font: "400 12.5px/18px 'IBM Plex Sans',sans-serif",
                     color: "var(--ik,#16232B)",
                     resize: "vertical",
-                    outlineColor: "#E04E4E",
+                    outlineColor: "var(--sg, #E04E4E)",
                   }}
                 ></textarea>{" "}
                 {d.cWarnOn ? (

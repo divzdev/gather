@@ -87,6 +87,27 @@ def main() -> int:
             for where in sorted(files)[:3]:
                 print(f"      {where}", file=sys.stderr)
 
+    raw, worst = _raw_hex(root)
+    if raw > RAW_HEX_BUDGET:
+        problems += 1
+        print(
+            f"{raw} raw hex colours in components, over the budget of {RAW_HEX_BUDGET}."
+            " A literal colour cannot follow the theme or the chosen accent:",
+            file=sys.stderr,
+        )
+        for where, count in worst[:8]:
+            print(f"  {count:4d}  {where}", file=sys.stderr)
+        print(
+            "  Use var(--token) — or var(--token, #fallback), which is allowed and"
+            " is what the converted prototypes carry.",
+            file=sys.stderr,
+        )
+    elif raw < RAW_HEX_BUDGET:
+        print(
+            f"check-tokens: raw hex down to {raw} (budget {RAW_HEX_BUDGET})."
+            f" Lower RAW_HEX_BUDGET to {raw} so it cannot climb back.",
+        )
+
     unthemed = _missing_from_dark(root)
     if unthemed:
         problems += len(unthemed)
@@ -110,7 +131,51 @@ def main() -> int:
 
 #: Tokens that are the same in every theme by nature. Everything else is a
 #: colour, and a colour needs a dark value.
-THEME_INDEPENDENT = ("--radius-", "--ease", "--dur-", "--track-", "--font-")
+THEME_INDEPENDENT = (
+    "--radius-",
+    "--ease",
+    "--dur-",
+    "--track-",
+    "--font-",
+    "--space-",
+    "--control-h-",
+)
+
+# --- raw hex ---------------------------------------------------------------
+#
+# The check above proves that `var(--x)` resolves. It says nothing about a
+# literal `#E04E4E` sitting where a token belongs — which is the bigger defect,
+# because it silently ignores both the theme and the swappable accent. That is
+# how 58 focus rings stayed light-mode coral in dark mode.
+#
+# It cannot simply fail: the four public marketing screens are painted in fixed
+# light hexes on purpose, and the converted prototypes are full of them. So it
+# is a ratchet — the count may fall and never rise. Drop the number whenever it
+# does; the message tells you to.
+RAW_HEX_BUDGET = 518
+
+HEX = re.compile(r"#[0-9A-Fa-f]{3,8}\b")
+#: `var(--token, #fallback)` is the documented pattern, not a violation.
+VAR_FALLBACK = re.compile(r"var\(\s*--[A-Za-z0-9-]+\s*,\s*#[0-9A-Fa-f]{3,8}\s*\)")
+#: Brand artwork. The Gather mark is a fixed set of colours, not theme state.
+SVG_BLOCK = re.compile(r"<svg\b.*?</svg>", re.DOTALL)
+
+
+def _raw_hex(root: Path) -> tuple[int, list[tuple[str, int]]]:
+    """Hex literals that are neither a var() fallback nor inside an <svg>."""
+    counts: dict[str, int] = {}
+    for folder, pattern in SEARCH:
+        base = root / folder
+        if not base.exists() or folder.startswith("GatherDesign"):
+            continue
+        for path in base.rglob(pattern):
+            text = SVG_BLOCK.sub("", path.read_text())
+            text = VAR_FALLBACK.sub("", text)
+            found = len(HEX.findall(text))
+            if found:
+                counts[str(path.relative_to(root))] = found
+    worst = sorted(counts.items(), key=lambda item: -item[1])
+    return sum(counts.values()), worst
 
 #: The accent set is owned by the theme provider, which writes a light and a dark
 #: map onto the root element. Its keys are read from there rather than listed
@@ -131,8 +196,21 @@ def _provider_owned(root: Path) -> set[str]:
     return keys
 
 
+#: A declaration with its value, so the check can ask what a token *is* rather
+#: than guess from its name.
+DECLARATION = re.compile(r"(--[A-Za-z0-9-]+)\s*:\s*([^;}]+)")
+COLOUR_VALUE = re.compile(r"#[0-9A-Fa-f]{3,8}\b|\b(?:rgba?|hsla?|color-mix|oklch|lab)\(")
+
+
 def _missing_from_dark(root: Path) -> set[str]:
-    """Colour tokens the light block defines and the dark block forgets."""
+    """Colour tokens the light block defines and the dark block forgets.
+
+    Whether a token needs a dark value is decided by its **value**, not its
+    name: `--space-1: 4px` is 4px in both themes and a dark duplicate would be
+    noise that rots. Keying off a name prefix meant every new non-colour scale
+    had to be remembered here, and the first two — spacing and control heights —
+    duly failed the gate the day they were added.
+    """
     path = root / TOKEN_FILES[0]
     if not path.exists():
         return set()
@@ -142,11 +220,18 @@ def _missing_from_dark(root: Path) -> set[str]:
     if dark_at == -1:
         return set()
 
-    light = set(DEFINITION.findall(text[:dark_at]))
+    light_block = text[:dark_at]
+    light = set(DEFINITION.findall(light_block))
     dark = set(DEFINITION.findall(text[dark_at:])) | _provider_owned(root)
+
+    colours = {
+        name
+        for name, value in DECLARATION.findall(light_block)
+        if COLOUR_VALUE.search(value)
+    }
     return {
         name
-        for name in light - dark
+        for name in (light & colours) - dark
         if not any(name.startswith(prefix) for prefix in THEME_INDEPENDENT)
     }
 

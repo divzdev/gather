@@ -27,21 +27,30 @@
   --ls: #c8d2d5; /* strong line */
   --ik: #16232b; /* ink */
   --i2: #3e4e58;
-  --i3: #6b7b84;
-  --i4: #99a6ad;
+  /* Both of these were below AA and both are used for real body copy — --i4 is
+     every timestamp, placeholder, badge digit and empty-state line in the
+     product, and it sat at 2.50:1 on white. Measured against the *sunk* surface
+     (--sk), the darkest of the three the muted tiers land on, so they hold
+     everywhere rather than only on a card. --i3 6.27 / --i4 5.27 on white. */
+  --i3: #56626a;
+  --i4: #5f6e77;
 
   /* Accent. Overwritten by the theme provider; Coral is the default. */
-  --sg: #e04e4e; /* accent text */
+  --sg: #d02525; /* accent text — AA against its own tint; --bt stays vivid */
   --sw: #ffeae6; /* accent weak */
   --sl: #ffc9c0; /* accent line */
   --bt: #ff6b6b; /* primary button */
   --bf: #331313; /* primary button foreground */
 
-  /* Status. Colour only ever means state. */
-  --cn: #d8432b; /* conflict, orange-red, never pink */
+  /* Status. Colour only ever means state.
+     These are used as *text* — chip labels at 10.5-12.5px, the overdue count,
+     the decisions-pending banner — so they are held to 4.5:1 against the weak
+     tint they sit on, which is the darkest surface they meet. --cn was 3.74
+     there and --pd 3.54. */
+  --cn: #c03923; /* conflict, orange-red, never pink */
   --cnw: #fbe8e6;
   --cnl: #f3c7c2;
-  --pd: #b96a1f; /* pending, waiting on a human */
+  --pd: #9e5a1a; /* pending, waiting on a human */
   --pdw: #f9eddf;
   --pdl: #efd3b6;
   --ok: #0e7a5f; /* clear, done */
@@ -74,6 +83,28 @@
   --radius-md: 6px;
   --radius-lg: 10px;
   --radius-card: 14px;
+  --radius-pill: 999px;
+
+  /* Spacing. There was no scale at all, which is the measured root cause of the
+     control-size mess: with no shared number to converge on, each of the
+     fourteen generated screens invented its own, and Submissions.tsx alone
+     hand-types 57 radius values across 11 distinct numbers. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  /* Control heights, straight from `.claude/rules/design-standards.md`. These
+     are floors, not suggestions: sm is the minimum for any control, md the
+     minimum for a text input or anything touch-reachable, lg for the one
+     irreversible action on a screen. Nothing should be shorter than --sm. */
+  --control-h-sm: 36px;
+  --control-h-md: 44px;
+  --control-h-lg: 50px;
 
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 120ms;
@@ -92,7 +123,11 @@
   --ik: #f2f2f0;
   --i2: #c9c9c6;
   --i3: #929290;
-  --i4: #686865;
+  /* 3.20:1 on a card, so the same failure as light mode and for the same text.
+     Lightened rather than darkened here, and solved against every surface it
+     lands on including the status tints — a dismiss glyph on the pending banner
+     was the one that survived a narrower solve. Worst case 4.60:1. */
+  --i4: #93938f;
 
   --sg: #ff8e8e;
   --sw: #3a1d1d;

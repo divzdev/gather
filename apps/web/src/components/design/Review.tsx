@@ -476,7 +476,7 @@ export function Review({ d }: { d: ReviewData }) {
                         font: "400 12.5px/18px 'IBM Plex Sans',sans-serif",
                         color: "var(--ik,#16232B)",
                         resize: "vertical",
-                        outlineColor: "#E04E4E",
+                        outlineColor: "var(--sg, #E04E4E)",
                       }}
                     ></textarea>{" "}
                   </div>{" "}
