@@ -11,7 +11,16 @@ const config = [
     // Generated: api-types.ts from the OpenAPI schema, design/ from the
     // .dc.html prototypes. Linting them would pressure edits to generated
     // output instead of to the source.
-    ignores: [".next/**", "node_modules/**", "src/lib/api-types.ts", "src/components/design/**"],
+    ignores: [
+      ".next/**",
+      // The isolated E2E stack's build output. Same generated bundles as
+      // `.next`, in a directory of their own so two dev servers can coexist —
+      // and 7,000 lint problems if they are not ignored alongside it.
+      ".next-e2e/**",
+      "node_modules/**",
+      "src/lib/api-types.ts",
+      "src/components/design/**",
+    ],
   },
 ];
 
