@@ -542,6 +542,8 @@ async def seed() -> None:
         f"({counts['placed']} placed), {counts['tasks']} speaker tasks, "
         f"{counts['scored']} reviews scored, {counts['sent']} decisions already sent."
     )
+    if counts.get("published"):
+        print(f"Published schedule v{counts['published']} — the public pages and embeds are live.")
     print("Sign in with sbek-organizer@example.com / SbekTest!2027-org")
 
 

@@ -180,6 +180,10 @@ async def publish(
     session: AsyncSession, *, event: Event, user_id: uuid.UUID | None, note: str | None = None
 ) -> PublishedSchedule:
     published = PublishedSchedule(
+        # Taken from the event rather than left to the tenancy session event,
+        # so publishing works from the seeder too — which runs with tenancy
+        # deliberately disabled and would otherwise insert a null org_id.
+        org_id=event.org_id,
         event_id=event.id,
         version=await _next_version(session, event),
         snapshot=await build(session, event),
@@ -217,6 +221,7 @@ async def rollback(
         raise NotFoundError(f"No published version {version}.")
 
     restored = PublishedSchedule(
+        org_id=event.org_id,
         event_id=event.id,
         version=await _next_version(session, event),
         snapshot=dict(target.snapshot),

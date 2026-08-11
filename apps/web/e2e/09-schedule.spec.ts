@@ -286,6 +286,40 @@ test("148-151. the embed snippet renders from a file on disk", async ({ browser 
   const text = await page.locator("#gather-schedule").innerText();
   // 151. And it is legible at 375px, where the container is only that wide.
   expect(text.trim().length, "the embed rendered nothing").toBeGreaterThan(10);
+  // It has to have rendered the programme, not its own failure. This assertion
+  // used to be the length check alone, and "The schedule could not be loaded."
+  // is 33 characters — so it passed for as long as the payload the script
+  // fetches was refusing cross-origin reads, which was always.
+  expect(text, "the embed rendered its error state").not.toContain("could not be loaded");
+  await context.close();
+});
+
+test("every widget renders on a stranger's page, not just the schedule", async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  for (const widget of ["schedule", "agenda", "speakers", "gallery", "upcoming"]) {
+    await page.setContent(
+      `<!doctype html><meta charset="utf-8"><div id="gather-${widget}"></div>` +
+        `<script src="${API}/v1/public/events/${SLUG}/embed.js?widget=${widget}" async></script>`,
+      { waitUntil: "networkidle" },
+    );
+    await page.waitForTimeout(1200);
+    const text = (await page.locator(`#gather-${widget}`).innerText()).trim();
+    expect(text.length, `${widget} rendered nothing`).toBeGreaterThan(10);
+    expect(text, `${widget} rendered its error state`).not.toContain("could not be loaded");
+  }
+
+  // The grid is a grid — rooms as columns — rather than the catalogue again.
+  await page.setContent(
+    `<!doctype html><meta charset="utf-8"><div id="gather-agenda"></div>` +
+      `<script src="${API}/v1/public/events/${SLUG}/embed.js?widget=agenda" async></script>`,
+    { waitUntil: "networkidle" },
+  );
+  await page.waitForTimeout(1200);
+  const columns = page.locator("#gather-agenda div[style*='grid-template-columns']");
+  expect(await columns.count(), "the grid has no room columns").toBeGreaterThan(0);
+
   await context.close();
 });
 

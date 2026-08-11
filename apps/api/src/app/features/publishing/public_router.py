@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from app.core import storage
 from app.core.deps import DbSession, PublicEvent
@@ -21,7 +21,29 @@ from app.core.errors import NotFoundError
 from app.features.publishing import embed, ics, snapshot
 from app.models.file import File as FileRecord
 
-router = APIRouter(prefix="/v1/public/events/{event_slug}", tags=["public"])
+
+def allow_any_origin(response: Response) -> None:
+    """Every route under here is anonymous and meant to be read from elsewhere.
+
+    The app's own CORS policy is credentialed and origin-locked, which is right
+    for the console and wrong for these: the embed script was served with
+    `Access-Control-Allow-Origin: *` while the payload it fetches was not, so a
+    widget on somebody else's page loaded, ran, and could never read its data.
+    It failed to exactly the "could not be loaded" branch, which is why nothing
+    caught it — the test asserted the container had text, and an error message
+    is text.
+
+    No credentials here, so `*` is the honest value rather than a loosening.
+    """
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers.setdefault("Vary", "Origin")
+
+
+router = APIRouter(
+    prefix="/v1/public/events/{event_slug}",
+    tags=["public"],
+    dependencies=[Depends(allow_any_origin)],
+)
 
 
 def _matches(

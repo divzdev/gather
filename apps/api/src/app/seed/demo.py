@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.publishing import snapshot
 from app.features.review import service as review_service
 from app.models import (
     ContentStatus,
@@ -1024,6 +1025,23 @@ async def _outbox(session: AsyncSession, event: Event) -> int:
     return len(rows)
 
 
+async def _publish(session: AsyncSession, event: Event) -> int:
+    """Put the programme on the public site.
+
+    Without this a freshly seeded demo has a full console and a public half that
+    returns 404 everywhere — every public page, every embed, the calendar feed —
+    because they all read a snapshot that nobody had written yet. A conference
+    that has already sent 18 acceptances has published its schedule; leaving that
+    one step out made `make setup` produce an app whose front half did not exist.
+    """
+    if await snapshot.latest(session) is not None:
+        return 0
+    published = await snapshot.publish(
+        session, event=event, user_id=None, note="Seeded demo programme"
+    )
+    return int(published.version)
+
+
 async def fill(
     session: AsyncSession, event: Event, form: Any, program: dict[str, Any]
 ) -> dict[str, int]:
@@ -1038,6 +1056,7 @@ async def fill(
     await _roster_states(session, event, rng)
     scored = await _reviews(session, event, rng)
     sent = await _outbox(session, event)
+    published = await _publish(session, event)
 
     counts = {
         "speakers": len(people),
@@ -1058,6 +1077,7 @@ async def fill(
         ),
         "scored": scored,
         "sent": sent,
+        "published": published,
         "tasks": int(
             await session.scalar(
                 select(func.count(SpeakerTask.id)).where(SpeakerTask.event_id == event.id)
