@@ -114,6 +114,7 @@ export default function PublishingPage() {
   const notPublished = error !== null;
 
   const screen: PublishingData = {
+    publicHref: slug === null ? "/admin" : `/e/${slug}`,
 
     widgets: (
       [

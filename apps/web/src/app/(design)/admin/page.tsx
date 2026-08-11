@@ -10,7 +10,13 @@ import { authed, getEventId } from "@/lib/session";
 
 type Pending = { accepted: number; waitlisted: number; rejected: number; total: number };
 type SubmissionPage = { data: { status: string }[]; meta: { total: number } };
-type Event = { name: string; starts_on: string; ends_on: string; cfp_closes_at: string | null };
+type Event = {
+  name: string;
+  slug: string;
+  starts_on: string;
+  ends_on: string;
+  cfp_closes_at: string | null;
+};
 
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long" });
 const MONTH_YEAR = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
@@ -112,6 +118,9 @@ export default function OverviewPage() {
   }));
 
   const overview: OverviewData = {
+    // Until the event resolves there is no correct public URL, and the console
+    // home is a better landing than another organisation's event.
+    cfpHref: data?.event.slug === undefined ? "/admin" : `/e/${data.event.slug}/cfp`,
     greet,
     confirmedCount: confirmedSpeakers,
     overdueCount: stats.overdueTasks,

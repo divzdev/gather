@@ -256,6 +256,7 @@ export default function SubmissionsPage() {
   const rejected = decidedAs("rejected", "i3,#6B7B84", "i3,#6B7B84", "ls,#C8D2D5");
 
   const screen: SubmissionsData = {
+    publicHref: stats.event === null ? "/admin" : `/e/${stats.event.slug}`,
     ...stripData(stats),
     pendingCount: stats.pendingSend,
 

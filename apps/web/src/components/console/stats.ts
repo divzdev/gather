@@ -11,7 +11,13 @@ import { authed, getEventId } from "@/lib/session";
 
 type Row = { status: string; decision_status: string };
 type Page = { data: Row[]; meta: { total: number } };
-type Event = { name: string; starts_on: string; ends_on: string; cfp_closes_at: string | null };
+type Event = {
+  name: string;
+  slug: string;
+  starts_on: string;
+  ends_on: string;
+  cfp_closes_at: string | null;
+};
 type Conflict = { severity: string; label: string; detail?: string | null };
 type TaskRow = { status: string };
 
@@ -92,6 +98,8 @@ export function stripData(stats: ProgramStats): {
   subCount: number;
   unreviewedCount: number;
   decidedCount: number;
+  overdueCount: number;
+  conflictCount: number;
   cfpShort: string;
   cfpDays: number | string;
 } {
@@ -99,6 +107,8 @@ export function stripData(stats: ProgramStats): {
     subCount: stats.total,
     unreviewedCount: stats.unreviewed,
     decidedCount: stats.decided,
+    overdueCount: stats.overdueTasks,
+    conflictCount: stats.conflicts,
     cfpShort: stats.cfpDays === null ? "—" : `${stats.cfpDays}d`,
     cfpDays: stats.cfpDays ?? "—",
   };

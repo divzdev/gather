@@ -89,5 +89,6 @@ GatherDesign/* v1.dc.html
 var/
 
 # Playwright artefacts
+test-results/
 apps/web/test-results/
 apps/web/playwright-report/
