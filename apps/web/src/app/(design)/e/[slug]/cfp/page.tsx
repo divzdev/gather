@@ -1,99 +1,92 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { use, useEffect, useRef, useState } from "react";
+/** The call for papers — the product's front door.
+ *
+ *  Every proposal in the system arrives here, from someone with no account,
+ *  often on a phone, usually near the deadline. So: nothing on this screen is a
+ *  literal string where a fact belongs, the wizard's steps are the form's own
+ *  sections rather than a hardcoded four, an unfinished draft is genuinely
+ *  resumed instead of quietly starting a second submission, and the save
+ *  indicator is allowed to say it failed.
+ */
 
-import { Cfp, type CfpData } from "@/components/design/Cfp";
-import { resolveVisibility, type FormSchema } from "@/lib/formLogic";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { use, useEffect, useMemo, useRef, useState } from "react";
+
 import { ApiError, apiFetch } from "@/lib/api";
+import { resolveVisibility, type FormSchema } from "@/lib/formLogic";
+import { CHOICE_TYPES, CONTROL, Consent, Field, Optional, Problem, button } from "./fields";
+import { CFP_CSS, Rail, Shell, Toasts } from "./chrome";
 
 type PublicForm = {
   event_name: string;
   event_slug: string;
+  event_description: string | null;
   form_id: string;
   form_name: string;
   schema: FormSchema;
   closes_at: string | null;
+  event_timezone: string;
+  submission_limit_per_speaker: number | null;
   is_open: boolean;
   closed_reason: string | null;
 };
 
-/** Collected on the Speakers step, so it is not repeated in the proposal list. */
-const SPEAKER_FIELDS = new Set(["speaker_bio"]);
+type Stored = { slug: string; token: string; code: string; email: string; name: string };
+type Problem = { key: string; message: string; step: number };
+type Save =
+  | { kind: "idle" }
+  | { kind: "saving" }
+  | { kind: "saved"; at: string }
+  | { kind: "failed"; message: string };
 
-const LINE_TYPES = new Set(["short_text", "url", "email", "number", "date"]);
-const AREA_TYPES = new Set(["long_text"]);
-const CHOICE_TYPES = new Set(["select", "radio", "multi_select", "checkbox_group"]);
-const MULTI_TYPES = new Set(["multi_select", "checkbox_group"]);
-const CONSENT_TYPES = new Set(["checkbox", "consent"]);
-const HTML_INPUT: Record<string, string> = {
-  url: "url",
-  email: "email",
-  number: "number",
-  date: "date",
-};
-
-// Panel 0 is the welcome screen; the numbered rail starts at panel 1.
-const STEPS = ["You", "Your proposal", "Speakers", "Review and submit"] as const;
-const LAST = STEPS.length; // panel index of "Review and submit"
-const DRAFT_KEY = "gather.cfp-draft";
+const STORE = "gather.cfp-draft";
 const AUTOSAVE_MS = 20_000;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type Draft = {
-  email: string;
-  title: string;
-  abstract: string;
-  track: string;
-  format: string;
-  name: string;
-  company: string;
-  bio: string;
-  coName: string;
-  coEmail: string;
-  hasCo: boolean;
-  terms: boolean;
-};
-
-const EMPTY: Draft = {
-  email: "",
-  title: "",
-  abstract: "",
-  track: "",
-  format: "",
-  name: "",
-  company: "",
-  bio: "",
-  coName: "",
-  coEmail: "",
-  hasCo: false,
-  terms: false,
-};
-
-/** The submission's own title column, which the API needs alongside the answers. */
-function titleFrom(values: Record<string, unknown>): string {
-  const value = values["title"];
-  return typeof value === "string" ? value : "";
+function titleOf(values: Record<string, unknown>): string {
+  const named = values["title"];
+  if (typeof named === "string" && named.trim() !== "") return named;
+  const first = Object.values(values).find(
+    (value) => typeof value === "string" && value.trim() !== "",
+  );
+  return typeof first === "string" ? first : "";
 }
 
-const words = (text: string) => (text.trim() === "" ? 0 : text.trim().split(/\s+/).length);
+function read(slug: string): Stored | null {
+  try {
+    const raw = window.localStorage.getItem(STORE);
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw) as Stored;
+    return parsed.slug === slug && parsed.token !== "" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
-/** The public call for papers. No account: the speaker's email is their
- *  identity, and an anonymous draft token lets them come back to an unfinished
- *  proposal. */
 export default function CfpPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<Draft>(EMPTY);
-  // Answers are keyed by field, so a question the organiser adds needs no code.
-  const [values, setValues] = useState<Record<string, unknown>>({});
-  const [visited, setVisited] = useState<number[]>([0]);
-  const [savedAt, setSavedAt] = useState("");
-  const [code, setCode] = useState<string | null>(null);
-  const [errors, setErrors] = useState<{ t: string; field: string; step: number }[]>([]);
-  const [toasts, setToasts] = useState<{ id: string; msg: string }[]>([]);
-  const draftToken = useRef<string | null>(null);
 
-  const { data: form } = useQuery({
+  const [step, setStep] = useState(0);
+  const [values, setValues] = useState<Record<string, unknown>>({});
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [terms, setTerms] = useState(false);
+  const [co, setCo] = useState<{ name: string; email: string }[]>([]);
+  const [errors, setErrors] = useState<Problem[]>([]);
+  const [save, setSave] = useState<Save>({ kind: "idle" });
+  const [resumed, setResumed] = useState<string | null>(null);
+  const [done, setDone] = useState<{ code: string; message: string } | null>(null);
+  const [toasts, setToasts] = useState<{ id: string; msg: string }[]>([]);
+  const token = useRef<string | null>(null);
+  const lastSaved = useRef("");
+
+  const {
+    data: form,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["cfp-form", slug],
     queryFn: () => apiFetch<PublicForm>(`/public/events/${slug}/cfp-form`),
   });
@@ -104,96 +97,246 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     window.setTimeout(() => setToasts((current) => current.filter((t) => t.id !== id)), 6000);
   };
 
-  const answers = () => ({ ...values, speaker_bio: draft.bio });
+  const schema = form?.schema;
+  const settings = schema?.settings;
+  const { visible, required } = useMemo(
+    () =>
+      schema
+        ? resolveVisibility(schema, values)
+        : { visible: new Set<string>(), required: new Set<string>() },
+    [schema, values],
+  );
+
+  /** The wizard is the form's own shape: one step per section that has
+   *  something to show, so a section the organiser adds needs no code. */
+  const sections = useMemo(
+    () =>
+      (schema?.sections ?? [])
+        .map((section) => ({
+          ...section,
+          fields: section.fields.filter((field) => visible.has(field.key)),
+        }))
+        .filter((section) => section.fields.length > 0),
+    [schema, visible],
+  );
+
+  const steps = ["You", ...sections.map((section) => section.title), "Review and submit"];
+  const last = steps.length;
+  const needsTerms = settings?.require_terms === true;
+  const maxCo = settings?.allow_co_speakers === false ? 0 : (settings?.max_co_speakers ?? 4);
+
+  // ---- resume ------------------------------------------------------------
+  useEffect(() => {
+    const stored = read(slug);
+    if (stored === null) return;
+    let live = true;
+    void apiFetch<{ title: string; answers: Record<string, unknown>; can_edit: boolean }>(
+      `/public/events/${slug}/submissions/${stored.code}/open`,
+      { method: "POST", body: { draft_token: stored.token } },
+    )
+      .then((draft) => {
+        if (!live) return;
+        if (!draft.can_edit) {
+          // Already submitted, or the call has closed. Keeping the token would
+          // resume a proposal that can no longer be changed.
+          window.localStorage.removeItem(STORE);
+          return;
+        }
+        token.current = stored.token;
+        setValues(draft.answers);
+        setName(stored.name);
+        setEmail(stored.email);
+        setResumed(stored.code);
+        setStep(1);
+      })
+      .catch((caught: unknown) => {
+        if (!live) return;
+        // Only forget the draft when the server says it is genuinely not there.
+        // Discarding it on a timeout or a 500 loses the speaker's pointer to
+        // their own work, and the next autosave then starts a *second*
+        // submission — which is how the demo database filled up with
+        // half-written duplicates in the first place.
+        if (caught instanceof ApiError && caught.status === 404) {
+          window.localStorage.removeItem(STORE);
+          return;
+        }
+        token.current = stored.token;
+        setName(stored.name);
+        setEmail(stored.email);
+      });
+    return () => {
+      live = false;
+    };
+  }, [slug]);
+
+  // ---- saving ------------------------------------------------------------
+  const cleanCo = () =>
+    co
+      .filter((person) => person.name.trim() !== "" && person.email.trim() !== "")
+      .map((person) => ({ name: person.name.trim(), email: person.email.trim() }));
+
+  const payload = () => ({
+    form_id: form?.form_id,
+    title: titleOf(values),
+    answers: values,
+    speaker_email: email.trim(),
+    speaker_name: name.trim() === "" ? email.trim() : name.trim(),
+    co_speakers: cleanCo(),
+    draft_token: token.current,
+  });
 
   const saveDraft = useMutation({
     mutationFn: async () => {
-      if (draft.email.trim() === "" || title().trim() === "") return null;
-      return apiFetch<{ code: string; draft_token: string }>(
+      const body = payload();
+      // The API needs both; before then there is nothing to keep, which is not
+      // the same as a failure.
+      if (body.speaker_email === "" || body.title.trim() === "") return null;
+      const stamp = JSON.stringify({ ...body, draft_token: null });
+      if (stamp === lastSaved.current) return null;
+      setSave({ kind: "saving" });
+      const result = await apiFetch<{ code: string; draft_token: string }>(
         `/public/events/${slug}/submissions/draft`,
-        {
-          method: "POST",
-          body: {
-            form_id: form?.form_id,
-            title: title(),
-            answers: answers(),
-            speaker_email: draft.email,
-            speaker_name: draft.name || draft.email,
-            draft_token: draftToken.current,
-          },
-        },
+        { method: "POST", body },
       );
+      lastSaved.current = stamp;
+      return result;
     },
     onSuccess: (result) => {
       if (result === null) return;
-      draftToken.current = result.draft_token;
-      window.localStorage.setItem(DRAFT_KEY, result.draft_token);
-      setSavedAt(new Intl.DateTimeFormat("en-GB", { timeStyle: "short" }).format(new Date()));
+      token.current = result.draft_token;
+      window.localStorage.setItem(
+        STORE,
+        JSON.stringify({
+          slug,
+          token: result.draft_token,
+          code: result.code,
+          email: email.trim(),
+          name: name.trim(),
+        } satisfies Stored),
+      );
+      setSave({
+        kind: "saved",
+        at: new Intl.DateTimeFormat("en-GB", { timeStyle: "short" }).format(new Date()),
+      });
     },
-  });
-
-  const submit = useMutation({
-    mutationFn: () =>
-      apiFetch<{ code: string }>(
-        `/public/events/${slug}/submissions`,
-        {
-          method: "POST",
-          body: {
-            form_id: form?.form_id,
-            title: title(),
-            answers: answers(),
-            speaker_email: draft.email,
-            speaker_name: draft.name,
-            draft_token: draftToken.current,
-          },
-        },
-      ),
-    onSuccess: (result) => {
-      setCode(result.code);
-      window.localStorage.removeItem(DRAFT_KEY);
-    },
+    // Without this the label kept reading "Saved 17:04" through every failure,
+    // which is how a speaker loses fifteen minutes of writing and is told
+    // nothing.
     onError: (caught: Error) =>
-      toast(caught instanceof ApiError ? caught.message : "Could not submit. Try again."),
+      setSave({
+        kind: "failed",
+        message: caught instanceof ApiError ? caught.message : "We could not reach the server.",
+      }),
   });
 
   useEffect(() => {
-    // Autosave on the prototype's cadence, so a closed tab does not lose work.
     const timer = window.setInterval(() => saveDraft.mutate(), AUTOSAVE_MS);
     return () => window.clearInterval(timer);
   }, [saveDraft]);
 
-  const set = <K extends keyof Draft>(key: K) =>
-    (event: React.SyntheticEvent) => {
-      const target = event.target as HTMLInputElement | HTMLTextAreaElement;
-      setDraft((current) => ({ ...current, [key]: target.value }) as Draft);
-    };
+  // ---- validation --------------------------------------------------------
+  const stepOf = (key: string) => {
+    const index = sections.findIndex((section) => section.fields.some((f) => f.key === key));
+    return index === -1 ? last : index + 2;
+  };
 
-  const validate = (): typeof errors => {
-    const found: typeof errors = [];
-    if (draft.email.trim() === "") found.push({ t: "Your email address is required", field: "email", step: 1 });
-    if (draft.abstract.trim() === "") found.push({ t: "An abstract is required", field: "abstract", step: 2 });
-    if (draft.track === "") found.push({ t: "Pick a track", field: "track", step: 2 });
-    if (draft.format === "") found.push({ t: "Pick a session format", field: "format", step: 2 });
-    for (const field of visibleFields) {
-      if (!requiredKeys.has(field.key)) continue;
-      const value = values[field.key];
-      const blank =
-        value === undefined ||
-        value === false ||
-        (typeof value === "string" && value.trim() === "") ||
-        (Array.isArray(value) && value.length === 0);
-      if (blank) found.push({ t: `${field.label} is required`, field: field.key, step: 2 });
-    }
-    if (draft.name.trim() === "") found.push({ t: "Your name is required", field: "name", step: 3 });
-    if (!draft.terms) found.push({ t: "Confirm you agree to the speaker terms", field: "terms", step: 0 });
+  const validate = (): Problem[] => {
+    const found: Problem[] = [];
+    if (name.trim() === "")
+      found.push({ key: "name", message: "What name should appear on the programme?", step: 1 });
+    if (email.trim() === "")
+      found.push({ key: "email", message: "We need an address to reach you about this.", step: 1 });
+    else if (!EMAIL.test(email.trim()))
+      found.push({ key: "email", message: "That does not look like an email address.", step: 1 });
+
+    sections.forEach((section, index) => {
+      for (const field of section.fields) {
+        const value = values[field.key];
+        const blank =
+          value === undefined ||
+          value === false ||
+          (typeof value === "string" && value.trim() === "") ||
+          (Array.isArray(value) && value.length === 0);
+        if (required.has(field.key) && blank) {
+          found.push({
+            key: field.key,
+            step: index + 2,
+            message: CHOICE_TYPES.has(field.type)
+              ? `Pick a ${field.label.toLowerCase()}.`
+              : `${field.label} is required.`,
+          });
+          continue;
+        }
+        const max = field.max_length ?? null;
+        if (max !== null && typeof value === "string" && value.length > max)
+          found.push({
+            key: field.key,
+            step: index + 2,
+            message: `${value.length - max} characters too long — the limit is ${max}.`,
+          });
+      }
+    });
+
+    co.forEach((person, index) => {
+      const filled = person.name.trim() !== "" || person.email.trim() !== "";
+      if (!filled) return;
+      if (person.name.trim() === "" || !EMAIL.test(person.email.trim()))
+        found.push({
+          key: `co-${index}`,
+          step: last - 1,
+          message: "A co-speaker needs both a name and a valid email address.",
+        });
+    });
+
+    if (needsTerms && !terms)
+      found.push({ key: "terms", message: "Confirm you agree to the speaker terms.", step: 0 });
     return found;
   };
 
+  const submit = useMutation({
+    mutationFn: () =>
+      apiFetch<{ code: string; confirmation_message: string }>(
+        `/public/events/${slug}/submissions`,
+        { method: "POST", body: payload() },
+      ),
+    onSuccess: (result) => {
+      setDone({ code: result.code, message: result.confirmation_message });
+      window.localStorage.removeItem(STORE);
+    },
+    onError: (caught: Error) => {
+      // The server decides; when it disagrees with us, put its words on the
+      // field it named rather than in a toast that scrolls away.
+      const detail =
+        caught instanceof ApiError
+          ? (caught.details as { errors?: { field: string; message: string }[] } | undefined)
+          : undefined;
+      const listed = (detail?.errors ?? []).map((entry) => ({
+        key: entry.field,
+        message: entry.message,
+        step: stepOf(entry.field),
+      }));
+      if (listed.length > 0) {
+        setErrors(listed);
+        setStep(listed[0]!.step);
+        return;
+      }
+      toast(caught instanceof ApiError ? caught.message : "Could not submit. Try again.");
+    },
+  });
+
   const advance = () => {
-    if (step < LAST) {
+    if (step < last) {
+      // Only this step's problems. Catching them here is the difference between
+      // "Track is required" next to the track, and four steps later on a
+      // summary. The rail still jumps anywhere unchecked, so nobody is trapped.
+      const here = validate().filter((problem) => problem.step === step);
+      if (here.length > 0) {
+        setErrors(here);
+        return;
+      }
+      setErrors([]);
       saveDraft.mutate();
       setStep((current) => current + 1);
-      setVisited((current) => [...new Set([...current, step + 1])]);
       return;
     }
     const found = validate();
@@ -205,187 +348,464 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     submit.mutate();
   };
 
-  const title = () => titleFrom(values);
+  /** The line under the heading says what this step is for. It used to repeat
+   *  "Step 2 of 4", which the rail already shows and the phone strip shows
+   *  again — three copies of a number and nowhere saying why. */
+  const blurb = (() => {
+    if (step === 0) {
+      const welcome = settings?.welcome_message ?? "";
+      if (welcome.trim() !== "") return welcome;
+      return (
+        form?.event_description ?? "No account needed — your email address is your identity here."
+      );
+    }
+    if (step === 1) return "Two details, and then the proposal itself.";
+    if (step === last) return "Nothing has been sent yet. Read it over, then submit.";
+    return sections[step - 2]?.description ?? "";
+  })();
 
-  const setValue = (key: string, value: unknown) =>
+  const errorFor = (key: string) => errors.find((entry) => entry.key === key)?.message ?? null;
+  const setValue = (key: string, value: unknown) => {
     setValues((current) => ({ ...current, [key]: value }));
-
-  const schema = form?.schema;
-  const { visible, required } = schema
-    ? resolveVisibility(schema, values)
-    : { visible: new Set<string>(), required: new Set<string>() };
-  const requiredKeys = required;
-  const visibleFields = (schema?.sections ?? [])
-    .flatMap((section) => section.fields)
-    .filter((field) => visible.has(field.key) && !SPEAKER_FIELDS.has(field.key));
-
-  const invalid = (field: string) =>
-    errors.some((entry) => entry.field === field) ? "#D8432B" : "#C8D2D5";
-
-  const pill = (chosen: boolean) => ({
-    bg: chosen ? "#FFEAE6" : "#FFFFFF",
-    fg: chosen ? "#E04E4E" : "#3E4E58",
-    bd: chosen ? "#E04E4E" : "#C8D2D5",
-  });
-
-  // A closed call shows the confirmation panel's shape with the server's reason,
-  // rather than a wizard that cannot submit. The server clock decides; the
-  // client only reports it.
-  const closed = form !== undefined && !form.is_open;
-
-  const screen: CfpData = {
-    working: code === null && !closed,
-    doneV: code !== null || closed,
-    hasCode: code !== null,
-    doneTitle: code !== null ? "Proposal received" : "Submissions are closed",
-    doneNote:
-      code !== null
-        ? "Keep your code — it is how you check the status of this proposal."
-        : (form?.closed_reason ?? "This call for papers is not accepting proposals."),
-    code: code ?? "",
-    copyCode: () => {
-      if (code !== null) void navigator.clipboard.writeText(code);
-      toast("Code copied. Keep it to check your status later.");
-    },
-    again: () => {
-      setCode(null);
-      setDraft(EMPTY);
-      setStep(0);
-      draftToken.current = null;
-    },
-    welcomeMsg:
-      form === undefined
-        ? "Loading the call for papers…"
-        : form.is_open
-          ? `Proposals for ${form.event_name}. No account needed — your email is your identity, and an unfinished draft waits for you.`
-          : (form.closed_reason ?? "The call for papers is closed."),
-
-    steps: STEPS.map((label, position) => {
-      const index = position + 1;
-      const done = visited.includes(index) && index < step;
-      const active = index === step;
-      return {
-        n: label,
-        mark: done ? "✓" : String(index),
-        on: () => setStep(index),
-        fg: active ? "#16232B" : "#6B7B84",
-        wt: active ? "600" : "400",
-        dotBg: active ? "#E04E4E" : done ? "#0E7A5F" : "transparent",
-        dotFg: active || done ? "#FFFFFF" : "#6B7B84",
-        dotBd:
-          active || done ? "transparent" : "#C8D2D5",
-      };
-    }),
-    p0: step === 0,
-    p1: step === 1,
-    p2: step === 2,
-    p3: step === 3,
-    p4: step === 4,
-    back: () => setStep((current) => Math.max(0, current - 1)),
-    canBack: step > 0,
-    next: advance,
-    nextLabel:
-      step === LAST
-        ? submit.isPending
-          ? "Submitting…"
-          : "Submit proposal"
-        : "Continue",
-
-    email: draft.email,
-    onEmail: set("email"),
-    emailBd: invalid("email"),
-    name: draft.name,
-    onName: set("name"),
-    nameBd: invalid("name"),
-    company: draft.company,
-    onCompany: set("company"),
-    bio: draft.bio,
-    onBio: set("bio"),
-    bioBd: invalid("bio"),
-
-    fields: visibleFields.map((field) => {
-      const value = values[field.key];
-      const required = requiredKeys.has(field.key);
-      const invalidHere = errors.some((entry) => entry.field === field.key);
-      const border = invalidHere ? "#D8432B" : "#C8D2D5";
-      const isMulti = MULTI_TYPES.has(field.type);
-      const chosen = Array.isArray(value) ? value : [];
-      return {
-        label: field.label,
-        reqD: required ? "inline" : "none",
-        bd: border,
-        placeholder: field.help_text ?? "",
-        inputType: HTML_INPUT[field.type] ?? "text",
-        isLine: LINE_TYPES.has(field.type),
-        isArea: AREA_TYPES.has(field.type),
-        isChoice: CHOICE_TYPES.has(field.type),
-        isConsent: CONSENT_TYPES.has(field.type),
-        value: typeof value === "string" ? value : "",
-        onChange: (event: React.SyntheticEvent) =>
-          setValue(field.key, (event.target as HTMLInputElement).value),
-        onToggle: () => setValue(field.key, value !== true),
-        tick: value === true ? "✓" : "",
-        tickBg: value === true ? "#E04E4E" : "#FFFFFF",
-        consentText: field.help_text ?? field.label,
-        options: field.choices.map((choice) => {
-          const picked = isMulti ? chosen.includes(choice.value) : value === choice.value;
-          return {
-            label: choice.label,
-            on: () =>
-              setValue(
-                field.key,
-                isMulti
-                  ? picked
-                    ? chosen.filter((entry) => entry !== choice.value)
-                    : [...chosen, choice.value]
-                  : choice.value,
-              ),
-            ...pill(picked),
-          };
-        }),
-        hasCount: field.type === "long_text",
-        count: `${words(typeof value === "string" ? value : "")} words`,
-        hasHelp: field.help_text !== null && !LINE_TYPES.has(field.type),
-        help: field.help_text ?? "",
-      };
-    }),
-
-    hasCo: draft.hasCo,
-    noCo: !draft.hasCo,
-    addCo: () => setDraft((current) => ({ ...current, hasCo: true })),
-    rmCo: () => setDraft((current) => ({ ...current, hasCo: false, coName: "", coEmail: "" })),
-    coName: draft.coName,
-    onCoName: set("coName"),
-    coEmail: draft.coEmail,
-    onCoEmail: set("coEmail"),
-
-    tCk: draft.terms ? "✓" : "",
-    tBg: draft.terms ? "#E04E4E" : "#FFFFFF",
-    tBd: draft.terms ? "#E04E4E" : "#C8D2D5",
-    togTerms: () => setDraft((current) => ({ ...current, terms: !current.terms })),
-
-    summary: [
-      { k: "Title", v: title() || "—", fg: "#16232B" },
-      ...visibleFields
-        .filter((field) => field.key !== "title" && CHOICE_TYPES.has(field.type))
-        .map((field) => ({
-          k: field.label,
-          v: String(values[field.key] ?? "—"),
-          fg: "#16232B",
-        })),
-      { k: "Speaker", v: draft.name || "—", fg: "#16232B" },
-      { k: "Email", v: draft.email || "—", fg: "#3E4E58" },
-    ],
-    errors: errors.map((entry) => ({ t: entry.t, on: () => setStep(entry.step) })),
-    errCount: errors.length,
-    hasErrors: errors.length > 0,
-    savedAt: savedAt === "" ? "Not saved yet" : `Saved ${savedAt}`,
-
-    toasts: toasts.map((entry) => ({
-      msg: entry.msg,
-      onX: () => setToasts((current) => current.filter((x) => x.id !== entry.id)),
-    })),
+    setErrors((current) => current.filter((entry) => entry.key !== key));
   };
 
-  return <Cfp d={screen} />;
+  // ---- panels ------------------------------------------------------------
+  const identity = (
+    <div style={{ display: "grid", gap: 22 }}>
+      <div>
+        <label htmlFor="cfp-name" style={CONTROL.label}>
+          Your name<span style={{ color: "var(--sg)" }}> *</span>
+        </label>
+        <p
+          style={{
+            font: "400 13px/1.55 var(--font-plex-sans)",
+            color: "var(--i3)",
+            margin: "0 0 10px",
+          }}
+        >
+          As it should appear on the programme.
+        </p>
+        <input
+          id="cfp-name"
+          className="cfp-control"
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value);
+            setErrors((current) => current.filter((entry) => entry.key !== "name"));
+          }}
+          placeholder="Alex Rivera"
+          style={{
+            ...CONTROL.input,
+            borderColor: errorFor("name") !== null ? "var(--cn)" : "var(--ls)",
+          }}
+        />
+        <Problem error={errorFor("name")} />
+      </div>
+      <div>
+        <label htmlFor="cfp-email" style={CONTROL.label}>
+          Email<span style={{ color: "var(--sg)" }}> *</span>
+        </label>
+        <p
+          style={{
+            font: "400 13px/1.55 var(--font-plex-sans)",
+            color: "var(--i3)",
+            margin: "0 0 10px",
+          }}
+        >
+          Your address is your account here — there is no password. Everything about this proposal
+          comes to it.
+        </p>
+        <input
+          id="cfp-email"
+          className="cfp-control"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            setErrors((current) => current.filter((entry) => entry.key !== "email"));
+          }}
+          placeholder="you@example.com"
+          style={{
+            ...CONTROL.input,
+            borderColor: errorFor("email") !== null ? "var(--cn)" : "var(--ls)",
+          }}
+        />
+        <Problem error={errorFor("email")} />
+      </div>
+    </div>
+  );
+
+  const coSpeakers =
+    maxCo === 0 ? null : (
+      <div style={{ display: "grid", gap: 14 }}>
+        <div>
+          <p style={{ font: "500 13px var(--font-plex-sans)", color: "var(--i2)", margin: 0 }}>
+            Anyone else on stage with you
+            <Optional />
+          </p>
+          <p
+            style={{
+              font: "400 13px/1.55 var(--font-plex-sans)",
+              color: "var(--i3)",
+              margin: "6px 0 0",
+            }}
+          >
+            Up to {maxCo}. They are added to the roster and hear from us at the same time you do.
+          </p>
+        </div>
+        {co.map((person, index) => (
+          <div key={index} style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <input
+              className="cfp-control"
+              value={person.name}
+              aria-label={`Co-speaker ${index + 1} name`}
+              placeholder="Name"
+              onChange={(event) =>
+                setCo((current) =>
+                  current.map((row, at) =>
+                    at === index ? { ...row, name: event.target.value } : row,
+                  ),
+                )
+              }
+              style={{ ...CONTROL.input, flex: "1 1 180px", width: "auto" }}
+            />
+            <input
+              className="cfp-control"
+              type="email"
+              value={person.email}
+              aria-label={`Co-speaker ${index + 1} email`}
+              placeholder="them@example.com"
+              onChange={(event) =>
+                setCo((current) =>
+                  current.map((row, at) =>
+                    at === index ? { ...row, email: event.target.value } : row,
+                  ),
+                )
+              }
+              style={{ ...CONTROL.input, flex: "1 1 180px", width: "auto" }}
+            />
+            <button
+              type="button"
+              className="cfp-control"
+              onClick={() => setCo((current) => current.filter((_, at) => at !== index))}
+              style={{ ...button("secondary"), height: 46 }}
+            >
+              Remove
+            </button>
+            <Problem error={errorFor(`co-${index}`)} />
+          </div>
+        ))}
+        {co.length < maxCo && (
+          <div>
+            <button
+              type="button"
+              className="cfp-control"
+              onClick={() => setCo((current) => [...current, { name: "", email: "" }])}
+              style={button("secondary")}
+            >
+              + Add a co-speaker
+            </button>
+          </div>
+        )}
+      </div>
+    );
+
+  const review = (
+    <div style={{ display: "grid", gap: 20 }}>
+      <div
+        style={{
+          border: "1px solid var(--ln)",
+          background: "var(--cd)",
+          borderRadius: 14,
+          padding: 24,
+          display: "grid",
+          gap: 14,
+        }}
+      >
+        {[
+          { k: "Name", v: name || "—" },
+          { k: "Email", v: email || "—" },
+          ...sections.flatMap((section) =>
+            section.fields.map((field) => ({
+              k: field.label,
+              v: (() => {
+                const value = values[field.key];
+                if (Array.isArray(value)) return value.join(", ") || "—";
+                if (value === true) return "Yes";
+                const text = typeof value === "string" ? value.trim() : "";
+                return text === "" ? "—" : text.length > 220 ? `${text.slice(0, 220)}…` : text;
+              })(),
+            })),
+          ),
+          ...(cleanCo().length > 0
+            ? [
+                {
+                  k: "Co-speakers",
+                  v: cleanCo()
+                    .map((p) => p.name)
+                    .join(", "),
+                },
+              ]
+            : []),
+        ].map((row) => (
+          <div key={row.k} className="cfp-summary">
+            <span style={{ font: "400 13px var(--font-plex-sans)", color: "var(--i4)" }}>
+              {row.k}
+            </span>
+            <span style={{ font: "400 14px/1.6 var(--font-plex-sans)", color: "var(--ik)" }}>
+              {row.v}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {needsTerms && (
+        <Consent
+          checked={terms}
+          error={errorFor("terms")}
+          label="I agree to the speaker terms: recording consent is asked separately after acceptance, and my talk contains no vendor pitch."
+          onToggle={() => {
+            setTerms((current) => !current);
+            setErrors((current) => current.filter((entry) => entry.key !== "terms"));
+          }}
+        />
+      )}
+
+      {errors.length > 0 && (
+        <div
+          role="alert"
+          style={{
+            border: "1px solid var(--cnl)",
+            background: "var(--cnw)",
+            borderRadius: 14,
+            padding: 20,
+          }}
+        >
+          <p
+            style={{
+              font: "600 14px var(--font-plex-sans)",
+              color: "var(--cn)",
+              margin: "0 0 10px",
+            }}
+          >
+            {errors.length} {errors.length === 1 ? "answer needs" : "answers need"} attention
+          </p>
+          <ul
+            style={{ margin: 0, paddingLeft: 20, listStyleType: "disc", display: "grid", gap: 6 }}
+          >
+            {errors.map((entry) => (
+              <li key={entry.key}>
+                <button
+                  type="button"
+                  onClick={() => setStep(entry.step)}
+                  style={{
+                    border: "none",
+                    background: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    font: "400 13.5px/1.55 var(--font-plex-sans)",
+                    color: "var(--i2)",
+                    textDecoration: "underline",
+                  }}
+                >
+                  {entry.message}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+
+  const body = (() => {
+    if (step === 0)
+      return (
+        <div style={{ display: "grid", gap: 22 }}>
+          <div
+            style={{
+              border: "1px solid var(--ln)",
+              background: "var(--cd)",
+              borderRadius: 14,
+              padding: 24,
+            }}
+          >
+            <p
+              style={{
+                font: "600 14px var(--font-plex-sans)",
+                color: "var(--ik)",
+                margin: "0 0 10px",
+              }}
+            >
+              What you will need · about 15 minutes
+            </p>
+            <ul
+              style={{
+                margin: 0,
+                paddingLeft: 20,
+                display: "grid",
+                gap: 7,
+                listStyleType: "disc",
+                font: "400 14px/1.6 var(--font-plex-sans)",
+                color: "var(--i2)",
+              }}
+            >
+              {sections.flatMap((section) =>
+                section.fields
+                  .filter((field) => required.has(field.key))
+                  .map((field) => (
+                    <li key={field.key}>
+                      {field.label}
+                      {field.help_text ? (
+                        <span style={{ color: "var(--i3)" }}> — {field.help_text}</span>
+                      ) : null}
+                    </li>
+                  )),
+              )}
+            </ul>
+          </div>
+          <p style={{ font: "400 14px/1.65 var(--font-plex-sans)", color: "var(--i3)", margin: 0 }}>
+            Your work is saved as you go, so you can close this and come back. Nothing is sent until
+            you press submit on the last step.
+          </p>
+          {needsTerms && (
+            <Consent
+              checked={terms}
+              error={errorFor("terms")}
+              label="I agree to the speaker terms: recording consent is asked separately after acceptance, and my talk contains no vendor pitch."
+              onToggle={() => setTerms((current) => !current)}
+            />
+          )}
+        </div>
+      );
+
+    if (step === 1) return identity;
+    if (step === last) return review;
+
+    const section = sections[step - 2];
+    if (section === undefined) return null;
+    return (
+      <div style={{ display: "grid", gap: 26 }}>
+        {section.fields.map((field) => (
+          <Field
+            key={field.key}
+            field={field}
+            value={values[field.key]}
+            required={required.has(field.key)}
+            error={errorFor(field.key)}
+            onChange={(value) => setValue(field.key, value)}
+          />
+        ))}
+        {step === last - 1 && coSpeakers}
+      </div>
+    );
+  })();
+
+  return (
+    <Shell
+      css={CFP_CSS}
+      form={form}
+      slug={slug}
+      isPending={isPending}
+      isError={isError}
+      onRetry={() => void refetch()}
+      done={done}
+      // A second proposal is a second proposal: every field resets, including
+      // the ones the speaker might reasonably keep. Carrying the name over
+      // appended it to what they typed next, and carrying the save stamp made a
+      // brand-new draft claim it had already been saved.
+      onAgain={() => {
+        setDone(null);
+        setValues({});
+        setName("");
+        setEmail("");
+        setCo([]);
+        setTerms(false);
+        setErrors([]);
+        setSave({ kind: "idle" });
+        setStep(0);
+        setResumed(null);
+        token.current = null;
+        lastSaved.current = "";
+      }}
+      onCopy={(code) => {
+        void navigator.clipboard.writeText(code);
+        toast("Code copied. Keep it — it is how you check this proposal later.");
+      }}
+    >
+      <div className="cfp-shell">
+        <Rail
+          steps={steps}
+          step={step}
+          onStep={setStep}
+          save={save}
+          onRetrySave={() => saveDraft.mutate()}
+          resumed={resumed}
+        />
+
+        <div>
+          <h1
+            style={{
+              font: "700 clamp(26px,4vw,38px)/1.1 var(--font-bricolage), sans-serif",
+              letterSpacing: "-0.02em",
+              color: "var(--ik)",
+              margin: "0 0 10px",
+            }}
+          >
+            {step === 0 ? `Speak at ${form?.event_name ?? "this event"}` : steps[step - 1]}
+          </h1>
+          <p
+            style={{
+              font: "400 15px/1.65 var(--font-plex-sans)",
+              color: "var(--i2)",
+              margin: "0 0 30px",
+              maxWidth: "62ch",
+            }}
+          >
+            {blurb}
+          </p>
+
+          {body}
+
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              flexWrap: "wrap",
+              marginTop: 34,
+            }}
+          >
+            {step > 0 && (
+              <button
+                type="button"
+                className="cfp-control"
+                onClick={() => setStep((current) => Math.max(0, current - 1))}
+                style={button("ghost")}
+              >
+                Back
+              </button>
+            )}
+            <div style={{ flex: 1 }} />
+            <button
+              type="button"
+              className="cfp-control"
+              disabled={submit.isPending}
+              onClick={advance}
+              style={{ ...button("primary"), opacity: submit.isPending ? 0.6 : 1 }}
+            >
+              {step === last ? (submit.isPending ? "Submitting…" : "Submit proposal") : "Continue"}
+            </button>
+          </div>
+        </div>
+      </div>
+      <Toasts
+        toasts={toasts}
+        onClose={(id) => setToasts((current) => current.filter((entry) => entry.id !== id))}
+      />
+    </Shell>
+  );
 }

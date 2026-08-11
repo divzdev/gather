@@ -26,6 +26,7 @@ from app.models import (
     Organization,
     OrgMember,
     Role,
+    Speaker,
     Submission,
     SubmissionStatus,
     User,
@@ -535,6 +536,87 @@ async def test_the_same_email_twice_is_one_speaker(
 
     assert len(listed.json()["data"]) == 2
     assert len(speaker_ids) == 1
+
+
+async def test_a_draft_saved_before_the_name_was_asked_for_adopts_it_later(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """The form autosaves as soon as it has an address, which is before it has
+    asked who you are — so the first save can only send the email as the name.
+
+    Left alone, that address was the speaker's name forever: on the roster, in
+    the programme, and in the greeting of every email they got."""
+    headers, event, form = cfp
+    base = {"form_id": str(form.id), "answers": GOOD, "speaker_email": "late@example.com"}
+
+    first = await client.post(
+        f"/v1/public/events/{event.slug}/submissions/draft",
+        json={**base, "title": "Half a thought", "speaker_name": "late@example.com"},
+    )
+    await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            **base,
+            "title": "Half a thought",
+            "speaker_name": "Dana Okafor",
+            "draft_token": first.json()["draft_token"],
+        },
+    )
+
+    listed = await client.get(f"/v1/events/{event.id}/submissions", headers=headers)
+    speaker = next(
+        s
+        for row in listed.json()["data"]
+        for s in row["speakers"]
+        if s["email"] == "late@example.com"
+    )
+
+    assert speaker["name"] == "Dana Okafor"
+
+
+async def test_a_later_draft_never_overwrites_a_name_a_human_chose(
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """Adoption only replaces the email-as-name placeholder. An organizer who
+    corrects a speaker's spelling must not have it undone by that speaker's next
+    keystroke on a second proposal."""
+    headers, event, form = cfp
+    base = {"form_id": str(form.id), "answers": GOOD, "speaker_email": "fixed@example.com"}
+
+    await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={**base, "title": "First", "speaker_name": "typo"},
+    )
+    with tenancy_disabled():
+        speaker = await session.scalar(select(Speaker).where(Speaker.email == "fixed@example.com"))
+        assert speaker is not None
+        speaker.name = "Corrected By Staff"
+        await session.commit()
+
+    await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={**base, "title": "Second", "speaker_name": "typo again"},
+    )
+
+    listed = await client.get(f"/v1/events/{event.id}/submissions", headers=headers)
+    names = {s["name"] for row in listed.json()["data"] for s in row["speakers"]}
+
+    assert "Corrected By Staff" in names
+    assert "typo again" not in names
+
+
+async def test_the_public_form_carries_the_zone_its_deadline_is_in(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """`closes_at` is an instant in UTC. Without the event's zone the page can
+    only format it in the reader's own, so the advertised deadline differed for
+    every speaker outside the conference's timezone."""
+    _, event, _ = cfp
+
+    body = (await client.get(f"/v1/public/events/{event.slug}/cfp-form")).json()
+
+    assert body["event_timezone"] == event.timezone
+    assert body["submission_limit_per_speaker"] == event.submission_limit_per_speaker
 
 
 async def test_submission_list_is_scoped_to_its_event(

@@ -58,5 +58,11 @@ class PublicFormRead(BaseModel):
     form_name: str
     schema_: FormSchema = Field(alias="schema", serialization_alias="schema")
     closes_at: datetime | None
+    #: `closes_at` is an instant in UTC, so a deadline shown without this is a
+    #: different deadline for every reader. The client renders both in this zone.
+    event_timezone: str
+    #: What the API will actually enforce on submit. The form used to print a
+    #: limit that was a literal string, on an event that had none.
+    submission_limit_per_speaker: int | None
     is_open: bool
     closed_reason: str | None = None

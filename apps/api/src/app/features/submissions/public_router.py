@@ -83,6 +83,8 @@ async def read_cfp_form(event: PublicEvent, session: DbSession) -> PublicFormRea
         form_name=form.name,
         schema=FormSchema.model_validate(form.schema),
         closes_at=form.closes_at or event.cfp_closes_at,
+        event_timezone=event.timezone,
+        submission_limit_per_speaker=event.submission_limit_per_speaker,
         is_open=is_open,
         closed_reason=closed_reason,
     )

@@ -113,6 +113,13 @@ async def upsert_speaker(
             speaker = await session.scalar(select(Speaker).where(Speaker.email == email))
             if speaker is None:  # pragma: no cover - the constraint says otherwise
                 raise
+    elif speaker.name == speaker.email and name != email:
+        # A draft autosaves before the form has asked for a name, so the caller
+        # has nothing to send but the address. Adopt the real name the moment one
+        # arrives — but only over that placeholder, never over a name a human
+        # typed, or an organiser's correction would be undone by the speaker's
+        # next keystroke.
+        speaker.name = name
 
     participating = await session.scalar(
         select(func.count(EventSpeaker.id)).where(EventSpeaker.speaker_id == speaker.id)

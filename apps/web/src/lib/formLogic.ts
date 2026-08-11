@@ -17,6 +17,10 @@ export type FormField = {
   choices: Choice[];
   hidden_from_new: boolean;
   identity_bearing: boolean;
+  /** The bounds the API enforces. Optional here because the logic fixtures
+   *  describe visibility only, and a field without them is unbounded. */
+  min_length?: number | null;
+  max_length?: number | null;
 };
 
 export type LogicRule = {
@@ -30,7 +34,15 @@ export type LogicRule = {
 export type FormSchema = {
   sections: { key: string; title: string; description: string | null; fields: FormField[] }[];
   logic: LogicRule[];
-  settings: { confirmation_message: string };
+  /** The builder's own switches. Optional here so the logic fixtures, which
+   *  carry only `confirmation_message`, still typecheck. */
+  settings: {
+    confirmation_message: string;
+    welcome_message?: string;
+    require_terms?: boolean;
+    allow_co_speakers?: boolean;
+    max_co_speakers?: number;
+  };
 };
 
 function isEmpty(value: unknown): boolean {
