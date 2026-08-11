@@ -186,6 +186,25 @@ async def _live_conflicts(session: DbSession) -> list[ConflictRead]:
     ]
 
 
+def _must_be_on_the_day(day: EventDay, starts_at: datetime) -> None:
+    """A placement's day and its time have to agree.
+
+    The grid draws a card at (starts_at - the day's opening) minutes, so a
+    session filed under Monday at a Tuesday time lands hours below the canvas:
+    still `scheduled`, gone from the tray, and unreachable by the drag that
+    would have fixed it. Nothing in the console can produce this — every caller
+    derives the time from the day it is dropping onto — which is exactly why it
+    should be refused rather than trusted.
+    """
+    if starts_at.date() != day.day_date:
+        raise ApiError(
+            f"{starts_at:%d %b %H:%M} is not on {day.day_date:%d %b}. "
+            "A session's time has to fall on the day it is placed on.",
+            code="PLACEMENT_OFF_DAY",
+            status_code=422,
+        )
+
+
 async def _load(session: DbSession, session_id: uuid.UUID) -> Session:
     row = await session.get(Session, session_id)
     if row is None:
@@ -202,8 +221,10 @@ async def place(
 ) -> PlacementResult:
     """Persist the drop, then report what it collided with.
 
-    The only refusal here is a locked session, which is an explicit instruction
-    from an organiser rather than a judgement about the schedule.
+    Two refusals, and neither is a judgement about the schedule: a locked
+    session, which is an explicit instruction from an organiser, and a time that
+    is not on the day it is being placed on, which is incoherent rather than
+    merely conflicting.
     """
     row = await _load(session, session_id)
     if row.is_locked:
@@ -212,10 +233,12 @@ async def place(
             code="SESSION_LOCKED",
             status_code=409,
         )
-    if await session.get(EventDay, body.event_day_id) is None:
+    day = await session.get(EventDay, body.event_day_id)
+    if day is None:
         raise NotFoundError(f"No event day with id {body.event_day_id}.")
     if await session.get(Room, body.room_id) is None:
         raise NotFoundError(f"No room with id {body.room_id}.")
+    _must_be_on_the_day(day, body.starts_at)
 
     row.event_day_id = body.event_day_id
     row.room_id = body.room_id
@@ -274,6 +297,10 @@ async def bulk_place(
         row = await _load(session, uuid.UUID(str(raw_id)))
         if row.is_locked:
             continue
+        day = await session.get(EventDay, parsed.event_day_id)
+        if day is None:
+            raise NotFoundError(f"No event day with id {parsed.event_day_id}.")
+        _must_be_on_the_day(day, parsed.starts_at)
         row.event_day_id = parsed.event_day_id
         row.room_id = parsed.room_id
         row.starts_at = parsed.starts_at

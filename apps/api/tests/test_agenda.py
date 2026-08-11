@@ -615,3 +615,34 @@ async def test_patching_a_session_that_is_not_in_this_event_is_a_404(
     )
 
     assert response.status_code == 404
+
+
+async def test_a_placement_whose_time_is_not_on_its_day_is_refused(
+    client: AsyncClient, grid: tuple[dict[str, str], Event, dict[str, uuid.UUID]]
+) -> None:
+    """The one incoherent placement, as opposed to a merely conflicting one.
+
+    The grid draws a card at (starts_at - the day's opening) minutes, so a
+    session filed under Monday at a Tuesday time renders hours below the canvas:
+    still scheduled, gone from the tray, and unreachable by the drag that would
+    have fixed it. Two rows in the demo database were in exactly that state.
+    """
+    headers, event, ids = grid
+
+    off_day = await client.patch(
+        f"/v1/events/{event.id}/sessions/{ids['talk0']}/placement",
+        headers=headers,
+        json={
+            "event_day_id": str(ids["day"]),
+            "room_id": str(ids["main"]),
+            "starts_at": (NINE_AM + timedelta(days=1)).isoformat(),
+            "duration_minutes": 30,
+        },
+    )
+
+    assert off_day.status_code == 422
+    assert off_day.json()["error"]["code"] == "PLACEMENT_OFF_DAY"
+
+    # And the session is untouched, rather than half-moved.
+    listed = await client.get(f"/v1/events/{event.id}/schedule/draft", headers=headers)
+    assert str(ids["talk0"]) in [row["id"] for row in listed.json()["unscheduled"]]
