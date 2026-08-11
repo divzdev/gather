@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, time
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -141,3 +141,14 @@ class EventDayRead(Read):
     ends_at_local: time
     label: str | None
     sort_order: int
+
+    #: What the day holds, all derived. A day row that shows only a date and an
+    #: opening window cannot answer the question somebody opens this list with:
+    #: is this day full, empty, or half-built?
+    room_count: int = 0
+    break_count: int = 0
+    #: The hours actually occupied, which is rarely the whole window. `None` on a
+    #: day with nothing placed yet — an empty day has no span, and reporting the
+    #: window instead would make an empty day look scheduled.
+    first_session_at: datetime | None = None
+    last_session_at: datetime | None = None

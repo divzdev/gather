@@ -362,3 +362,100 @@ async def test_a_day_cannot_be_edited_to_end_before_it_starts(
 
     unchanged = (await client.get(f"/v1/events/{event.id}/days/{day_id}", headers=headers)).json()
     assert unchanged["starts_at_local"] == "09:00:00"
+
+
+async def test_adding_a_day_that_already_exists_is_refused_not_a_500(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    """`unique(event_id, day_date)` was doing its job and nobody caught it.
+
+    Adding a date already in the list raised an IntegrityError straight through
+    to a bare 500, which tells an organiser nothing about what they did.
+    """
+    headers, event = coordinator
+    day = {"day_date": "2027-05-12", "starts_at_local": "09:00", "ends_at_local": "18:00"}
+    assert (
+        await client.post(f"/v1/events/{event.id}/days", json=day, headers=headers)
+    ).status_code == 201
+
+    again = await client.post(f"/v1/events/{event.id}/days", json=day, headers=headers)
+
+    assert again.status_code == 409
+    assert again.json()["error"]["code"] == "CONFLICT"
+    assert "already an event day" in again.json()["error"]["message"]
+
+
+async def test_two_rooms_cannot_share_a_name(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    """`unique(event_id, name)` is in the brief for rooms, tracks and formats.
+
+    Without it the agenda drew two columns called Main Stage and a placement
+    could land in either.
+    """
+    headers, event = coordinator
+    assert (
+        await client.post(
+            f"/v1/events/{event.id}/rooms", json={"name": "Main Stage"}, headers=headers
+        )
+    ).status_code == 201
+
+    clash = await client.post(
+        f"/v1/events/{event.id}/rooms", json={"name": "Main Stage"}, headers=headers
+    )
+
+    assert clash.status_code == 409
+    assert "already has a room" in clash.json()["error"]["message"]
+
+
+async def test_renaming_a_track_onto_another_name_is_refused(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    """The edit path has the same constraint and used to 500 the same way."""
+    headers, event = coordinator
+    await client.post(f"/v1/events/{event.id}/tracks", json={"name": "AI"}, headers=headers)
+    other = await client.post(
+        f"/v1/events/{event.id}/tracks", json={"name": "Platform"}, headers=headers
+    )
+
+    clash = await client.patch(
+        f"/v1/events/{event.id}/tracks/{other.json()['id']}",
+        json={"name": "AI"},
+        headers=headers,
+    )
+
+    assert clash.status_code == 409
+    assert "already has a track" in clash.json()["error"]["message"]
+
+
+async def test_a_day_row_says_what_it_actually_holds(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    """A date and an opening window cannot answer "is this day built yet?".
+
+    The hours occupied are the ones sessions are in, not the ones the day is
+    open — an empty day reporting 09:00-18:00 would look scheduled.
+    """
+    headers, event = coordinator
+    day_id, _room_id, _session_id = await _placed_session(client, headers, event)
+
+    days = (await client.get(f"/v1/events/{event.id}/days", headers=headers)).json()
+    built = next(row for row in days if row["id"] == day_id)
+
+    assert built["session_count"] == 1
+    assert built["room_count"] == 1
+    assert built["first_session_at"].startswith("2027-05-12T09:00")
+    assert built["last_session_at"].startswith("2027-05-12T09:00")
+
+    empty_id = (
+        await client.post(
+            f"/v1/events/{event.id}/days", json={"day_date": "2027-05-20"}, headers=headers
+        )
+    ).json()["id"]
+    empty = next(
+        row
+        for row in (await client.get(f"/v1/events/{event.id}/days", headers=headers)).json()
+        if row["id"] == empty_id
+    )
+    assert empty["session_count"] == 0
+    assert empty["first_session_at"] is None

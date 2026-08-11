@@ -15,6 +15,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import DbSession, bind_tenant, require_role
@@ -33,10 +34,11 @@ PostUpdate = Callable[[AsyncSession, Any, dict[str, Any]], Awaitable[None]]
 #: count, because "3 sessions are scheduled on this day" and "2 sessions are in
 #: this room" are different facts and the factory cannot know which it is holding.
 InUseCheck = Callable[[AsyncSession, uuid.UUID], Awaitable[str | None]]
-#: How many sessions point at each row of this resource, in one query. Feeds the
-#: count a screen shows next to a row, so removing something says what it costs
-#: before it is clicked rather than only after the server refuses.
-UsageCounts = Callable[[AsyncSession], Awaitable[dict[uuid.UUID, int]]]
+#: Read-only fields computed for every row of this resource in one pass, keyed by
+#: row id and merged into the read schema. What a screen needs to say about a row
+#: is mostly derived — how many sessions use it, what hours a day actually
+#: occupies — and derived beats asking an organiser to type it in and keep it true.
+RowExtras = Callable[[AsyncSession], Awaitable[dict[uuid.UUID, dict[str, Any]]]]
 
 
 def event_resource_router[ModelT: Base, ReadT: BaseModel](
@@ -47,11 +49,12 @@ def event_resource_router[ModelT: Base, ReadT: BaseModel](
     update_schema: type[BaseModel],
     plural: str,
     tag: str,
+    duplicate: str,
     order_by: str = "sort_order",
     on_create: PostCreate | None = None,
     on_update: PostUpdate | None = None,
     in_use: InUseCheck | None = None,
-    usage: UsageCounts | None = None,
+    extras: RowExtras | None = None,
 ) -> APIRouter:
     router = APIRouter(
         prefix="/v1/events/{event_id}/" + plural,
@@ -59,18 +62,32 @@ def event_resource_router[ModelT: Base, ReadT: BaseModel](
         dependencies=[Depends(bind_tenant)],
     )
 
+    async def _flush(session: AsyncSession) -> None:
+        """Turn a unique-constraint violation into the sentence that caused it.
+
+        Every one of these resources is unique on something an organiser types —
+        a room's name, a day's date. Letting the IntegrityError out returned a
+        bare 500 to somebody who had simply added the same day twice.
+        """
+        try:
+            await session.flush()
+        except IntegrityError as clash:
+            if "unique" not in str(clash.orig).lower():
+                raise
+            raise ConflictError(duplicate, details={"duplicate": True}) from clash
+
     async def _get(session: AsyncSession, item_id: uuid.UUID) -> ModelT:
         item = await session.get(model, item_id)
         if item is None:
             raise NotFoundError(f"No {tag[:-1] if tag.endswith('s') else tag} with id {item_id}.")
         return item
 
-    async def _with_counts(session: AsyncSession, rows: list[ModelT]) -> list[ReadT]:
-        """One aggregate for the whole page, not one per row."""
-        counts = {} if usage is None else await usage(session)
+    async def _read(session: AsyncSession, rows: list[ModelT]) -> list[ReadT]:
+        """One aggregate for the whole list, not one query per row."""
+        computed = {} if extras is None else await extras(session)
         return [
             read_schema.model_validate(row).model_copy(
-                update={"session_count": counts.get(row.id, 0)}  # type: ignore[attr-defined]
+                update=computed.get(row.id, {})  # type: ignore[attr-defined]
             )
             for row in rows
         ]
@@ -82,7 +99,7 @@ def event_resource_router[ModelT: Base, ReadT: BaseModel](
     ) -> Any:
         column = getattr(model, order_by, None) or model.id  # type: ignore[attr-defined]
         rows = (await session.execute(select(model).order_by(column))).scalars().all()
-        return await _with_counts(session, list(rows))
+        return await _read(session, list(rows))
 
     @router.post("", response_model=read_schema, status_code=status.HTTP_201_CREATED)
     async def create_item(
@@ -94,8 +111,8 @@ def event_resource_router[ModelT: Base, ReadT: BaseModel](
         session.add(item)
         if on_create is not None:
             await on_create(session, item)
-        await session.flush()
-        return (await _with_counts(session, [item]))[0]
+        await _flush(session)
+        return (await _read(session, [item]))[0]
 
     @router.get("/{item_id}", response_model=read_schema)
     async def read_item(
@@ -103,7 +120,7 @@ def event_resource_router[ModelT: Base, ReadT: BaseModel](
         session: DbSession,
         _: User = Depends(require_role(*READ_ROLES)),
     ) -> Any:
-        return (await _with_counts(session, [await _get(session, item_id)]))[0]
+        return (await _read(session, [await _get(session, item_id)]))[0]
 
     @router.patch("/{item_id}", response_model=read_schema)
     async def update_item(
@@ -120,10 +137,10 @@ def event_resource_router[ModelT: Base, ReadT: BaseModel](
             setattr(item, key, value)
         if on_update is not None:
             await on_update(session, item, before)
-        await session.flush()
+        await _flush(session)
         # Counted after the flush, so an edit that moved other rows reports what
         # it actually touched rather than the zero a bare row would carry.
-        return (await _with_counts(session, [item]))[0]
+        return (await _read(session, [item]))[0]
 
     @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
     async def delete_item(

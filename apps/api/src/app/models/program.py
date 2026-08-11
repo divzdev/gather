@@ -26,6 +26,7 @@ class EventDay(Base, PrimaryKey, Timestamps, EventScoped):
 
 class Room(Base, PrimaryKey, Timestamps, EventScoped):
     __tablename__ = "rooms"
+    __table_args__ = (UniqueConstraint("event_id", "name"),)
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -49,6 +50,7 @@ class RoomBlackout(Base, PrimaryKey, Timestamps, EventScoped):
 
 class Track(Base, PrimaryKey, Timestamps, EventScoped):
     __tablename__ = "tracks"
+    __table_args__ = (UniqueConstraint("event_id", "name"),)
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -60,6 +62,7 @@ class Track(Base, PrimaryKey, Timestamps, EventScoped):
 
 class SessionFormat(Base, PrimaryKey, Timestamps, EventScoped):
     __tablename__ = "session_formats"
+    __table_args__ = (UniqueConstraint("event_id", "name"),)
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     default_duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)

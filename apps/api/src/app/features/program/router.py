@@ -38,16 +38,64 @@ async def _count(session: AsyncSession, model: Any, column: Any, item_id: uuid.U
     return int(await session.scalar(select(func.count(model.id)).where(column == item_id)) or 0)
 
 
+async def _session_counts(session: AsyncSession, column: Any) -> dict[uuid.UUID, int]:
+    rows = await session.execute(
+        select(column, func.count(Session.id)).where(column.is_not(None)).group_by(column)
+    )
+    return {item_id: int(total) for item_id, total in rows.tuples().all()}
+
+
 def _usage_of(column: Any) -> Any:
     """Sessions per row of this resource, in one grouped query."""
 
-    async def counts(session: AsyncSession) -> dict[uuid.UUID, int]:
-        rows = await session.execute(
-            select(column, func.count(Session.id)).where(column.is_not(None)).group_by(column)
-        )
-        return {item_id: int(total) for item_id, total in rows.tuples().all()}
+    async def extras(session: AsyncSession) -> dict[uuid.UUID, dict[str, Any]]:
+        return {
+            item_id: {"session_count": total}
+            for item_id, total in (await _session_counts(session, column)).items()
+        }
 
-    return counts
+    return extras
+
+
+async def _day_extras(session: AsyncSession) -> dict[uuid.UUID, dict[str, Any]]:
+    """What each day actually holds.
+
+    A row that shows only a date and a window says nothing about whether the day
+    is full, empty or half-built — which is the whole question an organiser is
+    asking when they look at this list. All of it is derived, so none of it is
+    another field to keep true by hand.
+    """
+    counts = await _session_counts(session, Session.event_day_id)
+
+    spans = await session.execute(
+        select(
+            Session.event_day_id,
+            func.min(Session.starts_at),
+            func.max(Session.starts_at),
+            func.count(func.distinct(Session.room_id)),
+        )
+        .where(Session.event_day_id.is_not(None), Session.starts_at.is_not(None))
+        .group_by(Session.event_day_id)
+    )
+    breaks = await session.execute(
+        select(ScheduleBlock.event_day_id, func.count(ScheduleBlock.id)).group_by(
+            ScheduleBlock.event_day_id
+        )
+    )
+
+    built: dict[uuid.UUID, dict[str, Any]] = {
+        day_id: {"session_count": total} for day_id, total in counts.items()
+    }
+    # The group-by columns are nullable in the schema and never null in these
+    # results, since both queries filter them out; mypy cannot see that.
+    for day_id, first, last, rooms in spans.tuples().all():
+        if day_id is not None:
+            built.setdefault(day_id, {}).update(
+                first_session_at=first, last_session_at=last, room_count=int(rooms)
+            )
+    for day_id, total in breaks.tuples().all():
+        built.setdefault(day_id, {}).update(break_count=int(total))
+    return built
 
 
 def _sessions(count: int) -> str:
@@ -166,7 +214,8 @@ async def _shift_sessions_with_the_day(
 tracks_router = event_resource_router(
     model=Track,
     in_use=_used_by_sessions(Session.track_id, "track"),
-    usage=_usage_of(Session.track_id),
+    extras=_usage_of(Session.track_id),
+    duplicate="This event already has a track with that name.",
     read_schema=schemas.TrackRead,
     create_schema=schemas.TrackCreate,
     update_schema=schemas.TrackUpdate,
@@ -178,7 +227,8 @@ tracks_router = event_resource_router(
 session_formats_router = event_resource_router(
     model=SessionFormat,
     in_use=_used_by_sessions(Session.session_format_id, "format"),
-    usage=_usage_of(Session.session_format_id),
+    extras=_usage_of(Session.session_format_id),
+    duplicate="This event already has a format with that name.",
     read_schema=schemas.SessionFormatRead,
     create_schema=schemas.SessionFormatCreate,
     update_schema=schemas.SessionFormatUpdate,
@@ -189,7 +239,8 @@ session_formats_router = event_resource_router(
 rooms_router = event_resource_router(
     model=Room,
     in_use=_room_in_use,
-    usage=_usage_of(Session.room_id),
+    extras=_usage_of(Session.room_id),
+    duplicate="This event already has a room with that name.",
     read_schema=schemas.RoomRead,
     create_schema=schemas.RoomCreate,
     update_schema=schemas.RoomUpdate,
@@ -200,7 +251,8 @@ rooms_router = event_resource_router(
 event_days_router = event_resource_router(
     model=EventDay,
     in_use=_day_in_use,
-    usage=_usage_of(Session.event_day_id),
+    extras=_day_extras,
+    duplicate="That date is already an event day. Edit the existing one instead.",
     on_update=_shift_sessions_with_the_day,
     read_schema=schemas.EventDayRead,
     create_schema=schemas.EventDayCreate,
