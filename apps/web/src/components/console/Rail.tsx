@@ -64,6 +64,19 @@ type NavName =
   | "Settings";
 
 export function Rail({ active, style }: { active: NavName; style?: React.CSSProperties }) {
+  // Same query key as the console chrome, so this is one request, not two.
+  const { data: me } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => authed<{ name: string; role: string; org_name: string | null }>("/auth/me"),
+    staleTime: 5 * 60_000,
+  });
+  const initials = (me?.name ?? "")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .toUpperCase();
   const collapsed = useSyncExternalStore(
     subscribe,
     () => window.localStorage.getItem(RAIL_KEY) === "1",
@@ -101,6 +114,12 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
       : { bg: "none", fg: "var(--i2,#3E4E58)", wt: "500", dot: "none" };
 
   const data: ConsoleRailData = {
+    youInitials: initials,
+    youName: me?.name ?? "",
+    youRole: (me?.role ?? "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()),
+    // The demo chip is a real state — it belongs to the seeded event, not to
+    // whoever is signed in.
+    youBadge: me?.org_name?.toLowerCase().includes("demo") ? "DEMO" : "",
     // The rail named a fixture event on every screen it appeared on.
     eventName: event?.name ?? "Loading…",
     eventDates: dates,

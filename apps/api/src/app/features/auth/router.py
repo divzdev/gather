@@ -5,11 +5,13 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Cookie, Request, Response, status
 from pydantic import BaseModel, ConfigDict
 from redis.asyncio import Redis
+from sqlalchemy import select
 
 from app.core import rate_limit
 from app.core.config import get_settings
 from app.core.deps import CurrentUser, DbSession
 from app.core.errors import AuthenticationError, NotFoundError
+from app.core.tenancy import tenancy_disabled
 from app.features.auth import service
 from app.features.auth.schemas import (
     LoginRequest,
@@ -19,6 +21,7 @@ from app.features.auth.schemas import (
     TokenResponse,
     UserResponse,
 )
+from app.models import Organization, OrgMember
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -224,5 +227,25 @@ async def consume_magic_link(body: MagicLinkConsumeRequest, session: DbSession) 
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(user: CurrentUser) -> UserResponse:
-    return UserResponse.model_validate(user)
+async def me(user: CurrentUser, session: DbSession) -> UserResponse:
+    """Who is signed in, with the organisation and role the console header shows.
+
+    Read outside tenancy: this answers "who am I" before an event is in scope,
+    and a signed-in user is always allowed to know their own membership.
+    """
+    with tenancy_disabled():
+        membership = (
+            await session.execute(
+                select(OrgMember, Organization)
+                .join(Organization, Organization.id == OrgMember.org_id)
+                .where(OrgMember.user_id == user.id)
+                .limit(1)
+            )
+        ).first()
+
+    payload = UserResponse.model_validate(user)
+    if membership is not None:
+        member, org = membership
+        payload.role = member.role.value
+        payload.org_name = org.name
+    return payload

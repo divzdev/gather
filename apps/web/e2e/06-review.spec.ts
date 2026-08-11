@@ -28,9 +28,14 @@ test.beforeAll(async ({ request }) => {
 
 test("66-67. a submission shows every answer, and takes an internal note", async ({ request }) => {
   const { headers, eventId } = await organizer(request);
-  const listing = await request.get(`${API}/v1/events/${eventId}/submissions?per_page=5`, {
-    headers,
-  });
+  // Oldest first, deliberately. The default is newest first, which hands this
+  // whichever thin proposal an earlier spec in the run just submitted — so the
+  // test passed alone and failed in the suite. The seeded demo is the oldest
+  // and is the thing worth asserting on: a full set of custom answers.
+  const listing = await request.get(
+    `${API}/v1/events/${eventId}/submissions?per_page=5&sort=submitted_at`,
+    { headers },
+  );
   const [first] = ((await listing.json()) as { data: { id: string }[] }).data;
   expect(first).toBeDefined();
 

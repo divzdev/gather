@@ -3,7 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
+import { openCommandPalette } from "@/components/console/CommandPalette";
 import { useConsoleChrome } from "@/components/console/chrome";
+import { useProgramStats } from "@/components/console/stats";
 import { Overview, type OverviewData } from "@/components/design/Overview";
 import { authed, getEventId } from "@/lib/session";
 
@@ -67,8 +69,69 @@ export default function OverviewPage() {
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
+  // Speakers who have said yes, which is the number an organiser tracks — not
+  // how many rows exist.
+  const { data: roster } = useQuery({
+    queryKey: ["roster-confirmed", eventId],
+    enabled: eventId !== null,
+    queryFn: () => authed<{ status: string }[]>(`/events/${eventId}/speakers`),
+  });
+  const confirmedSpeakers = (roster ?? []).filter((row) => row.status === "confirmed").length;
+
+  const { stats } = useProgramStats();
+
+  // The overdue card named specific deliverables and speaker counts that were
+  // fixture copy. Real rows, grouped by what is being chased.
+  //
+  // `overdue` is a status the API derives from the clock on read, so it is read
+  // here rather than recomputed — calling Date.now() during render is impure and
+  // would give a different answer on the server and the client.
+  const { data: overdue } = useQuery({
+    queryKey: ["overdue-summary", eventId],
+    enabled: eventId !== null,
+    queryFn: () => authed<{ task_name: string; status: string }[]>(`/events/${eventId}/tasks/summary`),
+  });
+  const overdueRows = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of overdue ?? []) {
+      if (row.status !== "overdue") continue;
+      counts.set(row.task_name, (counts.get(row.task_name) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([task, count]) => ({
+        task,
+        who: `${count} speaker${count === 1 ? "" : "s"}`,
+        late: "overdue",
+      }));
+  }, [overdue]);
+
+  const conflictRows = stats.conflictList.slice(0, 3).map((row) => ({
+    where: row.label,
+    what: row.detail,
+  }));
+
   const overview: OverviewData = {
     greet,
+    confirmedCount: confirmedSpeakers,
+    overdueCount: stats.overdueTasks,
+    conflictCount: stats.conflicts,
+    conflictHeadline:
+      stats.conflicts === 0
+        ? "No schedule conflicts"
+        : `${stats.conflicts} schedule conflict${stats.conflicts === 1 ? "" : "s"}`,
+    conflictRows,
+    firstName: (chrome.youName || "there").split(" ")[0],
+    overdueHeadline:
+      stats.overdueTasks === 0
+        ? "No overdue speaker tasks"
+        : `${stats.overdueTasks} overdue speaker task${stats.overdueTasks === 1 ? "" : "s"}`,
+    overdueRows: overdueRows,
+    reviewerNote:
+      total === 0
+        ? "No proposals yet, so nothing to review."
+        : `${unreviewed} of ${total} still unreviewed.`,
     todayLine: `${LONG_DATE.format(new Date())} · ${unreviewed} reviews waiting · ${total} proposals in`,
     subCount: total,
     unreviewedCount: unreviewed,
@@ -87,7 +150,7 @@ export default function OverviewPage() {
 
     ...chrome,
 
-    kToast: () => toast("Command palette ships with the full build. Every rail item is a real page."),
+    kToast: () => openCommandPalette(),
     bell: () => toast(`${unreviewed} proposals are waiting on review.`),
     nudge: () => toast("Nudges are queued in Messages. Nothing sends until you confirm."),
     toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),

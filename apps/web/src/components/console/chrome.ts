@@ -5,15 +5,18 @@
  *  each screen; here it is written once and spread into each screen's data.
  */
 
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import { useTheme } from "@/components/ThemeProvider";
 import { ACCENT_NAMES, ACCENTS } from "@/lib/theme";
-import { clearToken } from "@/lib/session";
+import { authed, clearToken } from "@/lib/session";
 
 const TOAST_MS = 6000;
 /** The prototype keeps the last three; more than that stacks off the screen. */
+type Me = { name: string; role: string; org_name: string | null };
+
 const TOAST_LIMIT = 3;
 
 export type Toast = { id: string; msg: string; revert?: () => void };
@@ -28,6 +31,14 @@ export type ConsoleChrome = {
   readonly themeGlyph: string;
   readonly themeTitle: string;
   readonly togTheme: () => void;
+  //: Who is actually signed in. The prototypes carry "Sasha Whitfield ·
+  //: program lead · demo org" as literal markup on fifteen screens, so until
+  //: these are bound every organiser sees a stranger's name in their own
+  //: console.
+  readonly youName: string;
+  readonly youRole: string;
+  readonly youOrg: string;
+  readonly youInitials: string;
   readonly accents: readonly {
     readonly n: string;
     readonly c: string;
@@ -60,13 +71,29 @@ export function useConsoleChrome(): {
     [dismiss],
   );
 
+  const { data: me } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => authed<Me>("/auth/me"),
+    staleTime: 5 * 60_000,
+  });
+
   const chrome: ConsoleChrome = {
+    youName: me?.name ?? "",
+    youRole: (me?.role ?? "").replace(/_/g, " "),
+    youOrg: me?.org_name ?? "",
+    youInitials: (me?.name ?? "")
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0] ?? "")
+      .join("")
+      .toUpperCase(),
     popUser: userMenu,
     togUser: () => setUserMenu((open) => !open),
     closeUser: () => setUserMenu(false),
     profileGo: () => {
       setUserMenu(false);
-      toast("Your profile: name, avatar, and notification rules.");
+      router.push("/admin/settings");
     },
     signOut: () => {
       setUserMenu(false);

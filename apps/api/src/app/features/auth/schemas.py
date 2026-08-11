@@ -48,3 +48,8 @@ class UserResponse(Strict):
     avatar_url: str | None
     density_pref: str
     theme_pref: str
+    #: The console header shows both on every screen. Without them it fell back
+    #: to the prototype's placeholder and told every organiser they were
+    #: "Sasha Whitfield, program lead, demo org".
+    role: str = ""
+    org_name: str | None = None

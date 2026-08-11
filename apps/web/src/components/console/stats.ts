@@ -12,7 +12,7 @@ import { authed, getEventId } from "@/lib/session";
 type Row = { status: string; decision_status: string };
 type Page = { data: Row[]; meta: { total: number } };
 type Event = { name: string; starts_on: string; ends_on: string; cfp_closes_at: string | null };
-type Conflict = { severity: string };
+type Conflict = { severity: string; label: string; detail?: string | null };
 type TaskRow = { status: string };
 
 export type ProgramStats = {
@@ -24,6 +24,8 @@ export type ProgramStats = {
   pendingSend: number;
   cfpDays: number | null;
   conflicts: number;
+  //: The few worth naming on Overview, not just the count.
+  conflictList: { label: string; detail: string }[];
   overdueTasks: number;
   event: Event | null;
 };
@@ -56,6 +58,10 @@ export function useProgramStats(): { stats: ProgramStats; eventId: string | null
         event,
         cfpDays,
         conflicts: conflicts.filter((row) => row.severity === "hard").length,
+        conflictList: conflicts.slice(0, 3).map((row) => ({
+          label: row.label,
+          detail: row.detail ?? row.label,
+        })),
         overdueTasks: tasks.filter((row) => row.status === "overdue").length,
       };
     },
@@ -74,6 +80,7 @@ export function useProgramStats(): { stats: ProgramStats; eventId: string | null
       pendingSend: rows.filter((row) => row.decision_status === "pending_send").length,
       cfpDays: data?.cfpDays ?? null,
       conflicts: data?.conflicts ?? 0,
+      conflictList: data?.conflictList ?? [],
       overdueTasks: data?.overdueTasks ?? 0,
       event: data?.event ?? null,
     },

@@ -313,6 +313,14 @@ export default function PortalPage() {
   const eventStart = home === undefined ? null : new Date(`${home.event.starts_on}T00:00:00Z`);
 
   const screen: PortalData = {
+    youName: home?.speaker.name ?? "",
+    youInitials: (home?.speaker.name ?? "")
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0] ?? "")
+      .join("")
+      .toUpperCase(),
     tabs: (
       [
         { key: "home", n: "Home", c: open.length },
