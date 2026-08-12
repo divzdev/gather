@@ -362,3 +362,42 @@ async def test_the_roster_shows_whether_the_speaker_answered_themselves(
 
     assert answered["responded_at"] is not None
     assert silent["responded_at"] is None
+
+
+async def test_an_unassigned_deliverable_can_be_deleted(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    headers, event, _form = cfp
+    created = await client.post(
+        f"/v1/events/{event.id}/task-templates",
+        headers=headers,
+        json={"name": "Typo", "kind": "acknowledge"},
+    )
+    template_id = created.json()["id"]
+
+    gone = await client.delete(
+        f"/v1/events/{event.id}/task-templates/{template_id}", headers=headers
+    )
+
+    assert gone.status_code == 204
+    listing = await client.get(f"/v1/events/{event.id}/task-templates", headers=headers)
+    assert [row["id"] for row in listing.json()] == []
+
+
+async def test_deleting_an_assigned_deliverable_is_refused_with_the_count(
+    client: AsyncClient, onboarding: tuple[dict[str, str], Event, Speaker, Speaker, str]
+) -> None:
+    """The FK cascades, so this delete would erase two speakers' progress."""
+    headers, event, _rosa, _tomas, template_id = onboarding
+
+    refused = await client.delete(
+        f"/v1/events/{event.id}/task-templates/{template_id}", headers=headers
+    )
+
+    assert refused.status_code == 409
+    assert refused.json()["error"]["details"]["assigned"] == 2
+    # Refused, not half-done: the template and both speakers' tasks survive.
+    listing = await client.get(f"/v1/events/{event.id}/task-templates", headers=headers)
+    assert [row["id"] for row in listing.json()] == [template_id]
+    summary = await client.get(f"/v1/events/{event.id}/tasks/summary", headers=headers)
+    assert len(summary.json()) == 2

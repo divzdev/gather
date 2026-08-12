@@ -16,11 +16,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core import storage
 from app.core.deps import DbSession, bind_tenant, get_verified_user, require_role
-from app.core.errors import NotFoundError
+from app.core.errors import ConflictError, NotFoundError
 from app.features.tasks import service
 from app.models import (
     File,
@@ -210,6 +210,36 @@ async def assign_template(
     if template is None:
         raise NotFoundError(f"No task template with id {template_id}.")
     return AssignResult(assigned=await service.assign(session, template))
+
+
+@router.delete("/task-templates/{template_id}", status_code=204)
+async def delete_template(
+    template_id: uuid.UUID, session: DbSession, _: User = Depends(require_role(*WRITE))
+) -> None:
+    """Remove a deliverable that was never handed out.
+
+    `SpeakerTask.task_template_id` cascades, so deleting an assigned template
+    would take every speaker's row with it — including the completed ones, and
+    the record of the file they uploaded against it. That is not a delete an
+    organiser can mean, so it is refused rather than performed: unassign is a
+    different operation and nobody has asked for one.
+    """
+    template = await session.get(TaskTemplate, template_id)
+    if template is None:
+        raise NotFoundError(f"No task template with id {template_id}.")
+    # The mapped attribute, not `select_from(SpeakerTask)`: tenancy filters ORM
+    # entities, and a bare count has no entity to hang the predicate on — the
+    # guard in core/tenancy.py refuses it rather than letting it read every org.
+    assigned = await session.scalar(
+        select(func.count(SpeakerTask.id)).where(SpeakerTask.task_template_id == template_id)
+    )
+    if assigned:
+        raise ConflictError(
+            f"“{template.name}” is assigned to {assigned} speaker"
+            f"{'' if assigned == 1 else 's'}. Deleting it would erase their progress on it.",
+            details={"blocked": True, "assigned": assigned},
+        )
+    await session.delete(template)
 
 
 @router.get("/tasks/summary", response_model=list[TaskRow])
