@@ -113,3 +113,6 @@ killmysaas-evals/
 # locally — it is untracked, not deleted. Runbook: docs/DEPLOY.md (also ignored).
 infra/
 .dockerignore
+
+# Internal project management, not product tooling — stays local.
+tools/jira_push.py

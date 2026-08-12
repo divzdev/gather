@@ -568,11 +568,31 @@ export function {component}({signature}) {{
 
 
 def main() -> None:
-    if len(sys.argv) != 4:
-        raise SystemExit("usage: dc2tsx.py <input.dc.html> <output.tsx> <ComponentName>")
-    source, target, component = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+    argv = [a for a in sys.argv[1:] if a != "--force"]
+    force = len(argv) != len(sys.argv) - 1
+    if len(argv) != 3:
+        raise SystemExit("usage: dc2tsx.py [--force] <input.dc.html> <output.tsx> <ComponentName>")
+    source, target, component = Path(argv[0]), Path(argv[1]), argv[2]
+    generated = convert(source, component)
+
+    # Several generated components carry hand-written bindings the prototypes
+    # cannot express — Portal's CFP timeline, Sessions' day <select>, Review's
+    # whole suggestions panel. Overwriting one of those used to succeed silently
+    # and delete real work; the loss surfaced only when someone opened the
+    # screen. So: any difference between the file on disk and what regeneration
+    # would produce is treated as hand edits, and the tool refuses. --force is
+    # the explicit way to say the loss is intended.
+    if target.exists() and not force and target.read_text(encoding="utf-8") != generated:
+        raise SystemExit(
+            f"REFUSING to overwrite {target}: it differs from what regeneration produces,\n"
+            f"which means it carries hand edits (see docs/DECISIONS.md on the lossy pipeline).\n"
+            f"  - to see what would be lost:  python3 tools/dc2tsx.py {source} /tmp/{target.name} "
+            f"{component} && diff {target} /tmp/{target.name}\n"
+            f"  - to overwrite anyway:        re-run with --force"
+        )
+
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(convert(source, component), encoding="utf-8")
+    target.write_text(generated, encoding="utf-8")
     print(f"{source.name} -> {target} ({target.stat().st_size:,} bytes)")
 
 

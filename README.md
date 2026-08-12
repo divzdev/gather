@@ -120,9 +120,10 @@ apps/api      FastAPI, async end to end.  router → service → models
   features/     one folder per capability: router · service · schemas
   jobs/         worker: reminders, scheduled mail, the nightly overdue sweep
   seed/         idempotent demo data
-apps/web      Next.js App Router — (public) · (auth) · (console) · (portal)
-apps/embed    standalone widget bundle; no shared runtime with the app
-docs/         ARCHITECTURE.md · APP_CONTEXT.md · DECISIONS.md
+apps/web      Next.js App Router — public event site · admin console · speaker portal
+GatherDesign  the HTML prototypes the components in src/components/design are generated from
+tools/        that generator (dc2tsx.py, with a guard against overwriting hand edits),
+              the design-token budget check, and the prototype label wiring
 ```
 
 There is no `repositories/` layer. Tenancy is enforced at the session, so a repository would only

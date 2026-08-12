@@ -5,8 +5,7 @@
   "description": "Open-source speaker and session management for conferences",
   "license": "MIT",
   "workspaces": [
-    "apps/web",
-    "apps/embed"
+    "apps/web"
   ],
   "engines": {
     "node": ">=20"
