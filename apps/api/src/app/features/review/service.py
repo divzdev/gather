@@ -17,8 +17,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError, ConflictError, NotFoundError, RoleRequiredError
+from app.features.forms.schema import FormSchema
 from app.models import (
     CriterionKind,
+    Form,
     Review,
     ReviewerAssignment,
     ReviewRound,
@@ -129,6 +131,21 @@ async def assert_assigned(
     if assignment is None:
         raise RoleRequiredError("This proposal is not in your review queue.")
     return assignment
+
+
+async def identity_keys(session: AsyncSession, submission: Submission) -> set[str]:
+    """Answer keys the form marked identity-bearing, stripped in a blind round.
+
+    Lives here rather than beside the reviewer routes because the AI scorer needs
+    exactly the same set: whatever a blind reviewer is not allowed to see, a model
+    is not allowed to be sent either. Two callers deriving "which fields are
+    identity" separately is how one of them ends up wrong.
+    """
+    form = await session.get(Form, submission.form_id)
+    if form is None:
+        return set()
+    schema = FormSchema.model_validate(form.schema)
+    return {field.key for field in schema.all_fields() if field.identity_bearing}
 
 
 def blind_view(

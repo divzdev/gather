@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.db import engine
 from app.core.errors import ApiError, api_error_handler, validation_error_handler
 from app.core.idempotency import IdempotencyMiddleware
+from app.features.ai.router import router as ai_router
 from app.features.auth.router import router as auth_router
 from app.features.crm.router import router as crm_router
 from app.features.events.router import router as events_router
@@ -177,6 +178,7 @@ def create_app() -> FastAPI:
     app.include_router(submissions_router)
     app.include_router(review_admin_router)
     app.include_router(reviewer_router)
+    app.include_router(ai_router)
     app.include_router(integrations_router)
     app.include_router(pages_router)
     app.include_router(publishing_router)

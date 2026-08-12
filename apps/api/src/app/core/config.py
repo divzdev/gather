@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     ai_model_default: str = "claude-sonnet-5"
     ai_max_tokens: int = 4096
+    #: Proposals per event per UTC day, on top of the per-user rate limit. The
+    #: deployed demo hands a staff session to anyone who clicks "sign in as
+    #: organizer", so without a ceiling on the *event* a real key behind it is a
+    #: stranger's spending account. 0 disables the cap.
+    ai_daily_proposal_cap: int = 200
 
     storage_backend: Literal["local", "s3"] = "local"
     storage_root: Path = REPO_ROOT / "var" / "uploads"

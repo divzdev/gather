@@ -14,7 +14,6 @@ from sqlalchemy import select
 
 from app.core.deps import CurrentUser, DbSession, bind_tenant, require_role
 from app.core.errors import NotFoundError
-from app.features.forms.schema import FormSchema
 from app.features.review import service
 from app.features.review.schemas import (
     CriterionRead,
@@ -25,7 +24,6 @@ from app.features.review.schemas import (
     ScoreRequest,
 )
 from app.models import (
-    Form,
     Review,
     ReviewerAssignment,
     ReviewRound,
@@ -45,15 +43,6 @@ router = APIRouter(
 
 # Reviewers plus anyone senior — an admin should be able to see what a reviewer sees.
 ANY_REVIEWER = (Role.OWNER, Role.ADMIN, Role.COORDINATOR, Role.REVIEWER)
-
-
-async def _identity_keys(session: DbSession, submission: Submission) -> set[str]:
-    """Answers the form marked as identity-bearing, stripped in a blind round."""
-    form = await session.get(Form, submission.form_id)
-    if form is None:
-        return set()
-    schema = FormSchema.model_validate(form.schema)
-    return {f.key for f in schema.all_fields() if f.identity_bearing}
 
 
 @router.get("/rounds", response_model=list[RoundRead])
@@ -151,7 +140,7 @@ async def read_for_review(
         submission,
         speakers,
         is_blind=round_.is_blind,
-        identity_keys=await _identity_keys(session, submission),
+        identity_keys=await service.identity_keys(session, submission),
     )
     return ReviewSubject.model_validate(view)
 
