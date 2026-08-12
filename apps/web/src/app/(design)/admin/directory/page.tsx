@@ -56,6 +56,7 @@ export default function DirectoryPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [notice, setNotice] = useState<string>("");
   const [composing, setComposing] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [subject, setSubject] = useState("Speaking at {{name}}'s favourite conference?");
   const [message, setMessage] = useState(
     "<p>Hi {{first_name}},</p><p>We would love to have you back.</p>",
@@ -197,10 +198,13 @@ export default function DirectoryPage() {
     },
   ];
 
-  const toggle = (id: string) =>
+  const toggle = (id: string) => {
+    // A tick that referred to a different set of people is not a confirmation.
+    setConfirmed(false);
     setSelected((current) =>
       current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id],
     );
+  };
 
   return (
     <div
@@ -238,7 +242,10 @@ export default function DirectoryPage() {
                 <button
                   style={{ ...pill, opacity: selected.length === 0 ? 0.5 : 1 }}
                   disabled={selected.length === 0}
-                  onClick={() => setComposing(true)}
+                  onClick={() => {
+                    setConfirmed(false);
+                    setComposing(true);
+                  }}
                 >
                   Email {selected.length > 0 ? selected.length : ""}
                 </button>
@@ -476,13 +483,64 @@ export default function DirectoryPage() {
                   color: "var(--ik)",
                 }}
               />
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+              {/* Sending a speaker message is one of the four things APP_CONTEXT
+                  says are never done optimistically. Messages has a gate; this
+                  screen sent on the first click. */}
+              <button
+                role="checkbox"
+                aria-checked={confirmed}
+                onClick={() => setConfirmed((on) => !on)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 13,
+                  width: "100%",
+                  boxSizing: "border-box",
+                  minHeight: 56,
+                  padding: "12px 16px",
+                  marginTop: 14,
+                  borderRadius: 12,
+                  textAlign: "left",
+                  cursor: "pointer",
+                  background: confirmed ? "var(--sw,#FFEAE6)" : "var(--cd,#FFFFFF)",
+                  border: `1px solid ${confirmed ? "var(--sl,#FFC9C0)" : "var(--ls,#C8D2D5)"}`,
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    width: 26,
+                    height: 26,
+                    flex: "none",
+                    borderRadius: 7,
+                    display: "grid",
+                    placeItems: "center",
+                    font: "600 14px var(--font-plex-sans)",
+                    background: confirmed ? "var(--bt,#FF6B6B)" : "var(--cd,#FFFFFF)",
+                    color: "var(--bf,#331313)",
+                    border: `1px solid ${confirmed ? "var(--bt,#FF6B6B)" : "var(--ls,#C8D2D5)"}`,
+                  }}
+                >
+                  {confirmed ? "✓" : ""}
+                </span>
+                <span style={{ font: "500 13.5px/1.45 var(--font-plex-sans)", color: "var(--ik)" }}>
+                  {`I have reviewed the ${selected.length} ${selected.length === 1 ? "person" : "people"} this goes to`}
+                </span>
+              </button>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14 }}>
                 <button style={quietPill} onClick={() => setComposing(false)}>
                   Cancel
                 </button>
                 <button
-                  style={pill}
-                  disabled={sendEmail.isPending}
+                  style={{
+                    ...pill,
+                    height: 48,
+                    padding: "0 24px",
+                    background: confirmed ? "var(--bt,#FF6B6B)" : "var(--ls,#C8D2D5)",
+                    color: confirmed ? "var(--bf,#331313)" : "var(--i3,#6B7B84)",
+                    cursor: confirmed ? "pointer" : "not-allowed",
+                  }}
+                  disabled={sendEmail.isPending || !confirmed}
                   onClick={() => sendEmail.mutate()}
                 >
                   {sendEmail.isPending ? "Sending…" : `Send ${selected.length}`}
