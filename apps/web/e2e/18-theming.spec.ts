@@ -23,7 +23,15 @@ function luminance(colour: string): number {
 
 async function openPortal(page: Page, theme: "light" | "dark") {
   await page.goto("/login");
-  await page.getByRole("button", { name: /^Speaker$/i }).click();
+  // A signed-in visitor never sees the login page — it forwards to the portal.
+  // This helper runs twice per test (once per theme), so on the second pass the
+  // session from the first is still in localStorage and there is no demo button
+  // to click. Read the token the same way the page does rather than racing the
+  // client-side redirect.
+  const signedIn = await page.evaluate(() => localStorage.getItem("gather.speaker") !== null);
+  if (!signedIn) {
+    await page.getByRole("button", { name: /^Speaker$/i }).click();
+  }
   await expect(page).toHaveURL(/\/portal/, { timeout: 20_000 });
   await page.evaluate((value) => {
     document.documentElement.setAttribute("data-theme", value);
@@ -36,7 +44,9 @@ test.beforeAll(async ({ request }) => {
   test.skip(health === null || !health.ok(), `API not reachable at ${API}.`);
 });
 
-test("the portal hero follows the theme, and its heading stays readable on it", async ({ page }) => {
+test("the portal hero follows the theme, and its heading stays readable on it", async ({
+  page,
+}) => {
   for (const theme of ["light", "dark"] as const) {
     await openPortal(page, theme);
 
