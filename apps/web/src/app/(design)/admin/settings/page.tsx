@@ -376,8 +376,8 @@ export default function SettingsPage() {
       },
       {
         n: "Accelevents push",
-        state: "Not built",
-        note: "Pushing the accepted programme to Accelevents was cut from this build. Nothing here is connected to it, and no credentials are stored.",
+        state: "API only",
+        note: "Pushing the accepted programme to Accelevents is implemented and tested at the API — configure, test the connection, dry-run, execute — but no console screen reaches it yet. Credentials are sealed at rest and never returned once saved.",
         ...OFF_TONE,
       },
       {
