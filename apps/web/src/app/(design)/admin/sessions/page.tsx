@@ -734,7 +734,7 @@ export default function SessionsPage() {
       anchor.download = "sessions.csv";
       anchor.click();
       URL.revokeObjectURL(url);
-      toast(`Exported ${filtered.length} sessions.`);
+      toast(`Exported ${filtered.length} ${filtered.length === 1 ? "session" : "sessions"}.`);
     },
     doXlsx: () => {
       // Server-built, so the file matches the review export byte for byte in

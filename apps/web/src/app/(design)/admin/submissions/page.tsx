@@ -374,7 +374,7 @@ export default function SubmissionsPage() {
         `submissions.${extension}`,
         ids,
       );
-      toast(`Exported ${ids.length} rows.`);
+      toast(`Exported ${ids.length} ${ids.length === 1 ? "proposal" : "proposals"}.`);
     } catch (error) {
       toast((error as Error).message);
     }
