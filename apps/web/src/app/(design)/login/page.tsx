@@ -18,10 +18,10 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api";
-import { setEventId, setSpeakerToken, setToken } from "@/lib/session";
+import { getSpeakerToken, getToken, setEventId, setSpeakerToken, setToken } from "@/lib/session";
 
 import {
   BrandPanel,
@@ -66,6 +66,14 @@ const OAUTH_PROBLEMS: Record<string, string> = {
   oauth_failed: "GitHub could not complete the sign-in. Try again, or use your password.",
 };
 
+/** Read through an external store rather than an effect, matching the console
+ *  rail: the server renders signed-out and the client corrects on hydration in
+ *  one pass, with no setState inside an effect. */
+function subscribeToSession(listener: () => void): () => void {
+  window.addEventListener("storage", listener);
+  return () => window.removeEventListener("storage", listener);
+}
+
 /** `useSearchParams` opts a route out of static prerendering unless it sits
  *  inside a Suspense boundary — `next build` fails on /login without this, which
  *  lint and tsc never see because neither runs a build. */
@@ -87,6 +95,28 @@ function LoginPage() {
     requested !== null && requested.startsWith("/") && !requested.startsWith("//")
       ? (requested as Parameters<typeof router.push>[0])
       : null;
+
+  /** Already signed in? Then this screen is the wrong answer to the question.
+   *
+   *  The session lives in localStorage, which a Server Component cannot read,
+   *  so nothing here ever asked. A signed-in operator who clicked "Sign in"
+   *  from the landing page was handed a login form — and the form works, so the
+   *  reasonable conclusion is that the session was lost, which it was not.
+   *
+   *  Staff and speakers hold different tokens and belong in different apps, so
+   *  the destination is decided by which one exists. An explicit `?next=` still
+   *  wins: that is the "you asked for this page, sign in first" path, and it is
+   *  already validated above as same-origin.
+   */
+  const signedIn = useSyncExternalStore(
+    subscribeToSession,
+    () => getToken() !== null || getSpeakerToken() !== null,
+    () => false,
+  );
+  useEffect(() => {
+    if (!signedIn) return;
+    router.replace(next ?? (getToken() !== null ? "/admin" : "/portal"));
+  }, [signedIn, router, next]);
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -228,6 +258,11 @@ function LoginPage() {
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = `/api/v1/auth/github/start${next === null ? "" : `?next=${encodeURIComponent(next)}`}`;
   };
+
+  // Nothing while the redirect lands. A frame of the sign-in form on the way to
+  // the console is the same lie, briefly — and it is the frame a person
+  // screenshots when they report that they were signed out.
+  if (signedIn) return null;
 
   return (
     <div

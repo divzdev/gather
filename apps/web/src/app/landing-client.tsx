@@ -1,6 +1,9 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 import { GatherLanding } from "@/components/design/GatherLanding";
+import { getSpeakerToken, getToken } from "@/lib/session";
 
 import { FOOTER_WORDMARK } from "./footer-wordmark";
 
@@ -16,7 +19,37 @@ import { FOOTER_WORDMARK } from "./footer-wordmark";
  *  previous landing drove all of that from a JavaScript module per demo; this
  *  one needs one computed value, and it is a list of SVG paths.
  */
+/** The nav pill, decided by whether there is a session.
+ *
+ *  The token lives in localStorage, which the server cannot read, so the
+ *  landing rendered "Sign in" to everybody — including an operator who was
+ *  signed in, whose click then landed on a login form. Read through an external
+ *  store rather than an effect, matching the console rail: the server renders
+ *  signed-out and the client corrects on hydration in one pass.
+ */
+function subscribe(listener: () => void): () => void {
+  window.addEventListener("storage", listener);
+  return () => window.removeEventListener("storage", listener);
+}
+
+function useEntry(): { signInHref: string; signInLabel: string } {
+  const staff = useSyncExternalStore(
+    subscribe,
+    () => getToken() !== null,
+    () => false,
+  );
+  const speaker = useSyncExternalStore(
+    subscribe,
+    () => getSpeakerToken() !== null,
+    () => false,
+  );
+  if (staff) return { signInHref: "/admin", signInLabel: "Open console" };
+  if (speaker) return { signInHref: "/portal", signInLabel: "Your portal" };
+  return { signInHref: "/login", signInLabel: "Sign in" };
+}
+
 export function LandingClient() {
+  const entry = useEntry();
   return (
     // marketing.css scopes the landing's palette, layout and keyframes to this
     // attribute. Unscoped, the prototype's `body` and `a` rules would repaint
@@ -24,7 +57,7 @@ export function LandingClient() {
     // select on instead, and a scope a redesign could silently drop would take
     // the page's whole stylesheet with it.
     <div data-marketing>
-      <GatherLanding d={FOOTER_WORDMARK} />
+      <GatherLanding d={{ ...FOOTER_WORDMARK, ...entry }} />
     </div>
   );
 }
