@@ -381,8 +381,14 @@ export default function SubmissionsPage() {
   const exportCsv = exportAs("csv");
   const exportXlsx = exportAs("xlsx");
 
+  /** A number the console can vouch for, or a dash. Same reasoning as the
+   *  programme strip: 0 is a claim, and "no submissions, nothing awaiting
+   *  review, nothing accepted" is a false one to make while the counts are
+   *  still in flight. */
+  const known = (value: number) => (stats.ready ? value : "—");
+
   const tile = (name: View) => ({
-    c: counts[name],
+    c: known(counts[name]),
     on: () => refilter(() => setView(name)),
     bd: view === name ? "var(--sg,#E04E4E)" : "var(--ln,#E1E7E9)",
     ring: view === name ? "0 0 0 3px var(--sw,#FFEAE6)" : "0 1px 2px rgba(13,16,32,.04)",
@@ -421,7 +427,7 @@ export default function SubmissionsPage() {
   const screen: SubmissionsData = {
     publicHref: stats.event === null ? "/admin" : `/e/${stats.event.slug}`,
     ...stripData(stats),
-    pendingCount: stats.pendingSend,
+    pendingCount: known(stats.pendingSend),
 
     rows: rows.map((row) => {
       const status = statusOf(row);
@@ -550,12 +556,12 @@ export default function SubmissionsPage() {
     // intersecting with it — a tab that can return nothing is not a tab.
     statusTabs: (
       <StatusTabs
-        allCount={stats.total}
+        allCount={known(stats.total)}
         active={statusFilter.length === 1 ? (statusFilter[0] ?? null) : null}
         tabs={(Object.keys(STATUS) as StatusKey[]).map((key) => ({
           key,
           label: STATUS[key].label,
-          count: stats.byStatus[key],
+          count: known(stats.byStatus[key]),
         }))}
         onSelect={(key) =>
           refilter(() => {

@@ -409,8 +409,10 @@ export function StatusTabs({
   active,
   onSelect,
 }: {
-  tabs: readonly { key: string; label: string; count: number }[];
-  allCount: number;
+  tabs: readonly { key: string; label: string; count: number | string }[];
+  //: A dash while the counts are still loading — a tab that says 0 before it
+  //: knows is asserting the status is empty.
+  allCount: number | string;
   /** null is the "All" tab — no status filter at all. */
   active: string | null;
   onSelect: (key: string | null) => void;

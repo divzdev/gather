@@ -62,6 +62,15 @@ export type ProgramStats = {
   conflictList: { label: string; detail: string }[];
   overdueTasks: number;
   event: Event | null;
+  //: Whether any of the above is a fact yet.
+  //:
+  //: Every count below defaults to 0 while the query is in flight, and 0 is a
+  //: claim: "no submissions, nothing unreviewed, no conflicts" rendered across
+  //: the top of every console route on an event with 215 proposals. An empty
+  //: state and a loading state are different assertions and were drawn
+  //: identically. Callers that display a number must show nothing until this
+  //: is true.
+  ready: boolean;
 };
 
 const DECIDED_STATUSES = ["accepted", "waitlisted", "rejected"] as const;
@@ -91,7 +100,7 @@ export function useProgramStats(): { stats: ProgramStats; eventId: string | null
     };
   }, [eventId]);
 
-  const { data } = useQuery({
+  const { data, isSuccess } = useQuery({
     queryKey: ["program-stats", eventId],
     enabled: eventId !== null,
     staleTime: 15_000,
@@ -175,27 +184,32 @@ export function useProgramStats(): { stats: ProgramStats; eventId: string | null
       conflictList: data?.conflictList ?? [],
       overdueTasks: data?.overdueTasks ?? 0,
       event: data?.event ?? null,
+      ready: isSuccess,
     },
   };
 }
 
 /** The strip along the top of most screens, in the shape the design expects. */
 export function stripData(stats: ProgramStats): {
-  subCount: number;
-  unreviewedCount: number;
-  decidedCount: number;
-  overdueCount: number;
-  conflictCount: number;
+  subCount: number | string;
+  unreviewedCount: number | string;
+  decidedCount: number | string;
+  overdueCount: number | string;
+  conflictCount: number | string;
   cfpShort: string;
   cfpDays: number | string;
 } {
+  //: An em-dash rather than a skeleton: the strip is one line of small mono
+  //: text, so a shimmer would be more motion than the thing it stands in for.
+  //: It cannot be mistaken for a count, which is the whole point.
+  const known = <T,>(value: T): T | string => (stats.ready ? value : "—");
   return {
-    subCount: stats.total,
-    unreviewedCount: stats.unreviewed,
-    decidedCount: stats.decided,
-    overdueCount: stats.overdueTasks,
-    conflictCount: stats.conflicts,
-    cfpShort: stats.cfpDays === null ? "—" : `${stats.cfpDays}d`,
-    cfpDays: stats.cfpDays ?? "—",
+    subCount: known(stats.total),
+    unreviewedCount: known(stats.unreviewed),
+    decidedCount: known(stats.decided),
+    overdueCount: known(stats.overdueTasks),
+    conflictCount: known(stats.conflicts),
+    cfpShort: !stats.ready || stats.cfpDays === null ? "—" : `${stats.cfpDays}d`,
+    cfpDays: known(stats.cfpDays ?? "—"),
   };
 }
