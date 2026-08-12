@@ -110,7 +110,6 @@ export default function FormsPage() {
   const [step, setStep] = useState(0);
   const [tab, setTab] = useState<"All" | "Open" | "Draft">("All");
   const [edit, setEdit] = useState<FormRow | null>(null);
-  const [limit, setLimit] = useState("1");
   //  null = closed. A field with an empty key is a new one being added.
   const [editing, setEditing] = useState<EditableField | null>(null);
   const dragging = useRef<number | null>(null);
@@ -135,6 +134,52 @@ export default function FormsPage() {
     // A locked form rejects structural edits by design, and the message says
     // which field caused it, so it goes straight through.
     onError: (problem: Error) => toast(problem.message),
+  });
+
+  /** A real copy of the schema, unlocked and back in draft — the point of
+   *  duplicating a form is to change it, and the original may be locked because
+   *  submissions have arrived. */
+  /** Read straight from the event rather than through `stats`, whose `Event`
+   *  type is shared with several screens and belongs to another session. */
+  const { data: eventRow } = useQuery({
+    queryKey: ["event", eventId],
+    enabled: eventId !== null,
+    queryFn: () =>
+      authed<{ slug: string; timezone: string; submission_limit_per_speaker: number | null }>(
+        `/events/${eventId}`,
+      ),
+  });
+
+  const duplicate = useMutation({
+    mutationFn: (row: FormRow) =>
+      authed<FormRow>(`/events/${eventId}/forms`, {
+        method: "POST",
+        body: { name: `${row.name} (copy)`, kind: row.kind, schema: row.schema },
+      }),
+    onSuccess: (row) => {
+      void queryClient.invalidateQueries({ queryKey: ["forms", eventId] });
+      toast(`Copied to “${row.name}”. It starts as a draft, so nothing public changed.`);
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  /** The limit is enforced against the *event* at submit, not the form, so this
+   *  is the only place it can be written from. */
+  const setEventLimit = useMutation({
+    mutationFn: (value: number | null) =>
+      authed(`/events/${eventId}`, {
+        method: "PATCH",
+        body: { submission_limit_per_speaker: value },
+      }),
+    onSuccess: (_result, value) => {
+      void queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+      toast(
+        value === null
+          ? "No limit — a speaker can send as many proposals as they like."
+          : `Limit set: ${value} proposal${value === 1 ? "" : "s"} per speaker, drafts included.`,
+      );
+    },
+    onError: (error: Error) => toast(error.message),
   });
 
   const create = useMutation({
@@ -168,7 +213,6 @@ export default function FormsPage() {
     setOpenId(row.id);
     setEdit(structuredClone(row));
     setStep(0);
-    setLimit("1");
   };
 
   /** Every step edits the same draft, so one helper covers all six. */
@@ -245,12 +289,10 @@ export default function FormsPage() {
         stFg: look.fg,
         stBg: look.bg,
         onOpen: () => open(row),
-        onCopy: () => {
-          void navigator.clipboard?.writeText(
-            `${window.location.origin}/e/${stats.event?.name ?? ""}/cfp`,
-          );
-          toast("Public link copied.");
-        },
+        /* Labelled "Duplicate" and it copied a link — built from the event's
+         * *name*, so the link was "/e/DevFlow Conf 2027/cfp" and 404ed anyway.
+         * It duplicates now, which is what it says. */
+        onCopy: () => duplicate.mutate(row),
       };
     }),
 
@@ -281,8 +323,17 @@ export default function FormsPage() {
     },
     prevStep: () => setStep((current) => Math.max(0, current - 1)),
     nextLabel: step === STEPS.length - 1 ? "Save form" : "Next",
+    /* Was: save the draft, toast "Saved.", show nothing. The button is called
+     * "View live form", so it saves *and then opens the form* — in a new tab,
+     * because losing an unsaved builder to a navigation is worse than a tab. */
     preview: () => {
+      const slug = eventRow?.slug;
       if (draft !== null) save.mutate(draft);
+      if (slug === undefined) {
+        toast("This event has no public address yet — set one in Settings.");
+        return;
+      }
+      window.open(`/e/${slug}/cfp`, "_blank", "noopener");
     },
     savedStamp: save.isPending ? "Saving…" : "Unsaved changes are kept until you save",
 
@@ -416,13 +467,35 @@ export default function FormsPage() {
       patchSettings((entry) => void (entry.confirm_participants = !entry.confirm_participants)),
 
     closeAt: draft?.closes_at?.slice(0, 16) ?? "",
+    // Was the literal "PT · event timezone", wrong for any event outside
+    // Pacific — and the picker reads the browser's clock, not the event's, so
+    // the label has to say which one the operator is looking at.
+    closeZone: eventRow === undefined ? "" : `${eventRow.timezone.replace(/_/g, " ")} · event timezone`,
+    /* `new Date(value).toISOString()` raises RangeError on anything that is not
+     * a date, and the input had no `type`, so a half-typed value threw on every
+     * keystroke. It is a datetime-local now, and the parse is still guarded —
+     * the picker is not the only way text reaches this. */
     onCloseAt: (event) =>
       patch((row) => {
         const value = (event.target as HTMLInputElement).value;
-        row.closes_at = value === "" ? null : new Date(value).toISOString();
+        if (value === "") {
+          row.closes_at = null;
+          return;
+        }
+        const when = new Date(value);
+        if (Number.isNaN(when.getTime())) return;
+        row.closes_at = when.toISOString();
       }),
-    limit,
-    onLimit: (event) => setLimit((event.target as HTMLInputElement).value),
+    /* Was `useState("1")` and nothing else: it accepted a number, reported
+     * nothing and reset on reopen. The limit lives on the event — it is what
+     * `_check_limit` enforces at submit — so it is written there. Blank means
+     * no limit, which is what the seeded event actually has. */
+    limit: eventRow?.submission_limit_per_speaker?.toString() ?? "",
+    onLimit: (event) => {
+      const raw = (event.target as HTMLInputElement).value.trim();
+      if (raw !== "" && !/^[1-9][0-9]{0,2}$/.test(raw)) return;
+      setEventLimit.mutate(raw === "" ? null : Number(raw));
+    },
     draftOpts: [
       { on: true, n: "Let speakers save and come back" },
       { on: false, n: "Submissions must be completed in one sitting" },
