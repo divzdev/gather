@@ -132,8 +132,13 @@ e2e.down: ## Stop the E2E stack and drop its database
 test.api: ## Run API tests
 	cd $(API) && uv run pytest -q
 
+# The commands are spelled out rather than delegated to a script so this works
+# on a clean clone — CI runs the same set.
 lint: ## Lint and typecheck everything
-	bash .claude/verify.sh
+	cd $(API) && uv run ruff check . && uv run ruff format --check . && uv run mypy
+	npm run typecheck --workspace @gather/web
+	npm run lint --workspace @gather/web
+	python3 tools/check_tokens.py
 
 fmt: ## Format everything
 	cd $(API) && uv run ruff format . && uv run ruff check --fix .

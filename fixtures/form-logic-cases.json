@@ -1,5 +1,5 @@
 {
-  "$comment": "Shared conditional-logic cases. Replayed by pytest (apps/api) and Vitest (apps/web) so the two evaluators cannot drift. Add a case here before fixing a logic bug in either implementation.",
+  "$comment": "Conditional-logic cases, replayed by pytest (apps/api/tests/test_form_engine.py). The browser evaluator (apps/web/src/lib/formLogic.ts) mirrors the same semantics. Add a case here before fixing a logic bug in either implementation.",
   "schema": {
     "sections": [
       {
@@ -26,11 +26,41 @@
       }
     ],
     "logic": [
-      { "field": "format", "operator": "is", "value": "workshop", "action": "show", "target": "prerequisites" },
-      { "field": "format", "operator": "is", "value": "workshop", "action": "require", "target": "prerequisites" },
-      { "field": "format", "operator": "is_not", "value": "workshop", "action": "hide", "target": "prerequisites" },
-      { "field": "attendees", "operator": "gt", "value": 100, "action": "require", "target": "equipment" },
-      { "field": "format", "operator": "is_any_of", "value": ["talk", "workshop"], "action": "show", "target": "recording_ok" },
+      {
+        "field": "format",
+        "operator": "is",
+        "value": "workshop",
+        "action": "show",
+        "target": "prerequisites"
+      },
+      {
+        "field": "format",
+        "operator": "is",
+        "value": "workshop",
+        "action": "require",
+        "target": "prerequisites"
+      },
+      {
+        "field": "format",
+        "operator": "is_not",
+        "value": "workshop",
+        "action": "hide",
+        "target": "prerequisites"
+      },
+      {
+        "field": "attendees",
+        "operator": "gt",
+        "value": 100,
+        "action": "require",
+        "target": "equipment"
+      },
+      {
+        "field": "format",
+        "operator": "is_any_of",
+        "value": ["talk", "workshop"],
+        "action": "show",
+        "target": "recording_ok"
+      },
       { "field": "title", "operator": "is_empty", "action": "hide", "target": "attendees" }
     ],
     "settings": {}
@@ -39,7 +69,14 @@
     {
       "name": "workshop reveals and requires prerequisites",
       "answers": { "title": "Deep dive", "format": "workshop" },
-      "expected_visible": ["title", "format", "prerequisites", "attendees", "equipment", "recording_ok"],
+      "expected_visible": [
+        "title",
+        "format",
+        "prerequisites",
+        "attendees",
+        "equipment",
+        "recording_ok"
+      ],
       "expected_required": ["title", "format", "prerequisites"]
     },
     {

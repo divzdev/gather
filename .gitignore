@@ -116,3 +116,6 @@ infra/
 
 # Internal project management, not product tooling — stays local.
 tools/jira_push.py
+
+# Personal multi-project process-launcher config, not product config.
+portico.yml

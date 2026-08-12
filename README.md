@@ -134,7 +134,7 @@ forward calls — the abstraction would cost a file per model and buy nothing.
 ## Commands
 
 ```bash
-make test       # 341 API tests + 169 end-to-end tests
+make test       # 365 API tests + 169 end-to-end tests
 make test.api   # pytest only
 make test.e2e   # Playwright, against an isolated database it creates and drops
 make lint       # ruff · mypy · tsc · eslint · design-token check
@@ -155,12 +155,13 @@ server.
 
 Named here because a feature list that only lists wins is a sales page, not a README.
 
-- **AI, entirely.** No gateway, no model call. The agenda's scheduling assistant is a
-  deterministic first-fit packer. Where the design anticipated AI, the rule it would follow is
-  already written down: AI proposes, a human accepts, and accepting calls the same service method
-  the UI does.
-- **Accelevents push** — designed, not implemented.
-- **Saved views** and **custom submission statuses.**
+- **A console screen for the Accelevents push.** The API flow — configure, test the
+  connection, dry-run, execute — is implemented and tested; no UI reaches it yet.
+- **Saved views** and **custom submission statuses** — schema only.
+- The agenda's scheduling assistant is a deterministic first-fit packer, not a model. The AI
+  that does exist — suggested review scores, duplicate detection — follows one rule: AI
+  proposes, a human accepts, and accepting calls the same service method the UI does. With no
+  `ANTHROPIC_API_KEY` a stub answers, so zero-credential local dev keeps working.
 
 Explicit non-goals, which will not be built: registration, ticketing, attendee records, badging,
 sponsors, travel, billing, SSO, SMS, webhooks, internationalisation, or an analytics dashboard.
