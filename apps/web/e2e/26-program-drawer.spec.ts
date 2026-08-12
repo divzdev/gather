@@ -31,6 +31,16 @@ async function settled(page: import("@playwright/test").Page): Promise<void> {
     .waitFor({ state: "visible", timeout: 20_000 });
 }
 
+/** Deleting is two steps: the row's button opens a confirmation naming the row,
+ *  and the dialog's own button commits it. */
+async function removeRow(page: import("@playwright/test").Page, name: string): Promise<void> {
+  await page.getByRole("button", { name: new RegExp(`Delete ${name}`) }).click();
+  const confirm = page.getByRole("alertdialog");
+  await confirm.getByRole("button", { name: /^Delete / }).click();
+  await expect(confirm).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByText(name, { exact: false })).toHaveCount(0, { timeout: 15_000 });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto("/login");
   await page.getByRole("button", { name: /^Organizer$/i }).click();
@@ -85,8 +95,7 @@ test("a room added in the drawer lands in the list behind it", async ({ page }) 
   await expect(page.getByText(name, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("seats 120").first()).toBeVisible();
 
-  await page.getByRole("button", { name: new RegExp(`Remove ${name}`) }).click();
-  await expect(page.getByText(name, { exact: false })).toHaveCount(0, { timeout: 15_000 });
+  await removeRow(page, name);
 });
 
 test("the drawer refuses an empty name and says why, without closing", async ({ page }) => {
@@ -146,8 +155,7 @@ test("a row can be edited in place, and the drawer opens filled in", async ({ pa
   await expect(drawer).toBeHidden({ timeout: 15_000 });
   await expect(page.getByText("seats 450").first()).toBeVisible({ timeout: 15_000 });
 
-  await page.getByRole("button", { name: `Remove ${name}` }).click();
-  await expect(page.getByText(name, { exact: false })).toHaveCount(0, { timeout: 15_000 });
+  await removeRow(page, name);
 });
 
 test("moving a day says what it drags with it, and only once it moves", async ({ page }) => {

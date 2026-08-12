@@ -1,6 +1,16 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /** Checklist §"Build the call for papers form" — items 25-42. */
+
+/** A question as it appears in the builder's list.
+ *
+ *  Scoped to the row's own label element rather than matched as page text: the
+ *  conditional-logic rule editor carries every question as an <option> in both
+ *  its "Question to watch" and "Question to act on" selects, so a bare text
+ *  match for a question's name resolves to three elements, not one. */
+function question(page: Page, label: string): Locator {
+  return page.locator("span").filter({ hasText: new RegExp(`^${label}$`) });
+}
 
 const API = process.env.E2E_API_URL ?? "http://127.0.0.1:8051";
 
@@ -28,9 +38,7 @@ test.afterAll(async ({ request }) => {
   if (event === undefined) return;
 
   for (const id of created) {
-    await request
-      .delete(`${API}/v1/events/${event.id}/forms/${id}`, { headers })
-      .catch(() => null);
+    await request.delete(`${API}/v1/events/${event.id}/forms/${id}`, { headers }).catch(() => null);
   }
 });
 
@@ -55,7 +63,10 @@ async function newForm(page: Page): Promise<void> {
         .catch(() => undefined);
     }
   });
-  await page.getByRole("button", { name: /create a form/i }).first().click();
+  await page
+    .getByRole("button", { name: /create a form/i })
+    .first()
+    .click();
   // The wizard opens on step one; the questions live on step three.
   await expect(page.getByRole("button", { name: /submission questions/i })).toBeVisible({
     timeout: 20_000,
@@ -80,7 +91,9 @@ async function addField(
 ) {
   await page.getByRole("button", { name: /add a field/i }).click();
   const dialog = page.getByRole("dialog", { name: /add a field/i });
-  await dialog.getByLabel("Question").fill(options.label);
+  // Exact: the dialog also carries "Retire this question — hide from new
+  // submissions", which a substring match on "Question" resolves to as well.
+  await dialog.getByLabel("Question", { exact: true }).fill(options.label);
   await dialog.getByLabel("Type").selectOption(options.type);
   if (options.limit !== undefined) {
     await dialog.getByLabel("Character limit").fill(options.limit);
@@ -118,7 +131,7 @@ test("25-32. six field types, two of them required", async ({ page }) => {
     "Slides",
     "First time speaking",
   ]) {
-    await expect(page.getByText(label, { exact: true })).toBeVisible();
+    await expect(question(page, label)).toBeVisible();
   }
 
   // 32. Two of them carry the required flag.
@@ -140,7 +153,7 @@ test("27-28. a long text keeps its limit and a dropdown keeps its options", asyn
   await expect(page.getByText(/3 choices/i)).toBeVisible();
 
   // Reopen the dropdown and the options are still there.
-  await page.getByText("Audience level", { exact: true }).click();
+  await question(page, "Audience level").click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("Options, one per line")).toHaveValue(/Beginner[\s\S]*Advanced/);
   await dialog.getByRole("button", { name: /cancel/i }).click();
@@ -163,7 +176,10 @@ test("35. fields reorder by dragging, and the order survives a save", async ({ p
   });
 
   // 41. Save, leave, come back: still reordered.
-  await page.getByRole("button", { name: /save form|^next$/i }).last().click();
+  await page
+    .getByRole("button", { name: /save form|^next$/i })
+    .last()
+    .click();
   await page.waitForTimeout(1500);
   await page.reload();
   await page.goto("/admin/forms");
@@ -173,10 +189,10 @@ test("37-38. speaker min/max, and a minimum above the maximum is refused", async
   await newForm(page);
   await page.getByRole("button", { name: /participants/i }).click();
 
-  // The speaker row is the first one; its min and max are the two small boxes.
-  const boxes = page.locator('input[type="text"], input:not([type])');
-  const min = boxes.nth(0);
-  const max = boxes.nth(1);
+  // By accessible name, not by position: the form's own title is an editable
+  // field now, so counting text boxes from the top of the page finds that.
+  const min = page.getByLabel(/^Speaker minimum$/i);
+  const max = page.getByLabel(/^Speaker maximum$/i);
   await expect(min).toBeVisible({ timeout: 10_000 });
 
   // 37. A legitimate range is accepted.

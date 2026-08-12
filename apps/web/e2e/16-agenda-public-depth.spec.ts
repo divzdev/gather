@@ -349,13 +349,17 @@ test("130. the whole programme is placed without the grid falling over", async (
 
   const started = Date.now();
   await page.goto("/admin/agenda");
-  await expect(page.getByText(/CONFLICT/i).first()).toBeVisible({ timeout: 30_000 });
+  // The conflict count sits in the chrome strip that every console screen
+  // carries, so waiting for that text is satisfied before the agenda has drawn.
+  // The grid itself is the only honest signal that this screen is up.
+  const agendaGrid = page.locator("[data-agenda-grid]");
+  await expect(agendaGrid).toBeVisible({ timeout: 30_000 });
   const painted = Date.now() - started;
 
   // Not a card count — that only tests my selector against nested markup. What
   // the item is about is the whole programme being on one screen and the screen
   // still working.
-  expect(await page.locator("[data-agenda-grid]").count(), "no grid").toBe(1);
+  expect(await agendaGrid.count(), "no grid").toBe(1);
   const painted_text = (await page.locator("body").textContent()) ?? "";
   expect(painted_text.length, "the agenda painted almost nothing").toBeGreaterThan(2000);
 

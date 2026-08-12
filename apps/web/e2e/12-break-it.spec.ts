@@ -51,7 +51,12 @@ test("170. refreshing on any screen never leaves a white page", async ({ page })
     await page.goto(path);
     await page.reload();
     await page.waitForLoadState("networkidle").catch(() => undefined);
-    const text = (await page.locator("body").innerText().catch(() => "")).trim();
+    const text = (
+      await page
+        .locator("body")
+        .innerText()
+        .catch(() => "")
+    ).trim();
     // A white screen is an empty body, not a missing <h1>. Every console screen
     // also carries the rail, so anything under ~100 characters is a crash.
     if (text.length < 100) blank.push(`${path} (${text.length} chars)`);
@@ -63,7 +68,10 @@ test("170. refreshing on any screen never leaves a white page", async ({ page })
   expect(blank, "these screens are blank after a reload").toEqual([]);
 });
 
-test("171. back after a mutation shows the mutation, not a stale row", async ({ page, request }) => {
+test("171. back after a mutation shows the mutation, not a stale row", async ({
+  page,
+  request,
+}) => {
   const ctx = await organizer(request);
   await signIn(page);
 
@@ -94,7 +102,10 @@ test("171. back after a mutation shows the mutation, not a stale row", async ({ 
   ).toBeVisible({ timeout: 20_000 });
 
   void after;
-  await page.getByRole("button", { name: new RegExp(`Remove ${name}`) }).click();
+  // Deleting confirms first, so the tidy-up is two clicks.
+  await page.getByRole("button", { name: new RegExp(`Delete ${name}`) }).click();
+  const confirm = page.getByRole("alertdialog");
+  await confirm.getByRole("button", { name: /^Delete / }).click();
   await expect(page.getByText(name, { exact: false })).toHaveCount(0, { timeout: 15_000 });
   void ctx;
 });
@@ -375,10 +386,9 @@ test("177-178. removing published work has a stated outcome, not a surprise", as
   expect(snapshotBefore.length).toBeGreaterThan(100);
 
   const publicAfter = await request.get(`${API}/v1/public/events/${SLUG}/schedule`);
-  expect(
-    await publicAfter.text(),
-    "the public snapshot changed without a publish",
-  ).toBe(snapshotBefore);
+  expect(await publicAfter.text(), "the public snapshot changed without a publish").toBe(
+    snapshotBefore,
+  );
 
   // Put the fixture back: un-withdraw and re-place.
   await request.post(`${API}/v1/events/${ctx.eventId}/submissions/${paired!.id}/decision`, {

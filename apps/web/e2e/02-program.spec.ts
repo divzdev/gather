@@ -47,8 +47,14 @@ function row(section: Locator, name: string): Locator {
   return section.locator("div").filter({ hasText: name }).last();
 }
 
+/** Deleting a program row is two steps on purpose: the row's own button opens a
+ *  confirmation naming what is about to go, and the dialog commits it. The
+ *  dialog is a sibling of the section, so it is reached from the page. */
 async function removeRow(section: Locator, name: string) {
-  await section.getByRole("button", { name: new RegExp(`Remove ${name}`) }).click();
+  await section.getByRole("button", { name: new RegExp(`Delete ${name}`) }).click();
+  const confirm = section.page().getByRole("alertdialog");
+  await confirm.getByRole("button", { name: /^Delete / }).click();
+  await expect(confirm).toBeHidden({ timeout: 15_000 });
   await expect(section.getByText(name, { exact: false })).toHaveCount(0, { timeout: 15_000 });
 }
 
@@ -217,13 +223,16 @@ test("23-24. an unused track deletes; one in use does not crash the screen", asy
   );
   expect(busy, "no track has any session on it, so nothing can be in use").toBeDefined();
 
-  await page.getByRole("button", { name: new RegExp(`Remove ${busy!.name}`) }).click();
-  // The refusal is a sibling of the list, not inside it, so it stays put while
-  // the list re-renders underneath. Matched by tag as well as role: Next's
-  // route announcer is also role="alert" and is always on the page.
-  await expect(page.locator('p[role="alert"]')).toContainText(/still use this|in use/i, {
-    timeout: 15_000,
-  });
+  await page.getByRole("button", { name: new RegExp(`Delete ${busy!.name}`) }).click();
+  // The refusal is structural, not a message you can click past: the
+  // confirmation names what is attached and offers no way through.
+  const refusal = page.getByRole("alertdialog");
+  await expect(refusal).toContainText(/still attached to this track/i, { timeout: 15_000 });
+  await expect(
+    refusal.getByRole("button", { name: /^Delete / }),
+    "the dialog still offered to delete a track that is in use",
+  ).toHaveCount(0);
+  await refusal.getByRole("button", { name: /^Close$/ }).click();
   // And it is still there.
   await expect(page.getByText(busy!.name, { exact: true }).first()).toBeVisible();
 });
