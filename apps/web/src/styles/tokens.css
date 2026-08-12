@@ -106,6 +106,13 @@
   --control-h-md: 44px;
   --control-h-lg: 50px;
 
+  /* How tall a row is in the console's lists. The default here is what an
+     operator sees before their saved preference arrives; `Density.tsx` writes
+     the stored `density_pref` over it on the document element. Defined rather
+     than only set from JS so the value has a home, a default, and a name the
+     token check can see. */
+  --row-h: 44px;
+
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 120ms;
   --dur-base: 180ms;

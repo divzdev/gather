@@ -171,6 +171,16 @@ export default function ProfilePage() {
             ))}
           </select>,
         )}
+        <p
+          style={{
+            font: "400 12px/1.6 var(--font-plex-sans)",
+            color: "var(--i4)",
+            margin: "-10px 0 0",
+          }}
+        >
+          How tall a row is in the console&rsquo;s lists. The Compact/Comfortable toggle above a
+          table is this same setting, so changing it in either place sticks.
+        </p>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button

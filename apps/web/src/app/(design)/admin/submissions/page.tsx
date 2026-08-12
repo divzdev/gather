@@ -9,6 +9,7 @@ import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Submissions, type SubmissionsData } from "@/components/design/Submissions";
 import type { Note, Outcome } from "@/components/console/SubmissionPanels";
+import { type Density, applyDensity, densityOf } from "@/components/console/Density";
 import { Pager, StatusTabs } from "@/components/ui";
 import { useHotkeys } from "@/lib/hotkeys";
 import { authed, download } from "@/lib/session";
@@ -126,7 +127,22 @@ export default function SubmissionsPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
-  const [dense, setDense] = useState(false);
+  /* The toggle in the toolbar and the preference on /admin/profile are one
+   * setting. It was local state here and a stored value there that nothing
+   * read, so flipping this reverted on reload and the profile control never did
+   * anything at all. */
+  const { data: me } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => authed<{ density_pref: string }>("/auth/me"),
+    staleTime: 5 * 60_000,
+  });
+  const dense = densityOf(me?.density_pref) === "compact";
+  const saveDensity = useMutation({
+    mutationFn: (next: Density) =>
+      authed("/auth/me", { method: "PATCH", body: { density_pref: next } }),
+    onMutate: (next: Density) => applyDensity(next),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
+  });
   const [hover, setHover] = useState<string | null>(null);
   // ?open=<id> so a proposal can be linked to — from the command palette, or
   // from one organiser to another in chat.
@@ -595,9 +611,11 @@ export default function SubmissionsPage() {
         onPerPage={(next) => refilter(() => setPerPage(next))}
       />
     ),
-    rowH: dense ? "36px" : "44px",
+    // The row height every console table reads, so the toggle here and the
+    // preference on /admin/profile are the same setting rather than two.
+    rowH: "var(--row-h, 44px)",
     densTitle: dense ? "Comfortable rows" : "Compact rows",
-    togDensity: () => setDense((current) => !current),
+    togDensity: () => saveDensity.mutate(dense ? "comfortable" : "compact"),
 
     soTitle: sorter("title"),
     soScore: sorter("score"),

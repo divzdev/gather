@@ -1287,7 +1287,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                       gap: "8px",
                       alignItems: "center",
                       padding: "0 14px",
-                      height: "40px",
+                      height: "var(--row-h, 44px)",
                       border: "none",
                       borderBottom: "1px solid var(--ln,#E1E7E9)",
                       background: "none",
