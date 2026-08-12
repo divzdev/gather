@@ -14,7 +14,12 @@ import { useMemo, useRef, useState } from "react";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Forms, type FormsData } from "@/components/design/Forms";
-import { blankField, FieldEditor, type Field as EditableField } from "@/components/forms/FieldEditor";
+import {
+  blankField,
+  FieldEditor,
+  type Field as EditableField,
+} from "@/components/forms/FieldEditor";
+import { pill, quietPill } from "@/components/ui";
 import { authed } from "@/lib/session";
 
 type Choice = { value: string; label: string };
@@ -85,6 +90,17 @@ const KINDS = [
   { key: "task", n: "Speaker task", d: "A form you send to people already on the programme." },
 ] as const;
 
+/** Three words for three states, and no fourth.
+ *
+ *  This screen briefly carried four names for the same two conditions: a
+ *  "Draft" pill, a "Live and collecting" tile, an "Open" tab, and Open/Close
+ *  buttons. Three of those meant the same thing. The tile was the outlier and
+ *  now says "Open" like everything else.
+ *
+ *  These labels match the API's `FormStatus` deliberately — when the vocabulary
+ *  on screen is the vocabulary in the payload, a support conversation and a log
+ *  line describe the same thing.
+ */
 const STATUS: Record<string, { l: string; fg: string; bg: string }> = {
   open: { l: "Open", fg: "var(--ok,#0E7A5F)", bg: "var(--okw,#E2F1EC)" },
   draft: { l: "Draft", fg: "var(--if,#47599F)", bg: "var(--ifw,#E9ECF7)" },
@@ -98,6 +114,24 @@ function check(on: boolean) {
     ck: on ? "✓" : "",
     ckBg: on ? "var(--sg,#E04E4E)" : "var(--cd,#FFFFFF)",
     ckBd: on ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
+  };
+}
+
+/** The background of a selected *row*, which is not the background of a
+ *  selected *checkbox*.
+ *
+ *  `check().ckBg` is the accent at full strength, correct for a 14px square with
+ *  a white tick on it. It was also being handed to whole rows as their
+ *  background — so selecting "Collect participant details" painted the entire
+ *  row solid coral and left its label and help text in their normal dark ink on
+ *  top of it, which is both unreadable and reads as an error state rather than a
+ *  selection. Selection is a tint plus an accent border; emphasis at full
+ *  strength belongs to the small thing that is actually ticked.
+ */
+function rowTint(on: boolean) {
+  return {
+    bg: on ? "var(--sw,#FFEAE6)" : "var(--cd,#FFFFFF)",
+    bd: on ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
   };
 }
 
@@ -129,7 +163,7 @@ export default function FormsPage() {
     onSuccess: (row) => {
       void queryClient.invalidateQueries({ queryKey: ["forms", eventId] });
       setEdit(row);
-      toast("Saved.");
+      toast(`Saved “${row.name}”.`);
     },
     // A locked form rejects structural edits by design, and the message says
     // which field caused it, so it goes straight through.
@@ -145,10 +179,50 @@ export default function FormsPage() {
     queryKey: ["event", eventId],
     enabled: eventId !== null,
     queryFn: () =>
-      authed<{ slug: string; timezone: string; submission_limit_per_speaker: number | null }>(
-        `/events/${eventId}`,
-      ),
+      authed<{
+        slug: string;
+        timezone: string;
+        ends_on: string;
+        submission_limit_per_speaker: number | null;
+      }>(`/events/${eventId}`),
   });
+
+  /** The window a call for papers can legally close in.
+   *
+   *  Lower bound is now: a deadline already past closes the call the moment it
+   *  opens, and the public page would show a countdown that has finished.
+   *  Upper bound is the last day of the event: soliciting talks for a conference
+   *  that has already ended is not a deadline anyone meant to set.
+   *
+   *  Reported rather than silently clamped — an organiser who typed 1987 made a
+   *  mistake worth showing them, and a value quietly moved to something else is
+   *  how you end up with a deadline nobody chose.
+   */
+  // Read once when the builder mounts rather than on every render: reading the
+  // clock during render is impure, and a lower bound that slides as you type
+  // would invalidate a value you had just chosen.
+  const [openedAt] = useState(() => {
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const now = new Date();
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  });
+
+  const closeBounds = useMemo(() => {
+    // `ends_on` is a calendar date; the deadline may sit anywhere on that day.
+    const max = eventRow === undefined ? "" : `${eventRow.ends_on}T23:59`;
+
+    const chosen = edit?.closes_at ?? null;
+    let problem: string | null = null;
+    if (chosen !== null) {
+      const when = new Date(chosen);
+      if (when < new Date(openedAt)) {
+        problem = "That deadline has already passed, so the call would close as soon as it opens.";
+      } else if (max !== "" && when > new Date(`${eventRow?.ends_on}T23:59:59`)) {
+        problem = `The call cannot close after the event ends on ${eventRow?.ends_on}.`;
+      }
+    }
+    return { min: openedAt, max, problem };
+  }, [edit?.closes_at, eventRow, openedAt]);
 
   const duplicate = useMutation({
     mutationFn: (row: FormRow) =>
@@ -180,6 +254,51 @@ export default function FormsPage() {
       );
     },
     onError: (error: Error) => toast(error.message),
+  });
+
+  /** Draft-only, and the API is the authority.
+   *
+   *  There was no way to remove a form at all, so a stray "Create a form" click
+   *  left a blank draft on the list permanently — five of them, in the case that
+   *  prompted this. Deleting is refused once a form is locked, because a locked
+   *  form has submissions behind it and removing it would orphan real answers.
+   */
+  const remove = useMutation({
+    mutationFn: (row: FormRow) =>
+      authed(`/events/${eventId}/forms/${row.id}`, { method: "DELETE" }),
+    onSuccess: (_result, row) => {
+      void queryClient.invalidateQueries({ queryKey: ["forms", eventId] });
+      if (openId === row.id) {
+        setOpenId(null);
+        setEdit(null);
+      }
+      toast(`Deleted “${row.name}”.`);
+    },
+    onError: (problem: Error) => toast(problem.message),
+  });
+
+  /** Open a form to the public, or close it again.
+   *
+   *  `FormUpdate` has accepted `status` all along; nothing in the console ever
+   *  sent it, so every form was created a draft and stayed one. "5 forms, 0
+   *  open" with no control that could change it — the call for papers could be
+   *  built and named and never actually opened.
+   */
+  const setStatus = useMutation({
+    mutationFn: (input: { row: FormRow; status: string }) =>
+      authed<FormRow>(`/events/${eventId}/forms/${input.row.id}`, {
+        method: "PATCH",
+        body: { status: input.status },
+      }),
+    onSuccess: (row) => {
+      void queryClient.invalidateQueries({ queryKey: ["forms", eventId] });
+      toast(
+        row.status === "open"
+          ? `“${row.name}” is live. The public form is collecting submissions.`
+          : `“${row.name}” is closed. The public form stops accepting submissions.`,
+      );
+    },
+    onError: (problem: Error) => toast(problem.message),
   });
 
   const create = useMutation({
@@ -227,10 +346,22 @@ export default function FormsPage() {
   const patchSettings = (change: (settings: Settings) => void) =>
     patch((draft) => change(draft.schema.settings));
 
+  /* Leaving the builder threw the draft away without a word. Every edit here is
+   * local until Save form on the last step, so a Back on step one — the button
+   * that *is* the exit — silently discarded a whole form. Compare against the
+   * server's copy rather than tracking a flag, so a change and its undo counts
+   * as clean. */
+  const [leaving, setLeaving] = useState<null | (() => void)>(null);
   const draft = edit;
   const settings = draft?.schema.settings;
   const section = draft?.schema.sections[0];
   const inBuilder = openId !== null && draft !== null;
+  const stored = (forms ?? []).find((row) => row.id === openId) ?? null;
+  const shape = (row: FormRow | null) =>
+    row === null ? "" : JSON.stringify([row.name, row.schema, row.closes_at]);
+  const unsaved = inBuilder && stored !== null && shape(draft) !== shape(stored);
+  /** Every way out of the builder goes through here. */
+  const leave = (go: () => void) => (unsaved ? setLeaving(() => go) : go());
 
   const tile = (name: "All" | "Open" | "Draft", count: number) => ({
     c: count,
@@ -241,6 +372,7 @@ export default function FormsPage() {
   });
 
   const partCheck = check(settings?.collect_participants ?? true);
+  const partTint = rowTint(settings?.collect_participants ?? true);
   const termsCheck = check(settings?.require_terms ?? false);
   const confirmCheck = check(settings?.confirm_participants ?? true);
   const adminCheck = check(settings?.notify_admins_on_submit ?? true);
@@ -251,12 +383,120 @@ export default function FormsPage() {
     inList: !inBuilder,
     inBuilder,
     crumb: inBuilder ? `/ Forms / ${draft.name}` : "/ Forms",
+    // The title *is* the name field. There was nowhere else to rename a form —
+    // it was created as "Untitled form" and stayed that way, because the only
+    // thing showing the name was an `<h1>`, and an organiser cannot type into a
+    // heading. Rendering the input in the heading's own place means the name
+    // lives where you already look for it, rather than in a settings step
+    // somebody has to find.
+    // A section with no questions rendered as a section title, a page heading
+    // and then nothing — a screen that looks finished and is not. The only way
+    // to add a question was a button in the far top-right corner, nowhere near
+    // the emptiness it fills, so it was possible to walk all six steps and save
+    // a form that can never be opened. This says what is missing and puts the
+    // action where the questions will be.
+    fieldsEmpty:
+      (section?.fields.length ?? 0) > 0 ? null : (
+        <div
+          style={{
+            border: "1px dashed var(--ls,#C8D2D5)",
+            borderRadius: 12,
+            padding: "26px 24px",
+            textAlign: "center",
+            background: "var(--sk,#EDF1F2)",
+          }}
+        >
+          <p
+            style={{
+              font: "600 14px var(--font-plex-sans)",
+              color: "var(--ik)",
+              margin: "0 0 4px",
+            }}
+          >
+            No questions yet
+          </p>
+          <p
+            style={{
+              font: "400 12.5px/1.55 var(--font-plex-sans)",
+              color: "var(--i3)",
+              margin: "0 auto 16px",
+              maxWidth: "46ch",
+            }}
+          >
+            A call for papers needs at least one question — a session title at minimum, since that
+            is what the proposal is listed under. A form with no questions cannot be opened.
+          </p>
+          <button
+            onClick={() => setEditing(blankField())}
+            style={{
+              height: 40,
+              padding: "0 20px",
+              borderRadius: 999,
+              border: "none",
+              background: "var(--sg)",
+              color: "var(--cd)",
+              font: "600 13px var(--font-plex-sans)",
+              cursor: "pointer",
+            }}
+          >
+            Add the first question
+          </button>
+        </div>
+      ),
+    // Plain text — this one also labels the step sidebar, where a 30px input
+    // would be absurd.
     bName: draft?.name ?? "",
-    backToList: () => {
-      setOpenId(null);
-      setEdit(null);
+    bNameField:
+      draft === null ? (
+        ""
+      ) : (
+        <input
+          value={draft.name}
+          aria-label="Form name"
+          placeholder="Name this form"
+          onChange={(event) => {
+            const next = event.target.value;
+            patch((row) => void (row.name = next));
+          }}
+          style={{
+            font: "600 30px/1.15 'IBM Plex Sans', sans-serif",
+            letterSpacing: "-0.02em",
+            color: "var(--ik,#16232B)",
+            background: "none",
+            border: "none",
+            borderBottom: "1.5px dashed var(--ls,#C8D2D5)",
+            padding: "0 2px 2px",
+            margin: 0,
+            width: `${Math.max(12, Math.min(38, draft.name.length + 2))}ch`,
+            minWidth: 0,
+          }}
+        />
+      ),
+    backToList: () =>
+      leave(() => {
+        setOpenId(null);
+        setEdit(null);
+      }),
+    // "Create a form" used to POST a new row on every click, so two clicks —
+    // or one click, a look around, and a click back — left two identical
+    // "Untitled form · 0 fields" drafts with no way to tell them apart. A blank
+    // untouched draft is not a thing anyone wanted two of; if one is already
+    // sitting there, that is the one you meant.
+    newForm: () => {
+      const blank = all.find(
+        (row) =>
+          row.status === "draft" &&
+          !row.is_locked &&
+          row.closes_at === null &&
+          row.schema.sections.every((entry) => entry.fields.length === 0),
+      );
+      if (blank !== undefined) {
+        open(blank);
+        toast("Opened the blank draft you already had, rather than making a second one.");
+        return;
+      }
+      create.mutate();
     },
-    newForm: () => create.mutate(),
 
     sumLine:
       all.length === 0
@@ -284,7 +524,9 @@ export default function FormsPage() {
         kind: row.kind === "cfp" ? "Call for papers" : "Speaker task",
         meta: `${fieldCount} field${fieldCount === 1 ? "" : "s"}${row.is_locked ? " · locked, has submissions" : ""}`,
         closes:
-          row.closes_at === null ? "no close date" : `closes ${DAY.format(new Date(row.closes_at))}`,
+          row.closes_at === null
+            ? "no close date"
+            : `closes ${DAY.format(new Date(row.closes_at))}`,
         st: look.l,
         stFg: look.fg,
         stBg: look.bg,
@@ -293,6 +535,41 @@ export default function FormsPage() {
          * *name*, so the link was "/e/DevFlow Conf 2027/cfp" and 404ed anyway.
          * It duplicates now, which is what it says. */
         onCopy: () => duplicate.mutate(row),
+        // A form with no questions can be opened, submitted against, and then
+        // rejected by the API — `title` is required and nothing supplies it, so
+        // the submitter gets a validation error for a field they were never
+        // shown. Refuse at the point of opening, where the organiser can act on
+        // it, rather than at the point of submitting, where the speaker cannot.
+        ...(() => {
+          const empty = row.schema.sections.every((entry) => entry.fields.length === 0);
+          const isOpen = row.status === "open";
+          return {
+            onStatus: () => {
+              if (!isOpen && empty) {
+                toast("Add at least one question before opening this form.");
+                return;
+              }
+              setStatus.mutate({ row, status: isOpen ? "closed" : "open" });
+            },
+            statusLabel: isOpen ? "Close" : "Open",
+            statusOff: !isOpen && empty,
+            statusTitle: isOpen
+              ? `Stop “${row.name}” accepting submissions`
+              : empty
+                ? "This form has no questions yet, so there is nothing to submit."
+                : `Make “${row.name}” live and start collecting`,
+          };
+        })(),
+        // Locked means submissions exist behind it; the API refuses, and the
+        // button says why rather than letting someone find out from a toast.
+        onDelete: () => {
+          if (row.is_locked) return;
+          remove.mutate(row);
+        },
+        deleteOff: row.is_locked,
+        deleteTitle: row.is_locked
+          ? "This form has submissions, so it cannot be deleted."
+          : `Delete “${row.name}”`,
       };
     }),
 
@@ -316,12 +593,47 @@ export default function FormsPage() {
     s6: step === 5,
     nextStep: () => {
       if (step === STEPS.length - 1) {
-        if (draft !== null) save.mutate(draft);
+        // Finishing the last step is finishing the form, so it returns to the
+        // list. Saying "Saved." and leaving you on step six looks like the
+        // button did not work — there is nothing further to do here, and the
+        // only evidence the save landed is on the page you cannot see.
+        //
+        // Scoped to this call rather than the mutation, because "View live
+        // form" saves too and must stay put.
+        // Stated on the field and enforced here. A message you can save past is
+        // decoration.
+        if (closeBounds.problem !== null) {
+          toast(closeBounds.problem);
+          setStep(4);
+          return;
+        }
+        if (draft !== null) {
+          save.mutate(draft, {
+            onSuccess: () => {
+              setOpenId(null);
+              setEdit(null);
+            },
+          });
+        }
         return;
       }
       setStep((current) => current + 1);
     },
-    prevStep: () => setStep((current) => Math.max(0, current - 1)),
+    // On the first step there is no previous step, and clamping to 0 made the
+    // button look broken — it was the only control on screen that could be
+    // clicked and do nothing at all. Back from step one is back out of the
+    // builder, which is the only place left to go.
+    prevStep: () => {
+      if (step === 0) {
+        leave(() => {
+          setOpenId(null);
+          setEdit(null);
+        });
+        return;
+      }
+      setStep((current) => current - 1);
+    },
+    prevLabel: step === 0 ? "Back to forms" : "Back",
     nextLabel: step === STEPS.length - 1 ? "Save form" : "Next",
     /* Was: save the draft, toast "Saved.", show nothing. The button is called
      * "View live form", so it saves *and then opens the form* — in a new tab,
@@ -347,8 +659,10 @@ export default function FormsPage() {
     partCk: partCheck.ck,
     partCkBg: partCheck.ckBg,
     partCkBd: partCheck.ckBd,
-    partBd: partCheck.ckBd,
-    partBg: partCheck.ckBg,
+    // Same source as `partCheck`, so the row's tint can never disagree with the
+    // tick inside it.
+    partBd: partTint.bd,
+    partBg: partTint.bg,
     togPart: () =>
       patchSettings((entry) => void (entry.collect_participants = !entry.collect_participants)),
 
@@ -371,7 +685,8 @@ export default function FormsPage() {
     pageHead: settings?.page_heading ?? "",
     onPageHead: (event) =>
       patchSettings(
-        (entry) => void (entry.page_heading = (event.target as HTMLInputElement).value.slice(0, 15)),
+        (entry) =>
+          void (entry.page_heading = (event.target as HTMLInputElement).value.slice(0, 15)),
       ),
     fields: (section?.fields ?? []).map((field, index) => ({
       n: field.label,
@@ -419,8 +734,8 @@ export default function FormsPage() {
         ck: mark.ck,
         ckBg: mark.ckBg,
         ckBd: mark.ckBd,
-        bd: mark.ckBd,
-        bg: mark.ckBg,
+        bd: rowTint(role.enabled).bd,
+        bg: rowTint(role.enabled).bg,
         onSel: role.enabled,
         min: String(role.minimum),
         max: String(role.maximum),
@@ -467,10 +782,32 @@ export default function FormsPage() {
       patchSettings((entry) => void (entry.confirm_participants = !entry.confirm_participants)),
 
     closeAt: draft?.closes_at?.slice(0, 16) ?? "",
+    // A deadline in the past closes the call the instant it opens, and one after
+    // the conference has finished is a call for talks at an event that already
+    // happened. The picker accepted 1987. Bounds are on the input so the browser
+    // refuses out-of-range values, and stated below it so someone typing rather
+    // than picking is told why — the picker is not the only way text gets here.
+    closeMin: closeBounds.min,
+    closeMax: closeBounds.max,
+    closeError:
+      closeBounds.problem === null ? null : (
+        <span
+          role="alert"
+          style={{
+            display: "block",
+            marginTop: 6,
+            font: "500 12px var(--font-plex-sans)",
+            color: "var(--cn)",
+          }}
+        >
+          {closeBounds.problem}
+        </span>
+      ),
     // Was the literal "PT · event timezone", wrong for any event outside
     // Pacific — and the picker reads the browser's clock, not the event's, so
     // the label has to say which one the operator is looking at.
-    closeZone: eventRow === undefined ? "" : `${eventRow.timezone.replace(/_/g, " ")} · event timezone`,
+    closeZone:
+      eventRow === undefined ? "" : `${eventRow.timezone.replace(/_/g, " ")} · event timezone`,
     /* `new Date(value).toISOString()` raises RangeError on anything that is not
      * a date, and the input had no `type`, so a half-typed value threw on every
      * keystroke. It is a datetime-local now, and the parse is still guarded —
@@ -503,10 +840,7 @@ export default function FormsPage() {
       n: entry.n,
       on: () => patchSettings((row) => void (row.allow_drafts = entry.on)),
       rb: (settings?.allow_drafts ?? true) === entry.on ? "var(--sg,#E04E4E)" : "transparent",
-      rd:
-        (settings?.allow_drafts ?? true) === entry.on
-          ? "var(--sg,#E04E4E)"
-          : "var(--ls,#C8D2D5)",
+      rd: (settings?.allow_drafts ?? true) === entry.on ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
     })),
 
     adCk: adminCheck.ck,
@@ -542,6 +876,83 @@ export default function FormsPage() {
             setEditing(null);
           }}
         />
+      ) : null}
+
+      {leaving !== null && draft !== null ? (
+        <div
+          onClick={() => setLeaving(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(13,16,32,.4)",
+            display: "grid",
+            placeItems: "center",
+            padding: 20,
+            zIndex: 150,
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="Unsaved changes"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: 440,
+              maxWidth: "100%",
+              background: "var(--cd)",
+              border: "1px solid var(--ln)",
+              borderRadius: 14,
+              padding: 22,
+              display: "grid",
+              gap: 14,
+              boxShadow: "0 24px 60px rgba(13,16,32,.28)",
+            }}
+          >
+            <p style={{ font: "600 15px var(--font-plex-sans)", color: "var(--ik)", margin: 0 }}>
+              Leave “{draft.name}” without saving?
+            </p>
+            <p
+              style={{
+                font: "400 13px/1.6 var(--font-plex-sans)",
+                color: "var(--i3)",
+                margin: 0,
+              }}
+            >
+              Everything you have changed in the builder is still only on this screen. Leaving now
+              throws it away.
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button style={quietPill} onClick={() => setLeaving(null)}>
+                Keep editing
+              </button>
+              <button
+                style={{ ...quietPill, borderColor: "var(--cnl)", color: "var(--cn)" }}
+                onClick={() => {
+                  const go = leaving;
+                  setLeaving(null);
+                  go();
+                }}
+              >
+                Discard changes
+              </button>
+              <button
+                style={pill}
+                disabled={save.isPending}
+                onClick={() => {
+                  const go = leaving;
+                  save.mutate(draft, {
+                    onSuccess: () => {
+                      setLeaving(null);
+                      go();
+                    },
+                  });
+                }}
+              >
+                {save.isPending ? "Saving…" : "Save and leave"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </>
   );

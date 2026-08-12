@@ -32,7 +32,10 @@ export type Field = {
 export const FIELD_TYPES = [
   { value: "short_text", label: "Short text" },
   { value: "long_text", label: "Long text" },
-  { value: "select", label: "Dropdown" },
+  { value: "select", label: "Dropdown — pick one" },
+  { value: "radio", label: "Radio buttons — pick one" },
+  { value: "multi_select", label: "Dropdown — pick several" },
+  { value: "checkbox_group", label: "Tickboxes — pick several" },
   { value: "number", label: "Number" },
   { value: "file", label: "File upload" },
   { value: "checkbox", label: "Checkbox" },
@@ -111,7 +114,9 @@ export function FieldEditor({
       return;
     }
     if (NEEDS_CHOICES.has(draft.type) && draft.choices.length === 0) {
-      setProblem("A dropdown needs at least one option.");
+      setProblem(
+        `${FIELD_TYPES.find((entry) => entry.value === draft.type)?.label ?? "This field"} needs at least one option.`,
+      );
       return;
     }
     onSave({ ...draft, key, label });
@@ -223,6 +228,25 @@ export function FieldEditor({
           />
           <span style={{ font: "400 13px var(--font-plex-sans)", color: "var(--ik)" }}>
             Identifies the speaker — hide during blind review
+          </span>
+        </label>
+
+        {/* Deletion is impossible once a form is locked — an answer would lose
+         *  the question it answered. This is the honest substitute the schema
+         *  has always carried and nothing could set: existing submissions keep
+         *  the field and their answers, new ones never see it. */}
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <input
+            type="checkbox"
+            checked={draft.hidden_from_new}
+            onChange={(event) => set("hidden_from_new", event.target.checked)}
+            style={{ marginTop: 3 }}
+          />
+          <span style={{ font: "400 13px/1.5 var(--font-plex-sans)", color: "var(--ik)" }}>
+            Retire this question — hide it from new submissions
+            <span style={{ display: "block", font: "400 12px var(--font-plex-sans)", color: "var(--i3)" }}>
+              Nobody new is asked it. Proposals that already answered keep the answer.
+            </span>
           </span>
         </label>
 
