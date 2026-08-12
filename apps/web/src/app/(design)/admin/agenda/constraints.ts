@@ -1,10 +1,12 @@
 /** Rules for the auto-scheduler, read from what an organiser types.
  *
- *  This is pattern matching, not a language model — there is no AI anywhere in
- *  this product, and a box that quietly pretended otherwise would be worse than
- *  no box. It recognises four phrasings, shows each one it understood as a chip
- *  you can remove, and says plainly which lines it could not read rather than
- *  dropping them. The panel's copy has to keep saying that too.
+ *  This is pattern matching, not a language model. There *is* a model in this
+ *  product now — it suggests review scores, behind `features/ai` — and this is
+ *  deliberately not it: a packer that silently guessed at a rule it had not
+ *  understood would be worse than one that says so. It recognises four
+ *  phrasings, shows each one it understood as a chip you can remove, and says
+ *  plainly which lines it could not read rather than dropping them. The panel's
+ *  copy has to keep saying that too.
  *
  *  The alternative was deleting the box, which is what it deserved while it
  *  discarded every keystroke. Four real rules beat an empty affordance, and
