@@ -8,8 +8,7 @@ import { stripData, useProgramStats } from "@/components/console/stats";
 import { TaskTemplates } from "@/components/console/TaskTemplates";
 import { Tasks, type TasksData } from "@/components/design/Tasks";
 import { FileThreads, type FileThread } from "@/components/FileThreads";
-import { API_BASE_URL } from "@/lib/api";
-import { authed, download, getToken } from "@/lib/session";
+import { authed, download } from "@/lib/session";
 
 type Row = {
   id: string;
@@ -190,23 +189,16 @@ export default function TasksPage() {
     return [...buckets.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [all]);
 
-  /** The ZIP arrives as an authenticated fetch rather than a plain link: a
-   *  bearer token has no business in a URL, and the browser would not attach it. */
+  /** Through the shared helper rather than a hand-rolled fetch: this copy had
+   *  quietly dropped the 401-refresh retry, so an admin whose access token had
+   *  just expired got a failure toast where every other action silently renews. */
   const downloadPack = async () => {
-    const response = await fetch(`${API_BASE_URL}/events/${eventId}/tasks/download.zip`, {
-      headers: { Authorization: `Bearer ${getToken() ?? ""}` },
-    });
-    if (!response.ok) {
-      toast("That download could not be prepared.");
-      return;
+    try {
+      await download(`/events/${eventId}/tasks/download.zip`, "deliverables.zip");
+      toast("Downloaded the current version of every file.");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "That download could not be prepared.");
     }
-    const url = URL.createObjectURL(await response.blob());
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "deliverables.zip";
-    link.click();
-    URL.revokeObjectURL(url);
-    toast("Downloaded the current version of every file.");
   };
 
   const tile = (name: "open" | "overdue" | "all", count: number) => ({

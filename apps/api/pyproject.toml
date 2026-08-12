@@ -15,6 +15,9 @@ dependencies = [
     "pyjwt>=2.10",
     "redis>=5.2",
     "python-multipart>=0.0.20",
+    # Imported directly (core/mail.py, core/storage.py) — declared so an
+    # upstream dependency shuffle can never take it out from under us.
+    "anyio>=4",
     # Correct monotonic UUIDv7 per RFC 9562 is easy to get subtly wrong by hand;
     # this is a small Rust-backed implementation that handles same-millisecond
     # ordering. Postgres 16 has no native uuidv7().

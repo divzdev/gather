@@ -329,42 +329,6 @@ export function StatTiles({
   );
 }
 
-const TONE: Record<string, string> = {
-  draft: "i3",
-  submitted: "if",
-  in_review: "pd",
-  accepted: "ok",
-  waitlisted: "pd",
-  rejected: "cn",
-  withdrawn: "i4",
-};
-
-export function StatusBadge({ status }: { status: string }) {
-  const tone = TONE[status] ?? "i3";
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "2px 9px",
-        borderRadius: 999,
-        background: `var(--${tone}w, var(--sk))`,
-        color: `var(--${tone})`,
-        font: "500 11.5px var(--font-plex-sans), sans-serif",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {/* Colour is never the only signal: the dot has a label beside it. */}
-      <span
-        aria-hidden
-        style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }}
-      />
-      {status.replace(/_/g, " ")}
-    </span>
-  );
-}
-
 export function EmptyState({
   title,
   body,

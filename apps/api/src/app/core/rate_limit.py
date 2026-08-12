@@ -32,7 +32,6 @@ OAUTH = Limit(attempts=20, window_seconds=15 * 60)
 PUBLIC_SUBMISSION = Limit(attempts=5, window_seconds=60 * 60)
 PUBLIC_DRAFT_SAVE = Limit(attempts=60, window_seconds=60 * 60)
 AI = Limit(attempts=20, window_seconds=60 * 60)
-PUBLIC_READ = Limit(attempts=300, window_seconds=60)
 
 
 async def enforce(redis: Redis, limit: Limit, *, bucket: str, identifier: str) -> None:

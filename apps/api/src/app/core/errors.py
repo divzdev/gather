@@ -125,21 +125,6 @@ class RecipientCountMismatchError(ApiError):
     code = "RECIPIENT_COUNT_MISMATCH"
 
 
-class BlindReviewActiveError(ApiError):
-    status_code = status.HTTP_403_FORBIDDEN
-    code = "BLIND_REVIEW_ACTIVE"
-
-
-class ConflictUnresolvedError(ApiError):
-    status_code = status.HTTP_409_CONFLICT
-    code = "CONFLICT_UNRESOLVED"
-
-
-class IntegrationNotConfiguredError(ApiError):
-    status_code = status.HTTP_400_BAD_REQUEST
-    code = "INTEGRATION_NOT_CONFIGURED"
-
-
 async def api_error_handler(_: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, ApiError)
     return JSONResponse(status_code=exc.status_code, content=exc.to_body())

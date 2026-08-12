@@ -16,7 +16,6 @@ drops nothing: a refusal comes back as an error and lands in the outbox as a
 
 from __future__ import annotations
 
-import re
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -76,20 +75,6 @@ def _send_via_ses(to_email: str, subject: str, body: str) -> str:
         },
     )
     return str(response["MessageId"])
-
-
-_TEMPLATE_VAR = re.compile(r"\{\{\s*([a-z0-9_.]+)\s*\}\}")
-
-
-def render(template: str, context: dict[str, Any]) -> str:
-    """Substitute `{{ name }}` placeholders. An unknown name renders empty rather
-    than raising — a missing merge tag must not stop a batch of 200 emails."""
-
-    def replace(match: re.Match[str]) -> str:
-        value = context.get(match.group(1))
-        return "" if value is None else str(value)
-
-    return _TEMPLATE_VAR.sub(replace, template)
 
 
 async def queue(
