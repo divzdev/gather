@@ -207,6 +207,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/portal-link/consume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Consume Portal Link
+         * @description Spend nothing: a durable portal link signs its speaker in every time.
+         *
+         *     The other half of the speaker-auth story. Magic links stay the secure
+         *     default — single-use, 30 minutes — and this is the keep-it convenience a
+         *     speaker was promised when they copied their link from the portal. It only
+         *     ever yields a speaker session; no cookie, nothing staff.
+         */
+        post: operations["consume_portal_link_v1_auth_portal_link_consume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/magic-link/consume": {
         parameters: {
             query?: never;
@@ -1061,7 +1086,17 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Template
+         * @description Remove a deliverable that was never handed out.
+         *
+         *     `SpeakerTask.task_template_id` cascades, so deleting an assigned template
+         *     would take every speaker's row with it — including the completed ones, and
+         *     the record of the file they uploaded against it. That is not a delete an
+         *     organiser can mean, so it is refused rather than performed: unassign is a
+         *     different operation and nobody has asked for one.
+         */
+        delete: operations["delete_template_v1_events__event_id__task_templates__template_id__delete"];
         options?: never;
         head?: never;
         /** Update Template */
@@ -1400,6 +1435,30 @@ export interface paths {
         get: operations["portal_pages_v1_portal_pages_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/portal/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate Portal Link
+         * @description The speaker's durable way back in, one per event, replaced on request.
+         *
+         *     Lives behind the speaker's own session on purpose: the portal is where the
+         *     link is offered, so only someone already inside can mint one. Rotation is
+         *     revocation — see auth.service.rotate_portal_link.
+         */
+        post: operations["rotate_portal_link_v1_portal_link_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1922,6 +1981,114 @@ export interface paths {
         get: operations["my_reviews_v1_events__event_id__review_my_reviews_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/ai/review-rounds/{round_id}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suggest Scores
+         * @description Suggest scores for one submission. Writes a proposal and nothing else.
+         */
+        post: operations["suggest_scores_v1_events__event_id__ai_review_rounds__round_id__score_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/ai/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Find Duplicates
+         * @description Suspected duplicate submissions, shortlisted in SQL and adjudicated by a model.
+         *
+         *     Read-only: it reports pairs, it does not withdraw anything. Staff rather than
+         *     reviewers, because the person who acts on a duplicate is running the
+         *     programme, not scoring it.
+         */
+        post: operations["find_duplicates_v1_events__event_id__ai_duplicates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/ai/proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Proposal
+         * @description Read a proposal back.
+         *
+         *     Exists so a dropped connection mid-stream is recoverable: the row was written
+         *     before the model was called, so there is always something to return to.
+         */
+        get: operations["read_proposal_v1_events__event_id__ai_proposals__proposal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/ai/proposals/{proposal_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Proposal
+         * @description Adopt a suggestion as your own review.
+         *
+         *     The scores become a `reviews` row owned by the caller, written through the
+         *     same service method the scorecard uses. Nothing about this request trusts the
+         *     model's output beyond it being a starting point.
+         */
+        post: operations["accept_proposal_v1_events__event_id__ai_proposals__proposal_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/ai/proposals/{proposal_id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Discard Proposal */
+        post: operations["discard_proposal_v1_events__event_id__ai_proposals__proposal_id__discard_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2687,6 +2854,42 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AcceptScoreRequest
+         * @description Adopt a proposal's scores as the caller's own review.
+         *
+         *     `values` is absent when the reviewer took the suggestion unchanged, and
+         *     present when they edited it first — which is the common case and the point
+         *     of the whole pattern.
+         */
+        AcceptScoreRequest: {
+            /**
+             * Review Round Id
+             * Format: uuid
+             */
+            review_round_id: string;
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
+            /** Values */
+            values?: {
+                [key: string]: number;
+            } | null;
+            /** Comment */
+            comment?: string | null;
+        };
+        /**
+         * AiProposalKind
+         * @enum {string}
+         */
+        AiProposalKind: "schedule" | "duplicates" | "normalize" | "score" | "assign_reviewers";
+        /**
+         * AiProposalStatus
+         * @enum {string}
+         */
+        AiProposalStatus: "streaming" | "ready" | "partially_accepted" | "accepted" | "discarded" | "failed";
         /** ApprovalRequest */
         ApprovalRequest: {
             content_status: components["schemas"]["ContentStatus"];
@@ -4163,6 +4366,11 @@ export interface components {
             /** Duration Minutes */
             duration_minutes?: number | null;
         };
+        /** PortalLinkRead */
+        PortalLinkRead: {
+            /** Token */
+            token: string;
+        };
         /** PortalPage */
         PortalPage: {
             /**
@@ -4237,6 +4445,32 @@ export interface components {
             slug: string;
             /** Duration Minutes */
             duration_minutes: number;
+        };
+        /** ProposalRead */
+        ProposalRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["AiProposalKind"];
+            status: components["schemas"]["AiProposalStatus"];
+            /** Input */
+            input: {
+                [key: string]: unknown;
+            };
+            /** Output */
+            output: {
+                [key: string]: unknown;
+            };
+            /** Reasoning */
+            reasoning: string | null;
+            /** Model */
+            model: string | null;
+            /** Token Usage */
+            token_usage: {
+                [key: string]: unknown;
+            };
         };
         /**
          * PublicFormRead
@@ -4692,20 +4926,6 @@ export interface components {
              * @default
              */
             snippet: string;
-        };
-        /** ScoreRequest */
-        ScoreRequest: {
-            /** Values */
-            values?: {
-                [key: string]: unknown;
-            };
-            /** Comment */
-            comment?: string | null;
-            /**
-             * Conflict Of Interest
-             * @default false
-             */
-            conflict_of_interest: boolean;
         };
         /** SendRequest */
         SendRequest: {
@@ -5331,6 +5551,14 @@ export interface components {
              */
             session_count: number;
         };
+        /** ScoreRequest */
+        app__features__ai__schemas__ScoreRequest: {
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
+        };
         /**
          * ProfileUpdate
          * @description What a person may change about themselves.
@@ -5485,6 +5713,20 @@ export interface components {
             skipped: number;
             /** Rows */
             rows: components["schemas"]["ImportRow"][];
+        };
+        /** ScoreRequest */
+        app__features__review__schemas__ScoreRequest: {
+            /** Values */
+            values?: {
+                [key: string]: unknown;
+            };
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Conflict Of Interest
+             * @default false
+             */
+            conflict_of_interest: boolean;
         };
         /** ImportResult */
         app__features__speakers__router__ImportResult: {
@@ -5823,6 +6065,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    consume_portal_link_v1_auth_portal_link_consume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MagicLinkConsumeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MagicLinkConsumeResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -7915,6 +8190,36 @@ export interface operations {
             };
         };
     };
+    delete_template_v1_events__event_id__task_templates__template_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_template_v1_events__event_id__task_templates__template_id__patch: {
         parameters: {
             query?: never;
@@ -8506,6 +8811,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PortalPage"][];
+                };
+            };
+        };
+    };
+    rotate_portal_link_v1_portal_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalLinkRead"];
                 };
             };
         };
@@ -9469,7 +9794,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ScoreRequest"];
+                "application/json": components["schemas"]["app__features__review__schemas__ScoreRequest"];
             };
         };
         responses: {
@@ -9511,6 +9836,175 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_scores_v1_events__event_id__ai_review_rounds__round_id__score_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                round_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["app__features__ai__schemas__ScoreRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    find_duplicates_v1_events__event_id__ai_duplicates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_proposal_v1_events__event_id__ai_proposals__proposal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_proposal_v1_events__event_id__ai_proposals__proposal_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptScoreRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discard_proposal_v1_events__event_id__ai_proposals__proposal_id__discard_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalRead"];
                 };
             };
             /** @description Validation Error */

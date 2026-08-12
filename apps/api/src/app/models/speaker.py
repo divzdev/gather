@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -50,11 +50,18 @@ class EventSpeaker(Base, PrimaryKey, Timestamps, EventScoped):
     """One speaker's participation in one event."""
 
     __tablename__ = "event_speakers"
-    __table_args__ = (UniqueConstraint("event_id", "speaker_id"),)
+    __table_args__ = (
+        UniqueConstraint("event_id", "speaker_id"),
+        Index("ix_event_speakers_portal_link_hash", "portal_link_hash", unique=True),
+    )
 
     speaker_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("speakers.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    #: SHA-256 of the speaker's durable portal link for this event. One per
+    #: speaker per event, reusable until rotated — rotating writes a new hash,
+    #: which is what revokes the old link. Null until the speaker asks for one.
+    portal_link_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[SpeakerStatus] = mapped_column(
         pg_enum(SpeakerStatus, "speaker_status"),
         nullable=False,

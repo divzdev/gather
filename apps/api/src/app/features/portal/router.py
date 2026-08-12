@@ -23,6 +23,7 @@ from app.core import storage
 from app.core.deps import DbSession, PortalSpeaker
 from app.core.errors import ApiError, NotFoundError
 from app.core.tenancy import current_tenant, tenancy_disabled
+from app.features.auth import service as auth_service
 from app.features.files import service as files
 from app.features.publishing import ics
 from app.features.tasks import service as tasks
@@ -740,3 +741,26 @@ async def portal_pages(session: DbSession, speaker: PortalSpeaker) -> list[Page]
         .order_by(Page.is_pinned_in_portal.desc(), Page.sort_order, Page.title)
     )
     return list(rows.scalars().all())
+
+
+class PortalLinkRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    #: Raw token, shown exactly once. The server keeps only its hash, so the
+    #: client must build and copy the URL now or ask again — asking again
+    #: rotates, which quietly revokes whatever was copied before.
+    token: str
+
+
+@router.post("/link", response_model=PortalLinkRead)
+async def rotate_portal_link(session: DbSession, speaker: PortalSpeaker) -> PortalLinkRead:
+    """The speaker's durable way back in, one per event, replaced on request.
+
+    Lives behind the speaker's own session on purpose: the portal is where the
+    link is offered, so only someone already inside can mint one. Rotation is
+    revocation — see auth.service.rotate_portal_link.
+    """
+    token = await auth_service.rotate_portal_link(
+        session, speaker_id=speaker.speaker_id, event_id=speaker.event_id
+    )
+    return PortalLinkRead(token=token)

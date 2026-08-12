@@ -421,6 +421,62 @@ async def consume_magic_link(
     )
 
 
+async def rotate_portal_link(
+    session: AsyncSession, *, speaker_id: uuid.UUID, event_id: uuid.UUID
+) -> str:
+    """Mint the speaker's durable link for one event, replacing any earlier one.
+
+    Deliberately reusable, unlike a magic link: this is the "keep this link"
+    convenience for a speaker who visits three times on a phone, one link per
+    event they speak at. Rotation is the whole revocation story — only the
+    newest hash is kept, so asking for a link is also how you kill a leaked
+    one. It buys portal access only; a console session can never come out of it.
+    """
+    row = await session.scalar(
+        select(EventSpeaker).where(
+            EventSpeaker.speaker_id == speaker_id, EventSpeaker.event_id == event_id
+        )
+    )
+    if row is None:
+        raise AuthenticationError("You are not on this event's roster.")
+    token = generate_token()
+    row.portal_link_hash = hash_token(token)
+    await session.flush()
+    return token
+
+
+async def consume_portal_link(session: AsyncSession, *, token: str) -> ConsumedLink:
+    """A durable link resolves to a speaker session, as often as it is visited.
+
+    The lookup is by hash, the same at-rest rule every other token follows.
+    Failure says nothing about why: an unknown token and a rotated one get the
+    same answer, so the link is not an oracle for what exists.
+    """
+    settings = get_settings()
+    with tenancy_disabled():
+        found = (
+            await session.execute(
+                select(EventSpeaker.speaker_id, EventSpeaker.event_id, Speaker.email)
+                .join(Speaker, Speaker.id == EventSpeaker.speaker_id)
+                .where(EventSpeaker.portal_link_hash == hash_token(token))
+            )
+        ).first()
+    if found is None:
+        raise MagicLinkExpiredError("This link is no longer valid. Ask for a fresh one.")
+
+    speaker_id, event_id, email = found
+    return ConsumedLink(
+        kind="speaker",
+        access_token=create_access_token(
+            speaker_id,
+            kind="speaker",
+            expires_in=timedelta(days=settings.speaker_session_ttl_days),
+            claims={"event_id": str(event_id), "email": email},
+        ),
+        expires_in=settings.speaker_session_ttl_days * 24 * 60 * 60,
+    )
+
+
 async def _consume_staff_link(
     session: AsyncSession,
     link: MagicLink,

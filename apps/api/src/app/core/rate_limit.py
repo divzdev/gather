@@ -24,6 +24,9 @@ class Limit:
 # engineering-brief §4.8
 LOGIN = Limit(attempts=10, window_seconds=15 * 60)
 MAGIC_LINK = Limit(attempts=3, window_seconds=15 * 60)
+#: Consuming a durable portal link. Looser than issuing mail (nothing is sent),
+#: tight enough that guessing 32-byte tokens through it stays absurd.
+PORTAL_LINK = Limit(attempts=20, window_seconds=15 * 60)
 # Signup writes an org, a user and an event; a loose limit here is a spam vector.
 REGISTER = Limit(attempts=5, window_seconds=60 * 60)
 #: The OAuth round trip is cheap for us and expensive for a scraper; this exists

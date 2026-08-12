@@ -345,6 +345,31 @@ async def request_magic_link(body: MagicLinkRequest, request: Request, session: 
     )
 
 
+@router.post("/portal-link/consume", response_model=MagicLinkConsumeResponse)
+async def consume_portal_link(
+    body: MagicLinkConsumeRequest, request: Request, session: DbSession
+) -> MagicLinkConsumeResponse:
+    """Spend nothing: a durable portal link signs its speaker in every time.
+
+    The other half of the speaker-auth story. Magic links stay the secure
+    default — single-use, 30 minutes — and this is the keep-it convenience a
+    speaker was promised when they copied their link from the portal. It only
+    ever yields a speaker session; no cookie, nothing staff.
+    """
+    await rate_limit.enforce(
+        _redis(request),
+        rate_limit.PORTAL_LINK,
+        bucket="portal-link",
+        identifier=_client_ip(request) or "anon",
+    )
+    consumed = await service.consume_portal_link(session, token=body.token)
+    return MagicLinkConsumeResponse(
+        access_token=consumed.access_token,
+        expires_in=consumed.expires_in,
+        kind=consumed.kind,
+    )
+
+
 @router.post("/magic-link/consume", response_model=MagicLinkConsumeResponse)
 async def consume_magic_link(
     body: MagicLinkConsumeRequest,

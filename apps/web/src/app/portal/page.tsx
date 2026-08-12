@@ -811,6 +811,19 @@ export default function PortalPage() {
     pvName: home?.speaker.name ?? "",
     pvRole: [fields.title, fields.co].filter(Boolean).join(" · "),
     upShot: () => headshot.current?.click(),
+    // The raw token is shown exactly once; the server keeps only its hash.
+    // Asking again mints a new link and quietly revokes the copied one, which
+    // is the entire revocation story — so the toast says so.
+    copyLink: () => {
+      void portal<{ token: string }>("/link", { method: "POST" })
+        .then(async ({ token }) => {
+          await navigator.clipboard.writeText(`${window.location.origin}/p/${token}`);
+          say(
+            "Link copied. It opens this portal without a sign-in — and it replaces any link you copied before.",
+          );
+        })
+        .catch(() => say("Could not create your link. Try again."));
+    },
     shotUrl: shotUrl ?? null,
     shotAction: shotId === null ? "Add photo" : "Replace photo",
     // The rules the server already enforces (files.check_upload), said out loud.
