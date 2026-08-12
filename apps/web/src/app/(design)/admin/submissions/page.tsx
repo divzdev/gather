@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 
 import { openCommandPalette } from "@/components/console/CommandPalette";
@@ -130,6 +130,7 @@ export default function SubmissionsPage() {
   const [hover, setHover] = useState<string | null>(null);
   // ?open=<id> so a proposal can be linked to — from the command palette, or
   // from one organiser to another in chat.
+  const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(useSearchParams().get("open"));
   const [popover, setPopover] = useState<"track" | "status" | "switch" | "help" | null>(null);
   const [hideBanner, setHideBanner] = useState(false);
@@ -493,10 +494,23 @@ export default function SubmissionsPage() {
       };
     }),
 
-    vAll: tile("All"),
+    /* Three tiles, not four. "In the pipeline 214" and "Accepted 61" were the
+     * All and Accepted tabs restated forty pixels away in a second visual
+     * language — the same number twice is not emphasis, it is indecision. What
+     * is left are the three queues an organiser actually works, none of which a
+     * status tab can express: waiting on a reviewer, scored and waiting on you,
+     * and decided but still sitting in the outbox. */
     vNeed: tile("Needs review"),
     vReady: tile("Ready to decide"),
-    vAcc: tile("Accepted"),
+    vAcc: {
+      c: known(stats.pendingSend),
+      // Not a filter: the list cannot show this, because deciding and sending
+      // are different columns and only Messages can release them.
+      on: () => router.push("/admin/messages"),
+      bd: stats.pendingSend > 0 ? "var(--pdl,#EBCDA9)" : "var(--ln,#E1E7E9)",
+      ring: "0 1px 2px rgba(13,16,32,.04)",
+      numFg: stats.pendingSend > 0 ? "var(--pd,#B96A1F)" : "var(--ik,#16232B)",
+    },
 
     trackOpts: (taxonomy?.tracks ?? []).map((track) => ({
       n: track.name,
@@ -616,7 +630,8 @@ export default function SubmissionsPage() {
     // and nothing reaches a speaker until it is sent from Messages.
     banner: !hideBanner && stats.pendingSend > 0,
     bannerX: () => setHideBanner(true),
-    bannerGo: () => toast("Composing and sending decisions lives in Messages."),
+    // Was a toast naming the screen it would not take you to.
+    bannerGo: () => router.push("/admin/messages"),
 
     open: open !== null,
     closeDrawer: () => setOpenId(null),

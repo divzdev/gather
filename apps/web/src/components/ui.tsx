@@ -417,19 +417,23 @@ export function StatusTabs({
   active: string | null;
   onSelect: (key: string | null) => void;
 }) {
-  const tab = (selected: boolean): CSSProperties => ({
+  /** Empty is a real answer and it is not the same answer as "some". A status
+   *  with nothing in it stays visible — the point of the strip is that no state
+   *  is hidden — but at the weight of a thing there is no reason to click. */
+  const tab = (selected: boolean, empty: boolean): CSSProperties => ({
     display: "flex",
     alignItems: "center",
     gap: 7,
-    height: 32,
-    padding: "0 12px",
+    height: "var(--control-h-sm, 36px)",
+    padding: "0 14px",
     borderRadius: 999,
     border: "1px solid transparent",
     background: selected ? "var(--sw)" : "transparent",
     borderColor: selected ? "var(--sl)" : "transparent",
-    color: selected ? "var(--sg)" : "var(--i3)",
+    color: selected ? "var(--sg)" : empty ? "var(--i4)" : "var(--i2)",
     font: `${selected ? 600 : 500} 12.5px var(--font-plex-sans), sans-serif`,
     whiteSpace: "nowrap",
+    cursor: "pointer",
   });
 
   return (
@@ -451,6 +455,7 @@ export function StatusTabs({
       {[{ key: "", label: "All", count: allCount }, ...tabs].map((entry) => {
         const key = entry.key === "" ? null : entry.key;
         const selected = active === key;
+        const empty = entry.count === 0;
         return (
           <button
             key={entry.label}
@@ -458,16 +463,18 @@ export function StatusTabs({
             role="tab"
             aria-selected={selected}
             onClick={() => onSelect(selected ? null : key)}
-            style={tab(selected)}
+            style={tab(selected, empty)}
           >
             {entry.label}
             <span
               className="tabular"
               style={{
-                padding: "1px 6px",
+                minWidth: 20,
+                textAlign: "center",
+                padding: "2px 7px",
                 borderRadius: 999,
-                background: selected ? "var(--cd)" : "var(--sk)",
-                color: selected ? "var(--sg)" : "var(--i3)",
+                background: selected ? "var(--cd)" : empty ? "transparent" : "var(--sk)",
+                color: selected ? "var(--sg)" : empty ? "var(--i4)" : "var(--i2)",
                 font: "600 11px var(--font-plex-mono), monospace",
               }}
             >
