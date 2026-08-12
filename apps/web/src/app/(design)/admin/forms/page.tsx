@@ -19,6 +19,7 @@ import {
   FieldEditor,
   type Field as EditableField,
 } from "@/components/forms/FieldEditor";
+import { LogicEditor } from "@/components/forms/LogicEditor";
 import { pill, quietPill } from "@/components/ui";
 import { authed } from "@/lib/session";
 
@@ -395,6 +396,19 @@ export default function FormsPage() {
     // the emptiness it fills, so it was possible to walk all six steps and save
     // a form that can never be opened. This says what is missing and puts the
     // action where the questions will be.
+    /* The engine has run conditional logic since the first migration and
+     * nothing in the product could write a rule; `logic: []` was hardcoded at
+     * form creation. The editor also carries the builder-time warning
+     * docs/APP_CONTEXT.md asks for: a required field a rule can hide silently
+     * blocks submission, and the only moment to say so is while the rule is
+     * being made. */
+    logicPanel: (
+      <LogicEditor
+        fields={(section?.fields ?? []) as EditableField[]}
+        rules={draft?.schema.logic ?? []}
+        onChange={(next) => patch((entry) => void (entry.schema.logic = next))}
+      />
+    ),
     fieldsEmpty:
       (section?.fields.length ?? 0) > 0 ? null : (
         <div
