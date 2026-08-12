@@ -14,7 +14,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { use, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api";
 import { resolveVisibility, type FormSchema } from "@/lib/formLogic";
@@ -74,10 +74,10 @@ const HTML_INPUT: Record<string, string> = {
   date: "date",
 };
 
+/** Width and padding come from `PublicShell`'s <main>; this is only the
+ *  measure a single proposal reads well at, and the body type. */
 const shell: React.CSSProperties = {
   maxWidth: 720,
-  margin: "0 auto",
-  padding: "48px 20px 80px",
   font: "400 15px/1.6 var(--font-manrope), sans-serif",
   color: "var(--e-text, #F3F4F8)",
 };
@@ -104,12 +104,7 @@ const button: React.CSSProperties = {
   cursor: "pointer",
 };
 
-export default function SubmissionPage({
-  params,
-}: {
-  params: Promise<{ slug: string; code: string }>;
-}) {
-  const { slug, code } = use(params);
+export function SubmissionStatus({ slug, code }: { slug: string; code: string }) {
   const token = useSyncExternalStore(subscribeToken, readToken, noTokenOnTheServer);
   const [edits, setEdits] = useState<{ title: string; answers: Record<string, unknown> } | null>(
     null,
