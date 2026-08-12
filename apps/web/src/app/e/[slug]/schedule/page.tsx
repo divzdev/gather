@@ -182,6 +182,7 @@ export default async function SessionsList({
         }}
         slug={slug}
         active="Sessions"
+        programmePublished={false}
       >
         <NotPublished what="schedule" slug={slug} />
       </PublicShell>

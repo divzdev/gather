@@ -112,6 +112,7 @@ export default async function EventHome({ params }: { params: Promise<{ slug: st
       event={event}
       slug={slug}
       active="About"
+      programmePublished={published}
       hero={{ photo: heroPhoto(slug) }}
       banner={
         <Hero

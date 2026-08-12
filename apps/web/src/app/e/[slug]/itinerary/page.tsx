@@ -53,6 +53,7 @@ export default async function Itinerary({ params }: { params: Promise<{ slug: st
         }}
         slug={slug}
         active="My schedule"
+        programmePublished={false}
       >
         <NotPublished what="schedule" slug={slug} />
       </PublicShell>

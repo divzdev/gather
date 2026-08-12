@@ -67,6 +67,7 @@ export default async function Agenda({ params }: { params: Promise<{ slug: strin
         }}
         slug={slug}
         active="Agenda"
+        programmePublished={false}
       >
         <NotPublished what="agenda" slug={slug} />
       </PublicShell>

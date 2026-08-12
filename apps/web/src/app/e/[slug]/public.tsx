@@ -94,12 +94,12 @@ export async function getPublicOptional<T>(slug: string, path: string): Promise<
 }
 
 const NAV = [
-  { href: "", label: "About" },
-  { href: "/schedule", label: "Sessions" },
-  { href: "/agenda", label: "Agenda" },
-  { href: "/speakers", label: "Speakers" },
-  { href: "/itinerary", label: "My schedule" },
-  { href: "/cfp", label: "Submit a talk" },
+  { href: "", label: "About", needsProgramme: false },
+  { href: "/schedule", label: "Sessions", needsProgramme: true },
+  { href: "/agenda", label: "Agenda", needsProgramme: true },
+  { href: "/speakers", label: "Speakers", needsProgramme: true },
+  { href: "/itinerary", label: "My schedule", needsProgramme: true },
+  { href: "/cfp", label: "Submit a talk", needsProgramme: false },
 ] as const;
 
 /** The public event shell.
@@ -118,6 +118,7 @@ export function PublicShell({
   active,
   hero,
   banner,
+  programmePublished = true,
   children,
 }: {
   event: EventInfo;
@@ -129,6 +130,11 @@ export function PublicShell({
   /** Rendered inside the band. The home page fills it with the event's name at
    *  display scale; every other page leaves it out and gets the page title. */
   banner?: React.ReactNode;
+  /** Whether a schedule snapshot exists. Four of the six nav items lead nowhere
+   *  until it does, and before this they each led to the *same* "not published
+   *  yet" card — a nav offering four destinations and delivering one message
+   *  four times, which reads as a broken site rather than an early one. */
+  programmePublished?: boolean;
   children: React.ReactNode;
 }) {
   const day = (value: string, withYear: boolean) =>
@@ -218,26 +224,44 @@ export function PublicShell({
             <nav style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {NAV.map((item) => {
                 const selected = active === item.label;
+                const waiting = item.needsProgramme && !programmePublished;
+                const shared: React.CSSProperties = {
+                  textDecoration: "none",
+                  minHeight: 38,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  padding: "0 15px",
+                  borderRadius: 999,
+                  fontSize: 13.5,
+                  fontWeight: selected ? 700 : 600,
+                  background: selected ? "rgba(255,255,255,.10)" : "transparent",
+                  border: `1px solid ${selected ? INK.edgeStrong : "transparent"}`,
+                };
+                // Still a link, never a dead button: someone who wants to look
+                // can, and the page tells them the same thing. What changes is
+                // that the nav stops promising four things it cannot give.
                 return (
                   <Link
                     key={item.label}
                     href={`/e/${slug}${item.href}` as never}
                     aria-current={selected ? "page" : undefined}
-                    style={{
-                      textDecoration: "none",
-                      minHeight: 38,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      padding: "0 15px",
-                      borderRadius: 999,
-                      fontSize: 13.5,
-                      fontWeight: selected ? 700 : 600,
-                      background: selected ? "rgba(255,255,255,.10)" : "transparent",
-                      color: selected ? INK.text : INK.muted,
-                      border: `1px solid ${selected ? INK.edgeStrong : "transparent"}`,
-                    }}
+                    title={waiting ? `${item.label} appears once the programme is published` : undefined}
+                    style={{ ...shared, color: waiting ? INK.faint : selected ? INK.text : INK.muted }}
                   >
                     {item.label}
+                    {waiting ? (
+                      <span
+                        aria-hidden
+                        style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: 999,
+                          background: INK.faint,
+                          flex: "none",
+                        }}
+                      />
+                    ) : null}
                   </Link>
                 );
               })}

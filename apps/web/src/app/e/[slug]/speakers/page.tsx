@@ -54,6 +54,7 @@ export default async function Speakers({ params }: { params: Promise<{ slug: str
         }}
         slug={slug}
         active="Speakers"
+        programmePublished={false}
       >
         <NotPublished what="speaker list" slug={slug} />
       </PublicShell>
