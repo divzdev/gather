@@ -1,14 +1,22 @@
 import Link from "next/link";
 
-import { NotPublished, PublicShell, getPublic, type EventInfo } from "../public";
+import { NotPublished, PublicShell, getPublic, getPublicOptional, type EventInfo } from "../public";
 
 export const dynamic = "force-dynamic";
 
 type Session = {
-  id: string; slug: string; title: string; abstract: string | null;
-  starts_at: string | null; room: string | null; track: string | null;
-  duration_minutes: number; speakers: { id: string; name: string }[];
-  tags?: string[]; expertise_level?: string | null; language?: string | null;
+  id: string;
+  slug: string;
+  title: string;
+  abstract: string | null;
+  starts_at: string | null;
+  room: string | null;
+  track: string | null;
+  duration_minutes: number;
+  speakers: { id: string; name: string }[];
+  tags?: string[];
+  expertise_level?: string | null;
+  language?: string | null;
 };
 type Payload = { event: EventInfo; sessions: Session[]; tracks: { id: string; name: string }[] };
 
@@ -38,7 +46,8 @@ function matches(session: Session, filters: Filters): boolean {
   // `?? []` throughout: a snapshot published before these fields existed is
   // still served, and must filter to nothing rather than throw.
   if (filters.tag !== undefined && !(session.tags ?? []).includes(filters.tag)) return false;
-  if (filters.level !== undefined && (session.expertise_level ?? "") !== filters.level) return false;
+  if (filters.level !== undefined && (session.expertise_level ?? "") !== filters.level)
+    return false;
   if (filters.language !== undefined && (session.language ?? "") !== filters.language) return false;
   if (filters.q !== undefined && filters.q.trim() !== "") {
     const needle = filters.q.trim().toLowerCase();
@@ -61,8 +70,10 @@ function href(slug: string, filters: Filters, key: keyof Filters, value: string 
 }
 
 const chip = (on: boolean) => ({
-  display: "inline-block",
-  padding: "5px 11px",
+  display: "inline-flex",
+  alignItems: "center" as const,
+  minHeight: "var(--control-h-sm)",
+  padding: "0 14px",
   borderRadius: 999,
   border: `1px solid ${on ? "var(--sg)" : "var(--ln)"}`,
   background: on ? "var(--sw)" : "var(--cd)",
@@ -87,7 +98,7 @@ function Row({
 }) {
   if (options.length < 2) return null;
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
       <span
         style={{
           font: "600 10px var(--font-plex-sans)",
@@ -98,7 +109,10 @@ function Row({
       >
         {label}
       </span>
-      <Link href={href(slug, filters, name, undefined) as never} style={chip(filters[name] === undefined)}>
+      <Link
+        href={href(slug, filters, name, undefined) as never}
+        style={chip(filters[name] === undefined)}
+      >
         All
       </Link>
       {options.map((option) => (
@@ -138,12 +152,7 @@ export default async function SessionsList({
     q: one("q"),
   };
 
-  let data: Payload | null = null;
-  try {
-    data = await getPublic<Payload>(slug, "/schedule");
-  } catch {
-    data = null;
-  }
+  const data = await getPublicOptional<Payload>(slug, "/schedule");
   if (data === null) {
     const form = await getPublic<{
       event_name: string;
@@ -266,7 +275,11 @@ export default async function SessionsList({
             margin: 0,
           }}
         >
-          No sessions match that. <Link href={`/e/${slug}/schedule` as never} style={{ color: "var(--sg)" }}>Show all {data.sessions.length}</Link>.
+          No sessions match that.{" "}
+          <Link href={`/e/${slug}/schedule` as never} style={{ color: "var(--sg)" }}>
+            Show all {data.sessions.length}
+          </Link>
+          .
         </p>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
@@ -281,18 +294,43 @@ export default async function SessionsList({
                 padding: 20,
               }}
             >
-              <h2 style={{ font: "600 17px var(--font-plex-sans)", color: "var(--ik)", margin: "0 0 6px" }}>
-                <Link href={`/e/${slug}/schedule/${session.slug}` as never} style={{ color: "inherit", textDecoration: "none" }}>
+              <h2
+                style={{
+                  font: "600 17px var(--font-plex-sans)",
+                  color: "var(--ik)",
+                  margin: "0 0 6px",
+                }}
+              >
+                <Link
+                  href={`/e/${slug}/schedule/${session.slug}` as never}
+                  style={{ color: "inherit", textDecoration: "none" }}
+                >
                   {session.title}
                 </Link>
               </h2>
-              <p className="tabular" style={{ font: "400 12.5px var(--font-plex-mono)", color: "var(--i3)", margin: "0 0 8px" }}>
+              <p
+                className="tabular"
+                style={{
+                  font: "400 12.5px var(--font-plex-mono)",
+                  color: "var(--i3)",
+                  margin: "0 0 8px",
+                }}
+              >
                 {session.track ?? "Unassigned"} · {session.duration_minutes} min
                 {session.room !== null ? ` · ${session.room}` : ""}
               </p>
               {session.abstract !== null && (
-                <p style={{ font: "400 14px var(--font-plex-sans)", color: "var(--i2)", margin: "0 0 8px", lineHeight: 1.55 }}>
-                  {session.abstract.length > 240 ? `${session.abstract.slice(0, 240)}…` : session.abstract}
+                <p
+                  style={{
+                    font: "400 14px var(--font-plex-sans)",
+                    color: "var(--i2)",
+                    margin: "0 0 8px",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {session.abstract.length > 240
+                    ? `${session.abstract.slice(0, 240)}…`
+                    : session.abstract}
                 </p>
               )}
               <p style={{ font: "500 13px var(--font-plex-sans)", color: "var(--i2)", margin: 0 }}>

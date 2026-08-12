@@ -121,6 +121,7 @@ export default function SubmissionPage({
     data: status,
     isPending: statusPending,
     isError: statusFailed,
+    error: statusError,
     refetch: retryStatus,
   } = useQuery({
     queryKey: ["submission-status", slug, code],
@@ -129,6 +130,12 @@ export default function SubmissionPage({
     // it 404s. Retrying a 404 four times only makes the dead end slower.
     retry: (attempt, error) => !(error instanceof ApiError && error.status === 404) && attempt < 2,
   });
+  // A 404 means the code is wrong — nothing to retry, say so plainly. Anything
+  // else (a 500, a dropped connection) is a real failure and was, until now,
+  // presented with the exact same "No proposal with the code" copy: a backend
+  // outage read as "you mistyped it" on the one page a speaker checks when
+  // something else has already gone wrong.
+  const codeNotFound = statusError instanceof ApiError && statusError.status === 404;
 
   const { data: form } = useQuery({
     queryKey: ["cfp-form", slug],
@@ -212,7 +219,7 @@ export default function SubmissionPage({
               margin: "0 0 10px",
             }}
           >
-            No proposal with the code {code}.
+            {codeNotFound ? `No proposal with the code ${code}.` : "This page did not load."}
           </h1>
           <p
             style={{
@@ -221,8 +228,9 @@ export default function SubmissionPage({
               margin: 0,
             }}
           >
-            Check it against your confirmation email — it is six characters, letters and digits.
-            If the code is right, the call for papers may belong to a different event.
+            {codeNotFound
+              ? "Check it against your confirmation email — it is six characters, letters and digits. If the code is right, the call for papers may belong to a different event."
+              : "The server did not answer. It is usually a dropped request rather than anything wrong with the code — try again in a moment."}
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 }}>
             <button

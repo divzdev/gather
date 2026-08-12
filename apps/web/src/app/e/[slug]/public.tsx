@@ -52,11 +52,42 @@ export function zoneLabel(iso: string, timezone: string): string {
   );
 }
 
+/** A bare calendar date (`"2027-05-12"`), formatted where it was written, not
+ *  where it is read. `2027-05-12` parses as UTC midnight, and formatting that
+ *  in the reader's own zone renders 11 May for everyone west of Greenwich —
+ *  the schedule page once said "May 11 – 13" for a conference that runs the
+ *  12th to the 14th. A calendar date has no timezone of its own, so UTC is
+ *  used as a fixed anchor, not a claim about where the event is. */
+export function calendarDate(value: string, options: Intl.DateTimeFormatOptions): string {
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-GB", {
+    ...options,
+    timeZone: "UTC",
+  });
+}
+
 export async function getPublic<T>(slug: string, path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}/public/events/${slug}${path}`, {
     cache: "no-store",
   });
   if (!response.ok) notFound();
+  return response.json() as Promise<T>;
+}
+
+/** For the three surfaces that go blank before publish — schedule, agenda,
+ *  speakers — `null` means "nothing published yet", which is a real, expected
+ *  state, not an error. A 404 is the only response that means that (see
+ *  `publishing/snapshot.py:require_latest`); anything else — a 500, a bad
+ *  gateway, the request never landing — is a real failure and is left to
+ *  throw, so it reaches this route's `error.tsx` instead of being relabelled
+ *  "not published yet". A blind `catch {}` around `getPublic` used to
+ *  swallow both alike: a backend crash and an unpublished schedule read as
+ *  the identical, calm "check back closer to the event." */
+export async function getPublicOptional<T>(slug: string, path: string): Promise<T | null> {
+  const response = await fetch(`${API_BASE_URL}/public/events/${slug}${path}`, {
+    cache: "no-store",
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`${path} answered ${response.status}`);
   return response.json() as Promise<T>;
 }
 
@@ -82,15 +113,10 @@ export function PublicShell({
   active: string;
   children: React.ReactNode;
 }) {
-  // `2027-05-12` parses as UTC midnight, and formatting that in the reader's own
-  // zone renders 11 May for everyone west of Greenwich — the schedule page said
-  // "May 11 – 13" for a conference that runs the 12th to the 14th. A calendar
-  // date has no timezone, so it is formatted in the one it was written in.
   const day = (value: string, withYear: boolean) =>
-    new Date(`${value}T00:00:00Z`).toLocaleDateString("en-GB", {
+    calendarDate(value, {
       day: "numeric",
       month: "short",
-      timeZone: "UTC",
       ...(withYear ? { year: "numeric" } : {}),
     });
   const dates = `${day(event.starts_on, false)} – ${day(event.ends_on, true)}`;
@@ -99,11 +125,24 @@ export function PublicShell({
     <div style={{ fontSize: 16, minHeight: "100vh", background: "var(--pp)" }}>
       <header style={{ borderBottom: "1px solid var(--ln)", background: "var(--cd)" }}>
         <div style={{ maxWidth: 1040, margin: "0 auto", padding: "18px 24px" }}>
-          <p style={{ margin: 0, font: "600 10px var(--font-plex-condensed)", letterSpacing: "0.12em", color: "var(--i4)" }}>
+          <p
+            style={{
+              margin: 0,
+              font: "600 10px var(--font-plex-condensed)",
+              letterSpacing: "0.12em",
+              color: "var(--i4)",
+            }}
+          >
             {dates}
             {event.location !== null ? ` · ${event.location}` : ""}
           </p>
-          <h1 style={{ font: "600 30px var(--font-bricolage), sans-serif", color: "var(--ik)", margin: "4px 0 14px" }}>
+          <h1
+            style={{
+              font: "600 30px var(--font-bricolage), sans-serif",
+              color: "var(--ik)",
+              margin: "4px 0 14px",
+            }}
+          >
             {event.name}
           </h1>
           <nav style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -132,7 +171,9 @@ export function PublicShell({
           </nav>
         </div>
       </header>
-      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "28px 24px 80px" }}>{children}</main>
+      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "28px 24px 80px" }}>
+        {children}
+      </main>
     </div>
   );
 }

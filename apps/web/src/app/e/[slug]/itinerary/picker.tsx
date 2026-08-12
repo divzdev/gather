@@ -259,20 +259,34 @@ export function Picker({
                   floor, on a page a visitor uses on a phone in a hallway. The
                   title beside it is a link, so there was no larger target for
                   picking either. */}
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      onChange={() => toggle(row.id)}
-                      aria-label={`Add ${row.title} to my schedule`}
+                    {/* 24 was better than 13 and is still the entire hit area on
+                    the one control this page exists for. The label carries the
+                    target; the tick stays the size it should look. */}
+                    <label
                       style={{
-                        width: 24,
-                        height: 24,
-                        marginTop: 2,
                         flex: "none",
-                        accentColor: "var(--bt)",
+                        display: "grid",
+                        placeItems: "center",
+                        width: "var(--control-h-md, 44px)",
+                        height: "var(--control-h-md, 44px)",
+                        margin: "-6px 0 -6px -10px",
+                        borderRadius: 10,
                         cursor: "pointer",
                       }}
-                    />
+                    >
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() => toggle(row.id)}
+                        aria-label={`Add ${row.title} to my schedule`}
+                        style={{
+                          width: 24,
+                          height: 24,
+                          accentColor: "var(--bt)",
+                          cursor: "pointer",
+                        }}
+                      />
+                    </label>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <h2
                         style={{
