@@ -8,7 +8,6 @@ import { Settings, type SettingsData } from "@/components/design/Settings";
 import { SETTINGS_ICON } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
 import { ACCENT_NAMES, ACCENTS } from "@/lib/theme";
-import { API_BASE_URL } from "@/lib/api";
 import { authed, getEventId } from "@/lib/session";
 
 type Event = {
@@ -74,6 +73,63 @@ function endOfDay(value: string): string | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
+/** The same fifteen offered at /admin/events/new. The select used to carry four
+ *  literal options with **no `value` attribute**, so each option's value was its
+ *  own label ("America/Los_Angeles · PT") and the bound IANA string could never
+ *  match one — React fell back to the first, and every event on every screen
+ *  claimed to be in Los Angeles. Eleven zones could not be displayed or edited. */
+const ZONES = [
+  "UTC",
+  "America/Los_Angeles",
+  "America/Denver",
+  "America/Chicago",
+  "America/New_York",
+  "America/Sao_Paulo",
+  "Europe/London",
+  "Europe/Berlin",
+  "Europe/Madrid",
+  "Africa/Johannesburg",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+];
+
+/** The field was labelled "Event type" and offered "Conference · in person",
+ *  "Meetup series" and two others — none of which exist. It is bound to
+ *  `status`, the event lifecycle, so choosing one PATCHed a sentence into an
+ *  enum column. These are the six real states. */
+const STAGES = [
+  { v: "draft", l: "Draft — nothing public yet" },
+  { v: "cfp_open", l: "Call for papers open" },
+  { v: "in_review", l: "In review" },
+  { v: "scheduled", l: "Scheduled" },
+  { v: "live", l: "Live" },
+  { v: "archived", l: "Archived" },
+];
+
+/** `\d{4}-\d{2}-\d{2}` accepts 2027-13-45. This asks the calendar. */
+function realDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number) as [number, number, number];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  );
+}
+
+const OK_TONE = {
+  fg: "var(--ok,#0E7A5F)",
+  bg: "var(--okw,#E2F1EC)",
+  bd: "var(--okl,#C2E0D5)",
+} as const;
+const OFF_TONE = {
+  fg: "var(--i3,#6B7B84)",
+  bg: "var(--sk,#EDF1F2)",
+  bd: "var(--ln,#E1E7E9)",
+} as const;
+
 export default function SettingsPage() {
   const { toasts, toast, dismiss } = useConsoleChrome();
   const theme = useTheme();
@@ -82,7 +138,6 @@ export default function SettingsPage() {
 
   const [panel, setPanel] = useState<Panel>("event");
   const [draft, setDraft] = useState<Draft>(EMPTY);
-  const [revealKey, setRevealKey] = useState(false);
   const [mailsOn, setMailsOn] = useState<Record<string, boolean>>({});
 
   const { data: event } = useQuery({
@@ -143,9 +198,11 @@ export default function SettingsPage() {
       if (changes !== null) commit(changes);
     };
 
-  /** A date only counts once it is whole; `2026-0` is not a date. */
+  /** A date only counts once it is whole *and* real; `2026-0` is not a date and
+   *  neither is `2027-13-45`, which the old shape-only check waved through to
+   *  the API. */
   const whenComplete = (value: string, build: (value: string) => Record<string, unknown>) =>
-    /^\d{4}-\d{2}-\d{2}$/.test(value) ? build(value) : null;
+    realDate(value) ? build(value) : null;
 
   const publicUrl = event === undefined ? "" : `${window.location.origin}/e/${event.slug}`;
 
@@ -175,12 +232,40 @@ export default function SettingsPage() {
     onSlug: field("slug", (value) => (value.trim() === "" ? null : { slug: value.trim() })),
     // Clearing a location is a legitimate edit, so an empty string does commit.
     onLoc: field("loc", (value) => ({ location: value })),
-    onHook: (e: React.SyntheticEvent) =>
-      setDraft((c) => ({ ...c, hook: (e.target as HTMLInputElement).value })),
     onType: field("type", (value) => ({ status: value })),
-    onTz: field("tz", (value) => ({ timezone: value.split(" · ")[0] })),
-    onStarts: field("starts", (value) => whenComplete(value, (date) => ({ starts_on: date }))),
-    onEnds: field("ends", (value) => whenComplete(value, (date) => ({ ends_on: date }))),
+    onTz: field("tz", (value) => ({ timezone: value })),
+    typeOpts: STAGES.map((stage) => ({ v: stage.v, l: stage.l })),
+    /* The fields commit on change and there is no save button, so refusing a
+     * value silently is indistinguishable from accepting it — the screen kept
+     * "2026-13-45" on display while the event kept its real date. Say so. */
+    dateProblem: (() => {
+      for (const [key, label] of [
+        ["starts", "The start date"],
+        ["ends", "The end date"],
+        ["cfpCloses", "The CFP close date"],
+      ] as const) {
+        const value = draft[key];
+        if (value.trim() !== "" && !realDate(value)) return `${label} is not a real date, so it has not been saved.`;
+      }
+      if (realDate(draft.starts) && realDate(draft.ends) && draft.ends < draft.starts)
+        return "The event cannot end before it starts, so the end date has not been saved.";
+      return "";
+    })(),
+    tzOpts: ZONES.map((zone) => ({ v: zone, l: zone.replace(/_/g, " ") })),
+    // An event cannot end before it starts. /admin/events/new has enforced this
+    // since it was written; this screen let you undo it afterwards.
+    onStarts: field("starts", (value) =>
+      whenComplete(value, (date) =>
+        draft.ends !== "" && realDate(draft.ends) && date > draft.ends
+          ? { starts_on: date, ends_on: date }
+          : { starts_on: date },
+      ),
+    ),
+    onEnds: field("ends", (value) =>
+      !realDate(value) || (realDate(draft.starts) && value < draft.starts)
+        ? null
+        : { ends_on: value },
+    ),
     onCfpCloses: field("cfpCloses", (value) =>
       value.trim() === ""
         ? { cfp_closes_at: null }
@@ -230,14 +315,34 @@ export default function SettingsPage() {
       };
     }),
 
-    apiKey: revealKey ? `${API_BASE_URL} (no key needed — same origin)` : "••••••••••••••••",
-    revealKey: () => setRevealKey((shown) => !shown),
-    revealLabel: revealKey ? "Hide" : "Reveal",
-    copyKey: () => {
-      void navigator.clipboard.writeText(API_BASE_URL);
-      toast("Copied the API base URL.");
-    },
-    testHook: () => toast("Outbound webhooks are not part of this build."),
+    /* This panel used to assert "Accelevents · Connected · event id ae_88412 ·
+     * last push 6 Aug 14:02 · 12 create, 3 update, 0 fail" as literal markup,
+     * on an integration APP_CONTEXT records as cut. Beside it sat a webhook
+     * form for a declared non-goal whose "Send test" only ever apologised, and
+     * an API key for a product that has no API keys. All of it is gone. What is
+     * left is true, and the one genuinely-built item says so plainly. */
+    integrations: [
+      {
+        n: "Calendar invites",
+        state: "Built",
+        note: "A real .ics with a stable UID and an incrementing SEQUENCE, so a speaker's calendar updates the existing entry instead of growing a second one. It goes out from the agenda when you publish with \u201cemail the speakers whose session changed\u201d ticked \u2014 never with a decision, because an accepted talk has no time yet.",
+        ...OK_TONE,
+      },
+      {
+        n: "Accelevents push",
+        state: "Not built",
+        note: "Pushing the accepted programme to Accelevents was cut from this build. Nothing here is connected to it, and no credentials are stored.",
+        ...OFF_TONE,
+      },
+      {
+        n: "Outbound webhooks",
+        state: "Not planned",
+        note: "A declared non-goal, along with Zapier. If you need the data out, the schedule and speaker JSON are on the public event pages and the embed reads the same snapshot.",
+        ...OFF_TONE,
+      },
+    ],
+    integFoot:
+      "Everything this product sends leaves through email, and every message it has sent is listed in Messages \u2014 there is no other outbound path.",
 
     // A mark per panel, matching the tile every other console head now carries.
     iEvent: SETTINGS_ICON.event,
