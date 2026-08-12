@@ -69,16 +69,19 @@ test("171. back after a mutation shows the mutation, not a stale row", async ({ 
 
   // Add a room, navigate away, come back — the browser's cache of the previous
   // page must not resurrect the pre-add list.
-  // Rooms moved to its own route when program setup gained a section nav, and
-  // the heading now sits in PageHead, outside the editor's <section>.
+  // Rooms has its own route since program setup gained a section nav, and the
+  // add-form moved off the bottom of the list into a drawer opened from the
+  // page header.
   await page.goto("/admin/program/rooms");
   await expect(page.getByRole("heading", { name: /^Rooms$/ })).toBeVisible({ timeout: 20_000 });
-  const rooms = page.locator("section").first();
   const name = `Back ${Date.now()}`;
 
-  await rooms.getByLabel(/room name/i).fill(name);
-  await rooms.getByRole("button", { name: /^Add$/ }).click();
-  await expect(rooms.getByText(name, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: /add a room/i }).click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByLabel(/room name/i).fill(name);
+  await drawer.getByRole("button", { name: /add room/i }).click();
+  await expect(drawer).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByText(name, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
 
   await page.goto("/admin/sessions");
   await expect(page.getByRole("heading").first()).toBeVisible({ timeout: 20_000 });
@@ -86,12 +89,13 @@ test("171. back after a mutation shows the mutation, not a stale row", async ({ 
 
   const after = page.locator("section").first();
   await expect(
-    after.getByText(name, { exact: false }).first(),
+    page.getByText(name, { exact: false }).first(),
     "going back showed the list from before the add",
   ).toBeVisible({ timeout: 20_000 });
 
-  await after.getByRole("button", { name: new RegExp(`Remove ${name}`) }).click();
-  await expect(after.getByText(name, { exact: false })).toHaveCount(0, { timeout: 15_000 });
+  void after;
+  await page.getByRole("button", { name: new RegExp(`Remove ${name}`) }).click();
+  await expect(page.getByText(name, { exact: false })).toHaveCount(0, { timeout: 15_000 });
   void ctx;
 });
 
@@ -102,11 +106,12 @@ test("172. double-submitting never creates two records", async ({ page, request 
   await signIn(page);
   await page.goto("/admin/program/rooms");
   await expect(page.getByRole("heading", { name: /^Rooms$/ })).toBeVisible({ timeout: 20_000 });
-  const rooms = page.locator("section").first();
   const name = `Twice ${Date.now()}`;
 
-  await rooms.getByLabel(/room name/i).fill(name);
-  const add = rooms.getByRole("button", { name: /^Add$/ });
+  await page.getByRole("button", { name: /add a room/i }).click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByLabel(/room name/i).fill(name);
+  const add = drawer.getByRole("button", { name: /add room/i });
   await add.click({ noWaitAfter: true });
   await add.click({ noWaitAfter: true, force: true }).catch(() => undefined);
   await page.waitForTimeout(2500);

@@ -52,6 +52,10 @@ class RoundRead(Read):
     opens_at: datetime | None
     closes_at: datetime | None
     advance_rule: dict[str, Any]
+    #: Distinct submissions assigned in this round. Counted here because the
+    #: alternative was the screen dividing an assignment total by a reviewers-
+    #: per-submission constant it had to guess.
+    submission_count: int = 0
 
 
 class CriterionCreate(Strict):
@@ -109,6 +113,9 @@ class AutoDistributeRequest(Strict):
 class AutoDistributeResponse(Strict):
     created: int
     under_assigned: int
+    #: Submissions that already had their full panel. Distinct from
+    #: `under_assigned`: one means "nothing to do", the other means "could not".
+    already_covered: int = 0
 
 
 class ReviewerProgress(Strict):

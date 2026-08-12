@@ -109,6 +109,7 @@ async def cfp(client: AsyncClient, session: AsyncSession) -> tuple[dict[str, str
             email=f"admin-{suffix}@example.com",
             name="Jordan Alvarez",
             password_hash=hash_password(PASSWORD),
+            email_verified_at=datetime.now(UTC),
         )
         session.add(user)
         await session.flush()
@@ -701,6 +702,7 @@ async def test_coordinators_cannot_decide(
             email=f"coord-{suffix}@example.com",
             name="Coordinator",
             password_hash=hash_password(PASSWORD),
+            email_verified_at=datetime.now(UTC),
         )
         session.add(coordinator)
         await session.flush()

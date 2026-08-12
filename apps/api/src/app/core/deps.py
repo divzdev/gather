@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.core.errors import AuthenticationError, RoleRequiredError
+from app.core.errors import AuthenticationError, EmailNotVerifiedError, RoleRequiredError
 from app.core.security import decode_access_token
 from app.core.tenancy import tenancy_disabled, tenant_scope
 from app.models import Event, EventMember, OrgMember, Role, User
@@ -62,6 +62,27 @@ async def get_current_user(credentials: BearerCredentials, session: DbSession) -
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_verified_user(user: CurrentUser) -> User:
+    """Identity, plus proof the address behind it is real.
+
+    Applied only to the actions that leave this install — sending mail and
+    publishing. Everything else stays open to an unconfirmed account on purpose:
+    an organizer who has not clicked the link yet should still be able to set
+    their event up, and locking them out of their own console teaches them
+    nothing about what is wrong.
+    """
+    if not user.is_email_verified:
+        raise EmailNotVerifiedError(
+            "Confirm your email address before sending or publishing.",
+            details={"email": user.email},
+        )
+    return user
+
+
+#: For routes that email people or make something public. See `get_verified_user`.
+VerifiedUser = Annotated[User, Depends(get_verified_user)]
 
 
 async def get_current_speaker(credentials: BearerCredentials) -> SpeakerContext:

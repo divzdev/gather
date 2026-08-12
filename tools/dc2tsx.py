@@ -446,12 +446,31 @@ class Converter(HTMLParser):
             if data.strip("\n\t ") == "" and "\n" in data:
                 self.out.append(" ")
             return
+
+        # HTML collapses a line break next to text into a space. JSX deletes it:
+        # whitespace at the start or end of a line is stripped, and a prototype
+        # that wraps its copy just before an inline element therefore renders
+        # "mid-flight.Conflicts are named…" with the words run together. An
+        # explicit {" "} is the only whitespace JSX is guaranteed to keep.
+        #
+        # Interior line breaks need no help — JSX condenses those to one space,
+        # which is what HTML does too.
+        # Only a run containing a newline is at risk. A plain trailing space is
+        # kept verbatim — replacing that too would turn "foo <b>bar</b>" into
+        # "foo{" "}<b>", which is the same output by a longer route, and turn
+        # "foo<b>bar</b>" into "foo <b>", which is wrong.
+        lead = data[: len(data) - len(data.lstrip("\n\t "))]
+        tail = data[len(data.rstrip("\n\t ")) :]
+        body = data[len(lead) : len(data) - len(tail)]
+
+        self.out.append('{" "}' if "\n" in lead else lead)
         cursor = 0
-        for match in BINDING.finditer(data):
-            self.out.append(self.escape_text(data[cursor : match.start()]))
+        for match in BINDING.finditer(body):
+            self.out.append(self.escape_text(body[cursor : match.start()]))
             self.out.append(f"{{{self.resolve(match.group(1), 'node')}}}")
             cursor = match.end()
-        self.out.append(self.escape_text(data[cursor:]))
+        self.out.append(self.escape_text(body[cursor:]))
+        self.out.append('{" "}' if "\n" in tail else tail)
 
     @staticmethod
     def escape_text(text: str) -> str:

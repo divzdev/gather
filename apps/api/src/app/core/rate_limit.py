@@ -26,6 +26,9 @@ LOGIN = Limit(attempts=10, window_seconds=15 * 60)
 MAGIC_LINK = Limit(attempts=3, window_seconds=15 * 60)
 # Signup writes an org, a user and an event; a loose limit here is a spam vector.
 REGISTER = Limit(attempts=5, window_seconds=60 * 60)
+#: The OAuth round trip is cheap for us and expensive for a scraper; this exists
+#: to stop the callback being hammered with guessed `state` values.
+OAUTH = Limit(attempts=20, window_seconds=15 * 60)
 PUBLIC_SUBMISSION = Limit(attempts=5, window_seconds=60 * 60)
 PUBLIC_DRAFT_SAVE = Limit(attempts=60, window_seconds=60 * 60)
 AI = Limit(attempts=20, window_seconds=60 * 60)

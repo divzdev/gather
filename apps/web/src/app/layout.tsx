@@ -4,6 +4,7 @@ import {
   IBM_Plex_Mono,
   IBM_Plex_Sans,
   IBM_Plex_Sans_Condensed,
+  Manrope,
 } from "next/font/google";
 
 import { Providers } from "@/components/Providers";
@@ -35,6 +36,16 @@ const bricolage = Bricolage_Grotesque({
   weight: ["600", "700"],
 });
 
+// The landing page and the sign-in screen, and nothing else. Both were designed
+// in Manrope rather than the console's Plex, which is a deliberate split: the
+// two surfaces a stranger meets are marketing, and the twelve hours a day an
+// organiser spends in the console are not.
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+});
+
 export const metadata: Metadata = {
   title: "Gather",
   description: "Speaker and session management for conferences",
@@ -48,7 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body
-        className={`${plexSans.variable} ${plexMono.variable} ${plexCondensed.variable} ${bricolage.variable} font-sans antialiased`}
+        className={`${plexSans.variable} ${plexMono.variable} ${plexCondensed.variable} ${bricolage.variable} ${manrope.variable} font-sans antialiased`}
       >
         <Providers>{children}</Providers>
       </body>

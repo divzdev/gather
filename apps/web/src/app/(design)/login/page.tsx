@@ -252,7 +252,13 @@ function LoginPage() {
           <Link
             href="/"
             className="flex lg:hidden"
-            style={{ alignItems: "center", gap: 9, textDecoration: "none", color: INK.text }}
+            style={{
+              alignItems: "center",
+              gap: 9,
+              minHeight: 36,
+              textDecoration: "none",
+              color: INK.text,
+            }}
           >
             <Mark size={22} />
             <span style={{ ...display("16px"), letterSpacing: "-.02em" }}>Gather</span>
@@ -363,12 +369,18 @@ function LoginPage() {
                 type="button"
                 onClick={sendMagicLink}
                 style={{
-                  fontSize: 12,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  minHeight: 36,
+                  // Pulled back out so the taller hit area does not push the
+                  // label off the baseline it shares with the field's own.
+                  margin: "-8px -8px -8px 0",
+                  padding: "0 8px",
+                  fontSize: 12.5,
                   fontWeight: 600,
                   color: INK.muted,
                   background: "none",
                   border: "none",
-                  padding: 0,
                   cursor: "pointer",
                 }}
               >
@@ -395,12 +407,15 @@ function LoginPage() {
                 right: 9,
                 top: "50%",
                 transform: "translateY(-50%)",
+                display: "inline-flex",
+                alignItems: "center",
+                minHeight: 36,
                 background: "#1F1F24",
                 border: "none",
                 color: INK.muted,
                 font: `700 10px/1 ${monoFont}`,
                 letterSpacing: ".12em",
-                padding: "9px 12px",
+                padding: "0 13px",
                 borderRadius: 999,
                 cursor: "pointer",
               }}

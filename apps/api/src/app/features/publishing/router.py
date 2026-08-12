@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
-from app.core.deps import DbSession, bind_tenant, require_role
+from app.core.deps import DbSession, bind_tenant, get_verified_user, require_role
 from app.core.errors import ApiError, NotFoundError
 from app.core.xlsx import spreadsheet
 from app.features.publishing import notify, snapshot
@@ -100,7 +100,12 @@ async def diff(
     }
 
 
-@router.post("/publish", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/publish",
+    status_code=status.HTTP_201_CREATED,
+    # Publishing is the other way an unconfirmed account reaches the public.
+    dependencies=[Depends(get_verified_user)],
+)
 async def publish(
     event_id: Any,
     body: PublishRequest,
@@ -178,7 +183,11 @@ async def versions(
     ]
 
 
-@router.post("/rollback", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/rollback",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(get_verified_user)],
+)
 async def rollback(
     event_id: Any,
     body: RollbackRequest,

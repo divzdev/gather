@@ -1,268 +1,266 @@
-/* The marketing landing's own typography and layout rules.
+/* GENERATED from Gather Landing.dc.html by tools/dcstyle.py. Do not hand-edit —
+ * change the prototype's <style> block and re-run:
  *
- * Two things live here that `tools/dc2tsx.py` cannot carry across, because it
- * drops <style> and <helmet>:
+ *   python tools/dcstyle.py "GatherDesign/Gather Landing.dc.html" apps/web/src/styles/marketing.css "[data-marketing]"
  *
- * 1. The six faces the v6 landing is built on. They are declared as plain
- *    @font-face rather than through next/font because the prototype's root
- *    element sets `--disp:'Cabinet Grotesk'`, `--sans:'Switzer'` and so on as
- *    inline literals. next/font generates hashed family names, which those
- *    literals would never match, and the generated component is regenerated
- *    verbatim on every design change — so the family names have to be real.
- *
- * 2. The prototype's <style> block: its breakpoints, keyframes and focus rules.
- *    Every rule is scoped to the landing's own root. Unscoped, `a:hover` and
- *    `::selection` would repaint the console in marketing colours.
- *
- * Fonts are self-hosted (apps/web/public/fonts) so a demo machine with no
- * network renders the real thing rather than falling back to Segoe UI.
- * Cabinet Grotesk, Switzer, Boska and Array are Fontshare, under the ITF Free
- * Font License; JetBrains Mono and Shantell Sans are SIL OFL.
+ * Every selector is scoped to [data-marketing]; see the tool for why that is
+ * load-bearing rather than tidy. Tokens for other surfaces live in their
+ * own files so a regeneration cannot take them with it.
  */
 
-@font-face {
-  font-family: "Cabinet Grotesk";
-  src: url("/fonts/cabinet-grotesk-700.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
+[data-marketing] {
+  /* --dim was #5E6274, which measures 3.31:1 on --bg and fails AA. It carries
+     the hero subtitle, both footer notes, the comparison rows and the footer
+     column headings — eleven pieces of page copy, not decoration. #7C8093 is
+     5.11:1. This lives here, in the prototype, because it is the source: the
+     same fix applied to the generated stylesheet was silently reverted by the
+     next regeneration. */
+  --bg:#07080E; --tx:#F3F4F8; --mut:#9A9FB1; --dim:#7C8093; --coral:#FF6B6B;
+  --indigo:#7D8CFF; --teal:#3BBFAD; --rose:#E86A8B; --sage:#63BC85; --sky:#6FA8E8;
+  --e:cubic-bezier(.25,.1,.25,1);
+}
+[data-marketing] * {box-sizing:border-box}
+[data-marketing] {-webkit-font-smoothing:antialiased}
+[data-marketing] {margin:0;background:var(--bg);color:var(--tx);
+  /* next/font hashes the family name; the literal "Manrope" never matches. */
+  font-family:var(--font-manrope),-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:17px;line-height:1.55;overflow-x:hidden}
+[data-marketing] h1, [data-marketing] h2 {font-weight:800;letter-spacing:-.03em;line-height:1.04;margin:0}
+[data-marketing] h1 {font-size:clamp(2.6rem,5.9vw,5.4rem);white-space:nowrap}
+@media(max-width:560px) {
+  [data-marketing] h1 {white-space:normal}
+}
+[data-marketing] h2 {font-size:clamp(1.9rem,4.2vw,3.4rem)}
+[data-marketing] p {margin:0}
+[data-marketing] a {color:inherit;text-decoration:none}
+[data-marketing] a:hover {color:inherit}
+[data-marketing] .wrap {max-width:980px;margin:0 auto;padding:0 max(22px,5vw)}
+[data-marketing] .wide {max-width:1140px;margin:0 auto;padding:0 max(22px,4vw)}
+[data-marketing] .mono {font-family:ui-monospace,"SF Mono",Menlo,monospace}
+
+/* nav */
+[data-marketing] nav {position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,8,14,.72);backdrop-filter:saturate(160%) blur(18px);-webkit-backdrop-filter:saturate(160%) blur(18px);box-shadow:0 1px 0 rgba(255,255,255,.06)}
+[data-marketing] .nrow {display:flex;align-items:center;height:60px;gap:26px;max-width:1100px;margin:0 auto;padding:0 22px}
+[data-marketing] .brand {display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:-.02em}
+[data-marketing] .brand svg {width:26px;height:26px;border-radius:7px}
+[data-marketing] .nlinks {display:flex;gap:24px;margin-left:auto;font-size:13.5px;color:var(--mut);font-weight:600}
+[data-marketing] .nlinks a {display:inline-flex;align-items:center;min-height:36px}
+[data-marketing] .brand {min-height:36px}
+[data-marketing] .nlinks a:hover {color:var(--tx)}
+[data-marketing] .ghb {display:inline-flex;align-items:center;min-height:36px;gap:8px;border:1px solid rgba(255,255,255,.16);border-radius:980px;padding:7px 14px;font-size:13px;font-weight:700;color:var(--tx);transition:background .18s var(--e),border-color .18s var(--e)}
+[data-marketing] .ghb:hover {background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.28)}
+[data-marketing] .ghb svg {width:16px;height:16px;fill:currentColor;display:block}
+[data-marketing] .npill {background:var(--tx);color:#0A0B12;font-size:13.5px;font-weight:700;padding:8px 17px;border-radius:980px;transition:transform .18s var(--e)}
+[data-marketing] .npill:hover {transform:scale(1.04);color:#0A0B12}
+@media(max-width:840px) {
+  [data-marketing] .nlinks {display:none}
+  [data-marketing] .ghb {margin-left:auto}
+  [data-marketing] .ghb span {display:none}
+  [data-marketing] .ghb {padding:7px 10px}
 }
 
-@font-face {
-  font-family: "Cabinet Grotesk";
-  src: url("/fonts/cabinet-grotesk-800.woff2") format("woff2");
-  font-weight: 800;
-  font-style: normal;
-  font-display: swap;
+/* hero */
+[data-marketing] .hero {position:relative;min-height:100svh;display:flex;align-items:flex-end;overflow:hidden}
+[data-marketing] .hero .im {position:absolute;inset:0}
+[data-marketing] .hero .im img {width:100%;height:100%;object-fit:cover;object-position:50% 40%}
+[data-marketing] .hero .im:after {content:"";position:absolute;inset:0;background:linear-gradient(to top,var(--bg) 6%,rgba(7,8,14,.42) 45%,rgba(7,8,14,.62))}
+[data-marketing] .hero .wrap {position:relative;z-index:2;padding-bottom:clamp(56px,9vh,110px);max-width:1100px}
+[data-marketing] .kick {font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);margin-bottom:20px}
+[data-marketing] .kick b {color:var(--coral)}
+[data-marketing] .hline {display:block;overflow:hidden}
+[data-marketing] .hline span {display:block;transform:translateY(112%);animation:hrise 1.05s cubic-bezier(.19,1,.22,1) forwards}
+[data-marketing] .hline:nth-child(2) span {animation-delay:.13s}
+@keyframes hrise {to{transform:translateY(0)}}
+[data-marketing] [data-hero] {opacity:0;animation:hfade .95s cubic-bezier(.19,1,.22,1) .5s forwards}
+@keyframes hfade {from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+html.js [data-marketing] [data-rv] {opacity:0;transform:translateY(32px);transition:opacity .9s cubic-bezier(.19,1,.22,1),transform .9s cubic-bezier(.19,1,.22,1)}
+html.js [data-marketing] [data-rv].in {opacity:1;transform:none}
+[data-marketing] .hsub {font-size:clamp(1.05rem,1.5vw,1.3rem);color:#C9CDDA;max-width:44em;margin:26px 0 32px;font-weight:500}
+[data-marketing] .hsub em {font-style:normal;color:inherit;font-weight:800}
+[data-marketing] .ctas {display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+[data-marketing] .b1 {background:var(--tx);color:#0A0B12;font-size:16px;font-weight:700;padding:14px 28px;border-radius:980px;transition:transform .18s var(--e)}
+[data-marketing] .b1:hover {transform:scale(1.04);color:#0A0B12}
+[data-marketing] .b2 {font-size:15px;font-weight:700;color:var(--tx);border:1px solid rgba(255,255,255,.22);border-radius:980px;padding:13px 26px;transition:background .18s var(--e),border-color .18s var(--e);background:rgba(7,8,14,.25);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+[data-marketing] .b2:hover {background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.36);color:var(--tx)}
+[data-marketing] .hnote {margin-top:20px;font-size:12.5px;color:var(--dim);font-weight:600;letter-spacing:.02em}
+
+/* sections */
+[data-marketing] .sec {padding:clamp(64px,10vh,120px) 0;text-align:center;position:relative}
+[data-marketing] .eyeb {font-size:12.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;margin-bottom:14px;display:block}
+[data-marketing] .sec h2 {max-width:17em;margin:0 auto}
+[data-marketing] .sub {font-size:clamp(1rem,1.3vw,1.15rem);color:var(--mut);max-width:37em;margin:18px auto 0;font-weight:500}
+[data-marketing] .sub b {color:var(--tx);font-weight:700}
+[data-marketing] .halo {position:absolute;left:50%;transform:translateX(-50%);width:min(900px,95vw);height:420px;border-radius:50%;filter:blur(100px);opacity:.09;pointer-events:none}
+[data-marketing] .sgrid {display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:clamp(30px,5vw,70px);align-items:center;text-align:left}
+[data-marketing] .split h2 {max-width:none;margin:0;font-size:clamp(1.7rem,3.2vw,2.7rem)}
+[data-marketing] .split .sub {margin:16px 0 0;max-width:none}
+[data-marketing] .split .eyeb {margin-bottom:12px}
+[data-marketing] .rev .stx {order:2}
+[data-marketing] .rev .svz {order:1}
+[data-marketing] .svz {position:relative}
+@media(max-width:900px) {
+  [data-marketing] .sgrid {grid-template-columns:1fr}
+  [data-marketing] .rev .stx {order:0}
+  [data-marketing] .rev .svz {order:1}
 }
 
-@font-face {
-  font-family: "Switzer";
-  src: url("/fonts/switzer-400.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
+/* app screenshots (dark) */
+[data-marketing] .shot {position:relative;background:#101013;border-radius:14px;color:#F2F2F0;text-align:left;overflow:hidden;font-size:13px;line-height:1.45;width:100%;max-width:580px;margin:0 auto;box-shadow:0 0 0 1px rgba(255,255,255,.09),0 24px 60px -12px rgba(0,0,0,.7),0 60px 120px -30px rgba(0,0,0,.55)}
+[data-marketing] .app {display:grid;grid-template-columns:44px minmax(0,1fr)}
+[data-marketing] .rail {background:#0C0C0F;border-right:1px solid #1F1F24;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:5px}
+[data-marketing] .rail svg {width:14px;height:14px;display:block}
+[data-marketing] .rlg {width:24px;height:24px;border-radius:7px;margin-bottom:9px;display:block}
+[data-marketing] .ri {width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:#686865}
+[data-marketing] .ri.on {background:#1F1F24;color:#C9C9C6}
+[data-marketing] .mtb {display:flex;align-items:center;gap:9px;height:42px;padding:0 14px;border-bottom:1px solid #1F1F24;background:#121216}
+[data-marketing] .crumb {font-size:11.5px;font-weight:700;color:#C9C9C6;white-space:nowrap}
+[data-marketing] .crumb i {font-style:normal;color:#686865;padding:0 3px}
+[data-marketing] .mtb .sp {margin-left:auto;display:flex;align-items:center;gap:8px}
+[data-marketing] .srch {height:24px;border-radius:999px;background:#1F1F24;font-size:9.5px;color:#686865;display:flex;align-items:center;padding:0 10px;font-weight:700;letter-spacing:.05em}
+[data-marketing] .ava {width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#3F3F49,#22222A);display:grid;place-items:center;font-size:9px;font-weight:800;color:#C9C9C6;flex:none}
+[data-marketing] .bd {padding:14px}
+[data-marketing] .bhd {display:flex;align-items:center;gap:8px;margin-bottom:12px}
+[data-marketing] .bhd .ttl {font-size:13.5px;font-weight:800;letter-spacing:-.01em}
+[data-marketing] .chip {font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:#1F1F24;color:#929290;white-space:nowrap}
+[data-marketing] .chip.cw {background:rgba(59,191,173,.13);color:#8FE3D6}
+[data-marketing] .chip.cs {background:rgba(99,188,133,.14);color:#97D9B4}
+[data-marketing] .gbtn {margin-left:auto;font-size:10.5px;font-weight:800;padding:5px 12px;border-radius:999px;border:1px solid #2A2A31;color:#C9C9C6;white-space:nowrap}
+[data-marketing] .fr {display:flex;align-items:center;gap:10px;background:#17171B;border:1px solid #2A2A31;border-radius:9px;padding:10px 12px;margin-bottom:8px;font-weight:600;font-size:12.5px;color:#F2F2F0}
+[data-marketing] .fr .h {color:#3F3F49;font-weight:800;letter-spacing:2px;font-size:11px}
+[data-marketing] .fr .tag {margin-left:auto;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#686865;font-weight:800;white-space:nowrap}
+[data-marketing] .fr.cond {margin-left:24px;border-color:rgba(125,140,255,.5);background:rgba(125,140,255,.09);animation:condIn 5.5s var(--e) infinite}
+[data-marketing] .fr.cond .h {color:#B9C2FF;letter-spacing:0}
+[data-marketing] .fr.cond .tag {color:#B9C2FF}
+@keyframes condIn {0%,16%{opacity:0;transform:translateY(-6px)}28%,84%{opacity:1;transform:none}96%,100%{opacity:0;transform:translateY(-6px)}}
+[data-marketing] .qa {font-size:10px;color:#686865;letter-spacing:.08em;font-weight:800}
+[data-marketing] .kcs {display:flex;gap:8px;align-items:center;margin-top:10px}
+[data-marketing] .kc {width:32px;height:32px;border:1px solid #2A2A31;border-bottom-width:3px;border-radius:7px;background:#17171B;display:grid;place-items:center;font-weight:700;font-size:13px;color:#C9C9C6}
+[data-marketing] .kc.on {background:var(--teal);border-color:var(--teal);color:#04110E}
+[data-marketing] .kcs .k {margin-left:auto;font-size:9.5px;color:#686865;letter-spacing:.1em;font-weight:800}
+[data-marketing] .pgw {margin-top:14px;padding-top:12px;border-top:1px solid #1F1F24}
+[data-marketing] .pgl {display:flex;justify-content:space-between;font-size:10.5px;font-weight:800;color:#929290;margin-bottom:7px;letter-spacing:.04em}
+[data-marketing] .pgb {height:6px;background:#1F1F24;border-radius:999px;overflow:hidden}
+[data-marketing] .pgb i {display:block;height:100%;background:var(--teal);border-radius:999px;transition:width 1.3s var(--e) .3s}
+html.js [data-marketing] [data-rv]:not(.in) .pgb i {width:0!important}
+[data-marketing] .vr {display:flex;align-items:center;gap:10px;background:#17171B;border:1px solid #2A2A31;border-radius:9px;padding:9px 12px;margin-bottom:8px;font-weight:600;font-size:12.5px}
+[data-marketing] .vp {margin-left:auto;background:var(--rose);color:#2A0E16;border-radius:999px;padding:4px 13px;font-size:10px;font-weight:800;white-space:nowrap}
+[data-marketing] .vq {margin-left:auto;color:#686865;font-weight:800;font-size:10px;white-space:nowrap;letter-spacing:.04em}
+[data-marketing] .sbar {display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid #1F1F24}
+[data-marketing] .sbtn {background:var(--rose);color:#2A0E16;border-radius:999px;padding:9px 18px;font-size:11.5px;font-weight:800;box-shadow:0 8px 24px -6px rgba(232,106,139,.4)}
+[data-marketing] .snote {font-size:9.5px;color:#686865;font-weight:800;letter-spacing:.08em}
+[data-marketing] .dlg {position:absolute;left:50%;transform:translateX(-50%);bottom:14px;width:max-content;max-width:92%;background:#1F1F24;color:#F2F2F0;font-size:11.5px;font-weight:700;padding:10px 14px;border-radius:9px;box-shadow:0 0 0 1px rgba(232,106,139,.5),0 16px 40px rgba(0,0,0,.6);display:flex;align-items:center;gap:10px;opacity:0;animation:dcyc 8s var(--e) infinite;z-index:6}
+[data-marketing] .dlg b {color:#F5A9BE}
+[data-marketing] .dlg .rf {background:var(--rose);color:#2A0E16;border-radius:999px;padding:3px 10px;font-size:10px;font-weight:800}
+@keyframes dcyc {0%,32%{opacity:0;transform:translate(-50%,8px)}42%,86%{opacity:1;transform:translate(-50%,0)}96%,100%{opacity:0;transform:translate(-50%,8px)}}
+[data-marketing] .cl {display:flex;align-items:center;gap:12px;padding:10px 2px;font-size:12.5px;font-weight:600;color:#F2F2F0}
+[data-marketing] .cl+.cl {border-top:1px solid #1F1F24}
+[data-marketing] .cl.done {color:#686865}
+[data-marketing] .okc {width:22px;height:22px;border-radius:50%;background:#1F1F24;color:#C9C9C6;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
+[data-marketing] .pnc {width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 2px #3F3F49;flex:none}
+[data-marketing] .duec {margin-left:auto;background:rgba(232,106,139,.15);color:#F5A9BE;font-weight:800;font-size:9.5px;padding:3px 9px;border-radius:999px;letter-spacing:.05em;white-space:nowrap}
+[data-marketing] .tst {position:absolute;right:14px;bottom:14px;background:#1F1F24;color:#F2F2F0;font-size:11px;font-weight:700;padding:8px 12px;border-radius:8px;box-shadow:0 0 0 1px rgba(255,255,255,.1),0 12px 30px rgba(0,0,0,.5);opacity:0;animation:tcyc 7s var(--e) infinite;z-index:6}
+[data-marketing] .tst b {color:#97D9B4}
+@keyframes tcyc {0%,28%{opacity:0;transform:translateY(8px)}38%,78%{opacity:1;transform:none}88%,100%{opacity:0;transform:translateY(8px)}}
+html.js [data-marketing] [data-rv] :is(.fr:not(.cond), [data-marketing] .cl, [data-marketing] .vr) {opacity:0;transform:translateY(10px);transition:opacity .6s var(--e),transform .6s var(--e)}
+html.js [data-marketing] [data-rv].in :is(.fr:not(.cond), [data-marketing] .cl, [data-marketing] .vr) {opacity:1;transform:none}
+html.js [data-marketing] [data-rv].in :is(.fr, [data-marketing] .cl, [data-marketing] .vr):nth-child(2) {transition-delay:.07s}
+html.js [data-marketing] [data-rv].in :is(.fr, [data-marketing] .cl, [data-marketing] .vr):nth-child(3) {transition-delay:.14s}
+html.js [data-marketing] [data-rv].in :is(.fr, [data-marketing] .cl, [data-marketing] .vr):nth-child(4) {transition-delay:.21s}
+html.js [data-marketing] [data-rv].in :is(.fr, [data-marketing] .cl, [data-marketing] .vr):nth-child(5) {transition-delay:.28s}
+html.js [data-marketing] [data-rv].in :is(.fr, [data-marketing] .cl, [data-marketing] .vr):nth-child(6) {transition-delay:.35s}
+
+/* agenda screenshot */
+[data-marketing] .shot.ag {max-width:820px}
+[data-marketing] .ab {position:relative;background:#0E0E11;border:1px solid #1F1F24;border-radius:10px;height:300px;overflow:hidden}
+[data-marketing] .al {position:absolute;font-size:9.5px;letter-spacing:.1em;font-weight:800;color:#686865}
+[data-marketing] .agl {position:absolute;left:64px;right:10px;height:1px;background:#1F1F24}
+[data-marketing] .agv {position:absolute;top:28px;bottom:10px;width:1px;background:#1F1F24}
+[data-marketing] .sc {position:absolute;border-radius:8px;background:#17171B;border:1px solid #2A2A31;box-shadow:0 8px 20px -8px rgba(0,0,0,.55);padding:8px 10px 8px 15px;font-size:12px;font-weight:700;color:#F2F2F0;line-height:1.25;height:48px;width:200px}
+[data-marketing] .sc:before {content:"";position:absolute;left:5px;top:7px;bottom:7px;width:3px;border-radius:2px;background:#3F3F49}
+[data-marketing] .sc small {display:block;font-weight:600;color:#929290;font-size:10px;margin-top:1px}
+[data-marketing] .sc.mv {z-index:4;box-shadow:0 0 0 1px rgba(232,106,139,.4),0 18px 40px -8px rgba(0,0,0,.75);animation:amv 8s var(--e) infinite}
+[data-marketing] .sc.mv:before {background:var(--rose)}
+[data-marketing] .sc.t1:before {background:var(--indigo)}
+[data-marketing] .sc.t2:before {background:var(--teal)}
+[data-marketing] .sc.t4:before {background:var(--sky)}
+@keyframes amv {0%,14%{transform:translate(0,0)}30%,48%{transform:translate(226px,0)}64%,100%{transform:translate(0,84px)}}
+[data-marketing] .cfl {position:absolute;border-radius:9px;background:repeating-linear-gradient(45deg,rgba(232,106,139,.14) 0 8px,rgba(232,106,139,.05) 8px 16px);box-shadow:inset 0 0 0 1.5px var(--rose);opacity:0;animation:pl 8s infinite;z-index:3}
+@keyframes pl {0%,26%{opacity:0}34%,46%{opacity:1}58%,100%{opacity:0}}
+[data-marketing] .clash {position:absolute;z-index:5;background:#1F1F24;color:#F2F2F0;font-size:11px;font-weight:700;padding:8px 12px;border-radius:8px;box-shadow:0 0 0 1px rgba(232,106,139,.45),0 14px 34px rgba(0,0,0,.6);opacity:0;animation:sy 8s infinite}
+[data-marketing] .clash b {color:#F5A9BE}
+@keyframes sy {0%,28%{opacity:0;transform:translateY(4px)}36%,50%{opacity:1;transform:none}60%,100%{opacity:0}}
+@media(max-width:680px) {
+  [data-marketing] .ab {transform:scale(.7);transform-origin:top left;width:143%;margin-bottom:-84px}
 }
 
-@font-face {
-  font-family: "Switzer";
-  src: url("/fonts/switzer-500.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
+/* terminal screenshots */
+[data-marketing] .tb {display:flex;align-items:center;gap:10px;height:38px;padding:0 14px;background:#121216;border-bottom:1px solid #1F1F24}
+[data-marketing] .dots {display:flex;gap:6px}
+[data-marketing] .dot {width:9px;height:9px;border-radius:50%;background:#2A2A31}
+[data-marketing] .tt {font-size:11px;font-weight:700;color:#929290;letter-spacing:.03em}
+[data-marketing] .term {font-size:13px;line-height:2.1;padding:6px 4px}
+[data-marketing] .term .ln {color:#F2F2F0;font-weight:600}
+[data-marketing] .term .ln:before {content:"$ ";color:#686865}
+[data-marketing] .term .out {color:#929290;font-size:12px}
+[data-marketing] .term .out:before {content:"✓ ";color:var(--sage)}
+[data-marketing] .term .cur:after {content:"▍";color:var(--sage);animation:blink 1.1s steps(1) infinite;margin-left:2px}
+@keyframes blink {50%{opacity:0}}
+html.js [data-marketing] [data-rv] .term .out {opacity:0;transform:translateY(6px);transition:opacity .55s var(--e),transform .55s var(--e)}
+html.js [data-marketing] [data-rv].in .term .out {opacity:1;transform:none}
+html.js [data-marketing] [data-rv].in .term .out:nth-child(2) {transition-delay:.3s}
+html.js [data-marketing] [data-rv].in .term .out:nth-child(3) {transition-delay:.55s}
+html.js [data-marketing] [data-rv].in .term .out:nth-child(4) {transition-delay:.8s}
 
-@font-face {
-  font-family: "Switzer";
-  src: url("/fonts/switzer-600.woff2") format("woff2");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
+/* full-bleed image breaks */
+[data-marketing] .bleed {position:relative;height:clamp(300px,52vh,520px);overflow:hidden}
+[data-marketing] .bleed img {width:100%;height:130%;object-fit:cover;object-position:50% 50%}
+[data-marketing] .bleed:before, [data-marketing] .bleed:after {content:"";position:absolute;left:0;right:0;height:120px;z-index:2}
+[data-marketing] .bleed:before {top:0;background:linear-gradient(var(--bg),transparent)}
+[data-marketing] .bleed:after {bottom:0;background:linear-gradient(transparent,var(--bg))}
+[data-marketing] .bleed .cap {position:absolute;z-index:3;bottom:26px;left:0;right:0;text-align:center;font-size:12px;color:rgba(243,244,248,.72);letter-spacing:.16em;text-transform:uppercase;font-weight:700}
 
-/* Used only for the display italic. The prototype asks for weight 401, which is
-   Boska's own naming for its regular italic cut. */
-@font-face {
-  font-family: "Boska";
-  src: url("/fonts/boska-400-italic.woff2") format("woff2");
-  font-weight: 400 401;
-  font-style: italic;
-  font-display: swap;
-}
+/* numbers */
+[data-marketing] .nums {display:flex;justify-content:center;gap:clamp(40px,8vw,110px);flex-wrap:wrap;margin-top:clamp(36px,5vh,60px)}
+[data-marketing] .nb {text-align:center}
+[data-marketing] .nb b {display:block;font-size:clamp(2.4rem,5vw,4rem);font-weight:800;letter-spacing:-.04em;line-height:1}
+[data-marketing] .nb.k1 b {color:var(--indigo)}
+[data-marketing] .nb.k2 b {color:var(--teal)}
+[data-marketing] .nb.k3 b {color:var(--rose)}
+[data-marketing] .nb span {font-size:13px;color:var(--mut);font-weight:600}
 
-/* One use on the whole page: the outlined footer wordmark. */
-@font-face {
-  font-family: "Array";
-  src: url("/fonts/array-700.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
+/* strike pairs */
+[data-marketing] .pairs {max-width:620px;margin:clamp(36px,5vh,60px) auto 0;text-align:left}
+[data-marketing] .pair {padding:18px 4px}
+[data-marketing] .pair+.pair {box-shadow:0 -1px 0 rgba(255,255,255,.08)}
+[data-marketing] .pair .them {font-size:13px;color:var(--dim);font-weight:600;text-decoration:line-through;text-decoration-color:rgba(232,106,139,.55)}
+[data-marketing] .pair .us {font-size:clamp(1rem,1.5vw,1.25rem);font-weight:700;margin-top:5px}
+html.js [data-marketing] [data-rv] .pair {opacity:0;transform:translateY(10px);transition:opacity .6s var(--e),transform .6s var(--e)}
+html.js [data-marketing] [data-rv].in .pair {opacity:1;transform:none}
+html.js [data-marketing] [data-rv].in .pair:nth-child(2) {transition-delay:.08s}
+html.js [data-marketing] [data-rv].in .pair:nth-child(3) {transition-delay:.16s}
+html.js [data-marketing] [data-rv].in .pair:nth-child(4) {transition-delay:.24s}
 
-@font-face {
-  font-family: "JetBrains Mono";
-  src: url("/fonts/jetbrains-mono-400.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
+/* footer */
+[data-marketing] .fcta {padding:clamp(80px,12vh,150px) 0 clamp(36px,6vh,70px);text-align:center;position:relative}
+[data-marketing] .fcta h2 {font-size:clamp(2.4rem,6vw,5rem)}
+[data-marketing] footer {position:relative;overflow:hidden;padding-top:clamp(56px,9vh,100px)}
+[data-marketing] .fgrid {display:grid;grid-template-columns:1.7fr 1fr 1fr .8fr;gap:40px;max-width:1400px;margin:0 auto;padding:0 max(22px,4vw)}
+[data-marketing] .fdesc {margin:18px 0 0;font-size:15px;color:var(--dim);font-weight:500;max-width:22em;line-height:1.65}
+[data-marketing] .fhead {display:block;font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--dim);font-weight:700;margin-bottom:24px}
+[data-marketing] .fcol {display:flex;flex-direction:column;gap:17px;font-size:15px;font-weight:600;color:var(--mut);align-items:flex-start}
+[data-marketing] .fcol a {display:inline-flex;align-items:center;min-height:36px}
+[data-marketing] .fcol a:hover {color:var(--tx)}
+[data-marketing] .fword {margin-top:clamp(64px,10vh,120px);padding:0 max(10px,1vw)}
+[data-marketing] .fword svg {display:block;width:100%;height:auto}
+[data-marketing] .fbot {display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;max-width:1400px;margin:30px auto 0;padding:20px max(22px,4vw) 28px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:var(--dim)}
+@media(max-width:840px) {
+  [data-marketing] .fgrid {grid-template-columns:1fr 1fr}
+  [data-marketing] .fbrand {grid-column:1/-1}
 }
-
-@font-face {
-  font-family: "JetBrains Mono";
-  src: url("/fonts/jetbrains-mono-500.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Shantell Sans";
-  src: url("/fonts/shantell-sans-300.woff2") format("woff2");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Shantell Sans";
-  src: url("/fonts/shantell-sans-400.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* globals.css paints the page in console light. The landing is a single dark
-   surface, so the page behind it has to change too, or a short page shows a
-   pale band under the footer. */
-html:has([data-marketing]),
-body:has([data-marketing]) {
-  margin: 0;
-  padding: 0;
-  background: #08080a;
-}
-
-body:has([data-marketing]) {
-  overflow-x: clip;
-}
-
-[data-marketing] a {
-  color: inherit;
-  text-decoration: none;
-  transition:
-    color 0.15s ease,
-    background 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.12s ease,
-    opacity 0.15s ease;
-}
-
-[data-marketing] a:hover {
-  color: #ff7a5c;
-}
-
-[data-marketing] button {
-  font: inherit;
-}
-
-[data-marketing] ::selection {
-  background: #ff5a36;
-  color: #331313;
-}
-
-[data-marketing] :focus-visible {
-  outline: 2px solid #ff7a5c !important;
-  outline-offset: 2px;
-}
-
-@keyframes gcaret {
-  0%,
-  55% {
-    opacity: 1;
-  }
-  56%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes gfloat {
-  0%,
-  100% {
-    transform: rotate(1.5deg) translateY(0);
-  }
-  50% {
-    transform: rotate(1.5deg) translateY(-7px);
-  }
-}
-
-@keyframes gpulse {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@media (max-width: 1080px) {
-  [data-marketing] [data-herogrid] {
-    grid-template-columns: 1fr !important;
-  }
-  [data-marketing] [data-visual] {
-    height: auto !important;
-    min-width: 0;
-    margin-top: 36px;
-  }
-  [data-marketing] [data-tilt] {
-    position: relative !important;
-    width: 100% !important;
-  }
-}
-
-@media (max-width: 920px) {
-  /* !important, unlike the prototype: the nav list carries an inline
-     `display:flex`, so the plain rule it ships with never wins and the links
-     stay up at phone width, widening the header past the viewport. */
-  [data-marketing] [data-guide],
-  [data-marketing] [data-navlinks],
-  [data-marketing] [data-arrow] {
-    display: none !important;
-  }
-  [data-marketing] [data-split],
-  [data-marketing] [data-faqcols] {
-    grid-template-columns: 1fr !important;
-  }
-  [data-marketing] [data-marks],
-  [data-marketing] [data-cols4] {
-    grid-template-columns: 1fr 1fr !important;
-  }
-  /* The annotations are pinned beside the mocks on a wide screen. Narrow, they
-     have nothing to be beside, so they return to the flow. */
-  [data-marketing] [data-ann] {
-    position: static !important;
-    transform: none !important;
-    margin: 16px 0 0 !important;
-    max-width: none !important;
-    text-align: left !important;
-  }
-}
-
-@media (max-width: 780px) {
-  /* The agenda demo is a fixed-width mock. Below this it is scaled down whole
-     rather than reflowed, and the negative margin reclaims the space the
-     transform leaves behind. */
-  [data-marketing] [data-demo] {
-    width: 182% !important;
-    transform: scale(0.55);
-    transform-origin: top left;
-    margin-bottom: -176px !important;
-  }
-  [data-marketing] [data-marks] {
-    grid-template-columns: 1fr !important;
-  }
-  [data-marketing] [data-measure] {
-    flex-direction: column;
-    gap: 30px !important;
-  }
-  [data-marketing] [data-visual] {
-    overflow: hidden;
-  }
-  [data-marketing] [data-tilt] {
-    width: 760px !important;
-    transform: rotate(1.2deg) scale(0.42) !important;
-    transform-origin: left top !important;
-    margin-bottom: -238px;
-  }
-  [data-marketing] [data-heroann] {
-    display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-marketing] * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+@media(prefers-reduced-motion:reduce) {
+  [data-marketing] .hline span, [data-marketing] [data-hero] {animation:none;transform:none;opacity:1}
+  html.js [data-marketing] [data-rv] {opacity:1;transform:none;transition:none}
+  html.js [data-marketing] [data-rv] :is(.fr, [data-marketing] .cl, [data-marketing] .vr, [data-marketing] .pair), html.js [data-marketing] [data-rv] .term .out {opacity:1;transform:none;transition:none}
+  [data-marketing] .fr.cond, [data-marketing] .tst, [data-marketing] .dlg, [data-marketing] .clash, [data-marketing] .cfl, [data-marketing] .sc.mv, [data-marketing] .term .cur:after {animation:none;opacity:1}
+  html.js [data-marketing] [data-rv]:not(.in) .pgb i {width:78%!important}
 }

@@ -65,21 +65,11 @@ export default function ProgramOverviewPage() {
           summary="The agenda is drawn from these. Until they exist there is nothing to drag a session onto."
         />
 
-        {counts !== undefined && missing.length > 0 && (
-          <div
-            style={{
-              border: "1px solid var(--pdl)",
-              background: "var(--pdw)",
-              borderRadius: 12,
-              padding: "12px 16px",
-              marginBottom: 20,
-              font: "400 13px var(--font-plex-sans)",
-              color: "var(--pd)",
-            }}
-          >
-            Still to set up: {missing.map((entry) => entry.label.toLowerCase()).join(", ")}.
-          </div>
-        )}
+        {/* A list of what is missing tells you the state; it does not tell you what
+            to do, and it says nothing at all once the list is empty — which is
+            exactly the moment an organiser has finished here and has no idea the
+            next thing is a CFP form. Both halves are one control now. */}
+        {counts !== undefined && <NextStep missing={missing} />}
 
         {groups.map((group) => (
           <section key={group} style={{ marginBottom: 26 }}>
@@ -137,7 +127,9 @@ export default function ProgramOverviewPage() {
                       <span
                         style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}
                       >
-                        <span style={{ font: "600 14px var(--font-plex-sans)", color: "var(--ik)" }}>
+                        <span
+                          style={{ font: "600 14px var(--font-plex-sans)", color: "var(--ik)" }}
+                        >
                           {entry.label}
                         </span>
                         <span
@@ -168,5 +160,82 @@ export default function ProgramOverviewPage() {
         ))}
       </div>
     </ProgramShell>
+  );
+}
+
+/** The one thing to do next, in both states.
+ *
+ *  While pieces are missing it names the first one and links to it, in the order
+ *  the data depends on — days and rooms before tracks and formats, because the
+ *  grid needs somewhere to put a session before it needs to know what colour it
+ *  is. When nothing is missing it hands over to the call for papers, which is
+ *  otherwise a step an organiser has to already know exists.
+ */
+function NextStep({ missing }: { missing: (typeof SECTIONS)[number][] }) {
+  const target = missing[0];
+  const done = target === undefined;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 16,
+        flexWrap: "wrap",
+        border: `1px solid ${done ? "var(--okl)" : "var(--pdl)"}`,
+        background: done ? "var(--okw)" : "var(--pdw)",
+        borderRadius: 12,
+        padding: "14px 18px",
+        marginBottom: 20,
+      }}
+    >
+      <span style={{ flex: 1, minWidth: "min(100%, 320px)" }}>
+        <span
+          style={{
+            display: "block",
+            font: "600 13px var(--font-plex-sans)",
+            color: done ? "var(--ok)" : "var(--pd)",
+            marginBottom: 2,
+          }}
+        >
+          {done ? "Program is set up." : `Next: add ${target.label.toLowerCase()}`}
+        </span>
+        <span
+          style={{
+            display: "block",
+            font: "400 12.5px/1.5 var(--font-plex-sans)",
+            color: "var(--i3)",
+          }}
+        >
+          {done
+            ? "Every piece the agenda needs exists. Next is the call for papers — the questions speakers answer when they submit."
+            : `${target.blurb} ${
+                missing.length > 1
+                  ? `Then ${missing
+                      .slice(1)
+                      .map((entry) => entry.label.toLowerCase())
+                      .join(", ")}.`
+                  : ""
+              }`}
+        </span>
+      </span>
+      <Link
+        href={(done ? "/admin/forms" : target.href) as "/admin/program"}
+        style={{
+          flex: "none",
+          display: "inline-flex",
+          alignItems: "center",
+          height: 40,
+          padding: "0 20px",
+          borderRadius: 999,
+          textDecoration: "none",
+          background: "var(--sg)",
+          color: "var(--cd)",
+          font: "600 13px var(--font-plex-sans)",
+        }}
+      >
+        {done ? "Build the call for papers →" : `Add ${target.label.toLowerCase()} →`}
+      </Link>
+    </div>
   );
 }

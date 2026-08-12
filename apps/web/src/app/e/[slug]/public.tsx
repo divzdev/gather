@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 
 import { API_BASE_URL } from "@/lib/api";
 
+import { INK, MONO, SANS } from "./chrome";
+
 export type EventInfo = {
   name: string;
   slug: string;
@@ -100,17 +102,33 @@ const NAV = [
   { href: "/cfp", label: "Submit a talk" },
 ] as const;
 
-/** Public shell. Body is 16px here, not the console's 14px, and the display face
- *  is allowed because these are the pages strangers see. */
+/** The public event shell.
+ *
+ *  A photographic band carries the nav and whatever the page puts in `hero`;
+ *  the home page fills it with the event's name at display scale, and every
+ *  other page passes a short title, so the band shrinks to a header without
+ *  becoming a different component.
+ *
+ *  Palette and rationale live in `./chrome` — fixed dark, because a stranger
+ *  arriving from a speaker's link has set no theme for this to follow.
+ */
 export function PublicShell({
   event,
   slug,
   active,
+  hero,
+  banner,
   children,
 }: {
   event: EventInfo;
   slug: string;
   active: string;
+  /** Present on the home page: a full-height photographic hero. Absent
+   *  elsewhere, where the band is a header and the page starts below it. */
+  hero?: { photo: string };
+  /** Rendered inside the band. The home page fills it with the event's name at
+   *  display scale; every other page leaves it out and gets the page title. */
+  banner?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const day = (value: string, withYear: boolean) =>
@@ -120,81 +138,194 @@ export function PublicShell({
       ...(withYear ? { year: "numeric" } : {}),
     });
   const dates = `${day(event.starts_on, false)} – ${day(event.ends_on, true)}`;
+  const tall = hero !== undefined;
 
-  return (
-    <div style={{ fontSize: 16, minHeight: "100vh", background: "var(--pp)" }}>
-      <header style={{ borderBottom: "1px solid var(--ln)", background: "var(--cd)" }}>
-        <div style={{ maxWidth: 1040, margin: "0 auto", padding: "18px 24px" }}>
-          <p
-            style={{
-              margin: 0,
-              font: "600 10px var(--font-plex-condensed)",
-              letterSpacing: "0.12em",
-              color: "var(--i4)",
-            }}
-          >
-            {dates}
-            {event.location !== null ? ` · ${event.location}` : ""}
-          </p>
-          <h1
-            style={{
-              font: "600 30px var(--font-bricolage), sans-serif",
-              color: "var(--ik)",
-              margin: "4px 0 14px",
-            }}
-          >
-            {event.name}
-          </h1>
-          <nav style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {NAV.map((item) => {
-              const selected = active === item.label;
-              return (
-                <Link
-                  key={item.label}
-                  href={`/e/${slug}${item.href}` as never}
-                  style={{
-                    textDecoration: "none",
-                    minHeight: 36,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "0 16px",
-                    borderRadius: 999,
-                    font: "500 13px var(--font-plex-sans), sans-serif",
-                    background: selected ? "var(--sw)" : "transparent",
-                    color: selected ? "var(--sg)" : "var(--i2)",
-                  }}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-      </header>
-      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "28px 24px 80px" }}>
-        {children}
-      </main>
-    </div>
-  );
-}
-
-export function NotPublished({ what }: { what: string }) {
   return (
     <div
+      // marketing.css defines this surface's palette against this attribute,
+      // exactly as the landing does. Without it every var() falls back to its
+      // literal and per-event branding would have nothing to hook onto.
+      data-event=""
       style={{
-        background: "var(--cd)",
-        border: "1px solid var(--ln)",
-        borderRadius: 14,
-        padding: "48px 24px",
-        textAlign: "center",
+        minHeight: "100vh",
+        background: INK.page,
+        color: INK.text,
+        fontFamily: SANS,
+        fontSize: 16,
       }}
     >
-      <p style={{ font: "600 15px var(--font-plex-sans)", color: "var(--ik)", margin: "0 0 6px" }}>
-        The {what} is not published yet
-      </p>
-      <p style={{ font: "400 14px var(--font-plex-sans)", color: "var(--i3)", margin: 0 }}>
-        Check back closer to the event.
-      </p>
+      <div style={{ position: "relative", overflow: "hidden" }}>
+        {tall ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- a decorative
+                full-bleed layer sized entirely by CSS, pre-optimised on disk. */}
+            <img
+              src={hero.photo}
+              alt=""
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "50% 45%",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: `linear-gradient(to top, ${INK.page} 4%, rgba(7,8,14,.55) 46%, rgba(7,8,14,.72))`,
+              }}
+            />
+          </>
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `radial-gradient(80% 140% at 15% 0%, rgba(255,107,107,.14), transparent 70%), ${INK.page}`,
+            }}
+          />
+        )}
+
+        <div style={{ position: "relative", zIndex: 2 }}>
+          <div
+            style={{
+              maxWidth: 1120,
+              margin: "0 auto",
+              padding: "22px max(22px,4vw)",
+              display: "flex",
+              alignItems: "center",
+              gap: 18,
+              flexWrap: "wrap",
+            }}
+          >
+            <Link
+              href={`/e/${slug}` as never}
+              style={{
+                textDecoration: "none",
+                color: INK.text,
+                fontWeight: 800,
+                letterSpacing: "-.02em",
+                fontSize: 17,
+                marginRight: "auto",
+              }}
+            >
+              {event.name}
+            </Link>
+            <nav style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {NAV.map((item) => {
+                const selected = active === item.label;
+                return (
+                  <Link
+                    key={item.label}
+                    href={`/e/${slug}${item.href}` as never}
+                    aria-current={selected ? "page" : undefined}
+                    style={{
+                      textDecoration: "none",
+                      minHeight: 38,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      padding: "0 15px",
+                      borderRadius: 999,
+                      fontSize: 13.5,
+                      fontWeight: selected ? 700 : 600,
+                      background: selected ? "rgba(255,255,255,.10)" : "transparent",
+                      color: selected ? INK.text : INK.muted,
+                      border: `1px solid ${selected ? INK.edgeStrong : "transparent"}`,
+                    }}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div
+            style={{
+              padding: tall
+                ? "clamp(72px,16vh,190px) 0 clamp(48px,9vh,96px)"
+                : "clamp(26px,4vh,44px) 0 clamp(22px,3vh,34px)",
+            }}
+          >
+            {banner !== undefined ? (
+              banner
+            ) : (
+              <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 max(22px,4vw)" }}>
+                <div
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 12,
+                    letterSpacing: ".14em",
+                    textTransform: "uppercase",
+                    color: INK.faint,
+                  }}
+                >
+                  {dates}
+                  {event.location !== null ? ` · ${event.location}` : ""}
+                </div>
+                <h1
+                  style={{
+                    fontFamily: SANS,
+                    fontWeight: 800,
+                    letterSpacing: "-.03em",
+                    fontSize: "clamp(1.9rem,3.6vw,2.8rem)",
+                    lineHeight: 1.06,
+                    margin: "12px 0 0",
+                  }}
+                >
+                  {active}
+                </h1>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* The home page's children are <Section>s, which carry their own width
+          and rhythm; every other page hands over plain content and wants the
+          container. */}
+      {banner === undefined ? (
+        <main style={{ maxWidth: 1120, margin: "0 auto", padding: "8px max(22px,4vw) 96px" }}>
+          {children}
+        </main>
+      ) : (
+        <main style={{ paddingBottom: 40 }}>{children}</main>
+      )}
+
+      <footer
+        style={{
+          borderTop: `1px solid ${INK.edge}`,
+          padding: "26px max(22px,4vw)",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1120,
+            margin: "0 auto",
+            display: "flex",
+            gap: 16,
+            flexWrap: "wrap",
+            alignItems: "center",
+            fontFamily: MONO,
+            fontSize: 11.5,
+            color: INK.faint,
+          }}
+        >
+          <span>
+            {event.name} · {dates}
+          </span>
+          <span style={{ marginLeft: "auto" }}>
+            Programme run on{" "}
+            <Link href="/" style={{ color: INK.muted }}>
+              Gather
+            </Link>
+          </span>
+        </div>
+      </footer>
     </div>
   );
 }

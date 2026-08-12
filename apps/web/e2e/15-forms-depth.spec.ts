@@ -39,7 +39,11 @@ async function liveForm(request: APIRequestContext) {
     form_id: string;
     schema: { sections: { fields: Field[] }[]; logic: { target: string }[] };
   };
-  return { formId: form.form_id, fields: form.schema.sections.flatMap((s) => s.fields), schema: form.schema };
+  return {
+    formId: form.form_id,
+    fields: form.schema.sections.flatMap((s) => s.fields),
+    schema: form.schema,
+  };
 }
 
 /** Valid answers for every required field the live form asks for. */
@@ -247,20 +251,24 @@ test("36+63. moving the close date shuts the call and opens it again", async ({ 
 
   try {
     const future = new Date(Date.now() + 14 * 86_400_000).toISOString();
-    await request.patch(`${API}/v1/events/${ctx.eventId}/forms/${form.formId}`, {
+    // Checked, not assumed. An unverified setup write turns into an assertion
+    // failure three lines later that blames the product for the test.
+    const opened = await request.patch(`${API}/v1/events/${ctx.eventId}/forms/${form.formId}`, {
       headers: ctx.headers,
       data: { closes_at: future },
     });
+    expect(opened.ok(), `could not open the call: ${await opened.text()}`).toBe(true);
     const open = await send(`open-${Date.now()}`);
     expect(open.status(), await open.text()).toBe(201);
     made.push(((await open.json()) as { id: string }).id);
 
     // 36. Past the date, the server clock decides — not the client.
     const past = new Date(Date.now() - 3_600_000).toISOString();
-    await request.patch(`${API}/v1/events/${ctx.eventId}/forms/${form.formId}`, {
+    const closed = await request.patch(`${API}/v1/events/${ctx.eventId}/forms/${form.formId}`, {
       headers: ctx.headers,
       data: { closes_at: past },
     });
+    expect(closed.ok(), `could not close the call: ${await closed.text()}`).toBe(true);
     const shut = await send(`shut-${Date.now()}`);
     expect(shut.status(), "a closed call accepted a proposal").toBe(403);
     expect(await shut.text()).toMatch(/closed/i);
@@ -346,9 +354,10 @@ test("40. the form a speaker sees is exactly what the builder configured", async
     .filter((field) => !field.hidden_from_new)
     .map((field) => field.key);
 
-  expect(form.fields.map((field) => field.key), "the public form differs from the built one").toEqual(
-    expected,
-  );
+  expect(
+    form.fields.map((field) => field.key),
+    "the public form differs from the built one",
+  ).toEqual(expected);
   expect(expected.length, "the live CFP renders no fields").toBeGreaterThan(0);
 });
 
@@ -398,9 +407,10 @@ test("41+53-54. a draft keeps its code and its answers across a reopened link", 
     });
     const stored = (await read.json()) as { title: string; answers: Record<string, unknown> };
     expect(stored.title).toBe("A whole thought");
-    expect(Object.keys(stored.answers).length, "the resumed draft lost its answers").toBeGreaterThan(
-      0,
-    );
+    expect(
+      Object.keys(stored.answers).length,
+      "the resumed draft lost its answers",
+    ).toBeGreaterThan(0);
 
     // And the code looks up a status page forever, with no review data on it.
     const status = await request.get(
@@ -412,7 +422,9 @@ test("41+53-54. a draft keeps its code and its answers across a reopened link", 
   }
 });
 
-test("47-48. a bad email and an over-long answer are refused with a reason", async ({ request }) => {
+test("47-48. a bad email and an over-long answer are refused with a reason", async ({
+  request,
+}) => {
   const form = await liveForm(request);
   const longest = form.fields.find(
     (field) => field.max_length !== null && field.type === "long_text",
@@ -456,9 +468,8 @@ test("55-56. co-speakers are accepted up to the maximum, then refused", async ({
   const built = await request.get(`${API}/v1/events/${ctx.eventId}/forms/${form.formId}`, {
     headers: ctx.headers,
   });
-  const settings = (
-    (await built.json()) as { schema: { settings: { max_co_speakers: number } } }
-  ).schema.settings;
+  const settings = ((await built.json()) as { schema: { settings: { max_co_speakers: number } } })
+    .schema.settings;
   const max = settings.max_co_speakers;
   expect(max, "the form allows no co-speakers, so there is no maximum to test").toBeGreaterThan(0);
 

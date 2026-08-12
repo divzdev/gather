@@ -29,13 +29,13 @@
       <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">Limit: <span style="font:500 12px 'IBM Plex Mono',monospace">3 per speaker</span>, drafts included</span>
       <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58">No account needed, your email is your identity</span>
     </div>
-    <div style="display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:32px">
+    <div style="display:grid;grid-template-columns:200px minmax(0,1fr);gap:32px">
       <div>
         <div style="position:sticky;top:20px">
           <sc-for list="{{ steps }}" as="st" hint-placeholder-count="5">
             <button onClick="{{ st.on }}" style="display:flex;align-items:center;gap:10px;background:none;border:none;padding:6px 0;width:100%;text-align:left">
               <span style="width:18px;height:18px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;background:{{ st.dotBg }};border:1.5px solid {{ st.dotBd }};font:600 9.5px 'IBM Plex Sans',sans-serif;color:{{ st.dotFg }}">{{ st.mark }}</span>
-              <span style="font:{{ st.wt }} 13.5px 'IBM Plex Sans',sans-serif;color:{{ st.fg }};min-width:0">{{ st.n }}</span>
+              <span style="font:{{ st.wt }} 13.5px 'IBM Plex Sans',sans-serif;color:{{ st.fg }};white-space:nowrap">{{ st.n }}</span>
             </button>
           </sc-for>
           <div style="font:400 11px 'IBM Plex Mono',monospace;color:#E04E4E;margin-top:14px">autosaved {{ savedAt }}</div>
@@ -69,39 +69,48 @@
           <p style="font:400 13px 'IBM Plex Sans',sans-serif;color:#6B7B84;margin:0 0 18px">Your email is the identity for this submission. We send a magic link, never a password.</p>
           <div style="max-width:420px">
             <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Email address <span style="color:#D8432B">*</span></div>
-            <input aria-label="you@company.com" value="{{ email }}" onChange="{{ onEmail }}" placeholder="you@company.com" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:6px;border:1px solid {{ emailBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+            <input value="{{ email }}" onChange="{{ onEmail }}" placeholder="you@company.com" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:6px;border:1px solid {{ emailBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
             <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#99A6AD;margin-top:6px">Already started? The same email resumes your draft on any device.</div>
           </div>
         </sc-if>
 
         <sc-if value="{{ p2 }}" hint-placeholder-val="{{ false }}">
-            <h2 style="font:600 20px 'IBM Plex Sans',sans-serif;color:#16232B;margin:0 0 18px">Your proposal</h2>
-            <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
-              <sc-for list="{{ fields }}" as="fd" hint-placeholder-count="5">
-                <div>
-                  <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">{{ fd.label }}<span style="color:#D8432B;display:{{ fd.reqD }}"> *</span></div>
-                  <sc-if value="{{ fd.isLine }}">
-                    <input value="{{ fd.value }}" onChange="{{ fd.onChange }}" type="{{ fd.inputType }}" placeholder="{{ fd.placeholder }}" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:6px;border:1px solid {{ fd.bd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E" />
-                  </sc-if>
-                  <sc-if value="{{ fd.isArea }}">
-                    <textarea value="{{ fd.value }}" onChange="{{ fd.onChange }}" rows="7" placeholder="{{ fd.placeholder }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid {{ fd.bd }};background:#FFFFFF;font:400 13.5px/21px 'IBM Plex Sans',sans-serif;color:#16232B;resize:vertical;outline-color:#E04E4E"></textarea>
-                  </sc-if>
-                  <sc-if value="{{ fd.isChoice }}">
-                    <div style="display:flex;gap:7px;flex-wrap:wrap">
-                      <sc-for list="{{ fd.options }}" as="op" hint-placeholder-count="3">
-                        <button onClick="{{ op.on }}" style="height:32px;padding:0 13px;border-radius:6px;border:1px solid {{ op.bd }};background:{{ op.bg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ op.fg }};white-space:nowrap">{{ op.label }}</button>
-                      </sc-for>
-                    </div>
-                  </sc-if>
-                  <sc-if value="{{ fd.isConsent }}">
-                    <button onClick="{{ fd.onToggle }}" style="display:flex;align-items:flex-start;gap:9px;background:none;border:none;padding:0;text-align:left"><span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ fd.bd }};background:{{ fd.tickBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:#FFFFFF;flex:none;margin-top:2px">{{ fd.tick }}</span><span style="font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#3E4E58">{{ fd.consentText }}</span></button>
-                  </sc-if>
-                  <sc-if value="{{ fd.hasCount }}"><div style="font:400 11.5px 'IBM Plex Mono',monospace;color:#99A6AD;margin-top:5px">{{ fd.count }}</div></sc-if>
-                  <sc-if value="{{ fd.hasHelp }}"><div style="font:400 12px 'IBM Plex Sans',sans-serif;color:#99A6AD;margin-top:6px">{{ fd.help }}</div></sc-if>
-                </div>
-              </sc-for>
+          <h2 style="font:600 20px 'IBM Plex Sans',sans-serif;color:#16232B;margin:0 0 18px">Your proposal</h2>
+          <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Title <span style="color:#D8432B">*</span></div>
+              <input value="{{ title }}" onChange="{{ onTitle }}" placeholder="Say what the talk delivers" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border-radius:6px;border:1px solid {{ titleBd }};background:#FFFFFF;font:400 14px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+              <div style="font:400 11.5px 'IBM Plex Mono',monospace;color:#99A6AD;margin-top:5px">{{ titleCount }}</div>
             </div>
-          </sc-if>
+            <div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Abstract <span style="color:#D8432B">*</span></div>
+              <textarea value="{{ abstract }}" onChange="{{ onAbstract }}" rows="7" placeholder="150 to 400 words on what attendees walk away with" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid {{ absBd }};background:#FFFFFF;font:400 13.5px/21px 'IBM Plex Sans',sans-serif;color:#16232B;resize:vertical;outline-color:#E04E4E"></textarea>
+              <div style="font:400 11.5px 'IBM Plex Mono',monospace;color:#99A6AD;margin-top:5px">{{ wordCount }} words</div>
+            </div>
+            <div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:7px">Track <span style="color:#D8432B">*</span></div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap">
+                <sc-for list="{{ tracks }}" as="tr" hint-placeholder-count="6">
+                  <button onClick="{{ tr.on }}" style="height:32px;padding:0 13px;border-radius:6px;border:1px solid {{ tr.bd }};background:{{ tr.bg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ tr.fg }};white-space:nowrap">{{ tr.n }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <sc-if value="{{ askFramework }}" hint-placeholder-val="{{ false }}">
+              <div style="border-left:2px solid #E04E4E;background:#FFEAE6;border-radius:0 6px 6px 0;padding:12px 14px">
+                <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:6px">Because you picked Agents: which framework does your demo use?</div>
+                <input value="{{ framework }}" onChange="{{ onFramework }}" placeholder="e.g. LangGraph, custom, none" style="width:100%;box-sizing:border-box;height:34px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+              </div>
+            </sc-if>
+            <div>
+              <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:7px">Format <span style="color:#D8432B">*</span></div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap">
+                <sc-for list="{{ formats }}" as="fo" hint-placeholder-count="3">
+                  <button onClick="{{ fo.on }}" style="height:32px;padding:0 13px;border-radius:6px;border:1px solid {{ fo.bd }};background:{{ fo.bg }};font:500 12.5px 'IBM Plex Sans',sans-serif;color:{{ fo.fg }};white-space:nowrap">{{ fo.n }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
 
         <sc-if value="{{ p3 }}" hint-placeholder-val="{{ false }}">
           <h2 style="font:600 20px 'IBM Plex Sans',sans-serif;color:#16232B;margin:0 0 4px">Speakers</h2>
@@ -111,7 +120,7 @@
               <div style="font:600 12px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.06em;color:#99A6AD;margin-bottom:10px">SPEAKER 1 · YOU</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
                 <div><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Full name <span style="color:#D8432B">*</span></div><input value="{{ name }}" onChange="{{ onName }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid {{ nameBd }};background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E"></div>
-                <div><label for="cfp-company" style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Company</label><input id="cfp-company" value="{{ company }}" onChange="{{ onCompany }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E"></div>
+                <div><div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Company</div><input value="{{ company }}" onChange="{{ onCompany }}" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E"></div>
               </div>
               <div style="font:500 12.5px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:5px">Bio <span style="color:#D8432B">*</span> <span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#99A6AD">50 to 100 words, third person</span></div>
               <textarea value="{{ bio }}" onChange="{{ onBio }}" rows="3" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid {{ bioBd }};background:#FFFFFF;font:400 13px/19px 'IBM Plex Sans',sans-serif;color:#16232B;resize:vertical;outline-color:#E04E4E"></textarea>
@@ -120,8 +129,8 @@
               <div style="border:1px solid #E1E7E9;border-radius:8px;background:#FFFFFF;padding:14px 16px">
                 <div style="display:flex;align-items:center;margin-bottom:10px"><span style="font:600 12px 'IBM Plex Sans Condensed',sans-serif;letter-spacing:0.06em;color:#99A6AD;flex:1">SPEAKER 2 · CO-SPEAKER</span><button onClick="{{ rmCo }}" style="background:none;border:none;font:500 12px 'IBM Plex Sans',sans-serif;color:#6B7B84;padding:0">Remove</button></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                  <input aria-label="Full name" value="{{ coName }}" onChange="{{ onCoName }}" placeholder="Full name" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
-                  <input aria-label="Email for their portal invite" value="{{ coEmail }}" onChange="{{ onCoEmail }}" placeholder="Email for their portal invite" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+                  <input value="{{ coName }}" onChange="{{ onCoName }}" placeholder="Full name" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
+                  <input value="{{ coEmail }}" onChange="{{ onCoEmail }}" placeholder="Email for their portal invite" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:400 13.5px 'IBM Plex Sans',sans-serif;color:#16232B;outline-color:#E04E4E">
                 </div>
               </div>
             </sc-if>
@@ -158,15 +167,12 @@
     <sc-if value="{{ doneV }}" hint-placeholder-val="{{ false }}">
       <div style="max-width:560px;margin:40px auto 0;text-align:center">
         <div style="width:46px;height:46px;border-radius:50%;background:#E2F1EC;border:1px solid #C2E0D5;display:inline-flex;align-items:center;justify-content:center;font:600 19px 'IBM Plex Sans',sans-serif;color:#0E7A5F;margin-bottom:16px">✓</div>
-        <h1 style="font:700 28px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:0 0 8px">{{ doneTitle }}</h1>
-        <p style="font:400 14.5px/22px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin:0 0 16px;max-width:520px">{{ doneNote }}</p>
-        <sc-if value="{{ hasCode }}">
+        <h1 style="font:700 28px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em;color:#16232B;margin:0 0 8px">Proposal received</h1>
         <div style="font:600 24px 'IBM Plex Mono',monospace;color:#E04E4E;letter-spacing:0.04em;margin-bottom:6px">{{ code }}</div>
         <button onClick="{{ copyCode }}" style="height:28px;padding:0 11px;border-radius:6px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 12px 'IBM Plex Sans',sans-serif;color:#3E4E58;margin-bottom:20px">Copy code</button>
         <div style="border:1px solid #E1E7E9;border-radius:8px;background:#FFFFFF;padding:16px;text-align:left;margin-bottom:16px">
           <div style="font:400 13.5px/21px 'IBM Plex Sans',sans-serif;color:#3E4E58">A confirmation email is on its way to <span style="font-weight:600;color:#16232B">{{ email }}</span>. Reviews close 22 Sep, decisions go out by 29 Sep. Your status link shows every stage: submitted, in review, decision.</div>
         </div>
-        </sc-if>
         <div style="display:flex;justify-content:center;gap:10px">
           <button onClick="{{ again }}" style="height:38px;padding:0 15px;border-radius:8px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 13px 'IBM Plex Sans',sans-serif;color:#16232B">Submit another proposal</button>
           <a href="Event Landing.dc.html" style="display:inline-flex;align-items:center;height:38px;padding:0 15px;border-radius:8px;border:1px solid #C8D2D5;background:#FFFFFF;font:500 13px 'IBM Plex Sans',sans-serif;color:#16232B;text-decoration:none">Back to the event</a>

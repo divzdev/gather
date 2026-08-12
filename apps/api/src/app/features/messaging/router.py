@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from app.core import mail
-from app.core.deps import DbSession, bind_tenant, require_role
+from app.core.deps import DbSession, bind_tenant, get_verified_user, require_role
 from app.core.errors import ApiError, NotFoundError, RecipientCountMismatchError
 from app.core.pagination import ListQueryDep, PageMeta, paginate
 from app.core.tenancy import current_tenant
@@ -236,7 +236,11 @@ class ResendResult(BaseModel):
     status: MessageStatus
 
 
-@router.post("/outbox/{message_id}/resend", response_model=ResendResult)
+@router.post(
+    "/outbox/{message_id}/resend",
+    response_model=ResendResult,
+    dependencies=[Depends(get_verified_user)],
+)
 async def resend(
     message_id: uuid.UUID,
     session: DbSession,
@@ -278,7 +282,13 @@ async def resend(
     return ResendResult(id=retry.id, status=retry.status)
 
 
-@router.post("/send-decisions", response_model=SendResult)
+@router.post(
+    "/send-decisions",
+    response_model=SendResult,
+    # An unconfirmed account may decide all it likes; what it may not do is put
+    # two hundred of those decisions in other people's inboxes.
+    dependencies=[Depends(get_verified_user)],
+)
 async def send_decisions(
     body: SendRequest, session: DbSession, _: User = Depends(require_role(*SEND))
 ) -> SendResult:

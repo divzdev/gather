@@ -26,5 +26,20 @@ class User(PrimaryKey, Timestamps, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_login_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
+    #: When the address was proven to belong to whoever is using the account.
+    #: Null means "signed up, never confirmed" — the account works and can be
+    #: explored, but nothing that reaches another human is allowed through it.
+    #: Set by consuming an emailed link, or at creation for a GitHub identity,
+    #: where the provider has already done it.
+    email_verified_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    #: The GitHub numeric account id, not the login: logins are renameable and a
+    #: renamed account would otherwise arrive as a stranger. Null for everyone
+    #: who signed up with a password.
+    github_user_id: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True)
+
+    @property
+    def is_email_verified(self) -> bool:
+        return self.email_verified_at is not None
+
     density_pref: Mapped[str] = mapped_column(String(20), nullable=False, default="compact")
     theme_pref: Mapped[str] = mapped_column(String(20), nullable=False, default="system")

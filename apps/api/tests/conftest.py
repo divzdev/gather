@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import date
+from datetime import UTC, date, datetime
 
 #: Set before anything imports app config, which caches settings on first read.
 RUN_ID = os.environ.get("PYTEST_RUN_ID", str(os.getpid()))
@@ -154,6 +154,10 @@ async def staff_user(session: AsyncSession) -> User:
             email=f"organizer-{uuid.uuid4().hex[:8]}@example.com",
             name="Ada Organizer",
             password_hash=hash_password("correct horse battery staple"),
+            # The default staff fixture is a fully set-up organizer, so it can
+            # send and publish. Tests that care about the unverified state build
+            # their own user; see test_auth_verification.py.
+            email_verified_at=datetime.now(UTC),
         )
         session.add(user)
         await session.commit()

@@ -26,7 +26,19 @@ from pathlib import Path
 DEFINITION = re.compile(r"""(?:^|[;{"'])\s*(--[A-Za-z0-9-]+)["']?\s*:""", re.MULTILINE)
 REFERENCE = re.compile(r"var\(\s*(--[A-Za-z0-9-]+)")
 
-TOKEN_FILES = ("apps/web/src/styles/tokens.css", "apps/web/src/app/globals.css")
+#: tokens.css is the console's themed palette and the first entry is special —
+#: `_missing_from_dark` reads it alone, because it is the only one with a light
+#: and a dark map. marketing.css is the landing page's own palette, a single
+#: fixed dark treatment scoped to `[data-marketing]`; its `--indigo`/`--teal`/
+#: `--rose`/`--sage`/`--sky` are the per-section hues the design calls for and
+#: they have no light counterpart by design, so they belong here rather than in
+#: the themed file.
+TOKEN_FILES = (
+    "apps/web/src/styles/tokens.css",
+    "apps/web/src/app/globals.css",
+    "apps/web/src/styles/marketing.css",
+    "apps/web/src/styles/event.css",
+)
 #: next/font declares these through `variable:` in the root layout and injects
 #: them at runtime, so they never appear in a stylesheet. Read from there rather
 #: than hard-coded, so renaming a font does not quietly disable this check.
@@ -152,7 +164,7 @@ THEME_INDEPENDENT = (
 # light hexes on purpose, and the converted prototypes are full of them. So it
 # is a ratchet — the count may fall and never rise. Drop the number whenever it
 # does; the message tells you to.
-RAW_HEX_BUDGET = 515
+RAW_HEX_BUDGET = 111
 
 HEX = re.compile(r"#[0-9A-Fa-f]{3,8}\b")
 #: `var(--token, #fallback)` is the documented pattern, not a violation.

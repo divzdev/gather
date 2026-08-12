@@ -11,12 +11,13 @@ import { expect, test } from "@playwright/test";
 test("signing up asks for the event rather than inventing it", async ({ page }) => {
   const stamp = Date.now();
   await page.goto("/login");
-  await page.getByRole("button", { name: /create one/i }).click();
+  await page.getByRole("button", { name: /create an account/i }).click();
 
-  await page.getByLabel(/your name/i).fill("Divya Manchireddy");
-  await page.getByLabel(/work email/i).fill(`ob${stamp}@test.com`);
+  await page.getByLabel(/full name/i).fill("Divya Manchireddy");
+  await page.getByLabel(/^email$/i).fill(`ob${stamp}@test.com`);
   await page.getByLabel(/^password$/i).fill("a-long-enough-passphrase");
-  // Organisation is left empty on purpose: it is optional now.
+  // No organisation field any more: the redesigned screen dropped it, and
+  // the workspace is named after the owner until Settings renames it.
   await page.getByRole("button", { name: /create account/i }).click();
 
   // Straight to onboarding, not to a console describing an event nobody chose.

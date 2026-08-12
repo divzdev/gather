@@ -55,11 +55,10 @@ test("3. demo logins are visible without hunting", async ({ page }) => {
 test("4-6. registration: happy path, duplicate email, malformed email", async ({ page }) => {
   const unique = `owner-${Date.now()}@example.com`;
   await page.goto("/login");
-  await page.getByRole("button", { name: /create one/i }).click();
+  await page.getByRole("button", { name: /create an account/i }).click();
 
-  await page.getByLabel(/your name/i).fill("Test Owner");
-  await page.getByLabel(/^organization/i).fill("Testers Inc");
-  await page.getByLabel(/work email/i).fill(unique);
+  await page.getByLabel(/full name/i).fill("Test Owner");
+  await page.getByLabel(/^email$/i).fill(unique);
   await page.getByLabel(/^password$/i).fill("a-long-enough-passphrase");
   await page.getByRole("button", { name: /create account/i }).click();
 
@@ -71,10 +70,9 @@ test("4-6. registration: happy path, duplicate email, malformed email", async ({
   const fresh = await page.context().browser()!.newContext();
   const second = await fresh.newPage();
   await second.goto("/login");
-  await second.getByRole("button", { name: /create one/i }).click();
-  await second.getByLabel(/your name/i).fill("Test Owner");
-  await second.getByLabel(/^organization/i).fill("Testers Inc");
-  await second.getByLabel(/work email/i).fill(unique);
+  await second.getByRole("button", { name: /create an account/i }).click();
+  await second.getByLabel(/full name/i).fill("Test Owner");
+  await second.getByLabel(/^email$/i).fill(unique);
   await second.getByLabel(/^password$/i).fill("a-long-enough-passphrase");
   await second.getByRole("button", { name: /create account/i }).click();
   await expect(second.getByText(/already exists|already registered|taken/i)).toBeVisible({
@@ -90,10 +88,9 @@ test("6. a malformed email is caught before it reaches the server", async ({ pag
   });
 
   await page.goto("/login");
-  await page.getByRole("button", { name: /create one/i }).click();
-  await page.getByLabel(/your name/i).fill("Test Owner");
-  await page.getByLabel(/^organization/i).fill("Testers Inc");
-  await page.getByLabel(/work email/i).fill("not-an-email");
+  await page.getByRole("button", { name: /create an account/i }).click();
+  await page.getByLabel(/full name/i).fill("Test Owner");
+  await page.getByLabel(/^email$/i).fill("not-an-email");
   await page.getByLabel(/^password$/i).fill("a-long-enough-passphrase");
   await page.getByRole("button", { name: /create account/i }).click();
 
@@ -114,7 +111,7 @@ test("7. log out and back in again", async ({ page }) => {
 
 test("8. a wrong password is a clear message, not a stack trace", async ({ page }) => {
   await page.goto("/login");
-  await page.getByLabel(/work email/i).fill("sbek-organizer@example.com");
+  await page.getByLabel(/^email$/i).fill("sbek-organizer@example.com");
   await page.getByLabel(/^password$/i).fill("definitely-not-the-password");
   await page.getByRole("button", { name: /^sign in$/i }).click();
 
@@ -125,7 +122,7 @@ test("8. a wrong password is a clear message, not a stack trace", async ({ page 
 
 test("9. forgot password produces a link, or says where it went", async ({ page }) => {
   await page.goto("/login");
-  await page.getByLabel(/work email/i).fill("sbek-organizer@example.com");
+  await page.getByLabel(/^email$/i).fill("sbek-organizer@example.com");
   await page.getByRole("button", { name: /link|forgot/i }).first().click();
 
   await expect(page.getByText(/on its way|sent|check your|inbox|link/i).first()).toBeVisible({
@@ -173,7 +170,14 @@ test("11. every console nav item resolves and renders", async ({ page }) => {
       broken.push(`${route} → ${response?.status()}`);
       continue;
     }
-    // "Renders" means something is on the screen, not merely a 200.
+    // "Renders" means something is on the screen, not merely a 200 — but goto
+    // resolves on load, not on hydration, so read it only once the console
+    // chrome is up. Without this the assertion races whichever screen is
+    // slowest that run and calls it blank.
+    await page
+      .locator("header")
+      .waitFor({ state: "visible", timeout: 20_000 })
+      .catch(() => undefined);
     const text = (await page.locator("body").innerText().catch(() => "")).trim();
     if (text.length < 20) broken.push(`${route} → blank`);
   }

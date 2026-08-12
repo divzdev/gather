@@ -1,0 +1,32 @@
+/* ---------------------------------------------------------------------------
+ * The public event surface: /e/<slug> and everything under it.
+ *
+ * Same fixed-dark treatment as the landing and for the same reason — a stranger
+ * arriving from a speaker's link has set no theme for anything to follow — but
+ * its own scope and its own names, because these pages belong to the conference
+ * rather than to Gather. When per-event branding lands (Settings > Branding
+ * already promises an accent), `--e-accent` is the one line that changes.
+ *
+ * Custom properties only. No element selectors: `[data-marketing] nav` is
+ * `position:fixed`, and inheriting that here would pin the event nav over its
+ * own hero.
+ * ------------------------------------------------------------------------- */
+[data-event] {
+  --e-page: #07080E;
+  --e-raised: #101018;
+  --e-text: #F3F4F8;
+  --e-muted: #9A9FB1;
+  --e-faint: #7C8093;
+  --e-accent: #FF6B6B;
+  --e-on-accent: #331313;
+  --e-edge: rgba(255, 255, 255, 0.1);
+  --e-edge-strong: rgba(255, 255, 255, 0.18);
+  /* One per track, indexed by the snapshot's `hue_index`, so a track is the
+     same colour on the home page, the session list and the agenda. */
+  --e-track-0: #7D8CFF;
+  --e-track-1: #3BBFAD;
+  --e-track-2: #E86A8B;
+  --e-track-3: #63BC85;
+  --e-track-4: #6FA8E8;
+  --e-track-5: #C4703A;
+}

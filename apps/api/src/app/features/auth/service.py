@@ -4,6 +4,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +22,7 @@ from app.core.security import (
     verify_password,
 )
 from app.core.tenancy import tenancy_disabled, tenant_scope
+from app.features.auth import github
 from app.models import (
     AuthSession,
     Event,
@@ -89,6 +91,49 @@ async def _unique_org_slug(session: AsyncSession, name: str) -> str:
     return f"{base}-{uuid.uuid4().hex[:6]}"
 
 
+async def _create_workspace(
+    session: AsyncSession,
+    *,
+    name: str,
+    email: str,
+    password_hash: str,
+    organisation: str,
+    verified: bool,
+    github_user_id: str | None = None,
+    avatar_url: str | None = None,
+) -> User:
+    """An organisation and its first owner. Caller holds `tenancy_disabled()`.
+
+    No event. Signing up used to invent one, named after the organisation and
+    dated ninety days out, so a new owner's first screen described a conference
+    they had never agreed to. Choosing the name and the dates is the first real
+    decision of running an event, and it belongs to onboarding, not to a
+    side effect of creating an account.
+    """
+    # Optional at signup: plenty of organisers run one event and have no
+    # organisation to speak of, and demanding one is a question they cannot
+    # answer yet. It is editable in Settings afterwards.
+    org_name = (organisation or "").strip() or f"{name}'s workspace"
+    org = Organization(name=org_name, slug=await _unique_org_slug(session, org_name))
+    session.add(org)
+    await session.flush()
+
+    user = User(
+        email=email,
+        name=name,
+        password_hash=password_hash,
+        github_user_id=github_user_id,
+        avatar_url=avatar_url,
+        email_verified_at=_now() if verified else None,
+    )
+    session.add(user)
+    await session.flush()
+
+    session.add(OrgMember(org_id=org.id, user_id=user.id, role=Role.OWNER))
+    await session.flush()
+    return user
+
+
 async def register(
     session: AsyncSession,
     *,
@@ -98,40 +143,57 @@ async def register(
     organisation: str,
     user_agent: str | None = None,
     ip: str | None = None,
-) -> IssuedSession:
-    """Create an organisation and its first owner.
+) -> tuple[IssuedSession, bool]:
+    """Create an account, and mail it a link proving the address is real.
 
-    No event. Signing up used to invent one, named after the organisation and
-    dated ninety days out, so a new owner's first screen described a conference
-    they had never agreed to. Choosing the name and the dates is the first real
-    decision of running an event, and it belongs to onboarding, not to a
-    side effect of creating an account.
+    The new account can sign in immediately and is *not* verified. Both halves of
+    that are deliberate. Blocking sign-in until the link is clicked means a
+    signup whose mail is slow, filtered or — on a build where mail writes to disk
+    — unreachable, is a dead end with nothing on screen to do about it. Leaving
+    the account unverified means it still cannot mail anyone or publish anything,
+    which is the only part of a throwaway signup that costs anyone else.
+
+    Returns the session and whether the address is already confirmed, so the
+    caller can tell the new owner which of the two states they are in.
     """
+    settings = get_settings()
+    # A demo build already hands out password-free sessions for the seeded
+    # accounts, so there is nothing for verification to protect here, and an
+    # evaluator with no inbox must not be parked in front of a link they cannot
+    # reach. On any real deployment this is false and the link is the only way.
+    verified = settings.demo_logins_allowed
+
     with tenancy_disabled():
         if await session.scalar(select(User).where(User.email == email)) is not None:
             raise EmailTakenError("An account with that email already exists.")
 
-        # Optional at signup: plenty of organisers run one event and have no
-        # organisation to speak of, and demanding one is a question they cannot
-        # answer yet. It is editable in Settings afterwards.
-        org_name = (organisation or "").strip() or f"{name}'s workspace"
-        org = Organization(name=org_name, slug=await _unique_org_slug(session, org_name))
-        session.add(org)
-        await session.flush()
-
-        user = User(email=email, name=name, password_hash=hash_password(password))
-        session.add(user)
-        await session.flush()
-
-        session.add(OrgMember(org_id=org.id, user_id=user.id, role=Role.OWNER))
-
+        user = await _create_workspace(
+            session,
+            name=name,
+            email=email,
+            password_hash=hash_password(password),
+            organisation=organisation,
+            verified=verified,
+        )
         issued = await _issue_session(session, user, user_agent=user_agent, ip=ip)
         # Flush before the scope closes. The request commits during dependency
         # teardown, by which point tenancy is enforced again and no tenant is
         # bound — anything still pending would be rejected there, after the
         # response has already gone out as a success.
         await session.flush()
-        return issued
+
+    if not verified:
+        await _send_staff_link(
+            session,
+            user=user,
+            subject="Confirm your email address",
+            lead=(
+                f"<p>Welcome to Gather, {name}. Confirm this address to finish "
+                f"setting up your account. The link signs you in as well.</p>"
+            ),
+            ip=ip,
+        )
+    return issued, verified
 
 
 async def authenticate(
@@ -190,6 +252,44 @@ async def revoke(session: AsyncSession, *, refresh_token: str) -> None:
         record.revoked_at = _now()
 
 
+async def _send_staff_link(
+    session: AsyncSession, *, user: User, subject: str, lead: str, ip: str | None = None
+) -> str:
+    """Mail a staff user a single-use link that signs them in.
+
+    Account mail, not conference mail: it belongs to no event, so it goes out
+    through `send_account_mail` and never appears in an organizer's outbox.
+    """
+    settings = get_settings()
+    token = generate_token()
+    with tenancy_disabled():
+        session.add(
+            MagicLink(
+                email=user.email,
+                user_id=user.id,
+                token_hash=hash_token(token),
+                purpose=MagicLinkPurpose.STAFF_LOGIN,
+                expires_at=_now() + timedelta(minutes=settings.magic_link_ttl_minutes),
+                created_ip_hash=hash_ip(ip) if ip else None,
+            )
+        )
+        await session.flush()
+
+    await mail.send_account_mail(
+        to_email=user.email,
+        subject=subject,
+        body=(
+            f"{lead}"
+            f'<p><a href="{settings.web_origin}/auth/verify?token={token}">'
+            f"Sign in to Gather</a></p>"
+            f"<p>The link works once and expires in "
+            f"{settings.magic_link_ttl_minutes} minutes. "
+            f"If you did not ask for it, ignore this email.</p>"
+        ),
+    )
+    return token
+
+
 async def issue_magic_link(
     session: AsyncSession,
     *,
@@ -198,9 +298,27 @@ async def issue_magic_link(
     ip: str | None = None,
 ) -> str:
     """Always succeeds, even for an unknown address — the caller returns 204
-    regardless so the endpoint cannot be used to enumerate speakers."""
+    regardless so the endpoint cannot be used to enumerate anyone.
+
+    Staff first: a console account and a speaker record can share an address, and
+    somebody who has lost their password is asking about the console. Speakers
+    reach this from the portal, where an `event_id` is always in hand, and staff
+    never send one — so the two cases are told apart by what the caller knows,
+    not by asking the person which kind of user they are.
+    """
     settings = get_settings()
     token = generate_token()
+
+    with tenancy_disabled():
+        user = await session.scalar(select(User).where(User.email == email))
+    if user is not None and user.is_active:
+        return await _send_staff_link(
+            session,
+            user=user,
+            subject="Your sign-in link for Gather",
+            lead="<p>Here is the link you asked for.</p>",
+            ip=ip,
+        )
 
     # An unknown event must not reach the insert: the foreign key would raise and
     # turn a 204 into a 500, which tells the caller the event id was wrong. Return
@@ -254,13 +372,34 @@ async def issue_magic_link(
     return token
 
 
-async def consume_magic_link(session: AsyncSession, *, token: str) -> str:
+@dataclass(frozen=True, slots=True)
+class ConsumedLink:
+    """What a spent link produced. `refresh_token` is set for staff only —
+    a speaker session is a single long-lived token with nothing to rotate."""
+
+    kind: Literal["staff", "speaker"]
+    access_token: str
+    expires_in: int
+    refresh_token: str | None = None
+
+
+async def consume_magic_link(
+    session: AsyncSession, *, token: str, user_agent: str | None = None, ip: str | None = None
+) -> ConsumedLink:
     """Single use: the row is marked consumed in the same transaction as the issue."""
     settings = get_settings()
     now = _now()
-    link = await session.scalar(select(MagicLink).where(MagicLink.token_hash == hash_token(token)))
+    with tenancy_disabled():
+        link = await session.scalar(
+            select(MagicLink).where(MagicLink.token_hash == hash_token(token))
+        )
     if link is None or not link.is_usable(now):
         raise MagicLinkExpiredError("This link has expired or was already used.")
+
+    if link.purpose is MagicLinkPurpose.STAFF_LOGIN:
+        link.consumed_at = now
+        return await _consume_staff_link(session, link, now=now, user_agent=user_agent, ip=ip)
+
     if link.event_id is None:
         raise MagicLinkExpiredError("This link is not scoped to an event.")
 
@@ -270,12 +409,102 @@ async def consume_magic_link(session: AsyncSession, *, token: str) -> str:
         raise MagicLinkExpiredError("This link has expired or was already used.")
 
     link.consumed_at = now
-    return create_access_token(
-        link.speaker_id,
+    return ConsumedLink(
         kind="speaker",
-        expires_in=timedelta(days=settings.speaker_session_ttl_days),
-        claims={"event_id": str(link.event_id), "email": link.email},
+        access_token=create_access_token(
+            link.speaker_id,
+            kind="speaker",
+            expires_in=timedelta(days=settings.speaker_session_ttl_days),
+            claims={"event_id": str(link.event_id), "email": link.email},
+        ),
+        expires_in=settings.speaker_session_ttl_days * 24 * 60 * 60,
     )
+
+
+async def _consume_staff_link(
+    session: AsyncSession,
+    link: MagicLink,
+    *,
+    now: datetime,
+    user_agent: str | None,
+    ip: str | None,
+) -> ConsumedLink:
+    """Sign in, and confirm the address on the way through.
+
+    Clicking a link in an inbox proves exactly one thing, and it is the same
+    thing a separate "verify your email" step would prove. Doing both from one
+    link is why this build has no confirmation screen that only says "thanks".
+    """
+    if link.user_id is None:  # pragma: no cover - only reachable via hand-written rows
+        raise MagicLinkExpiredError("This link has expired or was already used.")
+
+    with tenancy_disabled():
+        user = await session.get(User, link.user_id)
+    if user is None or not user.is_active:
+        raise MagicLinkExpiredError("This account is no longer active.")
+
+    if user.email_verified_at is None:
+        user.email_verified_at = now
+    user.last_login_at = now
+    issued = await _issue_session(session, user, user_agent=user_agent, ip=ip)
+    return ConsumedLink(
+        kind="staff",
+        access_token=issued.access_token,
+        expires_in=issued.expires_in,
+        refresh_token=issued.refresh_token,
+    )
+
+
+async def sign_in_with_github(
+    session: AsyncSession,
+    identity: github.GitHubIdentity,
+    *,
+    user_agent: str | None = None,
+    ip: str | None = None,
+) -> IssuedSession:
+    """Find or create the account behind a GitHub identity.
+
+    Matched on the provider id first and the address second. The id is the stable
+    one — a GitHub login can be renamed and its primary email changed — but an
+    existing password account signing in with GitHub for the first time has no id
+    on file yet, and must land on the account they already have rather than a
+    duplicate workspace beside it.
+    """
+    with tenancy_disabled():
+        user = await session.scalar(select(User).where(User.github_user_id == identity.provider_id))
+        if user is None:
+            user = await session.scalar(select(User).where(User.email == identity.email))
+
+        if user is None:
+            user = await _create_workspace(
+                session,
+                name=identity.name,
+                email=identity.email,
+                # No password is ever set on a GitHub account, and the column is
+                # NOT NULL, so it holds the hash of a value nobody has seen. That
+                # is what makes password sign-in fail closed here: `authenticate`
+                # runs the same comparison it always does and it cannot match.
+                password_hash=hash_password(generate_token()),
+                organisation="",
+                verified=True,
+                github_user_id=identity.provider_id,
+                avatar_url=identity.avatar_url,
+            )
+        else:
+            if not user.is_active:
+                raise AuthenticationError("This account is no longer active.")
+            # GitHub only hands back verified addresses, so arriving here is
+            # itself the proof an emailed link would have been asking for.
+            user.github_user_id = identity.provider_id
+            if user.email_verified_at is None:
+                user.email_verified_at = _now()
+            if user.avatar_url is None:
+                user.avatar_url = identity.avatar_url
+
+        user.last_login_at = _now()
+        issued = await _issue_session(session, user, user_agent=user_agent, ip=ip)
+        await session.flush()
+        return issued
 
 
 #: The seeded demo identities, by the role an evaluator would ask for. Kept here

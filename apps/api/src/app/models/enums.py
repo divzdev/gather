@@ -15,6 +15,11 @@ class Role(StrEnum):
 class MagicLinkPurpose(StrEnum):
     PORTAL = "portal"
     STATUS = "status"
+    #: Staff sign-in, and the only proof this install has that a staff address is
+    #: real. Consuming one both signs the user in and marks the email verified,
+    #: because clicking a link in an inbox demonstrates exactly one thing and
+    #: there is no reason to demand it twice.
+    STAFF_LOGIN = "staff_login"
 
 
 class EventStatus(StrEnum):

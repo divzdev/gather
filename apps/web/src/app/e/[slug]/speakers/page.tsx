@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import { API_BASE_URL } from "@/lib/api";
 
-import { NotPublished, PublicShell, getPublic, getPublicOptional, type EventInfo } from "../public";
+import { PublicShell, getPublic, getPublicOptional, type EventInfo } from "../public";
+import { NotPublished } from "../chrome";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,7 @@ export default async function Speakers({ params }: { params: Promise<{ slug: str
         slug={slug}
         active="Speakers"
       >
-        <NotPublished what="speaker list" />
+        <NotPublished what="speaker list" slug={slug} />
       </PublicShell>
     );
   }

@@ -1,11 +1,11 @@
 import {
-  NotPublished,
-  PublicShell,
+    PublicShell,
   calendarDate,
   getPublic,
   getPublicOptional,
   type EventInfo,
 } from "../public";
+import { NotPublished } from "../chrome";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +67,7 @@ export default async function Agenda({ params }: { params: Promise<{ slug: strin
         slug={slug}
         active="Agenda"
       >
-        <NotPublished what="agenda" />
+        <NotPublished what="agenda" slug={slug} />
       </PublicShell>
     );
   }

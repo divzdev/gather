@@ -1,6 +1,9 @@
 import Link from "next/link";
 
-import { NotPublished, PublicShell, getPublic, getPublicOptional, type EventInfo } from "../public";
+import { PublicShell, getPublic, getPublicOptional, type EventInfo } from "../public";
+import { Card, Chip, Dot, INK, MONO, SANS, display, trackHue } from "../chrome";
+import { NotPublished } from "../chrome";
+import { calendarDate, eventTime } from "../public";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +21,11 @@ type Session = {
   expertise_level?: string | null;
   language?: string | null;
 };
-type Payload = { event: EventInfo; sessions: Session[]; tracks: { id: string; name: string }[] };
+type Payload = {
+  event: EventInfo;
+  sessions: Session[];
+  tracks: { id: string; name: string; hue_index: number }[];
+};
 
 /** Narrowing lives in the query string, so this page stays a Server Component,
  *  works with JavaScript off, and a filtered view is a link someone can send.
@@ -176,7 +183,7 @@ export default async function SessionsList({
         slug={slug}
         active="Sessions"
       >
-        <NotPublished what="schedule" />
+        <NotPublished what="schedule" slug={slug} />
       </PublicShell>
     );
   }
@@ -216,25 +223,29 @@ export default async function SessionsList({
             style={{
               flex: 1,
               minWidth: 0,
-              height: 36,
-              padding: "0 12px",
+              height: 44,
+              padding: "0 18px",
               borderRadius: 999,
-              border: "1px solid var(--ln)",
-              background: "var(--cd)",
-              color: "var(--ik)",
-              font: "400 13.5px var(--font-plex-sans)",
+              border: `1px solid ${INK.edge}`,
+              background: INK.raised,
+              color: INK.text,
+              fontFamily: SANS,
+              fontSize: 14.5,
+              outline: "none",
             }}
           />
           <button
             type="submit"
             style={{
-              height: 36,
-              padding: "0 16px",
+              height: 44,
+              padding: "0 24px",
               borderRadius: 999,
               border: "none",
-              background: "var(--sg)",
-              color: "#FFFFFF",
-              font: "600 12.5px var(--font-plex-sans)",
+              background: INK.text,
+              color: "#0A0B12",
+              fontFamily: SANS,
+              fontSize: 14,
+              fontWeight: 700,
             }}
           >
             Search
@@ -282,64 +293,160 @@ export default async function SessionsList({
           .
         </p>
       ) : (
-        <div style={{ display: "grid", gap: 12 }}>
-          {shown.map((session) => (
-            <article
-              key={session.id}
-              style={{
-                background: "var(--cd)",
-                border: "1px solid var(--ln)",
-                borderRadius: 14,
-                borderLeft: "3px solid var(--sg)",
-                padding: 20,
-              }}
-            >
-              <h2
-                style={{
-                  font: "600 17px var(--font-plex-sans)",
-                  color: "var(--ik)",
-                  margin: "0 0 6px",
-                }}
-              >
-                <Link
-                  href={`/e/${slug}/schedule/${session.slug}` as never}
-                  style={{ color: "inherit", textDecoration: "none" }}
-                >
-                  {session.title}
-                </Link>
-              </h2>
-              <p
-                className="tabular"
-                style={{
-                  font: "400 12.5px var(--font-plex-mono)",
-                  color: "var(--i3)",
-                  margin: "0 0 8px",
-                }}
-              >
-                {session.track ?? "Unassigned"} · {session.duration_minutes} min
-                {session.room !== null ? ` · ${session.room}` : ""}
-              </p>
-              {session.abstract !== null && (
-                <p
-                  style={{
-                    font: "400 14px var(--font-plex-sans)",
-                    color: "var(--i2)",
-                    margin: "0 0 8px",
-                    lineHeight: 1.55,
-                  }}
-                >
-                  {session.abstract.length > 240
-                    ? `${session.abstract.slice(0, 240)}…`
-                    : session.abstract}
-                </p>
-              )}
-              <p style={{ font: "500 13px var(--font-plex-sans)", color: "var(--i2)", margin: 0 }}>
-                {session.speakers.map((s) => s.name).join(", ")}
-              </p>
-            </article>
-          ))}
-        </div>
+        <Grouped sessions={shown} tracks={data.tracks} slug={slug} timezone={data.event.timezone} />
       )}
     </PublicShell>
+  );
+}
+
+
+/** Sixty-one talks as one flat list is a wall. Grouped by the day they run, in
+ *  the order they run, so scanning it answers "what is on Wednesday morning"
+ *  rather than "what exists". */
+function Grouped({
+  sessions,
+  tracks,
+  slug,
+  timezone,
+}: {
+  sessions: Session[];
+  tracks: { id: string; name: string; hue_index: number }[];
+  slug: string;
+  timezone: string;
+}) {
+  const hueOf = (track: string | null): string => {
+    const found = tracks.find((candidate) => candidate.name === track);
+    return found === undefined ? INK.muted : trackHue(found.hue_index);
+  };
+
+  const byDay = new Map<string, Session[]>();
+  for (const session of sessions) {
+    const key = dayOf(session) ?? "unscheduled";
+    byDay.set(key, [...(byDay.get(key) ?? []), session]);
+  }
+  const ordered = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b));
+  for (const [, group] of ordered) {
+    group.sort((a, b) => (a.starts_at ?? "").localeCompare(b.starts_at ?? ""));
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 40 }}>
+      {ordered.map(([date, group]) => (
+        <section key={date}>
+          <h2
+            style={{
+              ...display("1.4rem", 700),
+              color: INK.text,
+              paddingBottom: 12,
+              marginBottom: 18,
+              borderBottom: `1px solid ${INK.edge}`,
+              display: "flex",
+              alignItems: "baseline",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            {date === "unscheduled"
+              ? "Not scheduled yet"
+              : calendarDate(date, { weekday: "long", day: "numeric", month: "long" })}
+            <span
+              style={{
+                fontFamily: MONO,
+                fontSize: 12,
+                fontWeight: 400,
+                letterSpacing: ".1em",
+                color: INK.faint,
+              }}
+            >
+              {group.length} {group.length === 1 ? "SESSION" : "SESSIONS"}
+            </span>
+          </h2>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {group.map((session) => {
+              const hue = hueOf(session.track);
+              return (
+                <Card key={session.id} hue={hue} padding={20}>
+                  <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                    <div style={{ minWidth: 78 }}>
+                      <div
+                        style={{
+                          fontFamily: MONO,
+                          fontSize: 17,
+                          color: INK.text,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {session.starts_at === null
+                          ? "—"
+                          : eventTime(session.starts_at, timezone)}
+                      </div>
+                      <div style={{ fontFamily: MONO, fontSize: 11.5, color: INK.faint, marginTop: 4 }}>
+                        {session.duration_minutes} MIN
+                      </div>
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 220 }}>
+                      <h3 style={{ ...display("1.15rem", 700), color: INK.text, margin: 0 }}>
+                        <Link
+                          href={`/e/${slug}/schedule/${session.slug}` as never}
+                          style={{ color: "inherit", textDecoration: "none" }}
+                        >
+                          {session.title}
+                        </Link>
+                      </h3>
+                      {session.speakers.length === 0 ? null : (
+                        <p
+                          style={{
+                            fontFamily: SANS,
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: INK.muted,
+                            margin: "8px 0 0",
+                          }}
+                        >
+                          {session.speakers.map((speaker) => speaker.name).join(", ")}
+                        </p>
+                      )}
+                      {session.abstract === null ? null : (
+                        <p
+                          style={{
+                            fontFamily: SANS,
+                            fontSize: 14.5,
+                            color: INK.muted,
+                            fontWeight: 500,
+                            lineHeight: 1.55,
+                            margin: "10px 0 0",
+                          }}
+                        >
+                          {session.abstract.length > 190
+                            ? `${session.abstract.slice(0, 190)}…`
+                            : session.abstract}
+                        </p>
+                      )}
+                      <div
+                        style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}
+                      >
+                        {session.track === null ? null : (
+                          <Chip hue={hue}>
+                            <Dot hue={hue} />
+                            {session.track}
+                          </Chip>
+                        )}
+                        {session.room === null ? null : <Chip>{session.room}</Chip>}
+                        {session.expertise_level === null ||
+                        session.expertise_level === undefined ? null : (
+                          <Chip>{session.expertise_level}</Chip>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }

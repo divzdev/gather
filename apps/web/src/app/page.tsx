@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { FAQS } from "./faqs";
 import { LandingClient } from "./landing-client";
 
 /** Taken from the prototype's <helmet>, which dc2tsx drops — fonts and shell
@@ -28,30 +27,19 @@ const SOFTWARE = {
   description: metadata.description,
 };
 
-/** Built from the same array the page renders, so a reworded answer cannot
- *  leave the rich result quoting the old one. */
-const FAQ_PAGE = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQS.map((entry) => ({
-    "@type": "Question",
-    name: entry.q,
-    acceptedAnswer: { "@type": "Answer", text: entry.a },
-  })),
-};
+/* The FAQPage structured data that used to sit here is gone with the FAQ. The
+ * redesigned page asks no questions, and a rich result promising answers a
+ * visitor then cannot find is exactly the markup search engines penalise — the
+ * schema has to describe this page, not the one it replaced. */
 
 export default function Page() {
   return (
     <>
       <script
         type="application/ld+json"
-        // Both objects are built above from literals in this repo, never from
-        // user input, so there is nothing here to escape.
+        // Built above from literals in this repo, never from user input, so
+        // there is nothing here to escape.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_PAGE) }}
       />
       <LandingClient />
     </>

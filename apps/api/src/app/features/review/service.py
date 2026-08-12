@@ -322,8 +322,15 @@ async def auto_distribute(
         .all()
     }
 
-    created = skipped = 0
+    created = skipped = already = 0
     for submission in submissions:
+        # Already carrying its full panel. Counted apart from `skipped` because
+        # the two are opposite facts and the screen reports them as one
+        # sentence: "nothing to do" must not read as "could not be covered".
+        if sum(1 for r in reviewer_ids if (submission.id, r) in existing) >= per_submission:
+            already += 1
+            continue
+
         candidates = sorted(
             (r for r in reviewer_ids if (submission.id, r) not in existing),
             key=lambda r: load[r],
@@ -350,7 +357,7 @@ async def auto_distribute(
     await session.flush()
     # `skipped` is reported rather than swallowed: silently under-assigning looks
     # identical to success until someone counts the reviews.
-    return {"created": created, "under_assigned": skipped}
+    return {"created": created, "under_assigned": skipped, "already_covered": already}
 
 
 async def advance(session: AsyncSession, *, round_id: uuid.UUID) -> dict[str, int]:

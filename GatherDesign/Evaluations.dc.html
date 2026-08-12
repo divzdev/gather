@@ -48,12 +48,12 @@
       </div>
     </div>
     <div style="height:32px;flex:none;display:flex;align-items:center;gap:16px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
-      <span style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--ik,#16232B)">COVERAGE {{ coverage }}</span><span style="color:var(--i4,#99A6AD)">·</span>
-      <span style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)">EVALS {{ evalsFrac }}</span><span style="color:var(--i4,#99A6AD)">·</span>
-      <span style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)">MEDIAN {{ medianScore }}</span><span style="color:var(--i4,#99A6AD)">·</span>
-      <span style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--pd,#B96A1F)">{{ notStartedLine }}</span>
+      <span style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--ik,#16232B)">COVERAGE 62%</span><span style="color:var(--i4,#99A6AD)">·</span>
+      <span style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)">EVALS 132/213</span><span style="color:var(--i4,#99A6AD)">·</span>
+      <span style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84)">MEDIAN 3.8</span><span style="color:var(--i4,#99A6AD)">·</span>
+      <span style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--pd,#B96A1F)">2 REVIEWERS NOT STARTED</span>
       <div style="flex:1"></div>
-      <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">{{ closesLine }}</span>
+      <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">round 1 closes 22 Sep</span>
     </div>
     <div style="flex:1;overflow-y:auto;padding:20px 28px 80px">
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
@@ -86,43 +86,43 @@
         </button>
       </div>
 
-      <sc-if value="{{ onPlans }}">
+      <sc-if value="{{ onPlans }}" hint-placeholder-val="{{ true }}">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px">
-          <sc-for list="{{ rounds }}" as="r" hint-placeholder-count="2">
-            <div style="border:1px solid var(--ln,#E1E7E9);border-radius:12px;background:linear-gradient(120deg,var(--sw,#FFEAE6) 0%,var(--cd,#FFFFFF) 55%);box-shadow:0 1px 2px rgba(13,16,32,.03);padding:18px 20px">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                <span style="font:600 15px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ r.name }}</span>
-                <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:4px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ r.stFg }};background:{{ r.stBg }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ r.stFg }}"></span>{{ r.stLabel }}</span>
-                <span style="align-items:center;padding:2px 8px;border-radius:4px;font:500 10.5px 'IBM Plex Mono',monospace;color:var(--if,#47599F);background:var(--ifw,#E9ECF7);display:{{ r.blindD }}">BLIND</span>
-              </div>
-              <div style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin-bottom:14px">{{ r.meta }}</div>
-              <div style="display:flex;gap:20px;margin-bottom:12px">
-                <span><span style="display:block;font:600 20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ r.subs }}</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">submissions</span></span>
-                <span><span style="display:block;font:600 20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ r.evals }}</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">evaluators</span></span>
-                <span><span style="display:block;font:600 20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ r.done }}<span style="font:400 13px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">/{{ r.total }}</span></span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">evals done</span></span>
-                <span><span style="display:block;font:600 20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ r.crits }}</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">criteria</span></span>
-              </div>
-              <div style="height:5px;border-radius:3px;background:var(--ln,#E1E7E9);margin-bottom:14px"><div style="width:{{ r.progW }};height:5px;border-radius:3px;background:var(--bt,#FF6B6B)"></div></div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button onClick="{{ r.onAssign }}" style="display:inline-flex;align-items:center;height:32px;padding:0 15px;border-radius:999px;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12.5px 'IBM Plex Sans',sans-serif;text-decoration:none;border:none">Assign reviewers</button>
-                <button onClick="{{ r.onNudge }}" style="height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Nudge</button>
-                <button onClick="{{ r.onBlind }}" style="height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">{{ r.blindLabel }}</button>
-                <button onClick="{{ r.onAdvance }}" style="height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Advance</button>
-              </div>
+          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:12px;background:linear-gradient(120deg,var(--sw,#FFEAE6) 0%,var(--cd,#FFFFFF) 55%);box-shadow:0 1px 2px rgba(13,16,32,.03);padding:18px 20px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font:600 15px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Round 1 · Technical merit</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:4px;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--ok,#0E7A5F);background:var(--okw,#E2F1EC)"><span style="width:5px;height:5px;border-radius:50%;background:var(--ok,#0E7A5F)"></span>Open</span>
+              <span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font:500 10.5px 'IBM Plex Mono',monospace;color:var(--if,#47599F);background:var(--ifw,#E9ECF7)">BLIND</span>
             </div>
-          </sc-for>
-          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:18px 20px">
-            <div style="font:600 15px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:4px">New review round</div>
-            <div style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin-bottom:14px">Each round has its own name, its own rubric, and its own reviewers.</div>
-            <input aria-label="Round 2 · Program fit" value="{{ newName }}" onChange="{{ onNewName }}" placeholder="Round 2 · Program fit" style="width:100%;box-sizing:border-box;height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E;margin-bottom:10px" />
+            <div style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin-bottom:14px">due 22 Sep · rubric: relevance, originality, readiness · 1 to 5</div>
+            <div style="display:flex;gap:20px;margin-bottom:12px">
+              <span><span style="display:block;font:600 20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">44</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">submissions</span></span>
+              <span><span style="display:block;font:600 20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">9</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">evaluators</span></span>
+              <span><span style="display:block;font:600 20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">132<span style="font:400 13px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">/213</span></span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">evals done</span></span>
+              <span><span style="display:block;font:600 20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">3.8</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">median score</span></span>
+            </div>
+            <div style="height:5px;border-radius:3px;background:var(--ln,#E1E7E9);margin-bottom:14px"><div style="width:62%;height:5px;border-radius:3px;background:var(--bt,#FF6B6B)"></div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button onClick="{{ createRound }}" style="display:inline-flex;align-items:center;height:32px;padding:0 15px;border-radius:999px;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12.5px 'IBM Plex Sans',sans-serif;text-decoration:none;border:none">Create round</button>
-              <button onClick="{{ togNewBlind }}" style="height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">{{ newBlindLabel }}</button>
+              <a href="Review.dc.html" style="display:inline-flex;align-items:center;height:32px;padding:0 15px;border-radius:999px;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12.5px 'IBM Plex Sans',sans-serif;text-decoration:none">Open my queue · 6 left</a>
+              <button onClick="{{ nudgeSlow }}" style="height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Nudge the 2 who have not started</button>
+            </div>
+          </div>
+          <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:18px 20px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font:600 15px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">Round 2 · Program fit</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 7px;border-radius:4px;font:500 11px 'IBM Plex Sans',sans-serif;color:var(--if,#47599F);background:var(--ifw,#E9ECF7)"><span style="width:5px;height:5px;border-radius:50%;background:var(--if,#47599F)"></span>Scheduled</span>
+            </div>
+            <div style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i3,#6B7B84);margin-bottom:14px">starts 23 Sep · advances everything scoring 3.5 or higher in round 1</div>
+            <div style="font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:14px">Program chairs only, names visible, scores side by side with round 1. Threshold is editable until it starts, and you can advance or hold any submission by hand.</div>
+            <div style="display:flex;gap:8px">
+              <button onClick="{{ editR2 }}" style="height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Edit rules</button>
+              <button onClick="{{ previewR2 }}" style="height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--ls,#C8D2D5);background:none;font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Preview the 21 that would advance</button>
             </div>
           </div>
         </div>
-        <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);margin-top:14px">{{ plansNote }}</div>
+        <div style="font:400 12px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD);margin-top:14px">AI similarity flags 2 near-duplicate pairs in round 1. They are marked in the review queue, never scored automatically.</div>
       </sc-if>
+
       <sc-if value="{{ onEval }}" hint-placeholder-val="{{ false }}">
         <div style="border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);overflow:hidden">
           <div style="display:grid;grid-template-columns:minmax(160px,1.2fr) 90px 170px 130px 120px 90px;gap:8px;align-items:center;padding:0 14px;height:34px;border-bottom:1px solid var(--ln,#E1E7E9)">
@@ -144,7 +144,7 @@
             </div>
           </sc-for>
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px">
-            <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">{{ evaluatorCount }} evaluators · assignments auto-balance as submissions arrive</span>
+            <span style="font:400 11px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD)">9 evaluators · assignments auto-balance as submissions arrive</span>
             <span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">harsh and generous reviewers surface here, never punished automatically</span>
           </div>
         </div>

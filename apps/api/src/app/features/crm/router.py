@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import func, select
 
 from app.core import mail
-from app.core.deps import DbSession, bind_org_tenant, require_org_role
+from app.core.deps import DbSession, bind_org_tenant, get_verified_user, require_org_role
 from app.core.errors import ApiError, NotFoundError
 from app.core.tenancy import current_tenant, tenant_scope
 from app.models import (
@@ -376,7 +376,11 @@ async def push_to_event(
     return PushResult(added=1, already_there=0)
 
 
-@router.post("/email", response_model=SendResult)
+@router.post(
+    "/email",
+    response_model=SendResult,
+    dependencies=[Depends(get_verified_user)],
+)
 async def bulk_email(
     body: BulkEmail, session: DbSession, _: Role = Depends(require_org_role(*SEND))
 ) -> SendResult:

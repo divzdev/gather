@@ -17,6 +17,7 @@ import random
 import re
 from datetime import UTC, datetime, time, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -482,9 +483,16 @@ async def _place(session: AsyncSession, event: Event, talks: list[Session]) -> N
     while pool and len(placed) < TARGET_PLACED:
         day = days[(slot // 8) % len(days)]
         offset = slot % 8
-        start = datetime.combine(day.day_date, time(9, 0), tzinfo=UTC) + timedelta(
-            minutes=60 * offset
-        )
+        # 09:00 is the hour the conference opens, which is a wall-clock time in
+        # the room — so it is built in the event's zone and converted, not
+        # stamped UTC. Stamped UTC it meant 02:00 in San Francisco: every
+        # renderer was correct and every screen said the keynote was at two in
+        # the morning, because storage is UTC and the client formats using
+        # `event_timezone`. A timezone bug in seed data reads as a rendering bug
+        # on six different screens.
+        start = datetime.combine(
+            day.day_date, time(9, 0), tzinfo=ZoneInfo(event.timezone)
+        ).astimezone(UTC) + timedelta(minutes=60 * offset)
 
         used_tracks: set[Any] = set()
         for room in rooms:
@@ -740,6 +748,12 @@ QUEUE_LEFT = 24
 #: first, so the account the demo signs in as was the one with nothing left.
 DEMO_REVIEWER = "sbek-reviewer@example.com"
 
+#: Every Nth proposal is withheld from one reviewer, offset per reviewer, so the
+#: assignment sets overlap without being equal. 7 leaves roughly six in seven
+#: proposals with two independent scores — enough that a mean stays a mean —
+#: while still carving each queue down to a visibly proper subset.
+ASSIGNMENT_STRIDE = 7
+
 
 async def _reviews(session: AsyncSession, event: Event, rng: random.Random) -> int:
     """Assign the round, then actually score most of it.
@@ -818,7 +832,21 @@ async def _reviews(session: AsyncSession, event: Event, rng: random.Random) -> i
 
     scored = 0
     for index, submission in enumerate(submissions):
-        for reviewer in reviewers:
+        for slot, reviewer in enumerate(reviewers):
+            # Each reviewer sits out a different slice, so no two queues are the
+            # same and neither equals the full pile.
+            #
+            # Assigning everyone everything is the obvious seed and the wrong
+            # one: it makes assignment look like a no-op. A reviewer opening a
+            # queue of 214 out of 214 submissions cannot tell whether the queue
+            # is scoped to them or simply unfiltered, and neither can anyone
+            # evaluating the app. Real programmes divide the pile; that division
+            # is the entire point of assigning reviewers, so the demo data has to
+            # show it. Most proposals still draw both reviewers, which keeps
+            # `score_avg` a mean of two opinions rather than one number wearing
+            # an average's clothes.
+            if index % ASSIGNMENT_STRIDE == slot:
+                continue
             if (submission.id, reviewer.id) in already:
                 continue
             assignment = assigned.get((submission.id, reviewer.id))

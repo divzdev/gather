@@ -24,16 +24,23 @@ from urllib.parse import quote
 #: catalogue and as a room-by-room grid; `speakers` and `gallery` are the same
 #: people as a list and as cards with faces. Collapsing each pair into one widget
 #: is what made "does the embed cover every surface" unanswerable.
-WIDGETS = ("schedule", "agenda", "speakers", "gallery", "upcoming")
+#:
+#: `itinerary` is the catalogue again, in time order under day tabs, with the
+#: one thing no other widget has: an attendee can star sessions and keep them.
+WIDGETS = ("schedule", "agenda", "itinerary", "speakers", "gallery", "upcoming")
 
 #: Which published payload each widget reads. Both are anonymous.
 SOURCE = {
     "schedule": "schedule",
     "agenda": "schedule",
+    "itinerary": "schedule",
     "upcoming": "schedule",
     "speakers": "speakers",
     "gallery": "speakers",
 }
+
+#: Widgets that read the schedule and therefore offer search and a track filter.
+SESSION_WIDGETS = ("schedule", "agenda", "itinerary")
 
 # Deliberately literal rather than the console's CSS variables: this runs inside
 # a page whose styles are none of our business, so nothing is inherited and
@@ -57,13 +64,21 @@ PALETTES: dict[str, dict[str, str]] = {
     },
 }
 
-_SCRIPT = """(function(){
+_SCRIPT = r"""(function(){
   var DATA = __DATA__;
   var C = DATA.palette;
   var current = document.currentScript;
   var host = document.getElementById(DATA.mount) ||
     (current && current.previousElementSibling) || null;
   if (!host) { return; }
+
+  var KEY = 'gather.itinerary.' + DATA.slug;
+  var state = { q: '', track: '', day: null, open: {}, person: null, mine: [], mineOnly: false };
+  try { state.mine = JSON.parse(window.localStorage.getItem(KEY) || '[]'); } catch (e) { }
+
+  function remember() {
+    try { window.localStorage.setItem(KEY, JSON.stringify(state.mine)); } catch (e) { }
+  }
 
   function el(tag, style, text) {
     var node = document.createElement(tag);
@@ -75,173 +90,449 @@ _SCRIPT = """(function(){
 
   var base = 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;';
   var root = el('div', base + 'background:' + C.page + ';color:' + C.ink + ';padding:4px 0');
+  var body = el('div', '');
+  var payload = null;
 
-  function heading(text) {
-    root.appendChild(el('div', 'padding:14px 14px 6px;font:600 11px/1 inherit;' +
-      'letter-spacing:.08em;text-transform:uppercase;color:' + C.muted, text));
+  function chip(text, accent) {
+    return el('span', 'display:inline-block;margin:0 6px 4px 0;padding:2px 8px;' +
+      'border-radius:99px;font:600 10.5px/1.5 inherit;letter-spacing:.04em;' +
+      'text-transform:uppercase;border:1px solid ' + (accent ? C.accent : C.line) +
+      ';color:' + (accent ? C.accent : C.muted), text);
   }
 
-  function empty(text) {
-    root.appendChild(el('div', 'padding:16px;color:' + C.muted, text));
+  function empty(text) { body.appendChild(el('div', 'padding:16px;color:' + C.muted, text)); }
+
+  function surname(name) {
+    var parts = String(name || '').trim().split(/\s+/);
+    return (parts[parts.length - 1] || '').toLowerCase();
   }
 
-  function render(rows) {
-    if (!rows.length) {
-      root.appendChild(el('div', 'padding:16px;color:' + C.muted, 'Nothing published yet.'));
-      return;
-    }
-    rows.forEach(function (row) {
-      var card = el('div', 'display:flex;gap:12px;align-items:baseline;padding:12px 14px;' +
-        'border-bottom:1px solid ' + C.line + ';background:' + C.card);
-      card.appendChild(el('div', 'flex:none;width:104px;font:500 12px monospace;color:' +
-        C.muted, row.meta));
-      var body = el('div', 'flex:1;min-width:0');
-      body.appendChild(el('div', 'font:600 14px/1.35 inherit;color:' + C.ink, row.title));
-      if (row.sub) {
-        body.appendChild(el('div', 'font:400 12.5px/1.4 inherit;color:' + C.muted, row.sub));
-      }
-      card.appendChild(body);
-      root.appendChild(card);
+  function when(value) {
+    if (!value) { return 'TBC'; }
+    return new Date(value).toLocaleString(undefined, {
+      weekday: 'short', hour: '2-digit', minute: '2-digit'
     });
   }
 
-  // Cards with faces. A headshot is served by the public photo route, so the
-  // host page needs no credentials and we ship no image data in the script.
-  function renderCards(people) {
-    if (!people.length) { empty('No speakers published yet.'); return; }
-    var grid = el('div', 'display:flex;flex-wrap:wrap;gap:12px;padding:12px 14px');
-    people.forEach(function (person) {
-      var card = el('div', 'flex:1 1 150px;min-width:0;max-width:220px;text-align:center;' +
-        'padding:14px 10px;border-radius:10px;border:1px solid ' + C.line +
-        ';background:' + C.card);
+  // "Wednesday, 12 May: 10:00 - 10:30" — the full range, which is what a
+  // detail view is asked for and what an attendee actually plans against.
+  function fullWhen(row) {
+    if (!row.starts_at) { return 'Time to be confirmed'; }
+    var from = new Date(row.starts_at);
+    var to = new Date(from.getTime() + (row.duration_minutes || 0) * 60000);
+    var day = from.toLocaleDateString(undefined, {
+      weekday: 'long', day: 'numeric', month: 'long'
+    });
+    var clock = { hour: '2-digit', minute: '2-digit' };
+    return day + ': ' + from.toLocaleTimeString(undefined, clock) + ' - ' +
+      to.toLocaleTimeString(undefined, clock);
+  }
+
+  function people(row) {
+    return (row.speakers || []).map(function (person) {
+      return [person.name, person.job_title, person.company].filter(Boolean).join(', ');
+    }).join(' · ');
+  }
+
+  function matches(row) {
+    var q = state.q.toLowerCase();
+    if (!q) { return true; }
+    // Titles AND speaker names, which is the documented search scope.
+    var hay = String(row.title || '').toLowerCase() + ' ' +
+      (row.speakers || []).map(function (p) { return p.name; }).join(' ').toLowerCase();
+    return hay.indexOf(q) >= 0;
+  }
+
+  function sessions() {
+    var rows = (payload.sessions || []).slice();
+    if (DATA.track) {
+      rows = rows.filter(function (r) { return r.track === DATA.track; });
+    }
+    if (state.track) { rows = rows.filter(function (r) { return r.track === state.track; }); }
+    rows = rows.filter(matches);
+    if (state.mineOnly) {
+      rows = rows.filter(function (r) { return state.mine.indexOf(r.id) >= 0; });
+    }
+    return rows;
+  }
+
+  function controls(kinds) {
+    var bar = el('div', 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px');
+    var search = el('input', 'flex:1 1 180px;min-width:0;padding:7px 10px;border-radius:8px;' +
+      'border:1px solid ' + C.line + ';background:' + C.card + ';color:' + C.ink +
+      ';font:400 13px inherit');
+    search.setAttribute('type', 'search');
+    search.setAttribute('placeholder', kinds === 'people'
+      ? 'Search speaker by name' : 'Search by speaker details or session title');
+    search.setAttribute('aria-label', 'Search');
+    search.value = state.q;
+    search.addEventListener('input', function (event) {
+      state.q = event.target.value; paint();
+      var again = body.querySelector('input[type=search]');
+      if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+    });
+    bar.appendChild(search);
+
+    if (kinds === 'sessions') {
+      var names = [];
+      (payload.sessions || []).forEach(function (r) {
+        if (r.track && names.indexOf(r.track) < 0) { names.push(r.track); }
+      });
+      if (names.length) {
+        var pick = el('select', 'padding:7px 10px;border-radius:8px;border:1px solid ' + C.line +
+          ';background:' + C.card + ';color:' + C.ink + ';font:400 13px inherit');
+        pick.setAttribute('aria-label', 'Filter by track');
+        var all = el('option', '', 'All tracks'); all.value = '';
+        pick.appendChild(all);
+        names.sort().forEach(function (name) {
+          var option = el('option', '', name); option.value = name;
+          if (state.track === name) { option.setAttribute('selected', 'selected'); }
+          pick.appendChild(option);
+        });
+        pick.addEventListener('change', function (event) {
+          state.track = event.target.value; paint();
+        });
+        bar.appendChild(pick);
+      }
+    }
+    body.appendChild(bar);
+  }
+
+  function count(shown, total, noun) {
+    body.appendChild(el('div', 'padding:0 14px 8px;font:500 12px inherit;color:' + C.muted,
+      shown === total ? (total + ' ' + noun) : (shown + ' of ' + total + ' ' + noun)));
+  }
+
+  // One card, used by the catalogue and the itinerary, because the rubric asks
+  // both for the same anatomy and two renderers would drift.
+  function sessionCard(row, starrable) {
+    var card = el('div', 'padding:12px 14px;border-bottom:1px solid ' + C.line +
+      ';background:' + C.card);
+    var tags = el('div', '');
+    if (row.track) { tags.appendChild(chip('Track: ' + row.track, true)); }
+    if (row.format) { tags.appendChild(chip('Format: ' + row.format)); }
+    (row.tags || []).slice(0, 3).forEach(function (t) { tags.appendChild(chip(t)); });
+    card.appendChild(tags);
+
+    var head = el('div', 'display:flex;gap:10px;align-items:flex-start');
+    head.appendChild(el('div', 'flex:1;min-width:0;font:600 15px/1.35 inherit;color:' + C.ink,
+      row.title));
+    if (starrable) {
+      var on = state.mine.indexOf(row.id) >= 0;
+      var star = el('button', 'flex:none;border:1px solid ' + (on ? C.accent : C.line) +
+        ';background:none;border-radius:99px;padding:4px 10px;cursor:pointer;font:600 12px inherit;' +
+        'color:' + (on ? C.accent : C.muted), on ? '\u2605 Saved' : '\u2606 Add');
+      star.setAttribute('aria-pressed', on ? 'true' : 'false');
+      star.setAttribute('aria-label', (on ? 'Remove ' : 'Add ') + row.title);
+      star.addEventListener('click', function () {
+        var at = state.mine.indexOf(row.id);
+        if (at >= 0) { state.mine.splice(at, 1); } else { state.mine.push(row.id); }
+        remember(); paint();
+      });
+      head.appendChild(star);
+    }
+    card.appendChild(head);
+
+    if (row.abstract) {
+      var full = state.open[row.id] === true;
+      var text = full || row.abstract.length <= 180
+        ? row.abstract : row.abstract.slice(0, 180).replace(/\s+\S*$/, '') + '\u2026';
+      card.appendChild(el('div', 'margin-top:5px;font:400 13px/1.55 inherit;color:' + C.muted, text));
+      if (row.abstract.length > 180) {
+        var more = el('button', 'margin-top:3px;border:none;background:none;padding:0;cursor:pointer;' +
+          'font:600 12px inherit;color:' + C.accent, full ? 'Show less' : 'Show more');
+        more.addEventListener('click', function () { state.open[row.id] = !full; paint(); });
+        card.appendChild(more);
+      }
+    }
+
+    card.appendChild(el('div', 'margin-top:7px;font:500 12px/1.5 monospace;color:' + C.muted,
+      fullWhen(row) + (row.room ? '  \u00b7  ' + row.room : '')));
+    var who = people(row);
+    if (who) {
+      card.appendChild(el('div', 'margin-top:3px;font:400 12.5px/1.5 inherit;color:' + C.muted, who));
+    }
+    return card;
+  }
+
+  function dayTabs(rows) {
+    var days = [];
+    rows.forEach(function (r) {
+      var day = r.starts_at ? r.starts_at.slice(0, 10) : null;
+      if (day && days.indexOf(day) < 0) { days.push(day); }
+    });
+    days.sort();
+    if (!days.length) { return days; }
+    if (days.indexOf(state.day) < 0) { state.day = days[0]; }
+
+    var strip = el('div', 'display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px');
+    days.forEach(function (day) {
+      var on = state.day === day;
+      var tab = el('button', 'padding:6px 12px;border-radius:99px;cursor:pointer;font:600 12px inherit;' +
+        'border:1px solid ' + (on ? C.accent : C.line) + ';color:' + (on ? C.accent : C.muted) +
+        ';background:none',
+        new Date(day + 'T00:00:00Z').toLocaleDateString(undefined, {
+          weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'
+        }));
+      tab.setAttribute('aria-pressed', on ? 'true' : 'false');
+      tab.addEventListener('click', function () { state.day = day; paint(); });
+      strip.appendChild(tab);
+    });
+    body.appendChild(strip);
+    return days;
+  }
+
+  function calendarButton(rows) {
+    var mine = rows.filter(function (r) { return state.mine.indexOf(r.id) >= 0 && r.starts_at; });
+    if (!mine.length) { return; }
+    var stamp = function (at) { return at.toISOString().replace(/[-:]|\.\d{3}/g, ''); };
+    var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Gather//Itinerary//EN'];
+    mine.forEach(function (r) {
+      var from = new Date(r.starts_at);
+      var to = new Date(from.getTime() + (r.duration_minutes || 0) * 60000);
+      lines.push('BEGIN:VEVENT', 'UID:' + r.id + '@gather', 'DTSTART:' + stamp(from),
+        'DTEND:' + stamp(to), 'SUMMARY:' + String(r.title).replace(/[\r\n,;]/g, ' '),
+        'LOCATION:' + String(r.room || '').replace(/[\r\n,;]/g, ' '), 'END:VEVENT');
+    });
+    lines.push('END:VCALENDAR');
+    var link = el('a', 'display:inline-block;margin:0 14px 12px;padding:7px 12px;border-radius:8px;' +
+      'border:1px solid ' + C.line + ';color:' + C.ink + ';font:600 12px inherit;text-decoration:none',
+      'Add ' + mine.length + ' to calendar');
+    link.setAttribute('download', 'my-schedule.ics');
+    link.setAttribute('href',
+      URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/calendar' })));
+    body.appendChild(link);
+  }
+
+  function renderList(rows, starrable) {
+    if (!rows.length) { empty('Nothing matches.'); return; }
+    rows.forEach(function (row) { body.appendChild(sessionCard(row, starrable)); });
+  }
+
+  function renderItinerary() {
+    var all = sessions();
+    var days = dayTabs(all);
+    var mineCount = state.mine.length;
+    if (mineCount) {
+      var toggle = el('button', 'margin:0 14px 10px;padding:6px 12px;border-radius:99px;cursor:pointer;' +
+        'font:600 12px inherit;border:1px solid ' + (state.mineOnly ? C.accent : C.line) +
+        ';color:' + (state.mineOnly ? C.accent : C.muted) + ';background:none',
+        state.mineOnly ? 'Showing my schedule (' + mineCount + ')' : 'My schedule (' + mineCount + ')');
+      toggle.setAttribute('aria-pressed', state.mineOnly ? 'true' : 'false');
+      toggle.addEventListener('click', function () { state.mineOnly = !state.mineOnly; paint(); });
+      body.appendChild(toggle);
+      calendarButton(all);
+    }
+    var rows = days.length && !state.mineOnly
+      ? all.filter(function (r) { return r.starts_at && r.starts_at.slice(0, 10) === state.day; })
+      : all;
+    rows.sort(function (a, b) { return (a.starts_at || '') < (b.starts_at || '') ? -1 : 1; });
+    renderList(rows, true);
+  }
+
+  function renderPerson(person) {
+    var back = el('button', 'margin:12px 14px 6px;border:none;background:none;padding:0;cursor:pointer;' +
+      'font:600 12px inherit;color:' + C.accent, '\u2190 Back');
+    back.addEventListener('click', function () { state.person = null; paint(); });
+    body.appendChild(back);
+
+    var card = el('div', 'padding:4px 14px 18px');
+    if (person.headshot_file_id) {
+      var face = el('img', 'width:88px;height:88px;border-radius:50%;object-fit:cover;display:block');
+      face.setAttribute('src', DATA.photos + person.headshot_file_id + '/photo');
+      face.setAttribute('alt', '');
+      card.appendChild(face);
+    }
+    card.appendChild(el('div', 'margin-top:10px;font:600 18px/1.3 inherit;color:' + C.ink, person.name));
+    var role = [person.job_title, person.company].filter(Boolean).join(', ');
+    if (role) { card.appendChild(el('div', 'font:400 13px inherit;color:' + C.muted, role)); }
+    if (person.bio) {
+      card.appendChild(el('div', 'margin-top:9px;font:400 13px/1.6 inherit;color:' + C.muted,
+        person.bio));
+    }
+    var talks = person.sessions || [];
+    card.appendChild(el('div', 'margin-top:14px;font:600 12px inherit;color:' + C.ink,
+      'Sessions (' + talks.length + ')'));
+    talks.forEach(function (talk) {
+      var line = el('div', 'margin-top:7px;padding-top:7px;border-top:1px solid ' + C.line);
+      line.appendChild(el('div', 'font:600 13px/1.35 inherit;color:' + C.ink, talk.title));
+      line.appendChild(el('div', 'font:500 11.5px monospace;color:' + C.muted,
+        when(talk.starts_at) + (talk.room ? '  \u00b7  ' + talk.room : '')));
+      card.appendChild(line);
+    });
+    body.appendChild(card);
+  }
+
+  function roster() {
+    var q = state.q.toLowerCase();
+    return (payload.speakers || [])
+      .filter(function (p) { return !q || String(p.name || '').toLowerCase().indexOf(q) >= 0; })
+      // Alphabetical by surname, which is how a printed programme lists people.
+      .sort(function (a, b) { return surname(a.name) < surname(b.name) ? -1 : 1; });
+  }
+
+  function renderRoster() {
+    var rows = roster();
+    count(rows.length, (payload.speakers || []).length, 'speakers');
+    if (!rows.length) { empty('Nobody matches.'); return; }
+    rows.forEach(function (person) {
+      var row = el('button', 'display:flex;gap:12px;width:100%;text-align:left;cursor:pointer;' +
+        'padding:12px 14px;border:none;border-bottom:1px solid ' + C.line + ';background:' + C.card);
       var face;
       if (person.headshot_file_id) {
-        face = el('img', 'width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto');
+        face = el('img', 'width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none');
+        face.setAttribute('src', DATA.photos + person.headshot_file_id + '/photo');
+        face.setAttribute('alt', '');
+      } else {
+        face = el('div', 'width:44px;height:44px;border-radius:50%;flex:none;display:flex;' +
+          'align-items:center;justify-content:center;font:600 15px inherit;background:' + C.line +
+          ';color:' + C.muted, initials(person.name));
+      }
+      row.appendChild(face);
+      var text = el('div', 'flex:1;min-width:0');
+      text.appendChild(el('div', 'font:600 14px/1.3 inherit;color:' + C.ink, person.name));
+      var role = [person.job_title, person.company].filter(Boolean).join(', ');
+      if (role) { text.appendChild(el('div', 'font:400 12.5px inherit;color:' + C.muted, role)); }
+      (person.sessions || []).forEach(function (talk) {
+        text.appendChild(el('div', 'margin-top:4px;font:500 11.5px monospace;color:' + C.muted,
+          talk.title + '  \u00b7  ' + when(talk.starts_at) + (talk.room ? '  \u00b7  ' + talk.room : '')));
+      });
+      row.appendChild(text);
+      row.addEventListener('click', function () { state.person = person.id; paint(); });
+      body.appendChild(row);
+    });
+  }
+
+  function initials(name) {
+    return String(name || '?').split(' ').slice(0, 2).map(function (part) {
+      return part.charAt(0);
+    }).join('').toUpperCase();
+  }
+
+  function renderCards() {
+    var rows = roster();
+    count(rows.length, (payload.speakers || []).length, 'speakers');
+    if (!rows.length) { empty('Nobody matches.'); return; }
+    var grid = el('div', 'display:flex;flex-wrap:wrap;gap:12px;padding:0 14px 14px');
+    rows.forEach(function (person) {
+      var card = el('button', 'flex:1 1 150px;min-width:0;max-width:220px;cursor:pointer;' +
+        'text-align:center;padding:14px 10px;border-radius:10px;border:1px solid ' +
+        C.line + ';background:' + C.card);
+      var face;
+      if (person.headshot_file_id) {
+        face = el('img', 'width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto;display:block');
         face.setAttribute('src', DATA.photos + person.headshot_file_id + '/photo');
         face.setAttribute('alt', '');
       } else {
         face = el('div', 'width:64px;height:64px;border-radius:50%;margin:0 auto;' +
           'display:flex;align-items:center;justify-content:center;font:600 20px inherit;' +
-          'background:' + C.line + ';color:' + C.muted,
-          (person.name || '?').split(' ').slice(0, 2).map(function (part) {
-            return part.charAt(0);
-          }).join('').toUpperCase());
+          'background:' + C.line + ';color:' + C.muted, initials(person.name));
       }
       card.appendChild(face);
       card.appendChild(el('div', 'margin-top:9px;font:600 13.5px/1.3 inherit;color:' + C.ink,
         person.name));
-      var role = [person.job_title || '', person.company || ''].filter(Boolean).join(', ');
+      var role = [person.job_title, person.company].filter(Boolean).join(', ');
       if (role) {
-        card.appendChild(el('div', 'margin-top:3px;font:400 12px/1.35 inherit;color:' +
-          C.muted, role));
+        card.appendChild(el('div', 'margin-top:3px;font:400 12px/1.35 inherit;color:' + C.muted, role));
       }
+      card.addEventListener('click', function () { state.person = person.id; paint(); });
       grid.appendChild(card);
     });
-    root.appendChild(grid);
+    body.appendChild(grid);
   }
 
   // The grid, as opposed to the catalogue: one column per room, a day at a time.
   // It scrolls inside its own box rather than forcing the host page sideways.
-  function renderGrid(sessions) {
-    var placed = sessions.filter(function (row) { return row.starts_at && row.room; });
-    if (!placed.length) { empty('Nothing is scheduled yet.'); return; }
+  function renderGrid() {
+    var all = sessions().filter(function (r) { return r.starts_at && r.room; });
+    var days = dayTabs(all);
+    if (!all.length) { empty('Nothing is scheduled yet.'); return; }
+    var placed = days.length
+      ? all.filter(function (r) { return r.starts_at.slice(0, 10) === state.day; })
+      : all;
 
     var rooms = [];
-    placed.forEach(function (row) {
-      if (rooms.indexOf(row.room) < 0) { rooms.push(row.room); }
+    placed.forEach(function (r) { if (rooms.indexOf(r.room) < 0) { rooms.push(r.room); } });
+    var scroller = el('div', 'overflow-x:auto;padding:0 14px 14px');
+    var grid = el('div', 'display:grid;gap:8px;min-width:' + (rooms.length * 150) + 'px;' +
+      'grid-template-columns:repeat(' + rooms.length + ',minmax(140px,1fr))');
+    rooms.forEach(function (room) {
+      var column = el('div', 'min-width:0');
+      column.appendChild(el('div', 'font:600 11px/1 inherit;letter-spacing:.06em;' +
+        'text-transform:uppercase;color:' + C.muted + ';padding:0 0 7px', room));
+      placed
+        .filter(function (r) { return r.room === room; })
+        .sort(function (a, b) { return a.starts_at < b.starts_at ? -1 : 1; })
+        .forEach(function (r) {
+          var card = el('button', 'display:block;width:100%;text-align:left;cursor:pointer;' +
+            'padding:9px 10px;margin-bottom:7px;border-radius:8px;border:1px solid ' + C.line +
+            ';background:' + C.card);
+          if (r.track) { card.appendChild(el('div', 'font:600 10px inherit;letter-spacing:.05em;' +
+            'text-transform:uppercase;color:' + C.accent, r.track)); }
+          card.appendChild(el('div', 'font:500 11px monospace;color:' + C.muted, when(r.starts_at)));
+          card.appendChild(el('div', 'font:600 13px/1.3 inherit;color:' + C.ink, r.title));
+          card.addEventListener('click', function () { state.open[r.id] = true; state.detail = r.id; paint(); });
+          column.appendChild(card);
+        });
+      grid.appendChild(column);
     });
-    var days = [];
-    placed.forEach(function (row) {
-      var day = row.starts_at.slice(0, 10);
-      if (days.indexOf(day) < 0) { days.push(day); }
-    });
-    days.sort();
-
-    days.forEach(function (day) {
-      heading(new Date(day + 'T00:00:00Z').toLocaleDateString(undefined, {
-        weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'
-      }));
-      var scroller = el('div', 'overflow-x:auto;padding:0 14px 14px');
-      var grid = el('div', 'display:grid;gap:8px;min-width:' + (rooms.length * 150) + 'px;' +
-        'grid-template-columns:repeat(' + rooms.length + ',minmax(140px,1fr))');
-      rooms.forEach(function (room) {
-        var column = el('div', 'min-width:0');
-        column.appendChild(el('div', 'font:600 11px/1 inherit;letter-spacing:.06em;' +
-          'text-transform:uppercase;color:' + C.muted + ';padding:0 0 7px', room));
-        placed
-          .filter(function (row) {
-            return row.room === room && row.starts_at.slice(0, 10) === day;
-          })
-          .sort(function (a, b) { return a.starts_at < b.starts_at ? -1 : 1; })
-          .forEach(function (row) {
-            var card = el('div', 'padding:9px 10px;margin-bottom:7px;border-radius:8px;' +
-              'border:1px solid ' + C.line + ';background:' + C.card);
-            card.appendChild(el('div', 'font:500 11px monospace;color:' + C.muted,
-              when(row.starts_at)));
-            card.appendChild(el('div', 'font:600 13px/1.3 inherit;color:' + C.ink, row.title));
-            column.appendChild(card);
-          });
-        grid.appendChild(column);
-      });
-      scroller.appendChild(grid);
-      root.appendChild(scroller);
-    });
+    scroller.appendChild(grid);
+    body.appendChild(scroller);
   }
 
-  function when(value) {
-    if (!value) { return 'TBC'; }
-    var at = new Date(value);
-    return at.toLocaleString(undefined, {
-      weekday: 'short', hour: '2-digit', minute: '2-digit'
-    });
+  function renderDetail(row) {
+    var back = el('button', 'margin:12px 14px 6px;border:none;background:none;padding:0;cursor:pointer;' +
+      'font:600 12px inherit;color:' + C.accent, '\u2190 Back');
+    back.addEventListener('click', function () { state.detail = null; paint(); });
+    body.appendChild(back);
+    body.appendChild(sessionCard(row, false));
   }
+
+  function paint() {
+    body.textContent = '';
+    if (!payload) { empty('Loading\u2026'); return; }
+
+    if (DATA.widget === 'gallery' || DATA.widget === 'speakers') {
+      var chosen = (payload.speakers || []).filter(function (p) { return p.id === state.person; })[0];
+      if (chosen) { renderPerson(chosen); return; }
+      controls('people');
+      if (DATA.widget === 'gallery') { renderCards(); } else { renderRoster(); }
+      return;
+    }
+
+    var open = (payload.sessions || []).filter(function (r) { return r.id === state.detail; })[0];
+    if (open) { renderDetail(open); return; }
+
+    if (DATA.widget === 'upcoming') {
+      var now = Date.now();
+      var soon = (payload.sessions || [])
+        .filter(function (r) { return r.starts_at && Date.parse(r.starts_at) >= now; })
+        .sort(function (a, b) { return a.starts_at < b.starts_at ? -1 : 1; })
+        .slice(0, DATA.limit);
+      if (!soon.length) { empty('Nothing coming up.'); return; }
+      renderList(soon, false);
+      return;
+    }
+
+    controls('sessions');
+    if (DATA.widget === 'agenda') { renderGrid(); return; }
+    if (DATA.widget === 'itinerary') { renderItinerary(); return; }
+    var rows = sessions();
+    count(rows.length, (payload.sessions || []).length, 'sessions');
+    renderList(rows, false);
+  }
+
+  root.appendChild(body);
+  host.appendChild(root);
+  paint();
 
   fetch(DATA.endpoint, { credentials: 'omit' })
     .then(function (response) { return response.json(); })
-    .then(function (payload) {
-      var people = payload.speakers || [];
-      if (DATA.widget === 'gallery') { renderCards(people); return; }
-      if (DATA.widget === 'speakers') {
-        render(people.map(function (person) {
-          return {
-            meta: person.company || '',
-            title: person.name,
-            sub: person.job_title || ''
-          };
-        }));
-        return;
-      }
-
-      var sessions = payload.sessions || [];
-      if (DATA.track) {
-        sessions = sessions.filter(function (row) { return row.track === DATA.track; });
-      }
-      if (DATA.widget === 'agenda') { renderGrid(sessions); return; }
-      if (DATA.widget === 'upcoming') {
-        // A homepage strip: what is on next, by the viewer's own clock.
-        var now = Date.now();
-        sessions = sessions
-          .filter(function (row) { return row.starts_at && Date.parse(row.starts_at) >= now; })
-          .sort(function (a, b) { return a.starts_at < b.starts_at ? -1 : 1; })
-          .slice(0, DATA.limit);
-        if (!sessions.length) { empty('Nothing coming up.'); return; }
-      }
-      render(sessions.map(function (row) {
-        return {
-          meta: when(row.starts_at),
-          title: row.title,
-          sub: [(row.room || ''), (row.speakers || []).map(function (person) {
-            return person.name;
-          }).join(', ')].filter(Boolean).join(' · ')
-        };
-      }));
-    })
+    .then(function (data) { payload = data; paint(); })
     .catch(function () {
-      root.appendChild(el('div', 'padding:16px;color:' + C.muted,
-        'The schedule could not be loaded.'));
+      body.textContent = '';
+      empty('The schedule could not be loaded.');
     });
-
-  host.appendChild(root);
 })();
 """
 

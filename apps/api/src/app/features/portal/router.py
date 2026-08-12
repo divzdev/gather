@@ -29,6 +29,8 @@ from app.features.tasks import service as tasks
 from app.models import (
     Event,
     EventSpeaker,
+    Page,
+    PageVisibility,
     Room,
     Session,
     SessionSpeaker,
@@ -692,3 +694,34 @@ async def own_session_calendar(
         media_type="text/calendar; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{found.slug}.ics"'},
     )
+
+
+class PortalPage(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    slug: str
+    blocks: list[dict[str, Any]]
+    is_pinned_in_portal: bool
+
+
+@router.get("/pages", response_model=list[PortalPage])
+async def portal_pages(session: DbSession, speaker: PortalSpeaker) -> list[Page]:
+    """The event's resource and wiki pages, as a speaker sees them.
+
+    Drafts are excluded here rather than filtered on the client: an unfinished
+    run-of-show is exactly the kind of thing an organiser writes in the open,
+    and the portal is the one surface it must not reach until they say so.
+
+    Pinned first, then the organiser's own ordering — a speaker opening this a
+    day before the event should meet "Day-of logistics", not page one of a
+    style guide.
+    """
+    _ = speaker
+    rows = await session.execute(
+        select(Page)
+        .where(Page.visibility != PageVisibility.DRAFT)
+        .order_by(Page.is_pinned_in_portal.desc(), Page.sort_order, Page.title)
+    )
+    return list(rows.scalars().all())

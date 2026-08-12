@@ -54,12 +54,12 @@
 
     <sc-if value="{{ inList }}" hint-placeholder-val="{{ true }}">
       <div style="height:32px;flex:none;display:flex;align-items:center;gap:16px;overflow-x:auto;padding:0 20px;border-bottom:1px solid var(--ln,#E1E7E9);background:var(--cd,#FFFFFF)">
-        <a href="Submissions.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">SUB {{ subCount }}</a><span style="color:var(--i4,#99A6AD)">·</span>
-        <a href="Review.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">UNREVIEWED {{ unreviewedCount }}</a><span style="color:var(--i4,#99A6AD)">·</span>
+        <a href="Submissions.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">SUB 216</a><span style="color:var(--i4,#99A6AD)">·</span>
+        <a href="Review.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--i3,#6B7B84);text-decoration:none">UNREVIEWED 38</a><span style="color:var(--i4,#99A6AD)">·</span>
         <a href="Tasks.dc.html" style="font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--pd,#B96A1F);text-decoration:none">OVERDUE TASKS 12</a><span style="color:var(--i4,#99A6AD)">·</span>
         <a href="Agenda.dc.html" style="font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:0.05em;white-space:nowrap;color:var(--cn,#D8432B);text-decoration:none">⚠ 3 CONFLICTS</a>
         <div style="flex:1"></div>
-        <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">CFP closes in {{ cfpShort }}</span>
+        <span style="font:400 10.5px 'IBM Plex Mono',monospace;white-space:nowrap;color:var(--i4,#99A6AD)">CFP closes in 38d</span>
       </div>
       <div style="flex:1;overflow-y:auto;padding:20px 28px 80px">
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
@@ -142,7 +142,8 @@
           <sc-if value="{{ s2 }}" hint-placeholder-val="{{ false }}">
             <div style="font:600 16px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);margin-bottom:16px">Welcome screen</div>
             <div style="max-width:720px">
-              <label for="forms-welcome-message" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Welcome message</label><textarea id="forms-welcome-message" value="{{ welcome }}" onChange="{{ onWelcome }}" rows="4" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
+              <div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Welcome message</div>
+              <textarea value="{{ welcome }}" onChange="{{ onWelcome }}" rows="4" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px/20px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);resize:vertical;outline-color:#E04E4E"></textarea>
               <button onClick="{{ togTerms }}" style="display:flex;align-items:center;gap:9px;background:none;border:none;padding:0;margin-top:12px;text-align:left">
                 <span style="width:14px;height:14px;border-radius:4px;border:1px solid {{ termsBd }};background:{{ termsBg }};display:inline-flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Sans',sans-serif;color:var(--bf,#331313)">{{ termsCk }}</span>
                 <span style="font:400 13px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58)">Require agreement to the speaker terms before starting</span>
@@ -156,12 +157,12 @@
               <button onClick="{{ addField }}" style="height:30px;padding:0 12px;border-radius:999px;border:none;background:var(--bt,#FF6B6B);color:var(--bf,#331313);font:600 12px 'IBM Plex Sans',sans-serif;white-space:nowrap">Add a field</button>
             </div>
             <div style="max-width:720px;display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-              <div><label for="forms-section-title" style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Section title</label><input id="forms-section-title" value="{{ secTitle }}" onChange="{{ onSecTitle }}" style="width:100%;box-sizing:border-box;height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"></div>
+              <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Section title</div><input value="{{ secTitle }}" onChange="{{ onSecTitle }}" style="width:100%;box-sizing:border-box;height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"></div>
               <div><div style="font:500 12px 'IBM Plex Sans',sans-serif;color:var(--i2,#3E4E58);margin-bottom:5px">Page heading <span style="font:400 11px 'IBM Plex Sans',sans-serif;color:var(--i4,#99A6AD)">15 char max</span></div><input value="{{ pageHead }}" onChange="{{ onPageHead }}" style="width:100%;box-sizing:border-box;height:32px;padding:0 11px;border-radius:6px;border:1px solid var(--ls,#C8D2D5);background:var(--cd,#FFFFFF);font:400 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B);outline-color:#E04E4E"></div>
             </div>
             <div style="max-width:720px;display:flex;flex-direction:column;gap:8px">
               <sc-for list="{{ fields }}" as="fd" hint-placeholder-count="4">
-                <div draggable="true" onDragStart="{{ fd.onDragStart }}" onDragOver="{{ fd.onDragOver }}" onDrop="{{ fd.onDrop }}" onClick="{{ fd.onEdit }}" style="display:flex;align-items:center;gap:11px;border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:11px 14px">
+                <div style="display:flex;align-items:center;gap:11px;border:1px solid var(--ln,#E1E7E9);border-radius:14px;background:var(--cd,#FFFFFF);box-shadow:0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04);padding:11px 14px">
                   <span style="font:400 12px 'IBM Plex Mono',monospace;color:var(--i4,#99A6AD);cursor:grab">⠿</span>
                   <div style="flex:1;min-width:0">
                     <div style="display:flex;align-items:center;gap:7px"><span style="font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ik,#16232B)">{{ fd.n }}</span><span style="color:var(--cn,#D8432B);font:500 12px 'IBM Plex Sans',sans-serif">{{ fd.req }}</span><sc-if value="{{ fd.locked }}" hint-placeholder-val="{{ false }}"><span style="padding:1px 7px;border-radius:99px;background:var(--sk,#EDF1F2);font:500 10px 'IBM Plex Sans',sans-serif;color:var(--i3,#6B7B84)">locked</span></sc-if><sc-if value="{{ fd.idb }}" hint-placeholder-val="{{ false }}"><span style="padding:1px 7px;border-radius:99px;background:var(--ifw,#E9ECF7);font:500 10px 'IBM Plex Sans',sans-serif;color:var(--if,#47599F)">identity-bearing</span></sc-if></div>

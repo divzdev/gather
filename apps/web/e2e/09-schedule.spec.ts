@@ -298,7 +298,7 @@ test("every widget renders on a stranger's page, not just the schedule", async (
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  for (const widget of ["schedule", "agenda", "speakers", "gallery", "upcoming"]) {
+  for (const widget of ["schedule", "agenda", "itinerary", "speakers", "gallery", "upcoming"]) {
     await page.setContent(
       `<!doctype html><meta charset="utf-8"><div id="gather-${widget}"></div>` +
         `<script src="${API}/v1/public/events/${SLUG}/embed.js?widget=${widget}" async></script>`,
@@ -319,6 +319,38 @@ test("every widget renders on a stranger's page, not just the schedule", async (
   await page.waitForTimeout(1200);
   const columns = page.locator("#gather-agenda div[style*='grid-template-columns']");
   expect(await columns.count(), "the grid has no room columns").toBeGreaterThan(0);
+
+  await context.close();
+});
+
+test("the itinerary keeps a personal schedule across a reload, with a calendar file", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  /** A real origin, because the selection lives in localStorage and `about:blank`
+   *  has none — the first version of this test "failed" for that reason alone. */
+  const mount = async () => {
+    await page.goto(`${API}/v1/health`);
+    await page.setContent(`<div id="gather-itinerary"></div>`);
+    await page.addScriptTag({
+      url: `${API}/v1/public/events/${SLUG}/embed.js?widget=itinerary`,
+    });
+    await page.waitForTimeout(1200);
+  };
+
+  await mount();
+  const add = page.getByRole("button", { name: /^Add / });
+  await add.nth(0).click();
+  await add.nth(0).click();
+  await expect(page.getByRole("button", { name: /My schedule \(2\)/ })).toBeVisible();
+  // 11. An export of the selection, not of the whole programme.
+  await expect(page.locator("a[download]")).toHaveCount(1);
+
+  // A full navigation, not a re-render: the selection has to be stored, not held.
+  await mount();
+  await expect(page.getByRole("button", { name: /My schedule \(2\)/ })).toBeVisible();
 
   await context.close();
 });

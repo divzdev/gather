@@ -7,6 +7,7 @@ with neither has no access at all.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import select
@@ -23,6 +24,7 @@ async def _make_user(session: AsyncSession, label: str) -> User:
         email=f"{label}-{uuid.uuid4().hex[:8]}@example.com",
         name=label,
         password_hash=hash_password("irrelevant"),
+        email_verified_at=datetime.now(UTC),
     )
     session.add(user)
     await session.flush()

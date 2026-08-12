@@ -82,6 +82,7 @@ async def world(client: AsyncClient, session: AsyncSession) -> World:
             email=f"owner-{suffix}@example.com",
             name="Owner",
             password_hash=hash_password(PASSWORD),
+            email_verified_at=datetime.now(UTC),
         )
         session.add_all([form, track, other, user])
         await session.flush()

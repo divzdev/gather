@@ -35,11 +35,18 @@ class AuthSession(Base, PrimaryKey, Timestamps):
 
 
 class MagicLink(Base, PrimaryKey, Timestamps):
-    """Single-use, short-lived speaker login. Speakers never have a password.
+    """Single-use, short-lived passwordless login.
 
-    The email is stored rather than a speaker id because a link may be issued
-    before we know whether that address belongs to anyone — the endpoint must
-    answer identically either way so it cannot be used to enumerate speakers.
+    Speakers never have a password, so this is the only way in for them. Staff do
+    have one, and this is how they get back when they have lost it — there is no
+    password reset in this build, and a link that signs you in is strictly better
+    than one that lets you choose a new secret over the same email channel.
+
+    The email is stored rather than an id because a link may be issued before we
+    know whether that address belongs to anyone — the endpoint must answer
+    identically either way so it cannot be used to enumerate people. At most one
+    of `speaker_id` and `user_id` is set, and which one decides what consuming it
+    produces: a portal token or a console session.
     """
 
     __tablename__ = "magic_links"
@@ -47,6 +54,9 @@ class MagicLink(Base, PrimaryKey, Timestamps):
 
     email: Mapped[str] = mapped_column(CITEXT(), nullable=False)
     speaker_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
     event_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("events.id", ondelete="CASCADE"), nullable=True
     )

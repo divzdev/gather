@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from app.core import storage
-from app.core.deps import DbSession, bind_tenant, require_role
+from app.core.deps import DbSession, bind_tenant, get_verified_user, require_role
 from app.core.errors import NotFoundError
 from app.features.tasks import service
 from app.models import (
@@ -258,7 +258,11 @@ async def update_task(
     return _row(*found, file_count=len(files.get(task.id, [])), now=datetime.now(UTC))
 
 
-@router.post("/tasks/nudge", response_model=NudgeResult)
+@router.post(
+    "/tasks/nudge",
+    response_model=NudgeResult,
+    dependencies=[Depends(get_verified_user)],
+)
 async def nudge(
     body: NudgeRequest, session: DbSession, _: User = Depends(require_role(*WRITE))
 ) -> NudgeResult:

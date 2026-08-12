@@ -124,13 +124,15 @@ test("49-50. a conditional field appears and hides with its trigger", async ({ p
 
   await openForm(page);
 
-  // The trigger lives on the proposal step, and choice fields render as
-  // clickable options rather than a native select.
+  // The trigger lives on the proposal step. Choice fields render as pills
+  // rather than a native select, and each pill carries an explicit role="radio"
+  // inside a labelled radiogroup — which *overrides* the implicit button role,
+  // so querying for a button finds nothing at all.
   await page.getByRole("button", { name: /your proposal/i }).first().click();
   await page.waitForTimeout(500);
 
   const targetLabel = page.getByText(target!.label, { exact: false });
-  const chosen = page.getByRole("button", { name: String(rule!.value), exact: true });
+  const chosen = page.getByRole("radio", { name: String(rule!.value), exact: true });
   await expect(chosen, "the trigger option is not on the proposal step").toBeVisible({
     timeout: 10_000,
   });
@@ -143,7 +145,7 @@ test("49-50. a conditional field appears and hides with its trigger", async ({ p
   // 50. And it hides again when the trigger changes.
   const other = trigger!.choices.find((choice) => choice.value !== String(rule!.value));
   expect(other, "the trigger has only one option, so it cannot be changed back").toBeDefined();
-  await page.getByRole("button", { name: other!.value, exact: true }).click();
+  await page.getByRole("radio", { name: other!.value, exact: true }).click();
   await expect(targetLabel).toHaveCount(0, { timeout: 10_000 });
 });
 

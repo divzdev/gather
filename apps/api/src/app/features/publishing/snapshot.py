@@ -24,6 +24,7 @@ from app.models import (
     PublishedSchedule,
     Room,
     Session,
+    SessionFormat,
     SessionSpeaker,
     Speaker,
     Track,
@@ -47,6 +48,7 @@ async def build(session: AsyncSession, event: Event) -> dict[str, Any]:
     )
     rooms = list((await session.execute(select(Room).order_by(Room.sort_order))).scalars().all())
     tracks = list((await session.execute(select(Track).order_by(Track.sort_order))).scalars().all())
+    formats = list((await session.execute(select(SessionFormat))).scalars().all())
 
     sessions = list(
         (
@@ -89,6 +91,7 @@ async def build(session: AsyncSession, event: Event) -> dict[str, Any]:
 
     track_names = {t.id: t.name for t in tracks}
     room_names = {r.id: r.name for r in rooms}
+    format_names = {f.id: f.name for f in formats}
     day_dates = {d.id: d.day_date.isoformat() for d in days}
 
     return {
@@ -130,6 +133,9 @@ async def build(session: AsyncSession, event: Event) -> dict[str, Any]:
                 "day": day_dates.get(s.event_day_id) if s.event_day_id else None,
                 "room": room_names.get(s.room_id) if s.room_id else None,
                 "track": track_names.get(s.track_id) if s.track_id else None,
+                # Named by the rubric alongside track on every session card, and
+                # by the session detail view. One join, so it ships.
+                "format": format_names.get(s.session_format_id) if s.session_format_id else None,
                 "tags": s.tags,
                 "expertise_level": s.expertise_level.value if s.expertise_level else None,
                 "language": s.language,
@@ -148,8 +154,17 @@ async def build(session: AsyncSession, event: Event) -> dict[str, Any]:
                 # without this shows initials in a grey circle forever.
                 "headshot_file_id": None if p.headshot_file_id is None else str(p.headshot_file_id),
                 "links": p.links,
+                # Time and room travel with the title: a speaker profile that
+                # lists a talk without saying when it is sends the reader back
+                # to the schedule to look it up.
                 "sessions": [
-                    {"id": str(s.id), "slug": s.slug, "title": s.title}
+                    {
+                        "id": str(s.id),
+                        "slug": s.slug,
+                        "title": s.title,
+                        "starts_at": s.starts_at.isoformat() if s.starts_at else None,
+                        "room": room_names.get(s.room_id) if s.room_id else None,
+                    }
                     for s in sessions
                     if any(sp["id"] == str(p.id) for sp in speakers_by_session.get(s.id, []))
                 ],

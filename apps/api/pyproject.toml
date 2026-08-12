@@ -23,6 +23,23 @@ dependencies = [
     # is how you ship a file Excel refuses to open. Write-only, no runtime cost
     # on any path that does not export.
     "openpyxl>=3.1",
+    # Organisers paste embed HTML into portal pages, so that HTML is untrusted
+    # input rendered to other people. Sanitising it is exactly the "don't roll
+    # your own" case: nh3 is the maintained Rust (ammonia) successor to bleach,
+    # allowlist-based, and runs on write only.
+    "nh3>=0.2.18",
+    # Third-party API credentials are stored at rest, so they are encrypted at
+    # rest. The security baseline names this library specifically; rolling a
+    # cipher by hand is the one thing it forbids outright.
+    "cryptography>=44.0",
+    # GitHub OAuth, reached only from features/auth/github.py. Already present
+    # for the test client; promoted to a runtime dependency because the token
+    # exchange happens inside a request and must not block the event loop.
+    "httpx>=0.28",
+    # SES, reached only from core/mail.py. AWS publishes no first-party async
+    # client, so the sync one runs in a worker thread rather than pulling in a
+    # second HTTP stack to keep it off the event loop.
+    "boto3>=1.35",
 ]
 
 [dependency-groups]
@@ -76,6 +93,10 @@ ignore = [
 # standard way pytest fixtures are shared between test modules.
 "tests/*" = ["S105", "S106", "F811"]
 "alembic/versions/*" = ["E501"]
+# E501: this module is a JavaScript program inside a string. Its long lines are
+# CSS declarations, and folding them to a Python line-length rule makes the
+# JavaScript harder to read, not the Python easier.
+"src/app/features/publishing/embed.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -88,7 +109,7 @@ warn_unreachable = true
 exclude = "alembic/versions/"
 
 [[tool.mypy.overrides]]
-module = ["uuid_utils.*"]
+module = ["uuid_utils.*", "boto3.*", "botocore.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

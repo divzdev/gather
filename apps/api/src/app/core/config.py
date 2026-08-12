@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     #: Where links in outbound email point. The API never serves these routes.
     web_origin: str = "http://localhost:3000"
 
+    #: GitHub OAuth. Absent by default and absent is a supported configuration:
+    #: with no client id the routes 404 and the sign-in screen does not offer the
+    #: button, which is what keeps `make setup && make dev` credential-free.
+    github_client_id: str = ""
+    github_client_secret: str = ""
+
     anthropic_api_key: str = ""
     ai_model_default: str = "claude-sonnet-5"
     ai_max_tokens: int = 4096

@@ -17,6 +17,7 @@ import { Publishing, type PublishingData } from "@/components/design/Publishing"
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { authed } from "@/lib/session";
 
+import { OutputFormats, SavedEmbeds } from "./saved";
 import { PublishedVersions } from "./versions";
 
 type PublicSession = {
@@ -62,11 +63,29 @@ const CLOCK = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
+/** Every widget the embed endpoint serves. The organiser picking one here is the
+ *  only evidence a reader gets that the others exist, so this list and
+ *  `embed.WIDGETS` on the API have to stay the same length. */
+const WIDGETS = [
+  { key: "schedule", n: "Sessions list" },
+  { key: "agenda", n: "Agenda grid" },
+  { key: "itinerary", n: "Schedule itinerary" },
+  { key: "speakers", n: "Speakers list" },
+  { key: "gallery", n: "Speaker gallery" },
+  { key: "upcoming", n: "Up next" },
+] as const;
+
+type Widget = (typeof WIDGETS)[number]["key"];
+
+/** The ones that read the schedule payload; the rest read speakers. Drives which
+ *  half of the preview panel is shown. */
+const SESSION_WIDGETS: readonly Widget[] = ["schedule", "agenda", "itinerary", "upcoming"];
+
 export default function PublishingPage() {
   const { toasts, toast, dismiss } = useConsoleChrome();
   const { eventId } = useProgramStats();
 
-  const [widget, setWidget] = useState<"schedule" | "speakers">("schedule");
+  const [widget, setWidget] = useState<Widget>("schedule");
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [track, setTrack] = useState<string | null>(null);
   const [day, setDay] = useState("");
@@ -116,20 +135,15 @@ export default function PublishingPage() {
   const screen: PublishingData = {
     publicHref: slug === null ? "/admin" : `/e/${slug}`,
 
-    widgets: (
-      [
-        { key: "schedule", n: "Schedule" },
-        { key: "speakers", n: "Speakers" },
-      ] as const
-    ).map((entry) => ({
+    widgets: WIDGETS.map((entry) => ({
       n: entry.n,
       on: () => setWidget(entry.key),
       bd: widget === entry.key ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
       bg: widget === entry.key ? "var(--sw,#FFEAE6)" : "var(--cd,#FFFFFF)",
       fg: widget === entry.key ? "var(--sg,#E04E4E)" : "var(--i2,#3E4E58)",
     })),
-    isSchedule: widget === "schedule",
-    isSpeakers: widget === "speakers",
+    isSchedule: SESSION_WIDGETS.includes(widget),
+    isSpeakers: !SESSION_WIDGETS.includes(widget),
 
     themes: (["light", "dark"] as const).map((entry) => ({
       n: entry === "light" ? "Light" : "Dark",
@@ -200,7 +214,17 @@ export default function PublishingPage() {
         .toUpperCase(),
     })),
 
-    aside: <PublishedVersions eventId={eventId} onDone={toast} />,
+    aside: (
+      <>
+        <OutputFormats slug={slug} widget={widget} onDone={toast} />
+        <SavedEmbeds
+          eventId={eventId}
+          current={{ widget, theme, track, limit: 5 }}
+          onDone={toast}
+        />
+        <PublishedVersions eventId={eventId} onDone={toast} />
+      </>
+    ),
     codeText: code,
     copyCode: () => {
       void navigator.clipboard?.writeText(code);

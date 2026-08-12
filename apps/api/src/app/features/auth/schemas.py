@@ -33,6 +33,26 @@ class TokenResponse(Strict):
     expires_in: int
 
 
+class RegisterResponse(TokenResponse):
+    #: False on a real deployment: a fresh account holds a session but has not
+    #: proved its address yet, and the screen has to say so rather than dropping
+    #: the new owner into a console that will refuse to send anything.
+    email_verified: bool
+
+
+class MagicLinkConsumeResponse(TokenResponse):
+    #: Which door the link opened. Staff and speaker tokens are stored separately
+    #: by the client and open different apps, so it cannot be inferred.
+    kind: Literal["staff", "speaker"]
+
+
+class AuthProviders(Strict):
+    """What this install actually offers, so the screen stops advertising what
+    it cannot do. GitHub is absent unless a client id is configured."""
+
+    github: bool
+
+
 class MagicLinkRequest(Strict):
     email: EmailStr
     event_id: uuid.UUID | None = None
@@ -56,6 +76,9 @@ class UserResponse(Strict):
     #: "Sasha Whitfield, program lead, demo org".
     role: str = ""
     org_name: str | None = None
+    #: Drives the banner offering to resend the link, and explains in advance why
+    #: sending and publishing will refuse. Set by the handler, like `role`.
+    email_verified: bool = False
 
 
 class ProfileUpdate(Strict):

@@ -7,6 +7,7 @@ plus the cross-tenant and role cases covers the factory for all of them.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -26,6 +27,7 @@ async def _member(session: AsyncSession, org: Organization, role: Role) -> User:
             email=f"{role.value}-{uuid.uuid4().hex[:8]}@example.com",
             name=role.value.title(),
             password_hash=hash_password(PASSWORD),
+            email_verified_at=datetime.now(UTC),
         )
         session.add(user)
         await session.flush()

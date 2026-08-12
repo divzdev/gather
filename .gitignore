@@ -97,15 +97,19 @@ apps/web/playwright-report/
 killmysaas-evals/
 .next-e2e/
 
-# Deployment is not part of this repository. Hosting was ruled out of scope
-# (docs/DECISIONS.md) — "done" means `make setup && make dev` on a clean machine
-# — so the Terraform, the deploy script and the production images stay local.
+# Deployment is not part of this repository. Note this is NOT because hosting is
+# out of scope — that call was reversed on 2026-08-11 and the app is deployed.
+# It is because the deployment is specific to one private AWS account that also
+# runs an unrelated product: variables.tf, deploy.sh and the runbook carry that
+# account id, the instance id, the domain and the other product's topology.
 #
-# The state files are the reason this is a whole-directory rule rather than a
-# list: `terraform.tfstate` records generated database passwords and account
-# identifiers in plaintext, and a rule that names files can only protect the
-# files somebody remembered to name.
+# The state files are the second reason, and the reason this is a whole-directory
+# rule rather than a list: `terraform.tfstate` records generated database
+# passwords and account identifiers in plaintext, and a rule that names files can
+# only protect the files somebody remembered to name.
 #
 # The dev stack is unaffected: docker-compose.yml lives at the repo root and is
-# tracked, which is what `make setup` runs.
+# tracked, which is what `make setup` runs. Everything under infra/ keeps working
+# locally — it is untracked, not deleted. Runbook: docs/DEPLOY.md (also ignored).
 infra/
+.dockerignore

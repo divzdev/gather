@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
-import { NotPublished, PublicShell, getPublic, type EventInfo } from "../public";
+import { PublicShell, getPublic, type EventInfo } from "../public";
+import { NotPublished } from "../chrome";
 import { Picker } from "./picker";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +54,7 @@ export default async function Itinerary({ params }: { params: Promise<{ slug: st
         slug={slug}
         active="My schedule"
       >
-        <NotPublished what="schedule" />
+        <NotPublished what="schedule" slug={slug} />
       </PublicShell>
     );
   }

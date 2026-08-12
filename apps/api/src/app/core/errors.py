@@ -74,6 +74,25 @@ class RoleRequiredError(ApiError):
     code = "ROLE_REQUIRED"
 
 
+class EmailNotVerifiedError(ApiError):
+    """403 on the actions that reach another human, never on reading.
+
+    An unconfirmed account is allowed to sign in, look around and set its event
+    up. What it may not do is send mail or publish, because those are the two
+    ways a throwaway signup turns this install into somebody else's problem.
+    """
+
+    status_code = status.HTTP_403_FORBIDDEN
+    code = "EMAIL_NOT_VERIFIED"
+
+
+class OAuthError(ApiError):
+    """The GitHub round trip failed, or came back without a usable identity."""
+
+    status_code = status.HTTP_400_BAD_REQUEST
+    code = "OAUTH_FAILED"
+
+
 class RateLimitedError(ApiError):
     status_code = status.HTTP_429_TOO_MANY_REQUESTS
     code = "RATE_LIMITED"

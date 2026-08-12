@@ -32,6 +32,12 @@ API, so a reviewer cannot un-blind a round by opening devtools.
 **The speaker** never gets a password. Their email is their identity, a magic link is their key,
 and the portal is one phone-shaped page: your session, your deadlines, upload your headshot.
 
+Staff sign in with a password, a link to their own inbox, or GitHub. The emailed link does two jobs
+— it is the password recovery this build deliberately has instead of a reset, and clicking it is how
+an address gets confirmed. Until it is, an account can do everything except the things that reach
+somebody else: sending decisions, sending mail, publishing a schedule. GitHub is optional and off
+unless you configure it; with no client id the button is not drawn and the routes do not exist.
+
 **The public** reads a schedule, browses speakers, and builds a personal itinerary that survives a
 reload — or an organiser embeds any of it in an existing conference site with one `<script>` tag.
 
@@ -127,7 +133,7 @@ forward calls — the abstraction would cost a file per model and buy nothing.
 ## Commands
 
 ```bash
-make test       # 305 API tests + 164 end-to-end tests
+make test       # 341 API tests + 169 end-to-end tests
 make test.api   # pytest only
 make test.e2e   # Playwright, against an isolated database it creates and drops
 make lint       # ruff · mypy · tsc · eslint · design-token check

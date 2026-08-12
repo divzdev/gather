@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import func, select
 
 from app.core import mail
-from app.core.deps import DbSession, bind_tenant, require_role
+from app.core.deps import DbSession, bind_tenant, get_verified_user, require_role
 from app.core.errors import NotFoundError
 from app.core.xlsx import spreadsheet
 from app.features.review import service
@@ -53,13 +53,31 @@ STAFF = (Role.OWNER, Role.ADMIN, Role.COORDINATOR)
 @router.get("", response_model=list[RoundRead])
 async def list_rounds(
     session: DbSession, _: User = Depends(require_role(*STAFF))
-) -> list[ReviewRound]:
+) -> list[RoundRead]:
     rows = (
         (await session.execute(select(ReviewRound).order_by(ReviewRound.sort_order)))
         .scalars()
         .all()
     )
-    return list(rows)
+    # One grouped count rather than a query per round.
+    counts = dict(
+        (
+            await session.execute(
+                select(
+                    ReviewerAssignment.review_round_id,
+                    func.count(func.distinct(ReviewerAssignment.submission_id)),
+                ).group_by(ReviewerAssignment.review_round_id)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    return [
+        RoundRead.model_validate(row).model_copy(
+            update={"submission_count": int(counts.get(row.id, 0))}
+        )
+        for row in rows
+    ]
 
 
 @router.post("", response_model=RoundRead, status_code=status.HTTP_201_CREATED)
@@ -225,7 +243,11 @@ async def progress(
     ]
 
 
-@router.post("/{round_id}/nudge", response_model=NudgeResponse)
+@router.post(
+    "/{round_id}/nudge",
+    response_model=NudgeResponse,
+    dependencies=[Depends(get_verified_user)],
+)
 async def nudge(
     round_id: uuid.UUID, session: DbSession, _: User = Depends(require_role(*ADMIN))
 ) -> NudgeResponse:
