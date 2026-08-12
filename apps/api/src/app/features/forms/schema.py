@@ -43,8 +43,25 @@ CHOICE_TYPES = frozenset(
     }
 )
 
+#: Routable is narrower than choice, and the difference is `MULTI_SELECT`.
+#:
+#: A track is one track. `_route_by_category` reads the answer with
+#: `isinstance(answer, str)`, so a multi-select answer — a list — fails the check
+#: and is skipped **silently**: the proposal submits, the organiser's track
+#: filter finds nothing, and no error appears anywhere. That is the
+#: re-key-200-proposals-by-hand failure routing exists to prevent, except
+#: invisible. Refusing it at the point the rule is written is the only place the
+#: author is still in the room to be told.
+ROUTABLE_TYPES = CHOICE_TYPES - {FieldType.MULTI_SELECT}
+
 Operator = Literal["is", "is_not", "is_any_of", "is_empty", "is_not_empty", "gt", "lt"]
 Action = Literal["show", "hide", "require"]
+
+#: What a category answer routes the proposal into. Conditional logic decides
+#: which *questions* a submitter sees; routing decides which part of the
+#: *programme* their answer files it under, so the organiser's track filter and
+#: the agenda's colours work on a proposal nobody has touched by hand.
+RouteTarget = Literal["track", "session_format"]
 
 
 class Strict(BaseModel):
@@ -72,6 +89,9 @@ class FormField(Strict):
     accepted_file_types: list[str] = Field(default_factory=list)
     max_file_mb: int | None = Field(default=None, ge=1, le=100)
 
+    # Files the proposal under a track or a session format on submit, by
+    # matching the chosen option's label against the event's own list.
+    routes_to: RouteTarget | None = None
     # Strips this answer from reviewer-facing responses during a blind round.
     identity_bearing: bool = False
     # Set instead of deleting a field once the form has locked, so existing
@@ -82,6 +102,17 @@ class FormField(Strict):
     def _check(self) -> FormField:
         if self.type in CHOICE_TYPES and not self.choices:
             raise ValueError(f"field '{self.key}' is type {self.type} and needs choices")
+        # Routing reads one chosen option. A free-text box would route on
+        # whatever the submitter typed, which is not a category.
+        if self.routes_to is not None and self.type not in ROUTABLE_TYPES:
+            reason = (
+                "a multi-answer field has no single category to route on"
+                if self.type is FieldType.MULTI_SELECT
+                else "only a choice field can carry a category"
+            )
+            raise ValueError(
+                f"field '{self.key}' routes to {self.routes_to} but is type {self.type}; {reason}"
+            )
         # The exact bug the customer hit on camera with the incumbent.
         if None not in (self.min_length, self.max_length) and self.min_length > self.max_length:  # type: ignore[operator]
             raise ValueError(
@@ -180,6 +211,14 @@ class FormSchema(Strict):
                 raise ValueError(f"logic rule targets unknown field '{rule.target}'")
             if rule.field == rule.target:
                 raise ValueError(f"logic rule on '{rule.field}' targets itself")
+
+        # Two fields routing to the same target is a builder-time mistake with a
+        # silent runtime: whichever the loop reached last would win, and which
+        # one that was would depend on section order.
+        for target in ("track", "session_format"):
+            routing = [f.key for f in self.all_fields() if f.routes_to == target]
+            if len(routing) > 1:
+                raise ValueError(f"fields {sorted(routing)} all route to {target}; pick one")
         return self
 
     def all_fields(self) -> list[FormField]:

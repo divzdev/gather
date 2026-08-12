@@ -21,6 +21,7 @@ from app.core.config import get_settings
 from app.core.db import session_factory
 from app.core.security import hash_password
 from app.core.tenancy import tenancy_disabled
+from app.features.pages import service as pages_service
 from app.models import (
     CriterionKind,
     Event,
@@ -32,12 +33,15 @@ from app.models import (
     FormStatus,
     Organization,
     OrgMember,
+    Page,
+    PageVisibility,
     ReviewerAssignment,
     ReviewRound,
     ReviewRoundStatus,
     Role,
     Room,
     RubricCriterion,
+    SavedEmbed,
     SessionFormat,
     Speaker,
     SpeakerStatus,
@@ -99,7 +103,18 @@ CFP_SCHEMA: dict[str, Any] = {
             "key": "proposal",
             "title": "Your proposal",
             "fields": [
-                {"key": "title", "type": "short_text", "label": "Session title", "required": True},
+                {
+                    "key": "title",
+                    "type": "short_text",
+                    "label": "Session title",
+                    "required": True,
+                    # A title with no ceiling is one paste away from breaking
+                    # every table, agenda card and calendar entry it appears in.
+                    # 80 fits the schedule grid and the .ics SUMMARY; the longest
+                    # of the 214 seeded proposals is 57.
+                    "max_length": 80,
+                    "help_text": "Under 80 characters — it has to fit an agenda card.",
+                },
                 {
                     "key": "abstract",
                     "type": "long_text",
@@ -113,6 +128,9 @@ CFP_SCHEMA: dict[str, Any] = {
                     "type": "select",
                     "label": "Track",
                     "required": True,
+                    # Routed, so a proposal arrives already filed under the
+                    # track it names rather than carrying the name as a string.
+                    "routes_to": "track",
                     "choices": [{"value": t, "label": t} for t in TRACKS],
                 },
                 {
@@ -120,6 +138,7 @@ CFP_SCHEMA: dict[str, Any] = {
                     "type": "select",
                     "label": "Session format",
                     "required": True,
+                    "routes_to": "session_format",
                     "choices": [{"value": name, "label": name} for name, _ in FORMATS],
                 },
                 {
@@ -247,6 +266,11 @@ async def _upsert_staff(session: AsyncSession, org: Organization) -> None:
             user = User(email=email, name=name, password_hash=hash_password(password))
             session.add(user)
             await session.flush()
+        # Idempotent on purpose, and applied to existing rows too: these are the
+        # accounts the demo bar signs you into, and an evaluator with no inbox
+        # must never meet "confirm your email" on the way to the console.
+        if user.email_verified_at is None:
+            user.email_verified_at = datetime.now(UTC)
         member = await session.scalar(
             select(OrgMember).where(OrgMember.org_id == org.id, OrgMember.user_id == user.id)
         )
@@ -434,6 +458,91 @@ RUBRIC = [
 ]
 
 
+async def _upsert_resources(session: AsyncSession, event: Event) -> None:
+    """Two portal pages, so the Resources tab opens filled rather than empty.
+
+    One of them carries an `embed` block, because the whole point of the feature
+    is that an organiser can paste HTML from somewhere else — and a demo where
+    every page is plain text never shows that it is sanitised.
+    """
+    pages = [
+        (
+            "Day-of logistics",
+            True,
+            [
+                {
+                    "type": "text",
+                    "text": (
+                        "Doors open at 08:00. Speaker check-in is the desk to the left of the "
+                        "main entrance — bring photo ID.\n\nGreen room is Room 2B, open all "
+                        "three days. There is coffee, a mirror, and somewhere quiet to read "
+                        "your notes one more time."
+                    ),
+                },
+                {
+                    "type": "embed",
+                    "html": (
+                        "<h3>Before you go on</h3><ul>"
+                        "<li>Find your room ten minutes early.</li>"
+                        "<li>Hand your slides to the AV lead, not the stage manager.</li>"
+                        "<li>Repeat every audience question into the microphone.</li></ul>"
+                    ),
+                },
+            ],
+        ),
+        (
+            "Slide template and stage tech",
+            False,
+            [
+                {
+                    "type": "text",
+                    "text": (
+                        "Screens are 16:9. Anything smaller than 24pt does not read from the "
+                        "back of the room, and a light background survives a bright stage "
+                        "better than a dark one.\n\nHDMI and USB-C are provided. Bring your "
+                        "own dongle if your laptop needs one."
+                    ),
+                }
+            ],
+        ),
+    ]
+    for title, pinned, blocks in pages:
+        slug = pages_service.slugify(title)
+        found = await session.scalar(select(Page).where(Page.slug == slug))
+        if found is None:
+            found = Page(org_id=event.org_id, event_id=event.id, slug=slug, title=title)
+            session.add(found)
+        found.title = title
+        found.blocks = [
+            {"type": "embed", "html": pages_service.sanitize_html(b["html"])}
+            if b["type"] == "embed"
+            else b
+            for b in blocks
+        ]
+        found.visibility = PageVisibility.SPEAKERS_ONLY
+        found.is_pinned_in_portal = pinned
+    await session.flush()
+
+
+async def _upsert_saved_embeds(session: AsyncSession, event: Event) -> None:
+    """Two kept embeds, so the panel opens with something in it.
+
+    Settings only — the snippet is rebuilt from these on read, which is the
+    whole reason a saved embed cannot go stale.
+    """
+    kept = [
+        ("Agenda on the sponsor page", "agenda", "light", None),
+        ("Speaker gallery, dark", "gallery", "dark", None),
+    ]
+    for name, widget, theme, track in kept:
+        found = await session.scalar(select(SavedEmbed).where(SavedEmbed.name == name))
+        if found is None:
+            found = SavedEmbed(org_id=event.org_id, event_id=event.id, name=name)
+            session.add(found)
+        found.widget, found.theme, found.track = widget, theme, track
+    await session.flush()
+
+
 async def _upsert_review_round(session: AsyncSession, event: Event) -> None:
     """An open round with a rubric, and every submitted proposal assigned to the
     reviewer persona — otherwise the review queue has nothing to show."""
@@ -515,6 +624,113 @@ async def _upsert_review_round(session: AsyncSession, event: Event) -> None:
     await session.flush()
 
 
+#: The second round scores what survived the first, so it asks different
+#: questions rather than the same three again.
+SHORTLIST_RUBRIC = [
+    ("Programme fit", "Does this earn a slot against everything else still in?", Decimal("1.50")),
+    ("Depth", "Is there enough here for the length requested?", Decimal("1.00")),
+]
+
+
+async def _upsert_shortlist_round(session: AsyncSession, event: Event) -> None:
+    """A second round, blind, with a reviewer pool of its own.
+
+    Three rules only a second round can demonstrate, all of which the API already
+    enforces and none of which were visible with a single open round seeded:
+
+    - Rounds are independent — its own name, window and scorecard, not a rerun.
+    - A round's reviewer pool is its own. Sam is on this one and Noor is not, so
+      reviewing round 1 plainly does not enrol you in round 2.
+    - Blind review. Identity is stripped server-side by `blind_view`, but a rule
+      nobody can see is indistinguishable from a rule that was never written, and
+      the only seeded round was sighted.
+
+    Scoped to the proposals still in review, so the queue is also visibly smaller
+    than round 1's — a shortlist that looks like one.
+    """
+    round_ = await session.scalar(
+        select(ReviewRound).where(ReviewRound.event_id == event.id, ReviewRound.sort_order == 2)
+    )
+    if round_ is None:
+        round_ = ReviewRound(
+            org_id=event.org_id, event_id=event.id, name="Programme committee", sort_order=2
+        )
+        session.add(round_)
+    round_.is_blind = True
+    round_.status = ReviewRoundStatus.OPEN
+    round_.opens_at = datetime.now(UTC) - timedelta(days=1)
+    round_.closes_at = event.cfp_closes_at
+    round_.advance_rule = {"kind": "manual"}
+    await session.flush()
+
+    existing = {
+        criterion.label
+        for criterion in (
+            await session.scalars(
+                select(RubricCriterion).where(RubricCriterion.review_round_id == round_.id)
+            )
+        ).all()
+    }
+    for order, (label, description, weight) in enumerate(SHORTLIST_RUBRIC):
+        if label in existing:
+            continue
+        session.add(
+            RubricCriterion(
+                org_id=event.org_id,
+                event_id=event.id,
+                review_round_id=round_.id,
+                label=label,
+                description=description,
+                kind=CriterionKind.RATING,
+                scale_min=1,
+                scale_max=5,
+                weight=weight,
+                sort_order=order,
+            )
+        )
+
+    await _assign_shortlist(session, event, round_)
+
+
+async def _assign_shortlist(session: AsyncSession, event: Event, round_: ReviewRound) -> None:
+    """Round 2's pool is one reviewer — deliberately not the one from round 1."""
+    reviewer = await session.scalar(select(User).where(User.email == STAFF[1][1]))
+    if reviewer is None:
+        return
+    shortlist = (
+        await session.scalars(
+            select(Submission).where(
+                Submission.event_id == event.id,
+                Submission.status == SubmissionStatus.IN_REVIEW,
+            )
+        )
+    ).all()
+    assigned = {
+        assignment.submission_id
+        for assignment in (
+            await session.scalars(
+                select(ReviewerAssignment).where(
+                    ReviewerAssignment.review_round_id == round_.id,
+                    ReviewerAssignment.user_id == reviewer.id,
+                )
+            )
+        ).all()
+    }
+    for submission in shortlist:
+        if submission.id in assigned:
+            continue
+        session.add(
+            ReviewerAssignment(
+                org_id=event.org_id,
+                event_id=event.id,
+                review_round_id=round_.id,
+                submission_id=submission.id,
+                user_id=reviewer.id,
+            )
+        )
+    await session.flush()
+
+
 async def seed() -> None:
     settings = get_settings()
     if not settings.seeding_allowed:
@@ -531,9 +747,15 @@ async def seed() -> None:
             people = await _upsert_speakers(session, event)
             await _upsert_proposals(session, event, form, program, people)
             await _upsert_review_round(session, event)
+            await _upsert_resources(session, event)
+            await _upsert_saved_embeds(session, event)
             # The hand-written rows above are the ones a human reads; this fills
             # in the volume so no screen opens empty.
             counts = await demo.fill(session, event, form, program)
+            # After the fill, not before: round 2 is scoped to the proposals
+            # sitting in review, and until demo.fill runs there are only the
+            # three hand-written ones to scope to.
+            await _upsert_shortlist_round(session, event)
             await session.commit()
 
     print(
