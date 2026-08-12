@@ -1581,7 +1581,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                   aria-hidden
                   style={{
                     width: "24px",
-                    height: "36px",
+                    height: "24px",
                     borderRadius: "7px",
                     border: `1px solid ${d.notifyOn ? "var(--bt,#FF6B6B)" : "var(--ls,#C8D2D5)"}`,
                     background: d.notifyOn ? "var(--bt,#FF6B6B)" : "var(--cd,#FFFFFF)",
@@ -1629,7 +1629,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                   aria-hidden
                   style={{
                     width: "24px",
-                    height: "36px",
+                    height: "24px",
                     borderRadius: "7px",
                     border: `1px solid ${d.ckBd}`,
                     background: d.ckBg,
@@ -1754,7 +1754,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                   aria-label="Close"
                   style={{
                     width: "28px",
-                    height: "36px",
+                    height: "28px",
                     borderRadius: "6px",
                     border: "none",
                     background: "none",

@@ -581,7 +581,7 @@ export function Messages({ d }: { d: MessagesData }) {
                           aria-hidden
                           style={{
                             width: "26px",
-                            height: "36px",
+                            height: "26px",
                             borderRadius: "7px",
                             border: `1px solid ${d.ckBd}`,
                             background: d.ckBg,
@@ -812,7 +812,7 @@ export function Messages({ d }: { d: MessagesData }) {
                     <span
                       style={{
                         width: "32px",
-                        height: "36px",
+                        height: "32px",
                         borderRadius: "9px",
                         background: "var(--ifw,#E9ECF7)",
                         color: "var(--if,#47599F)",
@@ -877,7 +877,7 @@ export function Messages({ d }: { d: MessagesData }) {
                     <span
                       style={{
                         width: "32px",
-                        height: "36px",
+                        height: "32px",
                         borderRadius: "9px",
                         background: "var(--okw,#E2F1EC)",
                         color: "var(--ok,#0E7A5F)",
@@ -942,7 +942,7 @@ export function Messages({ d }: { d: MessagesData }) {
                     <span
                       style={{
                         width: "32px",
-                        height: "36px",
+                        height: "32px",
                         borderRadius: "9px",
                         background: "var(--pdw,#F9EDDF)",
                         color: "var(--pd,#B96A1F)",
@@ -1007,7 +1007,7 @@ export function Messages({ d }: { d: MessagesData }) {
                     <span
                       style={{
                         width: "32px",
-                        height: "36px",
+                        height: "32px",
                         borderRadius: "9px",
                         background: "var(--cnw,#FBE8E6)",
                         color: "var(--cn,#D8432B)",
