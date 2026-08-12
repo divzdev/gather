@@ -26,9 +26,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.errors import ApiError, NotFoundError
-from app.features.ai import prompts, proposals
+from app.features.ai import prompts, proposals, queries
 from app.features.ai.gateway import LLMAdapter, select_adapter
-from app.features.ai.schemas import ScoreAnswer
+from app.features.ai.schemas import DuplicateAnswer, ScoreAnswer
 from app.features.review import service as review_service
 from app.models import (
     AiProposal,
@@ -190,6 +190,108 @@ async def score_submission(
         proposal,
         output={
             "scores": validate_scores(answer, criteria),
+            "summary": answer.summary,
+            "is_stub": completion.is_stub,
+        },
+        reasoning=answer.summary,
+        model=completion.model,
+        usage=completion.usage,
+    )
+
+
+async def find_duplicates(
+    session: AsyncSession,
+    *,
+    event_id: uuid.UUID,
+    user_id: uuid.UUID,
+    adapter: LLMAdapter | None = None,
+) -> AiProposal:
+    """Shortlist near-identical submissions, then ask a model which are real.
+
+    Read-only by design. There is no "merge submissions" service to call, so
+    acceptance would have nothing honest to run — the organiser reads the pairs
+    and withdraws one by hand. Wrongly withdrawing a proposal costs a speaker
+    their talk, which is not a decision to hand to a model.
+    """
+    await proposals.assert_within_daily_cap(session, event_id=event_id)
+    candidates = await queries.duplicate_candidates(session, event_id=event_id)
+
+    proposal = await proposals.create(
+        session,
+        kind=AiProposalKind.DUPLICATES,
+        payload={"candidate_count": len(candidates)},
+        prompt_version=prompts.DUPLICATES,
+        user_id=user_id,
+    )
+    if not candidates:
+        # Not a failure: "we looked and found nothing" is the answer most events
+        # should get, and it must not read as the feature being broken.
+        return await proposals.record(
+            session,
+            proposal,
+            output={
+                "pairs": [],
+                "summary": "No submissions were similar enough to be worth a look.",
+            },
+            reasoning="",
+            model="none",
+            usage={},
+        )
+
+    by_pair = {(candidate.left_id, candidate.right_id): candidate for candidate in candidates}
+    payload = json.dumps(
+        {
+            "candidates": [
+                {
+                    "left_id": str(candidate.left_id),
+                    "left_title": candidate.left_title,
+                    "right_id": str(candidate.right_id),
+                    "right_title": candidate.right_title,
+                    "text_similarity": round(candidate.score, 3),
+                }
+                for candidate in candidates
+            ]
+        }
+    )
+
+    llm = adapter or select_adapter()
+    try:
+        completion = await llm.complete(
+            system=prompts.load(prompts.DUPLICATES),
+            user=payload,
+            max_tokens=get_settings().ai_max_tokens,
+        )
+        answer = proposals.parse(completion.text, DuplicateAnswer)
+    except ApiError as error:
+        return await proposals.fail(session, proposal, reason=error.message)
+
+    pairs = []
+    for verdict in answer.pairs:
+        candidate = by_pair.get((verdict.left_id, verdict.right_id))
+        # A verdict about a pair we never asked about is not actionable — the ids
+        # would not resolve to anything an organiser could open.
+        if candidate is None:
+            continue
+        pairs.append(
+            {
+                "left_id": str(candidate.left_id),
+                "left_code": candidate.left_code,
+                "left_title": candidate.left_title,
+                "right_id": str(candidate.right_id),
+                "right_code": candidate.right_code,
+                "right_title": candidate.right_title,
+                "text_similarity": round(candidate.score, 3),
+                "is_duplicate": verdict.is_duplicate,
+                "confidence": verdict.confidence,
+                "reason": verdict.reason,
+            }
+        )
+
+    return await proposals.record(
+        session,
+        proposal,
+        output={
+            "pairs": sorted(pairs, key=lambda row: not row["is_duplicate"]),
             "summary": answer.summary,
             "is_stub": completion.is_stub,
         },

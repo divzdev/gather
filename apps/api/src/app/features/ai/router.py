@@ -29,6 +29,7 @@ router = APIRouter(
 # An admin can see and use everything a reviewer can — the scoring assist is
 # most useful to whoever is actually working the queue.
 ANY_REVIEWER = (Role.OWNER, Role.ADMIN, Role.COORDINATOR, Role.REVIEWER)
+STAFF = (Role.OWNER, Role.ADMIN, Role.COORDINATOR)
 
 
 def _redis(request: Request) -> Redis:
@@ -55,6 +56,25 @@ async def suggest_scores(
         submission_id=body.submission_id,
         user_id=user.id,
     )
+    return ProposalRead.model_validate(proposal)
+
+
+@router.post("/duplicates", response_model=ProposalRead, status_code=201)
+async def find_duplicates(
+    event_id: uuid.UUID,
+    request: Request,
+    session: DbSession,
+    user: CurrentUser,
+    _: User = Depends(require_role(*STAFF)),
+) -> ProposalRead:
+    """Suspected duplicate submissions, shortlisted in SQL and adjudicated by a model.
+
+    Read-only: it reports pairs, it does not withdraw anything. Staff rather than
+    reviewers, because the person who acts on a duplicate is running the
+    programme, not scoring it.
+    """
+    await rate_limit.enforce(_redis(request), rate_limit.AI, bucket="ai", identifier=str(user.id))
+    proposal = await service.find_duplicates(session, event_id=event_id, user_id=user.id)
     return ProposalRead.model_validate(proposal)
 
 

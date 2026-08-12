@@ -22,6 +22,7 @@ os.environ["RATE_LIMIT_PREFIX"] = f"ratelimit-test-{RUN_ID}"
 import asyncpg  # noqa: E402
 import pytest  # noqa: E402
 from httpx import AsyncClient  # noqa: E402
+from sqlalchemy import text as sa_text  # noqa: E402
 from sqlalchemy.ext.asyncio import (  # noqa: E402
     AsyncSession,
     async_sessionmaker,
@@ -75,6 +76,11 @@ async def engine() -> AsyncGenerator[object, None]:
     await _ensure_test_database()
     eng = create_async_engine(TEST_URL, pool_pre_ping=True)
     async with eng.begin() as conn:
+        # `create_all` builds tables from the models and knows nothing about
+        # anything a migration did by hand. `pg_trgm` is one of those, and
+        # without it duplicate detection fails here while working everywhere
+        # else — the worst kind of divergence between the suite and reality.
+        await conn.execute(sa_text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.run_sync(Base.metadata.create_all)
     yield eng
     await eng.dispose()

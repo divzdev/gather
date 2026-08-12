@@ -635,3 +635,104 @@ def test_parse_reports_where_the_answer_went_wrong() -> None:
         proposals.parse('{"scores": [{"criterion_id": "not-a-uuid", "value": 3}]}', ScoreAnswer)
 
     assert "scores.0.criterion_id" in caught.value.message
+
+
+# ─────────────────────────── duplicate detection ───────────────────────────
+#
+# The shortlist is the interesting half. 214 submissions is 22,791 pairs, so what
+# stops this being absurd is that Postgres picks the candidates and the model only
+# adjudicates the handful that survive.
+
+
+def _dupe_answer(left: uuid.UUID, right: uuid.UUID, *, is_duplicate: bool = True) -> str:
+    return json.dumps(
+        {
+            "pairs": [
+                {
+                    "left_id": str(left),
+                    "right_id": str(right),
+                    "is_duplicate": is_duplicate,
+                    "confidence": "high",
+                    "reason": "Identical outline, same closing case study.",
+                }
+            ],
+            "summary": "One real duplicate.",
+        }
+    )
+
+
+async def test_dissimilar_titles_never_reach_the_model(session: AsyncSession, world: World) -> None:
+    """The seeded pair is "Proposal 0" / "Proposal 1" — similar, but the guard here
+    is that a model is not consulted when SQL finds nothing worth asking about."""
+    from app.features.ai import queries
+
+    recorder = Recorder("{}")
+    monkey = queries.MIN_SIMILARITY
+    try:
+        queries.MIN_SIMILARITY = 0.99
+        proposal = await service.find_duplicates(
+            session, event_id=world.event.id, user_id=world.reviewer_id, adapter=recorder
+        )
+    finally:
+        queries.MIN_SIMILARITY = monkey
+
+    assert proposal.status is AiProposalStatus.READY
+    assert proposal.output["pairs"] == []
+    assert recorder.seen == [], "a model was asked about nothing"
+
+
+async def test_a_near_identical_pair_is_shortlisted_and_adjudicated(
+    session: AsyncSession, world: World
+) -> None:
+    left, right = world.submissions[0], world.submissions[1]
+    recorder = Recorder(_dupe_answer(left, right))
+
+    proposal = await service.find_duplicates(
+        session, event_id=world.event.id, user_id=world.reviewer_id, adapter=recorder
+    )
+
+    assert proposal.status is AiProposalStatus.READY
+    pairs = proposal.output["pairs"]
+    assert len(pairs) == 1
+    assert pairs[0]["is_duplicate"] is True
+    # The codes come from our rows, not the model's answer — they are what an
+    # organiser needs to go and look at the two submissions.
+    assert pairs[0]["left_code"] and pairs[0]["right_code"]
+    assert "text_similarity" in pairs[0]
+
+
+async def test_a_verdict_about_a_pair_we_never_asked_about_is_dropped(
+    session: AsyncSession, world: World
+) -> None:
+    """Invented ids would not resolve to anything an organiser could open."""
+    recorder = Recorder(_dupe_answer(uuid.uuid4(), uuid.uuid4()))
+
+    proposal = await service.find_duplicates(
+        session, event_id=world.event.id, user_id=world.reviewer_id, adapter=recorder
+    )
+
+    assert proposal.output["pairs"] == []
+
+
+async def test_duplicate_detection_writes_nothing_to_the_submissions(
+    session: AsyncSession, world: World
+) -> None:
+    """It reports. Withdrawing a proposal costs a speaker their talk, so a human does it."""
+    left, right = world.submissions[0], world.submissions[1]
+    before = [
+        (await session.get(Submission, sid)).status  # type: ignore[union-attr]
+        for sid in (left, right)
+    ]
+
+    await service.find_duplicates(
+        session,
+        event_id=world.event.id,
+        user_id=world.reviewer_id,
+        adapter=Recorder(_dupe_answer(left, right)),
+    )
+
+    after = [
+        (await session.get(Submission, sid)).status  # type: ignore[union-attr]
+        for sid in (left, right)
+    ]
+    assert before == after
