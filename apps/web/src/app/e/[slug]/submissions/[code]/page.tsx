@@ -180,6 +180,22 @@ export default function SubmissionPage({
   if (statusFailed) {
     return (
       <main style={shell}>
+        {/* The only public route that does not use PublicShell, so until now
+            there was no way off it but the browser's back button. */}
+        <Link
+          href={`/e/${slug}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            minHeight: 36,
+            marginBottom: 20,
+            font: "500 13.5px var(--font-plex-sans)",
+            color: "var(--i3)",
+            textDecoration: "none",
+          }}
+        >
+          ‹ {"Back to the event"}
+        </Link>
         <div
           role="alert"
           style={{
@@ -288,7 +304,12 @@ export default function SubmissionPage({
       </p>
       {status.submitted_at === null ? null : (
         <p style={{ color: "var(--i4)", font: "400 13px var(--font-plex-sans)", margin: 0 }}>
-          Submitted {new Date(status.submitted_at).toLocaleDateString()}
+          Submitted{" "}
+          {new Intl.DateTimeFormat("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }).format(new Date(status.submitted_at))}
         </p>
       )}
 

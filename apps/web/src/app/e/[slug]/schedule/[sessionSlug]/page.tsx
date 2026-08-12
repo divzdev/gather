@@ -1,4 +1,4 @@
-import { PublicShell, getPublic, type EventInfo } from "../../public";
+import { PublicShell, eventDay, eventTime, getPublic, zoneLabel, type EventInfo } from "../../public";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,20 @@ export default async function SessionDetail({
   return (
     <PublicShell event={data.event} slug={slug} active="Sessions">
       <article style={{ background: "var(--cd)", border: "1px solid var(--ln)", borderRadius: 14, padding: 28, maxWidth: 720 }}>
+        {/* `starts_at` was in the payload type and rendered nowhere, so anyone
+            arriving from a shared link or a search result could not tell when
+            the talk was without leaving the page. */}
+        <p
+          className="tabular"
+          style={{ font: "500 14px var(--font-plex-mono)", color: "var(--ik)", margin: "0 0 6px" }}
+        >
+          {s.starts_at === null
+            ? "Time to be confirmed"
+            : `${eventDay(s.starts_at, data.event.timezone)} · ${eventTime(s.starts_at, data.event.timezone)}–${eventTime(
+                new Date(new Date(s.starts_at).getTime() + s.duration_minutes * 60_000).toISOString(),
+                data.event.timezone,
+              )} ${zoneLabel(s.starts_at, data.event.timezone)}`}
+        </p>
         <p className="tabular" style={{ font: "400 12.5px var(--font-plex-mono)", color: "var(--i3)", margin: "0 0 8px" }}>
           {s.track ?? "Unassigned"} · {s.duration_minutes} min{s.room !== null ? ` · ${s.room}` : ""}
         </p>

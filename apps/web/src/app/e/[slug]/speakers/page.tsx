@@ -93,12 +93,25 @@ export default async function Speakers({ params }: { params: Promise<{ slug: str
                 {person.bio.length > 180 ? `${person.bio.slice(0, 180)}…` : person.bio}
               </p>
             )}
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 }}>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
               {person.sessions.map((session) => (
                 <li key={session.id}>
+                  {/* These were bare 17px text links — 55 of the 68 controls on
+                      this page sat under the floor, and they are the only route
+                      from a speaker to their talk. */}
                   <Link
                     href={`/e/${slug}/schedule/${session.slug}` as never}
-                    style={{ font: "500 13px var(--font-plex-sans)", color: "var(--sg)", textDecoration: "none" }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      minHeight: 36,
+                      padding: "0 12px",
+                      borderRadius: 999,
+                      background: "var(--sw)",
+                      font: "500 13px var(--font-plex-sans)",
+                      color: "var(--sg)",
+                      textDecoration: "none",
+                    }}
                   >
                     {session.title}
                   </Link>

@@ -18,6 +18,40 @@ export type EventInfo = {
   timezone: string;
 };
 
+/** An instant, in the conference's own local time.
+ *
+ *  The agenda formatted with `toLocaleTimeString(undefined)` — on the server,
+ *  so the *host's* OS zone — and the itinerary hardcoded UTC, so one session
+ *  read 05:00 on one page and 09:00 on another when it was really at 02:00.
+ *  Three callers now, which is what earns this a shared home. */
+export function eventTime(iso: string, timezone: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: timezone,
+  }).format(new Date(iso));
+}
+
+/** "Wed 12 May", in the event's zone. */
+export function eventDay(iso: string, timezone: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: timezone,
+  }).format(new Date(iso));
+}
+
+/** The zone as a reader recognises it — "PDT", not "GMT-7". */
+export function zoneLabel(iso: string, timezone: string): string {
+  return (
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone, timeZoneName: "short" })
+      .formatToParts(new Date(iso))
+      .find((part) => part.type === "timeZoneName")?.value ?? timezone
+  );
+}
+
 export async function getPublic<T>(slug: string, path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}/public/events/${slug}${path}`, {
     cache: "no-store",
@@ -81,7 +115,10 @@ export function PublicShell({
                   href={`/e/${slug}${item.href}` as never}
                   style={{
                     textDecoration: "none",
-                    padding: "6px 14px",
+                    minHeight: 36,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    padding: "0 16px",
                     borderRadius: 999,
                     font: "500 13px var(--font-plex-sans), sans-serif",
                     background: selected ? "var(--sw)" : "transparent",
