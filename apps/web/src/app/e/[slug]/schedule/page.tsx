@@ -151,6 +151,7 @@ export default async function SessionsList({
       event_starts_on: string;
       event_ends_on: string;
       event_location: string | null;
+      event_timezone: string;
     }>(slug, "/cfp-form");
     return (
       <PublicShell
@@ -161,6 +162,7 @@ export default async function SessionsList({
           location: form.event_location,
           starts_on: form.event_starts_on,
           ends_on: form.event_ends_on,
+          timezone: form.event_timezone,
         }}
         slug={slug}
         active="Sessions"

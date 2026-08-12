@@ -8,6 +8,7 @@ type Form = {
   event_starts_on: string;
   event_ends_on: string;
   event_location: string | null;
+  event_timezone: string;
   is_open: boolean;
   closes_at: string | null;
 };
@@ -22,6 +23,7 @@ export default async function EventLanding({ params }: { params: Promise<{ slug:
     location: form.event_location,
     starts_on: form.event_starts_on,
     ends_on: form.event_ends_on,
+    timezone: form.event_timezone,
   };
 
   return (

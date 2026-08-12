@@ -23,14 +23,28 @@ type Session = {
   speakers: { id: string; name: string }[];
 };
 
-const WHEN = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "UTC",
-});
+/** Was pinned to UTC, so it disagreed with the agenda *and* with the event.
+ *  Both pages read the event's own zone now, which is the invariant CLAUDE.md
+ *  states and the one thing that makes two views of the same instant agree. */
+const when = (timezone: string) =>
+  new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: timezone,
+  });
 
-export function Picker({ slug, sessions }: { slug: string; sessions: Session[] }) {
+export function Picker({
+  slug,
+  sessions,
+  timezone,
+}: {
+  slug: string;
+  sessions: Session[];
+  timezone: string;
+}) {
+  const WHEN = when(timezone);
   const router = useRouter();
   const params = useSearchParams();
 
@@ -145,18 +159,30 @@ export function Picker({ slug, sessions }: { slug: string; sessions: Session[] }
                 alignItems: "flex-start",
                 gap: 14,
                 background: "var(--cd)",
-                border: `1px solid ${on ? "#FFC9C0" : "var(--ln)"}`,
-                borderLeft: `3px solid ${on ? "#E04E4E" : "var(--ln)"}`,
+                border: `1px solid ${on ? "var(--sl)" : "var(--ln)"}`,
+                borderLeft: `3px solid ${on ? "var(--sg)" : "var(--ln)"}`,
                 borderRadius: 14,
                 padding: 16,
               }}
             >
+              {/* This is the whole point of the page, and it was a native
+                  unstyled checkbox measuring 13x13px — a third of the touch
+                  floor, on a page a visitor uses on a phone in a hallway. The
+                  title beside it is a link, so there was no larger target for
+                  picking either. */}
               <input
                 type="checkbox"
                 checked={on}
                 onChange={() => toggle(row.id)}
                 aria-label={`Add ${row.title} to my schedule`}
-                style={{ marginTop: 4, flex: "none" }}
+                style={{
+                  width: 24,
+                  height: 24,
+                  marginTop: 2,
+                  flex: "none",
+                  accentColor: "var(--bt)",
+                  cursor: "pointer",
+                }}
               />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <h2 style={{ font: "600 16px var(--font-plex-sans)", color: "var(--ik)", margin: "0 0 4px" }}>

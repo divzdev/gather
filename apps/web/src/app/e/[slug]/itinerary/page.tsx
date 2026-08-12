@@ -37,6 +37,7 @@ export default async function Itinerary({ params }: { params: Promise<{ slug: st
       event_starts_on: string;
       event_ends_on: string;
       event_location: string | null;
+      event_timezone: string;
     }>(slug, "/cfp-form");
     return (
       <PublicShell
@@ -47,6 +48,7 @@ export default async function Itinerary({ params }: { params: Promise<{ slug: st
           location: form.event_location,
           starts_on: form.event_starts_on,
           ends_on: form.event_ends_on,
+          timezone: form.event_timezone,
         }}
         slug={slug}
         active="My schedule"
@@ -59,7 +61,7 @@ export default async function Itinerary({ params }: { params: Promise<{ slug: st
   return (
     <PublicShell event={data.event} slug={slug} active="My schedule">
       <Suspense fallback={null}>
-        <Picker slug={slug} sessions={data.sessions} />
+        <Picker slug={slug} sessions={data.sessions} timezone={data.event.timezone} />
       </Suspense>
     </PublicShell>
   );

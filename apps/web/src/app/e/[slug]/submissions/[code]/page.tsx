@@ -13,6 +13,7 @@
  */
 
 import { useMutation, useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { use, useState, useSyncExternalStore } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api";
@@ -116,9 +117,17 @@ export default function SubmissionPage({
   const [saved, setSaved] = useState(false);
   const [problem, setProblem] = useState("");
 
-  const { data: status } = useQuery({
+  const {
+    data: status,
+    isPending: statusPending,
+    isError: statusFailed,
+    refetch: retryStatus,
+  } = useQuery({
     queryKey: ["submission-status", slug, code],
     queryFn: () => apiFetch<Status>(`/public/events/${slug}/submissions/${code}/status`),
+    // A mistyped six-character code is the most likely way to arrive here, and
+    // it 404s. Retrying a 404 four times only makes the dead end slower.
+    retry: (attempt, error) => !(error instanceof ApiError && error.status === 404) && attempt < 2,
   });
 
   const { data: form } = useQuery({
@@ -164,7 +173,79 @@ export default function SubmissionPage({
       setProblem(error instanceof ApiError ? error.message : "Could not save. Try again."),
   });
 
-  if (status === undefined) {
+  /* `data` never populates on error, so this used to sit on "Looking up
+   * ZZZZZZ…" forever for any code that does not exist — on the one page whose
+   * entire purpose is "check your status any time with that code", where a
+   * mistyped code is the most likely thing a speaker does. */
+  if (statusFailed) {
+    return (
+      <main style={shell}>
+        <div
+          role="alert"
+          style={{
+            border: "1px solid var(--ln)",
+            background: "var(--cd)",
+            borderRadius: "var(--radius-card)",
+            padding: 32,
+          }}
+        >
+          <h1
+            style={{
+              font: "700 22px/1.25 var(--font-bricolage), sans-serif",
+              color: "var(--ik)",
+              margin: "0 0 10px",
+            }}
+          >
+            No proposal with the code {code}.
+          </h1>
+          <p
+            style={{
+              font: "400 14.5px/1.65 var(--font-plex-sans)",
+              color: "var(--i2)",
+              margin: 0,
+            }}
+          >
+            Check it against your confirmation email — it is six characters, letters and digits.
+            If the code is right, the call for papers may belong to a different event.
+          </p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 }}>
+            <button
+              onClick={() => void retryStatus()}
+              style={{
+                height: 44,
+                padding: "0 22px",
+                borderRadius: 999,
+                border: "none",
+                background: "var(--bt)",
+                color: "var(--bf)",
+                font: "600 14px var(--font-plex-sans)",
+                cursor: "pointer",
+              }}
+            >
+              Try again
+            </button>
+            <Link
+              href={`/e/${slug}`}
+              style={{
+                height: 44,
+                padding: "0 22px",
+                borderRadius: 999,
+                display: "inline-flex",
+                alignItems: "center",
+                color: "var(--i3)",
+                font: "500 14px var(--font-plex-sans)",
+                textDecoration: "none",
+              }}
+            >
+              Back to the event
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (statusPending || status === undefined) {
     return <main style={shell}>Looking up {code}…</main>;
   }
 

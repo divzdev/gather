@@ -9,8 +9,19 @@ type Session = {
 type Day = { id: string; date: string; label: string | null; sessions: Session[] };
 type Payload = { event: EventInfo; rooms: { id: string; name: string }[]; days: Day[]; unscheduled: Session[] };
 
-function time(iso: string | null): string {
-  return iso === null ? "" : new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+/** This runs on the server, so `undefined` here meant "whatever OS timezone the
+ *  Next process happens to be in" — measured as America/Detroit on the dev box,
+ *  which is neither the reader's zone nor the event's, and would silently change
+ *  on redeploy to another region. A conference programme is stated in the
+ *  conference's own local time. */
+function time(iso: string | null, timezone: string): string {
+  if (iso === null) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: timezone,
+  }).format(new Date(iso));
 }
 
 export default async function Agenda({ params }: { params: Promise<{ slug: string }> }) {
@@ -22,10 +33,10 @@ export default async function Agenda({ params }: { params: Promise<{ slug: strin
     data = null;
   }
   if (data === null) {
-    const form = await getPublic<{ event_name: string; event_description: string | null; event_starts_on: string; event_ends_on: string; event_location: string | null }>(slug, "/cfp-form");
+    const form = await getPublic<{ event_name: string; event_description: string | null; event_starts_on: string; event_ends_on: string; event_location: string | null; event_timezone: string }>(slug, "/cfp-form");
     return (
       <PublicShell
-        event={{ name: form.event_name, slug, description: form.event_description, location: form.event_location, starts_on: form.event_starts_on, ends_on: form.event_ends_on }}
+        event={{ name: form.event_name, slug, description: form.event_description, location: form.event_location, starts_on: form.event_starts_on, ends_on: form.event_ends_on, timezone: form.event_timezone }}
         slug={slug}
         active="Agenda"
       >
@@ -59,7 +70,7 @@ export default async function Agenda({ params }: { params: Promise<{ slug: strin
                   }}
                 >
                   <span className="tabular" style={{ font: "500 13px var(--font-plex-mono)", color: "var(--i3)" }}>
-                    {time(session.starts_at)}
+                    {time(session.starts_at, data.event.timezone)}
                   </span>
                   <span style={{ minWidth: 0 }}>
                     <span style={{ display: "block", font: "600 14px var(--font-plex-sans)", color: "var(--ik)" }}>

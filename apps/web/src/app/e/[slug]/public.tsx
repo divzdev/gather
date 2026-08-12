@@ -10,6 +10,12 @@ export type EventInfo = {
   location: string | null;
   starts_on: string;
   ends_on: string;
+  /** The event's IANA zone. CLAUDE.md: "Times are UTC timestamptz in storage;
+   *  the client formats using `event_timezone`." Without it here, the agenda
+   *  formatted in the *server's* OS zone and the itinerary hardcoded UTC, so
+   *  the same session showed 05:00 on one page and 09:00 on another and 02:00
+   *  in reality. */
+  timezone: string;
 };
 
 export async function getPublic<T>(slug: string, path: string): Promise<T> {
