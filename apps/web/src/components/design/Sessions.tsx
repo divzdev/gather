@@ -1352,7 +1352,16 @@ export function Sessions({ d }: { d: SessionsData }) {
                         font: "400 11.5px 'IBM Plex Mono',monospace",
                         color: "var(--i3,#6B7B84)",
                         whiteSpace: "nowrap",
+                        // A grid item defaults to min-width:auto, so `nowrap`
+                        // alone does not clip — it overflows into the next
+                        // column and paints on top of it. "Lightning Talk (10
+                        // min)" landed across "13 May, 15:00" and rendered as
+                        // "1?3mMay". Only the short formats ever fitted.
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
+                      title={typeof r.fmt === "string" ? r.fmt : undefined}
                     >
                       {r.fmt}
                     </span>{" "}
@@ -1361,6 +1370,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                         font: "400 11.5px 'IBM Plex Mono',monospace",
                         color: r.schedFg,
                         whiteSpace: "nowrap",
+                        minWidth: 0,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                       }}
