@@ -848,7 +848,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                             <button
                               onClick={g.onAcc}
                               style={{
-                                height: "20px",
+                                height: "36px",
                                 padding: "0 9px",
                                 borderRadius: "4px",
                                 border: "none",
@@ -862,7 +862,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                             <button
                               onClick={g.onRej}
                               style={{
-                                height: "20px",
+                                height: "36px",
                                 padding: "0 9px",
                                 borderRadius: "4px",
                                 border: "1px solid var(--ls,#C8D2D5)",
