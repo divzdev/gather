@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     github_client_secret: str = ""
 
     anthropic_api_key: str = ""
+    #: A local model server, when you would rather not meter development against
+    #: a paid API. Set it and it wins over `anthropic_api_key` — iterating on a
+    #: prompt should cost nothing, and the hosted key is for the surface a real
+    #: user touches. Empty in production, which is what keeps that true.
+    ollama_base_url: str = ""
+    ollama_model: str = "llama3.1:8b"
     ai_model_default: str = "claude-sonnet-5"
     ai_max_tokens: int = 4096
     #: Proposals per event per UTC day, on top of the per-user rate limit. The

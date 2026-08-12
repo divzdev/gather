@@ -182,19 +182,26 @@ async def _round(client: AsyncClient, world: World, *, blind: bool = False) -> u
 
 
 @pytest.fixture
-def no_api_key() -> Iterator[None]:
+def no_model_configured() -> Iterator[None]:
     """Explicitly unconfigured, rather than assuming it.
 
     Whoever runs this very likely has a real `ANTHROPIC_API_KEY` in their `.env`
     — and without this the "zero credentials" test quietly called a live model
     and billed them for the privilege of proving nothing. Same trap as
     `github_absent` in test_auth_methods.py, same fix.
+
+    `OLLAMA_BASE_URL` has to be cleared for the same reason and caught the same
+    way: the moment a local server was configured this test started passing
+    through it instead of the stub. Every source the gateway can pick has to be
+    named here — the assertion is "nothing is configured", so a new adapter that
+    forgets to appear in this list makes the test silently stop testing.
     """
     settings = get_settings()
-    before = settings.anthropic_api_key
+    before = (settings.anthropic_api_key, settings.ollama_base_url)
     settings.anthropic_api_key = ""
+    settings.ollama_base_url = ""
     yield None
-    settings.anthropic_api_key = before
+    settings.anthropic_api_key, settings.ollama_base_url = before
 
 
 async def _criterion(
@@ -515,7 +522,7 @@ async def test_an_invented_criterion_is_dropped(
 
 
 async def test_with_no_api_key_the_stub_answers_and_says_so(
-    client: AsyncClient, session: AsyncSession, world: World, no_api_key: None
+    client: AsyncClient, session: AsyncSession, world: World, no_model_configured: None
 ) -> None:
     """`make setup && make dev` with no credentials is graded. This is that path.
 
