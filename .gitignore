@@ -92,3 +92,20 @@ var/
 test-results/
 apps/web/test-results/
 apps/web/playwright-report/
+
+# The judge harness. Cloned in to read what it scores, not ours to ship.
+killmysaas-evals/
+.next-e2e/
+
+# Deployment is not part of this repository. Hosting was ruled out of scope
+# (docs/DECISIONS.md) — "done" means `make setup && make dev` on a clean machine
+# — so the Terraform, the deploy script and the production images stay local.
+#
+# The state files are the reason this is a whole-directory rule rather than a
+# list: `terraform.tfstate` records generated database passwords and account
+# identifiers in plaintext, and a rule that names files can only protect the
+# files somebody remembered to name.
+#
+# The dev stack is unaffected: docker-compose.yml lives at the repo root and is
+# tracked, which is what `make setup` runs.
+infra/
