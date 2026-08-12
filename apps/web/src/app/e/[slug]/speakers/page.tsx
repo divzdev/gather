@@ -3,6 +3,7 @@ import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 
 import { PublicShell, getPublic, getPublicOptional, type EventInfo } from "../public";
+import { Card, INK, SANS, Section, trackHue } from "../chrome";
 import { NotPublished } from "../chrome";
 
 export const dynamic = "force-dynamic";
@@ -61,135 +62,142 @@ export default async function Speakers({ params }: { params: Promise<{ slug: str
 
   return (
     <PublicShell event={data.event} slug={slug} active="Speakers">
-      <p style={{ color: "var(--i3)", margin: "0 0 4px", fontSize: 14 }}>
-        {data.speakers.length} speakers, by surname
-      </p>
-      {/* This event's full speaker count runs higher (invited, confirming, or no
-          longer presenting all count there) — this gallery is narrower on purpose:
-          only people with a talk on the published schedule. Without this line the
-          two numbers just look like a bug. */}
-      <p style={{ color: "var(--i4)", margin: "0 0 16px", fontSize: 12.5 }}>
-        Everyone here has a talk on the published schedule. The event&rsquo;s full speaker list is
-        longer — it also counts people who are still confirming or are no longer presenting.
-      </p>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: 12,
-        }}
+      <Section
+        eyebrow="Speakers"
+        title={`${data.speakers.length} people are talking.`}
+        lede={
+          // The event's full roster runs higher — invited, still confirming, or
+          // no longer presenting all count there. Without saying so the two
+          // numbers read as a bug.
+          "Everyone here has a talk on the published schedule. The event's full speaker list is longer: it also counts people still confirming, and people no longer presenting."
+        }
       >
-        {data.speakers.map((person) => (
-          <article
-            key={person.id}
-            style={{
-              background: "var(--cd)",
-              border: "1px solid var(--ln)",
-              borderRadius: 14,
-              padding: 18,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-              {person.headshot_file_id === null || person.headshot_file_id === undefined ? (
-                <span
-                  aria-hidden
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: "50%",
-                    flex: "none",
-                    background: "var(--sw)",
-                    color: "var(--sg)",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    font: "600 14px var(--font-plex-condensed), sans-serif",
-                  }}
-                >
-                  {initials(person.name)}
-                </span>
-              ) : (
-                /* eslint-disable-next-line @next/next/no-img-element --
-                   next/image wants a configured loader and a known host; this is
-                   our own API serving a 44px avatar, and the route already sets
-                   an immutable cache header. */
-                <img
-                  src={`${API_BASE_URL}/public/events/${slug}/speakers/${person.headshot_file_id}/photo`}
-                  alt=""
-                  width={44}
-                  height={44}
-                  loading="lazy"
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: "50%",
-                    flex: "none",
-                    objectFit: "cover",
-                    background: "var(--sw)",
-                  }}
-                />
-              )}
-              <span style={{ minWidth: 0 }}>
-                <span
-                  style={{
-                    display: "block",
-                    font: "600 15px var(--font-plex-sans)",
-                    color: "var(--ik)",
-                  }}
-                >
-                  {person.name}
-                </span>
-                <span
-                  style={{
-                    display: "block",
-                    font: "400 12.5px var(--font-plex-sans)",
-                    color: "var(--i3)",
-                  }}
-                >
-                  {[person.job_title, person.company].filter(Boolean).join(", ")}
-                </span>
-              </span>
-            </div>
-            {person.bio !== null && (
-              <p
-                style={{
-                  font: "400 13.5px var(--font-plex-sans)",
-                  color: "var(--i2)",
-                  margin: "0 0 10px",
-                  lineHeight: 1.55,
-                }}
-              >
-                {person.bio.length > 180 ? `${person.bio.slice(0, 180)}…` : person.bio}
-              </p>
-            )}
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-              {person.sessions.map((session) => (
-                <li key={session.id}>
-                  {/* These were bare 17px text links — 55 of the 68 controls on
-                      this page sat under the floor, and they are the only route
-                      from a speaker to their talk. */}
-                  <Link
-                    href={`/e/${slug}/schedule/${session.slug}` as never}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
+            gap: 16,
+          }}
+        >
+          {data.speakers.map((person, index) => {
+            const hue = trackHue(index);
+            return (
+              <Card key={person.id} hue={hue} padding={20}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+                  {person.headshot_file_id === null || person.headshot_file_id === undefined ? (
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 999,
+                        flex: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: `color-mix(in srgb, ${hue} 22%, ${INK.raised})`,
+                        border: `1px solid color-mix(in srgb, ${hue} 40%, transparent)`,
+                        color: hue,
+                        fontFamily: SANS,
+                        fontWeight: 800,
+                        fontSize: 16,
+                      }}
+                    >
+                      {initials(person.name)}
+                    </span>
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element --
+                       next/image wants a configured loader and a known host; this
+                       is our own API serving a 48px avatar, and the route already
+                       sets an immutable cache header. */
+                    <img
+                      src={`${API_BASE_URL}/public/events/${slug}/speakers/${person.headshot_file_id}/photo`}
+                      alt=""
+                      width={48}
+                      height={48}
+                      loading="lazy"
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 999,
+                        flex: "none",
+                        objectFit: "cover",
+                        background: INK.raised,
+                      }}
+                    />
+                  )}
+                  <span style={{ minWidth: 0 }}>
+                    <span
+                      style={{
+                        display: "block",
+                        fontFamily: SANS,
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: INK.text,
+                      }}
+                    >
+                      {person.name}
+                    </span>
+                    <span
+                      style={{
+                        display: "block",
+                        fontFamily: SANS,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: INK.faint,
+                      }}
+                    >
+                      {[person.job_title, person.company].filter(Boolean).join(" · ") || "Speaker"}
+                    </span>
+                  </span>
+                </div>
+                {person.bio === null ? null : (
+                  <p
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      minHeight: 36,
-                      padding: "0 12px",
-                      borderRadius: 999,
-                      background: "var(--sw)",
-                      font: "500 13px var(--font-plex-sans)",
-                      color: "var(--sg)",
-                      textDecoration: "none",
+                      fontFamily: SANS,
+                      fontSize: 14,
+                      fontWeight: 500,
+                      color: INK.muted,
+                      lineHeight: 1.55,
+                      margin: "0 0 14px",
                     }}
                   >
-                    {session.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </article>
-        ))}
-      </div>
+                    {person.bio.length > 170 ? `${person.bio.slice(0, 170)}…` : person.bio}
+                  </p>
+                )}
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+                  {person.sessions.map((session) => (
+                    <li key={session.id}>
+                      {/* These were bare 17px text links — 55 of the 68 controls
+                          on this page sat under the floor, and they are the only
+                          route from a speaker to their talk. */}
+                      <Link
+                        href={`/e/${slug}/schedule/${session.slug}` as never}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          minHeight: 36,
+                          padding: "0 14px",
+                          borderRadius: 999,
+                          background: `color-mix(in srgb, ${hue} 14%, transparent)`,
+                          border: `1px solid color-mix(in srgb, ${hue} 32%, transparent)`,
+                          fontFamily: SANS,
+                          fontSize: 13.5,
+                          fontWeight: 600,
+                          color: INK.text,
+                          textDecoration: "none",
+                        }}
+                      >
+                        {session.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            );
+          })}
+        </div>
+      </Section>
     </PublicShell>
   );
 }

@@ -35,8 +35,8 @@ export default async function SessionDetail({
     <PublicShell event={data.event} slug={slug} active="Sessions">
       <article
         style={{
-          background: "var(--cd)",
-          border: "1px solid var(--ln)",
+          background: "var(--e-raised, #101018)",
+          border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
           borderRadius: 14,
           padding: 28,
           maxWidth: 720,
@@ -47,7 +47,7 @@ export default async function SessionDetail({
             the talk was without leaving the page. */}
         <p
           className="tabular"
-          style={{ font: "500 14px var(--font-plex-mono)", color: "var(--ik)", margin: "0 0 6px" }}
+          style={{ font: "500 14px ui-monospace,'SF Mono',Menlo,monospace", color: "var(--e-text, #F3F4F8)", margin: "0 0 6px" }}
         >
           {s.starts_at === null
             ? "Time to be confirmed"
@@ -61,8 +61,8 @@ export default async function SessionDetail({
         <p
           className="tabular"
           style={{
-            font: "400 12.5px var(--font-plex-mono)",
-            color: "var(--i3)",
+            font: "400 12.5px ui-monospace,'SF Mono',Menlo,monospace",
+            color: "var(--e-muted, #9A9FB1)",
             margin: "0 0 8px",
           }}
         >
@@ -75,23 +75,23 @@ export default async function SessionDetail({
             reads as "which one is the page actually about?" */}
         <h2
           style={{
-            font: "600 28px var(--font-bricolage), sans-serif",
-            color: "var(--ik)",
+            font: "600 28px var(--font-manrope), sans-serif",
+            color: "var(--e-text, #F3F4F8)",
             margin: "0 0 12px",
           }}
         >
           {s.title}
         </h2>
         <p
-          style={{ font: "500 14px var(--font-plex-sans)", color: "var(--i2)", margin: "0 0 18px" }}
+          style={{ font: "500 14px var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: "0 0 18px" }}
         >
           {s.speakers.map((p) => (p.company ? `${p.name}, ${p.company}` : p.name)).join(" · ")}
         </p>
         {s.abstract !== null && (
           <p
             style={{
-              font: "400 16px var(--font-plex-sans)",
-              color: "var(--i2)",
+              font: "400 16px var(--font-manrope), sans-serif",
+              color: "var(--e-muted, #9A9FB1)",
               lineHeight: 1.65,
               margin: 0,
               whiteSpace: "pre-wrap",

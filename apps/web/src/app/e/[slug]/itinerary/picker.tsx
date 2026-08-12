@@ -142,7 +142,7 @@ export function Picker({
 
   return (
     <>
-      <p style={{ color: "var(--i3)", margin: "0 0 12px", fontSize: 14 }}>
+      <p style={{ color: "var(--e-muted, #9A9FB1)", margin: "0 0 12px", fontSize: 14 }}>
         {picked.size === 0
           ? "Pick the talks you want and this becomes a schedule you can bookmark or send to someone."
           : `${picked.size} picked. This page's address holds your plan, so you can bookmark or share it.`}
@@ -176,10 +176,10 @@ export function Picker({
               height: "var(--control-h-sm, 36px)",
               padding: "0 14px",
               borderRadius: 999,
-              border: "1px solid var(--ls)",
+              border: "1px solid var(--e-edge-strong, rgba(255,255,255,.18))",
               background: "none",
-              color: "var(--i2)",
-              font: "500 12.5px var(--font-plex-sans)",
+              color: "var(--e-muted, #9A9FB1)",
+              font: "500 12.5px var(--font-manrope), sans-serif",
             }}
           >
             Clear all
@@ -192,9 +192,9 @@ export function Picker({
               height: "var(--control-h-sm, 36px)",
               padding: "0 14px",
               borderRadius: 999,
-              background: "var(--bt)",
-              color: "var(--bf)",
-              font: "600 12.5px var(--font-plex-sans)",
+              background: "var(--e-text, #F3F4F8)",
+              color: "var(--e-page, #07080E)",
+              font: "600 12.5px var(--font-manrope), sans-serif",
               textDecoration: "none",
             }}
           >
@@ -215,13 +215,13 @@ export function Picker({
                 flexWrap: "wrap",
                 margin: "0 0 12px",
                 paddingBottom: 8,
-                borderBottom: "1px solid var(--ln)",
+                borderBottom: "1px solid var(--e-edge, rgba(255,255,255,.10))",
               }}
             >
               <h2
                 style={{
-                  font: "600 15px var(--font-plex-sans)",
-                  color: "var(--ik)",
+                  font: "600 15px var(--font-manrope), sans-serif",
+                  color: "var(--e-text, #F3F4F8)",
                   margin: 0,
                   flex: 1,
                 }}
@@ -230,7 +230,7 @@ export function Picker({
               </h2>
               <span
                 className="tabular"
-                style={{ font: "400 12px var(--font-plex-mono)", color: "var(--i3)" }}
+                style={{ font: "400 12px ui-monospace,'SF Mono',Menlo,monospace", color: "var(--e-muted, #9A9FB1)" }}
               >
                 {chosen === 0
                   ? `${day.rows.length} ${day.rows.length === 1 ? "talk" : "talks"}`
@@ -247,9 +247,9 @@ export function Picker({
                       display: "flex",
                       alignItems: "flex-start",
                       gap: 14,
-                      background: "var(--cd)",
-                      border: `1px solid ${on ? "var(--sl)" : "var(--ln)"}`,
-                      borderLeft: `3px solid ${on ? "var(--sg)" : "var(--ln)"}`,
+                      background: "var(--e-raised, #101018)",
+                      border: `1px solid ${on ? "var(--e-edge-strong, rgba(255,255,255,.18))" : "var(--e-edge, rgba(255,255,255,.10))"}`,
+                      borderLeft: `3px solid ${on ? "var(--e-accent, #FF6B6B)" : "var(--e-edge, rgba(255,255,255,.10))"}`,
                       borderRadius: 14,
                       padding: 16,
                     }}
@@ -282,7 +282,7 @@ export function Picker({
                         style={{
                           width: 24,
                           height: 24,
-                          accentColor: "var(--bt)",
+                          accentColor: "var(--e-text, #F3F4F8)",
                           cursor: "pointer",
                         }}
                       />
@@ -290,8 +290,8 @@ export function Picker({
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <h2
                         style={{
-                          font: "600 16px var(--font-plex-sans)",
-                          color: "var(--ik)",
+                          font: "600 16px var(--font-manrope), sans-serif",
+                          color: "var(--e-text, #F3F4F8)",
                           margin: "0 0 4px",
                         }}
                       >
@@ -305,8 +305,8 @@ export function Picker({
                       <p
                         className="tabular"
                         style={{
-                          font: "400 12.5px var(--font-plex-mono)",
-                          color: "var(--i3)",
+                          font: "400 12.5px ui-monospace,'SF Mono',Menlo,monospace",
+                          color: "var(--e-muted, #9A9FB1)",
                           margin: 0,
                         }}
                       >

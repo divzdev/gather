@@ -19,12 +19,13 @@ function Bone({
 }) {
   return (
     <div
+      data-event=""
       style={{
         width,
         height,
         borderRadius: radius,
         background: "var(--sk)",
-        border: "1px solid var(--ln)",
+        border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
         flex: "none",
         ...style,
       }}
@@ -40,12 +41,12 @@ export default function PublicEventLoading() {
       role="status"
       aria-live="polite"
       aria-busy="true"
-      style={{ minHeight: "100vh", background: "var(--pp)" }}
+      style={{ minHeight: "100vh", background: "var(--e-page, #07080E)" }}
     >
       <span className="sr-only">Loading the event.</span>
       <div aria-hidden>
-        <header style={{ borderBottom: "1px solid var(--ln)", background: "var(--cd)" }}>
-          <div style={{ maxWidth: 1040, margin: "0 auto", padding: "18px 24px" }}>
+        <header style={{ borderBottom: "1px solid var(--e-edge, rgba(255,255,255,.10))", background: "var(--e-raised, #101018)" }}>
+          <div data-event="" style={{ maxWidth: 1040, margin: "0 auto", padding: "18px 24px" }}>
             <Bone width={150} height={10} style={{ marginBottom: 10 }} />
             <Bone width={320} height={30} radius={6} style={{ marginBottom: 16 }} />
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -55,7 +56,7 @@ export default function PublicEventLoading() {
             </div>
           </div>
         </header>
-        <main style={{ maxWidth: 1040, margin: "0 auto", padding: "28px 24px 80px" }}>
+        <main data-event="" style={{ maxWidth: 1040, margin: "0 auto", padding: "28px 24px 80px" }}>
           <Bone height={140} radius={14} style={{ marginBottom: 16 }} />
           <div
             style={{

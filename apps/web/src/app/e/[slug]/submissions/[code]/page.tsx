@@ -61,8 +61,8 @@ const STAGE: Record<string, string> = {
 const OUTCOME: Record<string, { label: string; fg: string; bg: string }> = {
   accepted: { label: "Accepted", fg: "var(--ok)", bg: "var(--okw)" },
   waitlisted: { label: "Waitlisted", fg: "var(--pd)", bg: "var(--pdw)" },
-  rejected: { label: "Not this time", fg: "var(--i3)", bg: "var(--sk)" },
-  withdrawn: { label: "Withdrawn", fg: "var(--i3)", bg: "var(--sk)" },
+  rejected: { label: "Not this time", fg: "var(--e-muted, #9A9FB1)", bg: "var(--sk)" },
+  withdrawn: { label: "Withdrawn", fg: "var(--e-muted, #9A9FB1)", bg: "var(--sk)" },
 };
 
 const LINE_TYPES = new Set(["short_text", "url", "email", "number", "date"]);
@@ -78,8 +78,8 @@ const shell: React.CSSProperties = {
   maxWidth: 720,
   margin: "0 auto",
   padding: "48px 20px 80px",
-  font: "400 15px/1.6 var(--font-plex-sans)",
-  color: "var(--ik)",
+  font: "400 15px/1.6 var(--font-manrope), sans-serif",
+  color: "var(--e-text, #F3F4F8)",
 };
 
 const field: React.CSSProperties = {
@@ -87,10 +87,10 @@ const field: React.CSSProperties = {
   boxSizing: "border-box",
   padding: "10px 12px",
   borderRadius: 8,
-  border: "1px solid var(--ls)",
-  background: "var(--cd)",
-  font: "400 14px var(--font-plex-sans)",
-  color: "var(--ik)",
+  border: "1px solid var(--e-edge-strong, rgba(255,255,255,.18))",
+  background: "var(--e-raised, #101018)",
+  font: "400 14px var(--font-manrope), sans-serif",
+  color: "var(--e-text, #F3F4F8)",
 };
 
 const button: React.CSSProperties = {
@@ -98,9 +98,9 @@ const button: React.CSSProperties = {
   padding: "0 20px",
   borderRadius: 999,
   border: "none",
-  background: "var(--bt)",
-  color: "var(--bf)",
-  font: "600 14px var(--font-plex-sans)",
+  background: "var(--e-text, #F3F4F8)",
+  color: "var(--e-page, #07080E)",
+  font: "600 14px var(--font-manrope), sans-serif",
   cursor: "pointer",
 };
 
@@ -196,8 +196,8 @@ export default function SubmissionPage({
             alignItems: "center",
             minHeight: 36,
             marginBottom: 20,
-            font: "500 13.5px var(--font-plex-sans)",
-            color: "var(--i3)",
+            font: "500 13.5px var(--font-manrope), sans-serif",
+            color: "var(--e-muted, #9A9FB1)",
             textDecoration: "none",
           }}
         >
@@ -206,16 +206,16 @@ export default function SubmissionPage({
         <div
           role="alert"
           style={{
-            border: "1px solid var(--ln)",
-            background: "var(--cd)",
+            border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
+            background: "var(--e-raised, #101018)",
             borderRadius: "var(--radius-card)",
             padding: 32,
           }}
         >
           <h1
             style={{
-              font: "700 22px/1.25 var(--font-bricolage), sans-serif",
-              color: "var(--ik)",
+              font: "700 22px/1.25 var(--font-manrope), sans-serif",
+              color: "var(--e-text, #F3F4F8)",
               margin: "0 0 10px",
             }}
           >
@@ -223,8 +223,8 @@ export default function SubmissionPage({
           </h1>
           <p
             style={{
-              font: "400 14.5px/1.65 var(--font-plex-sans)",
-              color: "var(--i2)",
+              font: "400 14.5px/1.65 var(--font-manrope), sans-serif",
+              color: "var(--e-muted, #9A9FB1)",
               margin: 0,
             }}
           >
@@ -240,9 +240,9 @@ export default function SubmissionPage({
                 padding: "0 22px",
                 borderRadius: 999,
                 border: "none",
-                background: "var(--bt)",
-                color: "var(--bf)",
-                font: "600 14px var(--font-plex-sans)",
+                background: "var(--e-text, #F3F4F8)",
+                color: "var(--e-page, #07080E)",
+                font: "600 14px var(--font-manrope), sans-serif",
                 cursor: "pointer",
               }}
             >
@@ -256,8 +256,8 @@ export default function SubmissionPage({
                 borderRadius: 999,
                 display: "inline-flex",
                 alignItems: "center",
-                color: "var(--i3)",
-                font: "500 14px var(--font-plex-sans)",
+                color: "var(--e-muted, #9A9FB1)",
+                font: "500 14px var(--font-manrope), sans-serif",
                 textDecoration: "none",
               }}
             >
@@ -286,11 +286,11 @@ export default function SubmissionPage({
   return (
     <main style={shell}>
       <p
-        style={{ font: "500 11px var(--font-plex-mono), monospace", color: "var(--i4)", margin: 0 }}
+        style={{ font: "500 11px ui-monospace,'SF Mono',Menlo,monospace, monospace", color: "var(--e-faint, #7C8093)", margin: 0 }}
       >
         {(form?.event_name ?? "").toUpperCase()} · PROPOSAL {status.code}
       </p>
-      <h1 style={{ font: "600 28px/1.2 var(--font-plex-sans)", margin: "8px 0 12px" }}>
+      <h1 style={{ font: "600 28px/1.2 var(--font-manrope), sans-serif", margin: "8px 0 12px" }}>
         {status.title}
       </h1>
 
@@ -302,16 +302,16 @@ export default function SubmissionPage({
               borderRadius: 999,
               background: outcome.bg,
               color: outcome.fg,
-              font: "600 12px var(--font-plex-sans)",
+              font: "600 12px var(--font-manrope), sans-serif",
             }}
           >
             {outcome.label}
           </span>
         )}
-        <span style={{ color: "var(--i2)" }}>{STAGE[status.stage] ?? "Received."}</span>
+        <span style={{ color: "var(--e-muted, #9A9FB1)" }}>{STAGE[status.stage] ?? "Received."}</span>
       </p>
       {status.submitted_at === null ? null : (
-        <p style={{ color: "var(--i4)", font: "400 13px var(--font-plex-sans)", margin: 0 }}>
+        <p style={{ color: "var(--e-faint, #7C8093)", font: "400 13px var(--font-manrope), sans-serif", margin: 0 }}>
           Submitted{" "}
           {new Intl.DateTimeFormat("en-GB", {
             day: "numeric",
@@ -323,13 +323,13 @@ export default function SubmissionPage({
 
       {editable ? (
         <section style={{ marginTop: 32 }}>
-          <h2 style={{ font: "600 17px var(--font-plex-sans)", margin: "0 0 4px" }}>
+          <h2 style={{ font: "600 17px var(--font-manrope), sans-serif", margin: "0 0 4px" }}>
             Change something
           </h2>
           <p
             style={{
-              color: "var(--i3)",
-              font: "400 13px var(--font-plex-sans)",
+              color: "var(--e-muted, #9A9FB1)",
+              font: "400 13px var(--font-manrope), sans-serif",
               margin: "0 0 18px",
             }}
           >
@@ -348,7 +348,7 @@ export default function SubmissionPage({
                   <span
                     style={{
                       display: "block",
-                      font: "500 13px var(--font-plex-sans)",
+                      font: "500 13px var(--font-manrope), sans-serif",
                       marginBottom: 5,
                     }}
                   >
@@ -388,7 +388,7 @@ export default function SubmissionPage({
             })}
 
           {problem === "" ? null : (
-            <p role="alert" style={{ color: "var(--cn)", font: "400 13px var(--font-plex-sans)" }}>
+            <p role="alert" style={{ color: "var(--cn)", font: "400 13px var(--font-manrope), sans-serif" }}>
               {problem}
             </p>
           )}
@@ -397,14 +397,14 @@ export default function SubmissionPage({
           </button>
           {saved ? (
             <span
-              style={{ marginLeft: 12, color: "var(--ok)", font: "500 13px var(--font-plex-sans)" }}
+              style={{ marginLeft: 12, color: "var(--ok)", font: "500 13px var(--font-manrope), sans-serif" }}
             >
               Saved. The organisers see the new version.
             </span>
           ) : null}
         </section>
       ) : (
-        <p style={{ marginTop: 28, color: "var(--i3)", font: "400 13.5px var(--font-plex-sans)" }}>
+        <p style={{ marginTop: 28, color: "var(--e-muted, #9A9FB1)", font: "400 13.5px var(--font-manrope), sans-serif" }}>
           {status.can_edit
             ? "Open the link in your confirmation email on this device to make changes."
             : "This proposal can no longer be edited — the call for papers has closed, or reviewing has started."}

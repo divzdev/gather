@@ -11,12 +11,13 @@ import Link from "next/link";
 export default function PublicEventNotFound() {
   return (
     <div
+      data-event=""
       style={{
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--pp)",
+        background: "var(--e-page, #07080E)",
         padding: 24,
       }}
     >
@@ -24,8 +25,8 @@ export default function PublicEventNotFound() {
         style={{
           maxWidth: 480,
           width: "100%",
-          border: "1px solid var(--ln)",
-          background: "var(--cd)",
+          border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
+          background: "var(--e-raised, #101018)",
           borderRadius: "var(--radius-card)",
           padding: 32,
           boxSizing: "border-box",
@@ -34,10 +35,10 @@ export default function PublicEventNotFound() {
       >
         <p
           style={{
-            font: "600 11px var(--font-plex-mono), monospace",
+            font: "600 11px ui-monospace,'SF Mono',Menlo,monospace, monospace",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            color: "var(--i4)",
+            color: "var(--e-faint, #7C8093)",
             margin: "0 0 12px",
           }}
         >
@@ -45,9 +46,9 @@ export default function PublicEventNotFound() {
         </p>
         <h1
           style={{
-            font: "700 24px/1.2 var(--font-bricolage), sans-serif",
+            font: "700 24px/1.2 var(--font-manrope), sans-serif",
             letterSpacing: "-0.02em",
-            color: "var(--ik)",
+            color: "var(--e-text, #F3F4F8)",
             margin: "0 0 10px",
           }}
         >
@@ -55,8 +56,8 @@ export default function PublicEventNotFound() {
         </h1>
         <p
           style={{
-            font: "400 14.5px/1.65 var(--font-plex-sans)",
-            color: "var(--i2)",
+            font: "400 14.5px/1.65 var(--font-manrope), sans-serif",
+            color: "var(--e-muted, #9A9FB1)",
             margin: "0 0 24px",
           }}
         >
@@ -72,9 +73,9 @@ export default function PublicEventNotFound() {
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "var(--bt)",
-            color: "var(--bf)",
-            font: "600 14px var(--font-plex-sans)",
+            background: "var(--e-text, #F3F4F8)",
+            color: "var(--e-page, #07080E)",
+            font: "600 14px var(--font-manrope), sans-serif",
             textDecoration: "none",
           }}
         >

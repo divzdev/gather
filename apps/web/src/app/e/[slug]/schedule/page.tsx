@@ -82,10 +82,10 @@ const chip = (on: boolean) => ({
   minHeight: "var(--control-h-sm)",
   padding: "0 14px",
   borderRadius: 999,
-  border: `1px solid ${on ? "var(--sg)" : "var(--ln)"}`,
-  background: on ? "var(--sw)" : "var(--cd)",
-  color: on ? "var(--sg)" : "var(--i2)",
-  font: "500 12.5px var(--font-plex-sans)",
+  border: `1px solid ${on ? "var(--e-accent, #FF6B6B)" : "var(--e-edge, rgba(255,255,255,.10))"}`,
+  background: on ? "color-mix(in srgb, var(--e-accent, #FF6B6B) 15%, transparent)" : "var(--e-raised, #101018)",
+  color: on ? "var(--e-accent, #FF6B6B)" : "var(--e-muted, #9A9FB1)",
+  font: "500 12.5px var(--font-manrope), sans-serif",
   textDecoration: "none",
   whiteSpace: "nowrap" as const,
 });
@@ -108,9 +108,9 @@ function Row({
     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
       <span
         style={{
-          font: "600 10px var(--font-plex-sans)",
+          font: "600 10px var(--font-manrope), sans-serif",
           letterSpacing: "0.08em",
-          color: "var(--i4)",
+          color: "var(--e-faint, #7C8093)",
           minWidth: 44,
         }}
       >
@@ -260,14 +260,14 @@ export default async function SessionsList({
         <Row label="ROOM" options={rooms} slug={slug} filters={filters} name="room" />
       </div>
 
-      <p style={{ color: "var(--i3)", margin: "0 0 16px", fontSize: 14 }}>
+      <p style={{ color: "var(--e-muted, #9A9FB1)", margin: "0 0 16px", fontSize: 14 }}>
         {narrowed
           ? `${shown.length} of ${data.sessions.length} sessions`
           : `${data.sessions.length} sessions`}
         {narrowed && (
           <>
             {" · "}
-            <Link href={`/e/${slug}/schedule` as never} style={{ color: "var(--sg)" }}>
+            <Link href={`/e/${slug}/schedule` as never} style={{ color: "var(--e-accent, #FF6B6B)" }}>
               Clear filters
             </Link>
           </>
@@ -277,17 +277,17 @@ export default async function SessionsList({
       {shown.length === 0 ? (
         <p
           style={{
-            font: "400 14px var(--font-plex-sans)",
-            color: "var(--i3)",
-            background: "var(--cd)",
-            border: "1px solid var(--ln)",
+            font: "400 14px var(--font-manrope), sans-serif",
+            color: "var(--e-muted, #9A9FB1)",
+            background: "var(--e-raised, #101018)",
+            border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
             borderRadius: 14,
             padding: 24,
             margin: 0,
           }}
         >
           No sessions match that.{" "}
-          <Link href={`/e/${slug}/schedule` as never} style={{ color: "var(--sg)" }}>
+          <Link href={`/e/${slug}/schedule` as never} style={{ color: "var(--e-accent, #FF6B6B)" }}>
             Show all {data.sessions.length}
           </Link>
           .

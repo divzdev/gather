@@ -5,6 +5,7 @@ import {
   getPublicOptional,
   type EventInfo,
 } from "../public";
+import { Card, INK, MONO, SANS, display, trackHue } from "../chrome";
 import { NotPublished } from "../chrome";
 
 export const dynamic = "force-dynamic";
@@ -74,93 +75,136 @@ export default async function Agenda({ params }: { params: Promise<{ slug: strin
 
   return (
     <PublicShell event={data.event} slug={slug} active="Agenda">
-      {data.days.map((day) => (
-        <section key={day.id} style={{ marginBottom: 28 }}>
-          <h2
-            style={{
-              font: "600 18px var(--font-plex-sans)",
-              color: "var(--ik)",
-              margin: "0 0 12px",
-            }}
-          >
-            {day.label ??
-              calendarDate(day.date, { weekday: "long", day: "numeric", month: "long" })}
-          </h2>
-          {day.sessions.length === 0 ? (
-            <p style={{ color: "var(--i3)", fontSize: 14 }}>Nothing scheduled on this day yet.</p>
-          ) : (
+      <div style={{ display: "grid", gap: 40 }}>
+        {data.days.map((day, dayIndex) => (
+          <section key={day.id}>
+            <h2
+              style={{
+                ...display("1.4rem", 700),
+                color: INK.text,
+                paddingBottom: 12,
+                marginBottom: 18,
+                borderBottom: `1px solid ${INK.edge}`,
+                display: "flex",
+                alignItems: "baseline",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              {day.label ??
+                calendarDate(day.date, { weekday: "long", day: "numeric", month: "long" })}
+              <span
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 12,
+                  fontWeight: 400,
+                  letterSpacing: ".1em",
+                  color: INK.faint,
+                }}
+              >
+                {day.sessions.length} {day.sessions.length === 1 ? "SESSION" : "SESSIONS"}
+              </span>
+            </h2>
+            {day.sessions.length === 0 ? (
+              <p style={{ fontFamily: SANS, fontSize: 15, color: INK.faint, fontWeight: 500 }}>
+                Nothing scheduled on this day yet.
+              </p>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {day.sessions.map((session, index) => {
+                  const hue = trackHue(dayIndex + index);
+                  return (
+                    <Card key={session.id} hue={hue} padding={16}>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "84px minmax(0,1fr)",
+                          gap: 16,
+                          alignItems: "baseline",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 16,
+                            color: INK.text,
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {time(session.starts_at, data.event.timezone)}
+                        </span>
+                        <span style={{ minWidth: 0 }}>
+                          <span
+                            style={{
+                              display: "block",
+                              fontFamily: SANS,
+                              fontSize: 15.5,
+                              fontWeight: 700,
+                              color: INK.text,
+                            }}
+                          >
+                            {session.title}
+                          </span>
+                          <span
+                            style={{
+                              display: "block",
+                              fontFamily: SANS,
+                              fontSize: 13.5,
+                              fontWeight: 500,
+                              color: INK.muted,
+                              marginTop: 4,
+                            }}
+                          >
+                            {[
+                              session.room,
+                              session.track,
+                              session.speakers.map((speaker) => speaker.name).join(", "),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </span>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        ))}
+
+        {data.unscheduled.length === 0 ? null : (
+          <section>
+            <h2
+              style={{
+                ...display("1.15rem", 700),
+                color: INK.muted,
+                paddingBottom: 12,
+                marginBottom: 16,
+                borderBottom: `1px solid ${INK.edge}`,
+              }}
+            >
+              Not yet scheduled
+            </h2>
             <div style={{ display: "grid", gap: 8 }}>
-              {day.sessions.map((session) => (
-                <div
+              {data.unscheduled.map((session) => (
+                <p
                   key={session.id}
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "96px 1fr",
-                    gap: 14,
-                    background: "var(--cd)",
-                    border: "1px solid var(--ln)",
-                    borderRadius: 10,
-                    padding: "12px 16px",
+                    margin: 0,
+                    fontFamily: SANS,
+                    fontSize: 14.5,
+                    fontWeight: 500,
+                    color: INK.muted,
                   }}
                 >
-                  <span
-                    className="tabular"
-                    style={{ font: "500 13px var(--font-plex-mono)", color: "var(--i3)" }}
-                  >
-                    {time(session.starts_at, data.event.timezone)}
-                  </span>
-                  <span style={{ minWidth: 0 }}>
-                    <span
-                      style={{
-                        display: "block",
-                        font: "600 14px var(--font-plex-sans)",
-                        color: "var(--ik)",
-                      }}
-                    >
-                      {session.title}
-                    </span>
-                    <span
-                      style={{
-                        display: "block",
-                        font: "400 12.5px var(--font-plex-sans)",
-                        color: "var(--i3)",
-                        marginTop: 2,
-                      }}
-                    >
-                      {[session.room, session.track, session.speakers.map((s) => s.name).join(", ")]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </span>
-                </div>
+                  {session.title}
+                </p>
               ))}
             </div>
-          )}
-        </section>
-      ))}
-      {data.unscheduled.length > 0 && (
-        <section>
-          <h2
-            style={{
-              font: "600 15px var(--font-plex-sans)",
-              color: "var(--i3)",
-              margin: "0 0 10px",
-            }}
-          >
-            Not yet scheduled
-          </h2>
-          <div style={{ display: "grid", gap: 6 }}>
-            {data.unscheduled.map((session) => (
-              <p
-                key={session.id}
-                style={{ margin: 0, font: "400 13.5px var(--font-plex-sans)", color: "var(--i2)" }}
-              >
-                {session.title}
-              </p>
-            ))}
-          </div>
-        </section>
-      )}
+          </section>
+        )}
+      </div>
     </PublicShell>
   );
 }
