@@ -235,7 +235,7 @@ export function Tasks({ d }: { d: TasksData }) {
                 <button
                   onClick={d.byTask}
                   style={{
-                    height: "26px",
+                    height: "36px",
                     padding: "0 12px",
                     borderRadius: "999px",
                     border: "none",
@@ -251,7 +251,7 @@ export function Tasks({ d }: { d: TasksData }) {
                 <button
                   onClick={d.bySpeaker}
                   style={{
-                    height: "26px",
+                    height: "36px",
                     padding: "0 12px",
                     borderRadius: "999px",
                     border: "none",
@@ -279,7 +279,7 @@ export function Tasks({ d }: { d: TasksData }) {
                   className="dch-c4989b43"
                   onClick={d.downloadPack}
                   style={{
-                    height: "30px",
+                    height: "36px",
                     padding: "0 13px",
                     borderRadius: "999px",
                     border: "1px solid var(--ls,#C8D2D5)",
@@ -294,7 +294,7 @@ export function Tasks({ d }: { d: TasksData }) {
                 <button
                   onClick={d.nudgeAll}
                   style={{
-                    height: "30px",
+                    height: "36px",
                     padding: "0 13px",
                     borderRadius: "999px",
                     border: "none",
@@ -345,7 +345,7 @@ export function Tasks({ d }: { d: TasksData }) {
                 <span
                   style={{
                     width: "32px",
-                    height: "32px",
+                    height: "36px",
                     borderRadius: "9px",
                     background: "var(--ifw,#E9ECF7)",
                     color: "var(--if,#47599F)",
@@ -404,7 +404,7 @@ export function Tasks({ d }: { d: TasksData }) {
                 <span
                   style={{
                     width: "32px",
-                    height: "32px",
+                    height: "36px",
                     borderRadius: "9px",
                     background: "var(--pdw,#F9EDDF)",
                     color: "var(--pd,#B96A1F)",
@@ -469,7 +469,7 @@ export function Tasks({ d }: { d: TasksData }) {
                 <span
                   style={{
                     width: "32px",
-                    height: "32px",
+                    height: "36px",
                     borderRadius: "9px",
                     background: "var(--sw,#FFEAE6)",
                     color: "var(--sg,#E04E4E)",
@@ -534,7 +534,7 @@ export function Tasks({ d }: { d: TasksData }) {
                 <span
                   style={{
                     width: "32px",
-                    height: "32px",
+                    height: "36px",
                     borderRadius: "9px",
                     background: "var(--okw,#E2F1EC)",
                     color: "var(--ok,#0E7A5F)",
@@ -786,7 +786,7 @@ export function Tasks({ d }: { d: TasksData }) {
                             <button
                               onClick={r.onNudge}
                               style={{
-                                height: "26px",
+                                height: "36px",
                                 padding: "0 10px",
                                 borderRadius: "999px",
                                 border: "1px solid var(--pdl,#EFD3B6)",
@@ -801,7 +801,7 @@ export function Tasks({ d }: { d: TasksData }) {
                             <button
                               onClick={r.onDone}
                               style={{
-                                height: "26px",
+                                height: "36px",
                                 padding: "0 10px",
                                 borderRadius: "6px",
                                 border: "1px solid var(--ls,#C8D2D5)",

@@ -207,7 +207,7 @@ export function Messages({ d }: { d: MessagesData }) {
                           <button
                             onClick={tb.on}
                             style={{
-                              height: "26px",
+                              height: "36px",
                               padding: "0 12px",
                               borderRadius: "999px",
                               border: "none",
@@ -389,7 +389,7 @@ export function Messages({ d }: { d: MessagesData }) {
                             <button
                               onClick={tp.on}
                               style={{
-                                height: "28px",
+                                height: "36px",
                                 padding: "0 11px",
                                 borderRadius: "6px",
                                 border: `1px solid ${tp.bd}`,
@@ -422,7 +422,7 @@ export function Messages({ d }: { d: MessagesData }) {
                         style={{
                           width: "100%",
                           boxSizing: "border-box",
-                          height: "32px",
+                          height: "40px",
                           padding: "0 11px",
                           borderRadius: "6px",
                           border: "1px solid var(--ls,#C8D2D5)",
@@ -584,7 +584,7 @@ export function Messages({ d }: { d: MessagesData }) {
                           aria-hidden
                           style={{
                             width: "26px",
-                            height: "26px",
+                            height: "36px",
                             borderRadius: "7px",
                             border: `1px solid ${d.ckBd}`,
                             background: d.ckBg,
@@ -760,7 +760,7 @@ export function Messages({ d }: { d: MessagesData }) {
                           <button
                             onClick={tb.on}
                             style={{
-                              height: "26px",
+                              height: "36px",
                               padding: "0 12px",
                               borderRadius: "999px",
                               border: "none",
@@ -815,7 +815,7 @@ export function Messages({ d }: { d: MessagesData }) {
                     <span
                       style={{
                         width: "32px",
-                        height: "32px",
+                        height: "36px",
                         borderRadius: "9px",
                         background: "var(--ifw,#E9ECF7)",
                         color: "var(--if,#47599F)",
@@ -880,7 +880,7 @@ export function Messages({ d }: { d: MessagesData }) {
                     <span
                       style={{
                         width: "32px",
-                        height: "32px",
+                        height: "36px",
                         borderRadius: "9px",
                         background: "var(--okw,#E2F1EC)",
                         color: "var(--ok,#0E7A5F)",
@@ -945,7 +945,7 @@ export function Messages({ d }: { d: MessagesData }) {
                     <span
                       style={{
                         width: "32px",
-                        height: "32px",
+                        height: "36px",
                         borderRadius: "9px",
                         background: "var(--pdw,#F9EDDF)",
                         color: "var(--pd,#B96A1F)",
@@ -1010,7 +1010,7 @@ export function Messages({ d }: { d: MessagesData }) {
                     <span
                       style={{
                         width: "32px",
-                        height: "32px",
+                        height: "36px",
                         borderRadius: "9px",
                         background: "var(--cnw,#FBE8E6)",
                         color: "var(--cn,#D8432B)",
@@ -1104,7 +1104,7 @@ export function Messages({ d }: { d: MessagesData }) {
                       <button
                         onClick={d.resendAll}
                         style={{
-                          height: "26px",
+                          height: "36px",
                           padding: "0 10px",
                           borderRadius: "6px",
                           background: "none",
@@ -1135,7 +1135,7 @@ export function Messages({ d }: { d: MessagesData }) {
                       gap: "8px",
                       alignItems: "center",
                       padding: "0 12px",
-                      height: "34px",
+                      height: "36px",
                       borderBottom: "1px solid var(--ln,#E1E7E9)",
                     }}
                   >
@@ -1253,7 +1253,7 @@ export function Messages({ d }: { d: MessagesData }) {
                             <button
                               onClick={m.onResend}
                               style={{
-                                height: "24px",
+                                height: "36px",
                                 padding: "0 9px",
                                 borderRadius: "5px",
                                 border: "1px solid var(--ls,#C8D2D5)",
@@ -1330,7 +1330,7 @@ export function Messages({ d }: { d: MessagesData }) {
                           <button
                             onClick={tb.on}
                             style={{
-                              height: "26px",
+                              height: "36px",
                               padding: "0 12px",
                               borderRadius: "999px",
                               border: "none",

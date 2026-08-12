@@ -324,7 +324,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                   <button
                     onClick={d.on}
                     style={{
-                      height: "26px",
+                      height: "36px",
                       padding: "0 12px",
                       borderRadius: "999px",
                       border: "none",
@@ -358,7 +358,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                     onClick={v.on}
                     aria-pressed={v.active}
                     style={{
-                      height: "26px",
+                      height: "36px",
                       padding: "0 11px",
                       borderRadius: "999px",
                       border: "none",
@@ -383,7 +383,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "6px",
-                    height: "28px",
+                    height: "36px",
                     padding: "0 11px",
                     borderRadius: "6px",
                     background: "var(--cnw,#FBE8E6)",
@@ -405,7 +405,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "6px",
-                    height: "28px",
+                    height: "36px",
                     padding: "0 11px",
                     borderRadius: "6px",
                     background: "var(--okw,#E2F1EC)",
@@ -425,7 +425,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "6px",
-                height: "30px",
+                height: "36px",
                 padding: "0 13px",
                 borderRadius: "999px",
                 border: "1px solid var(--ls,#C8D2D5)",
@@ -443,7 +443,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "7px",
-                height: "30px",
+                height: "36px",
                 padding: "0 14px",
                 borderRadius: "999px",
                 border: "none",
@@ -512,7 +512,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
-                    height: "28px",
+                    height: "40px",
                     padding: "0 9px",
                     borderRadius: "6px",
                     border: "1px solid var(--ls,#C8D2D5)",
@@ -1035,7 +1035,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                       style={{
                         marginTop: "12px",
                         width: "100%",
-                        height: "32px",
+                        height: "36px",
                         borderRadius: "999px",
                         border: "none",
                         background: "var(--bt,#FF6B6B)",
@@ -1081,7 +1081,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                             <button
                               onClick={d.acceptAll}
                               style={{
-                                height: "28px",
+                                height: "36px",
                                 padding: "0 12px",
                                 borderRadius: "999px",
                                 border: "none",
@@ -1095,7 +1095,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                             <button
                               onClick={d.discard}
                               style={{
-                                height: "28px",
+                                height: "36px",
                                 padding: "0 12px",
                                 borderRadius: "6px",
                                 border: "1px solid var(--ls,#C8D2D5)",
@@ -1202,7 +1202,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                             <button
                               onClick={cf.onGoto}
                               style={{
-                                height: "26px",
+                                height: "36px",
                                 padding: "0 10px",
                                 borderRadius: "6px",
                                 border: "1px solid var(--ls,#C8D2D5)",
@@ -1216,7 +1216,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                             <button
                               onClick={cf.onIgnore}
                               style={{
-                                height: "26px",
+                                height: "36px",
                                 padding: "0 10px",
                                 borderRadius: "6px",
                                 border: "1px solid var(--ls,#C8D2D5)",
@@ -1349,7 +1349,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                   aria-hidden
                   style={{
                     width: "24px",
-                    height: "24px",
+                    height: "36px",
                     borderRadius: "7px",
                     border: `1px solid ${d.notifyOn ? "var(--bt,#FF6B6B)" : "var(--ls,#C8D2D5)"}`,
                     background: d.notifyOn ? "var(--bt,#FF6B6B)" : "var(--cd,#FFFFFF)",
@@ -1397,7 +1397,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                   aria-hidden
                   style={{
                     width: "24px",
-                    height: "24px",
+                    height: "36px",
                     borderRadius: "7px",
                     border: `1px solid ${d.ckBd}`,
                     background: d.ckBg,
@@ -1522,7 +1522,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                   aria-label="Close"
                   style={{
                     width: "28px",
-                    height: "28px",
+                    height: "36px",
                     borderRadius: "6px",
                     border: "none",
                     background: "none",
@@ -1666,7 +1666,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                           display: "inline-flex",
                           alignItems: "center",
                           gap: "7px",
-                          height: "30px",
+                          height: "36px",
                           padding: "0 11px",
                           borderRadius: "999px",
                           border: `1px solid ${t.bd}`,

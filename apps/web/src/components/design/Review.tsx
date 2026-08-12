@@ -432,7 +432,7 @@ export function Review({ d }: { d: ReviewData }) {
                                 onClick={o.on}
                                 style={{
                                   width: "34px",
-                                  height: "32px",
+                                  height: "36px",
                                   borderRadius: "6px",
                                   border: `1px solid ${o.bd}`,
                                   background: o.bg,
