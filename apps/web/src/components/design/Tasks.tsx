@@ -14,6 +14,7 @@ import { Rail } from "@/components/console/Rail";
 export type TasksData = {
   readonly conflictCount: React.ReactNode;
   readonly allClear: boolean;
+  readonly templates?: React.ReactNode;
   readonly allClearNote: React.ReactNode;
   readonly allClearBg: string;
   readonly allClearBd: string;
@@ -654,6 +655,10 @@ export function Tasks({ d }: { d: TasksData }) {
                 </Fragment>
               ))}{" "}
             </div>{" "}
+            {/* A slot, not markup: the deliverable definitions are a real
+                component under components/console, hosted here so the screen
+                that reports on tasks is also the screen that creates them. */}
+            {d.templates}
             {(d.groups ?? []).map((g, gIndex) => (
               <Fragment key={gIndex}>
                 {" "}

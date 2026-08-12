@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
+import { TaskTemplates } from "@/components/console/TaskTemplates";
 import { Tasks, type TasksData } from "@/components/design/Tasks";
 import { FileThreads, type FileThread } from "@/components/FileThreads";
 import { API_BASE_URL } from "@/lib/api";
@@ -228,6 +229,8 @@ export default function TasksPage() {
   const screen: TasksData = {
     ...stripData(stats),
 
+    templates: <TaskTemplates onToast={toast} />,
+
     odCount: overdue.length,
     /* Until the query resolves, `all` is [] — so this screen stated "No
      * deliverables assigned yet" and four zeroes on an event with 79 overdue
@@ -236,7 +239,7 @@ export default function TasksPage() {
     sumLine: isPending
       ? "Loading deliverables…"
       : all.length === 0
-        ? "No deliverables assigned yet. Create a task template and assign it to the roster."
+        ? "Nothing assigned yet. Define a deliverable below, then assign it to the roster."
         : `${openRows.length} open across ${waiting.size} speaker${waiting.size === 1 ? "" : "s"}, ${overdue.length} overdue.`,
     allClear: !isPending && groups.length === 0,
     // Was the literal "84 speakers, zero open tasks here", printed on any
@@ -247,7 +250,7 @@ export default function TasksPage() {
     allClearFg: all.length === 0 ? "var(--i2,#3E4E58)" : "var(--ok,#0E7A5F)",
     allClearNote:
       all.length === 0
-        ? "No deliverables have been assigned yet. Build a task template in Program, then assign it to the roster."
+        ? "Nothing has been assigned yet. Define a deliverable in the panel above, then assign it to the roster."
         : `Nothing outstanding in this view — ${all.length} task${all.length === 1 ? "" : "s"} across ${waiting.size} speaker${waiting.size === 1 ? "" : "s"}, all accounted for.`,
 
     tOpen: tile("open", openRows.length),
