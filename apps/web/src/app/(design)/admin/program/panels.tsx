@@ -15,7 +15,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { SideDrawer } from "@/components/console/SideDrawer";
 import { EmptyState, PAGE_ICON, PageHead, card, pill, quietPill } from "@/components/ui";
@@ -320,6 +320,33 @@ function subLabel(row: Row): string {
   return row.day_date !== undefined && own !== "" ? own : "";
 }
 
+/** What deleting this row is already known to cost, before the API is asked.
+ *
+ *  `session_count` comes back on every program resource for exactly this
+ *  reason (see the API's `Read` base schema) — it is the same number the
+ *  delete guard checks, so a row known to be in use can say so up front
+ *  instead of spending a click finding out. Event days also carry
+ *  `break_count`; rooms and days can still be refused for schedule blocks the
+ *  list payload does not carry, which is why a `null` here reads as "nothing
+ *  known to be attached", never as a guarantee the delete will succeed.
+ */
+function knownUsage(panel: Panel, row: Row): string | null {
+  const sessions = Number(row.session_count ?? 0);
+  const breaks = panel.key === "days" ? Number(row.break_count ?? 0) : 0;
+  if (sessions === 0 && breaks === 0) return null;
+
+  const bits = [
+    sessions > 0 ? `${sessions} session${sessions === 1 ? "" : "s"}` : null,
+    breaks > 0 ? `${breaks} break${breaks === 1 ? "" : "s"}` : null,
+  ].filter((bit): bit is string => bit !== null);
+  const plural = bits.length > 1 || sessions > 1 || breaks > 1;
+  const noun = panel.key === "days" ? "day" : panel.singular;
+
+  return `${bits.join(" and ")} ${plural ? "are" : "is"} still attached to this ${noun}. Move ${
+    plural ? "them" : "it"
+  } first — deleting it would take ${plural ? "them" : "it"} with it.`;
+}
+
 const inputStyle = {
   width: "100%",
   boxSizing: "border-box" as const,
@@ -330,6 +357,19 @@ const inputStyle = {
   background: "var(--cd)",
   font: "400 13.5px var(--font-plex-sans)",
   color: "var(--ik)",
+};
+
+/** The one destructive control on this screen. Filled with the negative tint
+ *  rather than a ghost border, so it never reads as a second Edit — and tall
+ *  enough that a slip of the thumb lands on the row, not the button. */
+const dangerPill = {
+  height: "var(--control-h-md, 44px)",
+  padding: "0 20px",
+  borderRadius: 999,
+  border: "1px solid var(--cnl)",
+  background: "var(--cnw)",
+  color: "var(--cn)",
+  font: "600 12.5px var(--font-plex-sans)",
 };
 
 function useRefresh(panelKey: string, eventId: string | null): () => void {
@@ -565,6 +605,116 @@ function RowDrawer({
   );
 }
 
+/** The one confirmation on this screen that has to stop the click rather than
+ *  just announce it — the row it names is gone for good, and the row is the
+ *  only context left once it is.
+ *
+ *  A centred dialog, not `SideDrawer`: that component frames a form to fill
+ *  in, and this is one decision with two answers. It still takes focus and
+ *  closes on Escape, because a destructive prompt earns that even at a
+ *  fraction of the size.
+ */
+function DeleteConfirm({
+  panel,
+  row,
+  pending,
+  problem,
+  onCancel,
+  onConfirm,
+}: {
+  panel: Panel;
+  row: Row;
+  pending: boolean;
+  /** Set only once a real attempt has been refused — replaces the guess below
+   *  with what the API actually said, breaks included. */
+  problem: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const usage = knownUsage(panel, row);
+  // A count already in hand (sessions, and for a day, breaks) is a guaranteed
+  // 409 — the delete guard in program/router.py refuses every one of them.
+  // Asking the API to confirm what the list already knows wastes the click.
+  const blocked = usage !== null;
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    cancelRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return (
+    <div
+      onClick={onCancel}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(13,16,32,.4)",
+        display: "grid",
+        placeItems: "center",
+        padding: 20,
+        zIndex: 140,
+      }}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="program-delete-title"
+        aria-describedby="program-delete-body"
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          width: 440,
+          maxWidth: "100%",
+          background: "var(--cd)",
+          border: "1px solid var(--ln)",
+          borderRadius: 14,
+          padding: 22,
+          boxShadow: "0 24px 60px rgba(13,16,32,.28)",
+          display: "grid",
+          gap: 14,
+        }}
+      >
+        <p
+          id="program-delete-title"
+          style={{ font: "600 15px var(--font-plex-sans)", color: "var(--ik)", margin: 0 }}
+        >
+          Delete the {panel.singular} “{label(row)}”?
+        </p>
+        <p
+          id="program-delete-body"
+          role={problem === "" ? undefined : "alert"}
+          style={{
+            font: "400 13px/1.6 var(--font-plex-sans)",
+            color: problem === "" ? "var(--i3)" : "var(--cn)",
+            margin: 0,
+          }}
+        >
+          {problem !== "" ? problem : (usage ?? "This can't be undone.")}
+        </p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+          <button ref={cancelRef} type="button" style={quietPill} onClick={onCancel}>
+            {blocked ? "Close" : "Cancel"}
+          </button>
+          {blocked ? null : (
+            <button
+              type="button"
+              style={{ ...dangerPill, opacity: pending ? 0.7 : 1 }}
+              disabled={pending}
+              onClick={onConfirm}
+            >
+              {pending ? "Deleting…" : `Delete ${panel.singular}`}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function List({
   panel,
   eventId,
@@ -578,8 +728,12 @@ function List({
 }) {
   const refresh = useRefresh(panel.key, eventId);
   const [problem, setProblem] = useState("");
+  /** The row a delete has been asked for but not yet committed. Holding the
+   *  row itself, not just its id, is what lets the dialog keep naming it
+   *  after `onEdit`/`onAdd` change what else is on screen. */
+  const [confirmDelete, setConfirmDelete] = useState<Row | null>(null);
 
-  const { data } = useQuery({
+  const { data, isPending: rowsLoading } = useQuery({
     queryKey: [panel.key, eventId],
     enabled: eventId !== null,
     queryFn: () => authed<Row[]>(`/events/${eventId}/${panel.path}`),
@@ -590,19 +744,32 @@ function List({
       authed(`/events/${eventId}/${panel.path}/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       setProblem("");
+      setConfirmDelete(null);
       refresh();
     },
     // Deleting something a session still points at is refused by the database;
-    // say so rather than showing a raw constraint error.
+    // say so rather than showing a raw constraint error. Anything else (a
+    // dropped connection, a 500) gets its own honest line instead of the same
+    // "still in use" guess, which would be a lie the rest of the time.
     onError: (error: Error) =>
       setProblem(
         error instanceof ApiError && error.status === 409
           ? error.message
-          : `That ${panel.singular} is still in use, so it was kept.`,
+          : `Something went wrong deleting this ${panel.singular}. Try again.`,
       ),
   });
 
   const rows = data ?? [];
+
+  if (rowsLoading) {
+    return (
+      <div style={{ ...card, padding: "48px 24px", textAlign: "center" }}>
+        <p style={{ font: "400 13px var(--font-plex-sans)", color: "var(--i3)", margin: 0 }}>
+          Loading {panel.title.toLowerCase()}…
+        </p>
+      </div>
+    );
+  }
 
   if (rows.length === 0) {
     return (
@@ -675,33 +842,37 @@ function List({
               <button
                 onClick={() => onEdit(row)}
                 aria-label={`Edit ${label(row)}`}
-                style={{ ...quietPill, height: 28 }}
+                style={quietPill}
               >
                 Edit
               </button>
               <button
-                onClick={() => remove.mutate(row.id)}
-                aria-label={`Remove ${label(row)}`}
-                style={{ ...quietPill, height: 28 }}
+                onClick={() => {
+                  setProblem("");
+                  setConfirmDelete(row);
+                }}
+                aria-label={`Delete ${label(row)}`}
+                style={dangerPill}
               >
-                Remove
+                Delete
               </button>
             </div>
           ))}
         </div>
       </section>
 
-      {problem === "" ? null : (
-        <p
-          role="alert"
-          style={{
-            font: "400 12.5px var(--font-plex-sans)",
-            color: "var(--cn)",
-            margin: "12px 0 0",
+      {confirmDelete === null ? null : (
+        <DeleteConfirm
+          panel={panel}
+          row={confirmDelete}
+          pending={remove.isPending}
+          problem={problem}
+          onCancel={() => {
+            setConfirmDelete(null);
+            setProblem("");
           }}
-        >
-          {problem}
-        </p>
+          onConfirm={() => remove.mutate(confirmDelete.id)}
+        />
       )}
     </>
   );

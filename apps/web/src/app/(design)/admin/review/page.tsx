@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { AssignmentPanel } from "@/components/console/AssignmentPanel";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { Evaluations, type EvaluationsData } from "@/components/design/Evaluations";
 import { RubricEditor } from "@/components/console/RubricEditor";
@@ -23,10 +24,6 @@ const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" })
 type Member = { user_id: string; name: string; email: string; role: string };
 
 /** Everyone who can be handed a review queue. Owners and admins review too. */
-/** Reviewers per submission — what auto-distribute aims for, and therefore
- *  what turns an assignment count back into a submission count. */
-const PER_SUBMISSION = 2;
-
 const REVIEWING_ROLES = new Set(["owner", "admin", "coordinator", "reviewer"]);
 
 const ROUND_STATUS: Record<string, { label: string; fg: string; bg: string }> = {
@@ -84,6 +81,7 @@ export default function EvaluationsPage() {
 
   const [newName, setNewName] = useState("");
   const [newBlind, setNewBlind] = useState(false);
+  const [assignFor, setAssignFor] = useState<string | null>(null);
 
   const { data: rounds } = useQuery({
     queryKey: ["review-rounds-admin", eventId],
@@ -137,41 +135,6 @@ export default function EvaluationsPage() {
     onSuccess: (round) => {
       refreshRounds();
       toast(`${round.name} is now ${round.is_blind ? "blind" : "open"}.`);
-    },
-    onError: (error: Error) => toast(error.message),
-  });
-
-  const distribute = useMutation({
-    mutationFn: (id: string) =>
-      authed<{ created: number; under_assigned: number; already_covered: number }>(
-        `/events/${eventId}/review-rounds/${id}/auto-distribute`,
-        {
-          method: "POST",
-          body: {
-            user_ids: (members ?? [])
-              .filter((member) => REVIEWING_ROLES.has(member.role))
-              .map((member) => member.user_id),
-            per_submission: PER_SUBMISSION,
-          },
-        },
-      ),
-    onSuccess: (result) => {
-      refreshRounds();
-      // "0 created" is the normal answer on a round that is already staffed, and
-      // it used to be reported as `N could not be fully covered` — which reads
-      // as a failure and made a working screen look broken. Already-covered and
-      // could-not-cover are opposite facts and now say opposite things.
-      const parts: string[] = [];
-      if (result.created > 0) parts.push(`${result.created} assignments created`);
-      if (result.already_covered > 0) {
-        parts.push(
-          `${result.already_covered} submission${result.already_covered === 1 ? "" : "s"} already had a full panel`,
-        );
-      }
-      if (result.under_assigned > 0) {
-        parts.push(`${result.under_assigned} could not be fully covered`);
-      }
-      toast(parts.length === 0 ? "Nothing to assign." : `${parts.join("; ")}.`);
     },
     onError: (error: Error) => toast(error.message),
   });
@@ -379,15 +342,32 @@ export default function EvaluationsPage() {
         total,
         crits: plan?.criteria.length ?? 0,
         progW: total === 0 ? "0%" : `${Math.round((finished / total) * 100)}%`,
-        onAssign: () => distribute.mutate(round.id),
+        // Opens the panel rather than spreading straight away. It used to fire
+        // auto-distribute on click with two numbers hardcoded in this file and
+        // shown nowhere — a write to every reviewer's queue from a button that
+        // named neither what it would do nor how much.
+        onAssign: () => setAssignFor(round.id),
         onNudge: () => nudge.mutate(),
         onBlind: () => patchRound.mutate({ id: round.id, body: { is_blind: !round.is_blind } }),
         onAdvance: () => advance.mutate(round.id),
         /* The screen's stated purpose is setting review up, and the rubric is
          * what review scores against — yet nothing in the product could write
          * one. It printed a criteria count and offered no way to change it. */
+        /* The round card's setup slot. It is named `rubric` in the generated
+         * screen and now carries both editors, rather than adding a prop to a
+         * file `tools/dc2tsx.py` would overwrite. */
         rubric:
-          eventId === null ? null : <RubricEditor eventId={eventId} roundId={round.id} />,
+          eventId === null ? null : (
+            <>
+              <RubricEditor eventId={eventId} roundId={round.id} />
+              <AssignmentPanel
+                eventId={eventId}
+                roundId={round.id}
+                open={assignFor === round.id}
+                onClose={() => setAssignFor(null)}
+              />
+            </>
+          ),
       };
     }),
     // The header's New plan button and the create card do the same thing.

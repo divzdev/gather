@@ -14,6 +14,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 
 import { authed } from "@/lib/session";
@@ -52,6 +53,7 @@ const card: React.CSSProperties = {
 const rowStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
+  flexWrap: "wrap",
   gap: 12,
   padding: "9px 0",
   borderTop: "1px solid var(--ln)",
@@ -60,14 +62,15 @@ const rowStyle: React.CSSProperties = {
 };
 
 const restore: React.CSSProperties = {
-  height: 28,
-  padding: "0 12px",
+  height: "var(--control-h-sm, 36px)",
+  padding: "0 14px",
   borderRadius: 999,
   border: "1px solid var(--ls)",
   background: "var(--cd)",
   color: "var(--i2)",
   font: "500 12px var(--font-plex-sans)",
   cursor: "pointer",
+  flex: "none",
 };
 
 export function PublishedVersions({
@@ -161,9 +164,19 @@ export function PublishedVersions({
           margin: "0 0 4px",
         }}
       >
-        {pending === null
-          ? "The draft matches it — nothing is waiting to be published."
-          : `Unpublished changes since then: ${pending}. Publish from the agenda.`}
+        {pending === null ? (
+          "The draft matches it — nothing is waiting to be published."
+        ) : (
+          <>
+            {`Unpublished changes since then: ${pending}. `}
+            <Link
+              href="/admin/agenda"
+              style={{ color: "inherit", fontWeight: 600, textDecoration: "underline" }}
+            >
+              Publish from the agenda.
+            </Link>
+          </>
+        )}
       </p>
 
       {earlier.length === 0 ? null : (

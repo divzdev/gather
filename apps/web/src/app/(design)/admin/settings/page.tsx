@@ -129,6 +129,12 @@ const OFF_TONE = {
   bg: "var(--sk,#EDF1F2)",
   bd: "var(--ln,#E1E7E9)",
 } as const;
+/** Built, but it waits for a person. Distinct from both "on" and "absent". */
+const ASK_TONE = {
+  fg: "var(--if,#47599F)",
+  bg: "var(--ifw,#E9ECF7)",
+  bd: "var(--ifl,#C6CDEA)",
+} as const;
 
 export default function SettingsPage() {
   const { toasts, toast, dismiss } = useConsoleChrome();
@@ -138,7 +144,6 @@ export default function SettingsPage() {
 
   const [panel, setPanel] = useState<Panel>("event");
   const [draft, setDraft] = useState<Draft>(EMPTY);
-  const [mailsOn, setMailsOn] = useState<Record<string, boolean>>({});
 
   const { data: event } = useQuery({
     queryKey: ["event", eventId],
@@ -245,7 +250,8 @@ export default function SettingsPage() {
         ["cfpCloses", "The CFP close date"],
       ] as const) {
         const value = draft[key];
-        if (value.trim() !== "" && !realDate(value)) return `${label} is not a real date, so it has not been saved.`;
+        if (value.trim() !== "" && !realDate(value))
+          return `${label} is not a real date, so it has not been saved.`;
       }
       if (realDate(draft.starts) && realDate(draft.ends) && draft.ends < draft.starts)
         return "The event cannot end before it starts, so the end date has not been saved.";
@@ -295,25 +301,65 @@ export default function SettingsPage() {
     })),
     pubAccentLine: `Public pages use ${theme.accent}.`,
 
+    /* Four switches used to sit here, defaulted on, animating on click and
+     * toasting that the preference was not stored. Two of the four named
+     * emails do not exist anywhere in the product, and a third — the decision
+     * notice — is deliberately never automatic, so an off switch for it
+     * implied a danger the design has already made impossible. A switch that
+     * changes nothing is worse than no switch: the operator makes a choice,
+     * the screen confirms it, and the next send ignores it.
+     *
+     * What replaces them is the same treatment this screen's Integrations
+     * panel already uses — what is true, said plainly. */
     mails: [
-      { key: "confirmation", n: "Submission confirmation", trigger: "on submit" },
-      { key: "decision", n: "Decision notice", trigger: "when you send decisions" },
-      { key: "reminder5", n: "CFP reminder", trigger: "5 days before close" },
-      { key: "reminder1", n: "CFP reminder", trigger: "1 day before close" },
-    ].map((mail) => {
-      const on = mailsOn[mail.key] ?? true;
-      return {
-        n: mail.n,
-        trigger: mail.trigger,
-        on: (on ? "true" : "false") as "true" | "false",
-        onTog: () => {
-          setMailsOn((current) => ({ ...current, [mail.key]: !on }));
-          toast("Scheduled mail is queued by the worker; this preference is not stored yet.");
-        },
-        swBg: on ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
-        swX: on ? "14px" : "2px",
-      };
-    }),
+      {
+        n: "Submission confirmation",
+        trigger:
+          "The moment a proposal is submitted, carrying its code so the speaker can check status later.",
+        state: "Automatic",
+        link: "See it in Messages",
+        linkD: "inline-flex",
+        ...OK_TONE,
+      },
+      {
+        n: "Overdue deliverable reminder",
+        trigger:
+          "Nightly, to speakers with something past due. The same 24-hour floor as the manual nudge, so a sweep and a chase cannot double up.",
+        state: "Automatic",
+        link: "Chase from Tasks",
+        linkD: "inline-flex",
+        ...OK_TONE,
+      },
+      {
+        n: "Schedule change",
+        trigger:
+          "When you publish with “email the speakers whose session changed” ticked — never on a publish that changed nothing.",
+        state: "You choose",
+        link: "Publish from Agenda",
+        linkD: "inline-flex",
+        ...ASK_TONE,
+      },
+      {
+        n: "Decision notice",
+        trigger:
+          "Queues when you set a decision and waits. Only Send decisions releases it, against a recipient count the server recomputes.",
+        state: "Never automatic",
+        link: "Send from Messages",
+        linkD: "inline-flex",
+        ...ASK_TONE,
+      },
+      {
+        n: "CFP closing reminder",
+        trigger:
+          "Not built. Nothing counts down to the close date, so nobody is reminded to submit.",
+        state: "Not built",
+        link: "",
+        linkD: "none",
+        ...OFF_TONE,
+      },
+    ],
+    mailFoot:
+      "Deciding is not sending. Setting accept, reject or waitlist writes the outcome and emails nobody; Messages is the only thing in the product that can mail a decision, and it makes you confirm the count first.",
 
     /* This panel used to assert "Accelevents · Connected · event id ae_88412 ·
      * last push 6 Aug 14:02 · 12 create, 3 update, 0 fail" as literal markup,

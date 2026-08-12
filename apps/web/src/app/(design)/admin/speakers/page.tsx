@@ -135,6 +135,8 @@ export default function SpeakersPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [notes, setNotes] = useState<Record<string, { a: string; t: string; x: string }[]>>({});
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const { data: roster } = useQuery({
     queryKey: ["roster", eventId],
@@ -219,11 +221,36 @@ export default function SpeakersPage() {
     onError: (error: Error) => toast(error.message),
   });
 
-  // A speaker's status (prospective → confirmed → declined) is a real organiser
-  // action and `PATCH /events/:id/speakers/:id` supports it, but no control on
-  // this screen offers it — the mutation's only caller was the nudge button
-  // that was firing it by mistake. Left out rather than invented here, so the
-  // control gets designed in the UI pass rather than bolted on.
+  /** The forward chain an organiser actually walks a speaker through.
+   *  `declined` and `withdrawn` are reachable too, but from the "Other
+   *  status" menu — they are corrections and exceptions, not the common
+   *  case, and do not belong on the one-click path. */
+  const STATUS_ORDER = ["prospective", "accepted", "confirmed"] as const;
+  const nextStatusOf = (status: string): string | null => {
+    const at = STATUS_ORDER.indexOf(status as (typeof STATUS_ORDER)[number]);
+    return at === -1 || at === STATUS_ORDER.length - 1 ? null : STATUS_ORDER[at + 1]!;
+  };
+
+  /** A speaker's status (prospective → accepted → confirmed, or declined /
+   *  withdrawn from any of those) is a real organiser action and
+   *  `PATCH /events/:id/speakers/:id` has always supported it — the
+   *  mutation's only caller was the nudge button, firing it by mistake. This
+   *  is the real control: a labelled one-click "move forward" action for the
+   *  common case, and a small menu for everything else. */
+  const updateStatus = useMutation({
+    mutationFn: (vars: { eventSpeakerId: string; status: string; name: string }) =>
+      authed(`/events/${eventId}/speakers/${vars.eventSpeakerId}`, {
+        method: "PATCH",
+        body: { status: vars.status },
+      }),
+    onSuccess: (_result, vars) => {
+      void queryClient.invalidateQueries({ queryKey: ["roster", eventId] });
+      toast(`${vars.name} is now ${STATUS[vars.status]?.label ?? vars.status}.`);
+      setStatusMenuOpen(false);
+      setStatusError(null);
+    },
+    onError: (error: Error) => setStatusError(error.message),
+  });
 
   /** The roster had no way to add anybody. `POST /events/:id/speakers` has
    *  existed since the first migration, but the only routes onto the roster
@@ -362,6 +389,8 @@ export default function SpeakersPage() {
   const pageRows = filtered.slice((page - 1) * perPage, page * perPage);
 
   const open = openId === null ? null : (all.find((row) => row.id === openId) ?? null);
+  const openStatus = open === null ? null : (STATUS[open.status] ?? STATUS.prospective!);
+  const openNextStatus = open === null ? null : nextStatusOf(open.status);
 
   /** This speaker's own sessions and tasks. Matched on `speaker_id` — the
    *  roster row's `id` is the participation in *this* event, not the person, and
@@ -408,6 +437,19 @@ export default function SpeakersPage() {
     setHover(pageRows[next]!.id);
   };
 
+  /** Opening a different speaker while the status menu or its error is still
+   *  showing would apply either to the wrong person. */
+  const openDrawer = (id: string) => {
+    setOpenId(id);
+    setStatusMenuOpen(false);
+    setStatusError(null);
+  };
+  const closeDrawer = () => {
+    setOpenId(null);
+    setStatusMenuOpen(false);
+    setStatusError(null);
+  };
+
   useHotkeys(
     [
       { key: "j", run: () => step(1) },
@@ -421,7 +463,7 @@ export default function SpeakersPage() {
           );
         },
       },
-      { key: "Enter", run: () => hover !== null && setOpenId(hover) },
+      { key: "Enter", run: () => hover !== null && openDrawer(hover) },
     ],
     openId === null && !adding,
   );
@@ -510,7 +552,7 @@ export default function SpeakersPage() {
           );
         },
         onEnter: () => setHover(row.id),
-        onOpen: () => setOpenId(row.id),
+        onOpen: () => openDrawer(row.id),
       };
     }),
 
@@ -637,9 +679,38 @@ export default function SpeakersPage() {
     empty: pageRows.length === 0,
 
     open: open !== null,
-    closeDrawer: () => setOpenId(null),
+    closeDrawer,
+    statusPending: updateStatus.isPending,
+    statusMenuOpen,
+    toggleStatusMenu: () => setStatusMenuOpen((current) => !current),
+    closeStatusMenu: () => setStatusMenuOpen(false),
+    statusError,
+    // All five, current one disabled rather than hidden — this is the
+    // complete list, including the correction path back out of a decline.
+    statusOptions: Object.keys(STATUS).map((key) => ({
+      label: STATUS[key]!.label,
+      fg: STATUS[key]!.fg,
+      current: open?.status === key,
+      on: () => {
+        if (open === null || key === open.status) return;
+        setStatusError(null);
+        updateStatus.mutate({ eventSpeakerId: open.id, status: key, name: open.name });
+      },
+    })),
     o: {
       n: open?.name ?? "",
+      st: openStatus?.label ?? "",
+      stFg: openStatus?.fg ?? "var(--i3)",
+      stBg: openStatus?.bg ?? "var(--sk)",
+      // Null hides the button rather than disabling it — "confirmed" and the
+      // two terminal statuses have no next step, and a button with nothing
+      // to do is worse than no button.
+      nextLabel: openNextStatus === null ? null : `Mark as ${STATUS[openNextStatus]!.label}`,
+      onAdvance: () => {
+        if (open === null || openNextStatus === null) return;
+        setStatusError(null);
+        updateStatus.mutate({ eventSpeakerId: open.id, status: openNextStatus, name: open.name });
+      },
       // The photograph when there is one, initials when there is not — the
       // fallback rather than the only state.
       ini:
