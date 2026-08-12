@@ -22,14 +22,15 @@ function luminance(colour: string): number {
 }
 
 async function openPortal(page: Page, theme: "light" | "dark") {
+  // This helper runs twice per test (once per theme), and the speaker session
+  // from the first pass survives in localStorage. /login only forwards *staff*
+  // sessions — a lingering speaker token must never hide the sign-in form — so
+  // on the second pass go straight to the portal instead of expecting a bounce.
   await page.goto("/login");
-  // A signed-in visitor never sees the login page — it forwards to the portal.
-  // This helper runs twice per test (once per theme), so on the second pass the
-  // session from the first is still in localStorage and there is no demo button
-  // to click. Read the token the same way the page does rather than racing the
-  // client-side redirect.
   const signedIn = await page.evaluate(() => localStorage.getItem("gather.speaker") !== null);
-  if (!signedIn) {
+  if (signedIn) {
+    await page.goto("/portal");
+  } else {
     await page.getByRole("button", { name: /^Speaker$/i }).click();
   }
   await expect(page).toHaveURL(/\/portal/, { timeout: 20_000 });

@@ -21,7 +21,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api";
-import { getSpeakerToken, getToken, setEventId, setSpeakerToken, setToken } from "@/lib/session";
+import { getToken, setEventId, setSpeakerToken, setToken } from "@/lib/session";
 
 import {
   BrandPanel,
@@ -103,19 +103,25 @@ function LoginPage() {
    *  from the landing page was handed a login form — and the form works, so the
    *  reasonable conclusion is that the session was lost, which it was not.
    *
-   *  Staff and speakers hold different tokens and belong in different apps, so
-   *  the destination is decided by which one exists. An explicit `?next=` still
-   *  wins: that is the "you asked for this page, sign in first" path, and it is
-   *  already validated above as same-origin.
+   *  Only a *staff* session forwards. The first version forwarded on either
+   *  token, and the two sessions are deliberately independent — an organiser
+   *  who previewed the portal holds both. Logging out of the console cleared
+   *  the staff token, the speaker token remained, and /login bounced them to
+   *  the portal: the login form became unreachable while any session existed,
+   *  even for someone trying to sign in as somebody else. A speaker never
+   *  navigates here on purpose — links take them straight to the portal — so a
+   *  lingering speaker session should not cost anyone the sign-in form.
+   *  An explicit `?next=` still wins: that is the "you asked for this page,
+   *  sign in first" path, and it is already validated above as same-origin.
    */
   const signedIn = useSyncExternalStore(
     subscribeToSession,
-    () => getToken() !== null || getSpeakerToken() !== null,
+    () => getToken() !== null,
     () => false,
   );
   useEffect(() => {
     if (!signedIn) return;
-    router.replace(next ?? (getToken() !== null ? "/admin" : "/portal"));
+    router.replace(next ?? "/admin");
   }, [signedIn, router, next]);
 
   const [mode, setMode] = useState<Mode>("login");
