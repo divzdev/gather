@@ -1,0 +1,74 @@
+/* ---------------------------------------------------------------------------
+ * The speaker portal: /portal.
+ *
+ * This file exists because the portal is the one surface in the product that is
+ * *primarily* a phone screen — a speaker opens it two or three times, between
+ * other things, on the device in their hand — and the prototype it was generated
+ * from carries no media query at all. It was composed at desktop width, so the
+ * home tab's `minmax(0,1fr) 320px` never collapsed: at 430px the main column
+ * resolved to 62px and the task list wrapped one word per line.
+ *
+ * Why `!important` and why selectors that read an inline style:
+ * `components/design/Portal.tsx` is generated from `GatherDesign/Portal.dc.html`
+ * and styles every node inline. Inline wins over a stylesheet, and the generated
+ * markup carries no class to hook. Matching on the declaration itself is ugly and
+ * it is also exact — `320px` appears three times in that file and all three are
+ * the sidebar grid. Regenerating cannot silently break these rules; it can only
+ * remove the declaration they match, which shows up immediately as a layout that
+ * has stopped collapsing.
+ *
+ * The real repair is a responsive prototype. Until then this is the seam, and it
+ * is deliberately two rules rather than a parallel stylesheet.
+ * ------------------------------------------------------------------------- */
+
+/* Sidebar beside content -> stacked. 860px, not 768: at tablet width the main
+ * column is 400px against a 320px rail, which reads as two competing columns
+ * rather than content with an aside. */
+@media (max-width: 860px) {
+  [data-portal] [style*="320px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* The profile form's paired fields (Salutation|Pronouns, Website|LinkedIn).
+ * They survive tablet width; they do not survive a phone, where each half is
+ * ~180px and "https://" is wider than the box showing it. */
+@media (max-width: 560px) {
+  [data-portal] [style*="1fr 1fr"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* The "Accepted / Profile / Assets / Ready" rail. Its row already sets
+ * `flex-wrap: wrap` and a `row-gap`, so wrapping was designed for — it just
+ * never happened, because each step reserves 76px while its two labels are
+ * `white-space: nowrap` and half again as wide. They overflowed into each other
+ * instead, rendering "slides and headshot" and "everything in" as one run of
+ * letters. Reserving the width the labels actually need lets the row wrap to two
+ * lines on a phone, which is what the row-gap was there for.
+ * `min-width: 76px` appears once in the generated file and is that step. */
+@media (max-width: 560px) {
+  [data-portal] [style*="min-width: 76px"] {
+    min-width: 118px !important;
+  }
+}
+
+/* Resources and Feedback are injected after the prototype's whole tree, because
+ * the prototype has no such tabs. Its footer is the last thing in that tree, so
+ * on those two tabs it rendered *above* the content it belongs under — the page
+ * read "Runs on Gather · your email is your login" and then began. Those tabs
+ * end with their own content instead. `margin-top: 36px` appears once in the
+ * generated file and is that footer. */
+[data-portal][data-portal-tab="resources"] [style*="margin-top: 36px"],
+[data-portal][data-portal-tab="feedback"] [style*="margin-top: 36px"] {
+  display: none !important;
+}
+
+/* The prototype's inputs and selects are 36px, which is a default nobody chose
+ * (see .claude/rules/design-standards.md) and is under the 40px floor for a text
+ * field — on the one surface that is mostly thumbs. */
+[data-portal] input,
+[data-portal] select,
+[data-portal] textarea {
+  min-height: 40px;
+}

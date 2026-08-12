@@ -5,7 +5,7 @@
  *  phone between other things. */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 
 import { Portal, type PortalData } from "@/components/design/Portal";
 
@@ -13,7 +13,7 @@ import { ParticipationBand, type Participation as ParticipationState } from "./p
 import { PortalComments, useFeedbackCount } from "./comments";
 import { useTheme } from "@/components/ThemeProvider";
 import { API_BASE_URL, ApiError } from "@/lib/api";
-import { getSpeakerToken, portal } from "@/lib/session";
+import { getSpeakerToken, portal, portalDownload } from "@/lib/session";
 import type { ThemeMode } from "@/lib/theme";
 
 type PortalFile = {
@@ -111,6 +111,17 @@ const DAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric",
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "short" });
 const BIO_TARGET = 600;
 
+/** The speaker token is read through an external store rather than a
+ *  `typeof window` branch, matching RequireStaff. The branch made the server
+ *  render the signed-out screen and the client render the portal, which is a
+ *  hydration mismatch: React discarded the whole tree and rebuilt it on every
+ *  load, so the speaker saw a flash of "this portal needs your sign-in link"
+ *  before their own page appeared. */
+function subscribeToSpeakerSession(listener: () => void): () => void {
+  window.addEventListener("storage", listener);
+  return () => window.removeEventListener("storage", listener);
+}
+
 const SUBMISSION_LOOK: Record<string, { label: string; fg: string; bg: string; bar: string }> = {
   draft: {
     label: "Draft",
@@ -189,6 +200,43 @@ function calendarLink(
         `&subject=${title}&startdt=${starts.toISOString()}&enddt=${ends.toISOString()}&location=${where}`;
 }
 
+/** The single Key dates row shown when nothing is outstanding: the speaker's own
+ *  slot if they have one, and otherwise an honest note that no date is set. */
+function restingKeyDate(talk: { starts_at: string | null; room: string | null } | null): {
+  mon: string;
+  day: string;
+  n: string;
+  sub: string;
+  bt: string;
+  cb: string;
+  cbd: string;
+  cf: string;
+} {
+  const calm = {
+    bt: "none",
+    cb: "var(--pp,#F4F6F7)",
+    cbd: "var(--ln,#E1E7E9)",
+    cf: "var(--ik,#16232B)",
+  };
+  if (talk === null || talk.starts_at === null) {
+    return {
+      mon: "TBC",
+      day: "—",
+      n: "Nothing due",
+      sub: "we email you when a date is set",
+      ...calm,
+    };
+  }
+  const when = new Date(talk.starts_at);
+  return {
+    mon: MONTH.format(when).toUpperCase(),
+    day: String(when.getUTCDate()),
+    n: "You are on stage",
+    sub: talk.room ?? "room to come",
+    ...calm,
+  };
+}
+
 /** "12–14 Oct · Fort Mason, SF" from whatever this event actually is. */
 function eventWhen(event: { starts_on: string; ends_on: string; location: string | null }): string {
   const from = new Date(`${event.starts_on}T00:00:00Z`);
@@ -261,7 +309,11 @@ export default function PortalPage() {
     window.setTimeout(() => setNotices((c) => c.filter((n) => n.id !== id)), 6000);
   };
 
-  const signedIn = typeof window !== "undefined" && getSpeakerToken() !== null;
+  const signedIn = useSyncExternalStore(
+    subscribeToSpeakerSession,
+    () => getSpeakerToken() !== null,
+    () => false,
+  );
 
   // The clock is read once per fetch, not per render: "2d overdue" must not
   // change because something else re-rendered.
@@ -581,10 +633,15 @@ export default function PortalPage() {
     evName: home?.event.name ?? "",
     evWhen: home === undefined ? "" : eventWhen(home.event),
     sessTitle: talk?.title ?? "No session yet",
+    // The room rides with the time in `sessTime`. Naming it here as well printed
+    // "Main Stage" twice on consecutive lines, so it stays only for the case
+    // sessTime cannot cover: a room assigned before a time is.
     sessMeta:
       talk === null
         ? "It will appear here once the organisers schedule you."
-        : `${talk.duration_minutes} min${talk.room === null ? "" : ` · ${talk.room}`}`,
+        : talk.starts_at === null && talk.room !== null
+          ? `${talk.duration_minutes} min · ${talk.room}`
+          : `${talk.duration_minutes} min`,
     editUntil: openDeadline(open),
     contactRole: "Your organiser · replies within a day",
 
@@ -609,8 +666,12 @@ export default function PortalPage() {
         return;
       }
       // The speaker's own route, not the public one: between acceptance and
-      // publication there is no public schedule to read the time from.
-      window.open(`${API_BASE_URL}/portal/sessions/${talk.id}.ics`, "_blank");
+      // publication there is no public schedule to read the time from. Fetched
+      // rather than opened — the route wants the speaker's bearer token, which
+      // a top-level navigation cannot carry.
+      void portalDownload(`/sessions/${talk.id}.ics`, `${talk.slug}.ics`).catch((error: unknown) =>
+        say(error instanceof Error ? error.message : "That calendar file could not be built."),
+      );
     },
     calG: () => {
       setCalOpen(false);
@@ -625,20 +686,27 @@ export default function PortalPage() {
       else window.open(link, "_blank", "noopener");
     },
 
-    keyDates: open.slice(0, 4).map((task, index) => {
-      const when = task.due_at === null ? eventStart : new Date(task.due_at);
-      const late = task.status === "overdue";
-      return {
-        mon: when === null ? "TBC" : MONTH.format(when).toUpperCase(),
-        day: when === null ? "—" : String(when.getUTCDate()),
-        n: task.name,
-        sub: task.is_required ? "required" : "optional",
-        bt: index === 0 ? "none" : "1px solid var(--sk,#EDF1F2)",
-        cb: late ? "var(--sw,#FFEAE6)" : "var(--pp,#F4F6F7)",
-        cbd: late ? "var(--sl,#FFC9C0)" : "var(--ln,#E1E7E9)",
-        cf: late ? "var(--sg,#E04E4E)" : "var(--ik,#16232B)",
-      };
-    }),
+    // A card whose only content is its own heading is not an empty state, and a
+    // speaker who has finished every task — the state we most want them to reach
+    // — was the one who got it. With nothing outstanding there is still exactly
+    // one date that matters to them, so the card falls back to it.
+    keyDates:
+      open.length > 0
+        ? open.slice(0, 4).map((task, index) => {
+            const when = task.due_at === null ? eventStart : new Date(task.due_at);
+            const late = task.status === "overdue";
+            return {
+              mon: when === null ? "TBC" : MONTH.format(when).toUpperCase(),
+              day: when === null ? "—" : String(when.getUTCDate()),
+              n: task.name,
+              sub: task.is_required ? "required" : "optional",
+              bt: index === 0 ? "none" : "1px solid var(--sk,#EDF1F2)",
+              cb: late ? "var(--sw,#FFEAE6)" : "var(--pp,#F4F6F7)",
+              cbd: late ? "var(--sl,#FFC9C0)" : "var(--ln,#E1E7E9)",
+              cf: late ? "var(--sg,#E04E4E)" : "var(--ik,#16232B)",
+            };
+          })
+        : [restingKeyDate(talk)],
 
     subs: (submissions ?? []).map((row) => {
       const look = SUBMISSION_LOOK[row.status] ?? SUBMISSION_LOOK.submitted!;
@@ -693,7 +761,11 @@ export default function PortalPage() {
   };
 
   return (
-    <>
+    // `data-portal` scopes portal.css, which is where this screen's responsive
+    // behaviour lives — the generated prototype styles every node inline and
+    // carries no media query. `data-portal-tab` is read by the same file to hide
+    // the prototype's footer on the two tabs whose body is injected after it.
+    <div data-portal data-portal-tab={tab}>
       <ParticipationBand state={home?.participation} />
       <Portal d={screen} />
       {/* Rendered here rather than through the Portal prototype, which has no
@@ -747,7 +819,7 @@ export default function PortalPage() {
           </button>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }
 

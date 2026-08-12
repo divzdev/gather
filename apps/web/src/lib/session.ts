@@ -155,12 +155,37 @@ export async function download(
     const token = await refreshAccessToken();
     if (token !== null) response = await request(token);
   }
-  if (!response.ok) {
-    const body = (await response.json().catch(() => undefined)) as
-      { error?: { message?: string } } | undefined;
-    throw new Error(body?.error?.message ?? `Could not build ${filename}.`);
-  }
+  if (!response.ok) throw await failure(response, filename);
+  await save(response, filename);
+}
 
+/** Download from a speaker-token endpoint.
+ *
+ *  The portal's "Download .ics" was a `window.open`, which is a top-level
+ *  navigation and carries no Authorization header — so the button opened a
+ *  NOT_AUTHENTICATED page instead of saving a calendar entry. Exactly the
+ *  failure `download` above exists to prevent, on the other of the two tokens.
+ *
+ *  No 401 retry, unlike the staff path: a speaker session is one long-lived
+ *  token from a magic link with no refresh cookie behind it, so an expiry means
+ *  asking for a new link rather than silently renewing.
+ */
+export async function portalDownload(path: string, filename: string): Promise<void> {
+  const token = getSpeakerToken();
+  const response = await fetch(`${API_BASE_URL}/portal${path}`, {
+    headers: token === null ? {} : { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw await failure(response, filename);
+  await save(response, filename);
+}
+
+async function failure(response: Response, filename: string): Promise<Error> {
+  const body = (await response.json().catch(() => undefined)) as
+    { error?: { message?: string } } | undefined;
+  return new Error(body?.error?.message ?? `Could not build ${filename}.`);
+}
+
+async function save(response: Response, filename: string): Promise<void> {
   const url = URL.createObjectURL(await response.blob());
   const anchor = document.createElement("a");
   anchor.href = url;
