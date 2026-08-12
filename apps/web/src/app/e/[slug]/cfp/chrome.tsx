@@ -1,12 +1,12 @@
 "use client";
 
-/** Everything around the questions: the page frame, the header, the step rail,
- *  and the four states the wizard is not in — loading, unreachable, closed,
- *  and submitted.
+/** Everything around the questions: the step rail, the deadline strip, and the
+ *  four states the wizard is not in — loading, unreachable, closed, submitted.
  *
- *  The screen keeps `data-screen-label="Public CFP wizard"`, which pins the
- *  light token map (see `styles/tokens.css`). Public pages are light by
- *  decision, not by accident.
+ *  Not the page frame. `PublicShell` owns the header, the nav, the footer and
+ *  the `data-event` palette this file's `--e-*` variables resolve against, so
+ *  the call for papers is a page of the event's site rather than a lookalike
+ *  of one.
  */
 
 import Link from "next/link";
@@ -78,65 +78,6 @@ function remaining(iso: string): string | null {
   return hours >= 1 ? `${hours} hours left` : "Closing within the hour";
 }
 
-const page: React.CSSProperties = {
-  minHeight: "100vh",
-  background: "var(--e-page, #07080E)",
-  color: "var(--e-text, #F3F4F8)",
-};
-const wrap: React.CSSProperties = { maxWidth: 1000, margin: "0 auto", padding: "34px 24px 96px" };
-
-function Header({ form, slug }: { form: FormInfo | undefined; slug: string }) {
-  const closes = form?.closes_at ?? null;
-  const left = closes === null ? null : remaining(closes);
-  return (
-    <div style={{ borderBottom: "1px solid var(--e-edge, rgba(255,255,255,.10))", background: "var(--e-raised, #101018)" }}>
-      <div
-        style={{
-          maxWidth: 1000,
-          margin: "0 auto",
-          padding: "0 24px",
-          minHeight: 64,
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden>
-          <rect width="24" height="24" rx="6.5" fill="#12142E" />
-          <circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B" />
-          <circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7" />
-          <circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7" />
-          <circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7" />
-        </svg>
-        <Link
-          href={`/e/${form?.event_slug ?? slug}`}
-          style={{
-            font: "700 16px var(--font-manrope), sans-serif",
-            letterSpacing: "-0.01em",
-            color: "var(--e-text, #F3F4F8)",
-            textDecoration: "none",
-          }}
-        >
-          {form?.event_name ?? "Call for papers"}
-        </Link>
-        <div style={{ flex: 1 }} />
-        {closes !== null && (
-          <span
-            className="tabular"
-            style={{
-              font: "400 12.5px ui-monospace,'SF Mono',Menlo,monospace, monospace",
-              color: left === null ? "var(--cn)" : "var(--e-muted, #9A9FB1)",
-            }}
-          >
-            {left === null ? "Closed" : left}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function Rail({
   steps,
   step,
@@ -182,9 +123,15 @@ export function Rail({
                 border: "none",
                 cursor: "pointer",
                 textAlign: "left",
-                background: active ? "color-mix(in srgb, var(--e-accent, #FF6B6B) 15%, transparent)" : "transparent",
+                background: active
+                  ? "color-mix(in srgb, var(--e-accent, #FF6B6B) 15%, transparent)"
+                  : "transparent",
                 font: `${active ? 600 : 400} 13.5px var(--font-manrope), sans-serif`,
-                color: active ? "var(--e-accent, #FF6B6B)" : complete ? "var(--e-muted, #9A9FB1)" : "var(--e-muted, #9A9FB1)",
+                color: active
+                  ? "var(--e-accent, #FF6B6B)"
+                  : complete
+                    ? "var(--e-muted, #9A9FB1)"
+                    : "var(--e-muted, #9A9FB1)",
               }}
             >
               <span
@@ -197,9 +144,16 @@ export function Rail({
                   display: "grid",
                   placeItems: "center",
                   font: "600 11px var(--font-manrope), sans-serif",
-                  background: active ? "var(--e-accent, #FF6B6B)" : complete ? "var(--ok)" : "transparent",
+                  background: active
+                    ? "var(--e-accent, #FF6B6B)"
+                    : complete
+                      ? "var(--ok)"
+                      : "transparent",
                   color: active || complete ? "#FFFFFF" : "var(--e-muted, #9A9FB1)",
-                  border: active || complete ? "none" : "1px solid var(--e-edge-strong, rgba(255,255,255,.18))",
+                  border:
+                    active || complete
+                      ? "none"
+                      : "1px solid var(--e-edge-strong, rgba(255,255,255,.18))",
                 }}
               >
                 {complete ? "✓" : position}
@@ -212,7 +166,14 @@ export function Rail({
 
       {/* A phone gets a bar and a name, not four tabs it has to scroll. */}
       <div className="cfp-narrow">
-        <div style={{ height: 5, borderRadius: 999, background: "var(--e-raised, #101018)", overflow: "hidden" }}>
+        <div
+          style={{
+            height: 5,
+            borderRadius: 999,
+            background: "var(--e-raised, #101018)",
+            overflow: "hidden",
+          }}
+        >
           <div
             style={{
               height: "100%",
@@ -224,14 +185,20 @@ export function Rail({
         </div>
         <p
           className="tabular"
-          style={{ font: "400 12.5px var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: 0 }}
+          style={{
+            font: "400 12.5px var(--font-manrope), sans-serif",
+            color: "var(--e-muted, #9A9FB1)",
+            margin: 0,
+          }}
         >
-          {step === 0 ? "Before you start" : `Step ${step} of ${steps.length} · ${steps[step - 1]}`}
+          {`Step ${step} of ${steps.length} · ${steps[step - 1]}`}
         </p>
       </div>
 
       <div style={{ marginTop: 18, display: "grid", gap: 6 }}>
-        <p style={{ font: "400 12px var(--font-manrope), sans-serif", color: state.tone, margin: 0 }}>
+        <p
+          style={{ font: "400 12px var(--font-manrope), sans-serif", color: state.tone, margin: 0 }}
+        >
           {state.text}
         </p>
         {save.kind === "failed" && (
@@ -251,7 +218,13 @@ export function Rail({
           </button>
         )}
         {resumed !== null && (
-          <p style={{ font: "400 12px var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: 0 }}>
+          <p
+            style={{
+              font: "400 12px var(--font-manrope), sans-serif",
+              color: "var(--e-muted, #9A9FB1)",
+              margin: 0,
+            }}
+          >
             Picked up your draft <span className="tabular">{resumed}</span>.
           </p>
         )}
@@ -354,7 +327,6 @@ const prose: React.CSSProperties = {
 export function Shell({
   css,
   form,
-  slug,
   isPending,
   isError,
   onRetry,
@@ -365,7 +337,6 @@ export function Shell({
 }: {
   css: string;
   form: FormInfo | undefined;
-  slug: string;
   isPending: boolean;
   isError: boolean;
   onRetry: () => void;
@@ -396,13 +367,24 @@ export function Shell({
     if (isPending || form === undefined)
       return (
         <div style={{ display: "grid", gap: 16, maxWidth: 560 }} aria-busy>
-          <p style={{ font: "400 14px var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: 0 }}>
+          <p
+            style={{
+              font: "400 14px var(--font-manrope), sans-serif",
+              color: "var(--e-muted, #9A9FB1)",
+              margin: 0,
+            }}
+          >
             Loading the call for papers…
           </p>
           {[64, 220, 120].map((height, index) => (
             <div
               key={index}
-              style={{ height, borderRadius: 14, background: "var(--e-raised, #101018)", opacity: 0.75 }}
+              style={{
+                height,
+                borderRadius: 14,
+                background: "var(--e-raised, #101018)",
+                opacity: 0.75,
+              }}
             />
           ))}
         </div>
@@ -437,7 +419,10 @@ export function Shell({
           >
             <span
               className="tabular"
-              style={{ font: "600 22px ui-monospace,'SF Mono',Menlo,monospace, monospace", color: "var(--e-text, #F3F4F8)" }}
+              style={{
+                font: "600 22px ui-monospace,'SF Mono',Menlo,monospace, monospace",
+                color: "var(--e-text, #F3F4F8)",
+              }}
             >
               {done.code}
             </span>
@@ -450,7 +435,13 @@ export function Shell({
               Copy code
             </button>
           </div>
-          <p style={{ ...prose, font: "400 13.5px/1.6 var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)" }}>
+          <p
+            style={{
+              ...prose,
+              font: "400 13.5px/1.6 var(--font-manrope), sans-serif",
+              color: "var(--e-muted, #9A9FB1)",
+            }}
+          >
             Keep that code — it is how you check this proposal&rsquo;s status. We have emailed it to
             you as well.
           </p>
@@ -532,6 +523,12 @@ export function Shell({
               >
                 {deadline(form.closes_at, form.event_timezone)}
               </span>
+              {/* The countdown used to sit in this page's own header. That
+                  header is gone, and the urgency is the part worth keeping. */}
+              <span style={{ color: "var(--e-accent, #FF6B6B)" }}>
+                {" · "}
+                {remaining(form.closes_at)}
+              </span>
             </span>
           )}
           {typeof form.submission_limit_per_speaker === "number" && (
@@ -553,11 +550,14 @@ export function Shell({
     );
   })();
 
+  // No header, no page background, no width container: `PublicShell` supplies
+  // all three, and drawing our own was what made the call for papers read as a
+  // separate site — a visitor who arrived from the event nav lost it on the way
+  // in, and had no way back to Sessions or Speakers.
   return (
-    <div data-screen-label="Public CFP wizard" data-event="" style={page}>
+    <div data-screen-label="Public CFP wizard">
       <style>{css}</style>
-      <Header form={form} slug={slug} />
-      <div style={wrap}>{inner}</div>
+      {inner}
     </div>
   );
 }

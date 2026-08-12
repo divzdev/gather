@@ -11,7 +11,7 @@
  */
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { use, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api";
 import { resolveVisibility, type FormSchema } from "@/lib/formLogic";
@@ -64,10 +64,11 @@ function read(slug: string): Stored | null {
   }
 }
 
-export default function CfpPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params);
-
-  const [step, setStep] = useState(0);
+export function CfpForm({ slug }: { slug: string }) {
+  // 1, not 0. The rail has one entry per step, so a step it cannot show is a
+  // screen that arrives with nothing marked active and a rail that reads as
+  // navigation — which is what sent people clicking "You" instead of Continue.
+  const [step, setStep] = useState(1);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -289,7 +290,7 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     });
 
     if (needsTerms && !terms)
-      found.push({ key: "terms", message: "Confirm you agree to the speaker terms.", step: 0 });
+      found.push({ key: "terms", message: "Confirm you agree to the speaker terms.", step: 1 });
     return found;
   };
 
@@ -352,14 +353,13 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
    *  "Step 2 of 4", which the rail already shows and the phone strip shows
    *  again — three copies of a number and nowhere saying why. */
   const blurb = (() => {
-    if (step === 0) {
+    // Step one is also the arrival, so it carries the organiser's own welcome
+    // where they wrote one. Their words beat ours on the first screen.
+    if (step === 1) {
       const welcome = settings?.welcome_message ?? "";
       if (welcome.trim() !== "") return welcome;
-      return (
-        form?.event_description ?? "No account needed — your email address is your identity here."
-      );
+      return form?.event_description ?? "Two details, and then the proposal itself.";
     }
-    if (step === 1) return "Two details, and then the proposal itself.";
     if (step === last) return "Nothing has been sent yet. Read it over, then submit.";
     return sections[step - 2]?.description ?? "";
   })();
@@ -397,7 +397,10 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
           placeholder="Alex Rivera"
           style={{
             ...CONTROL.input,
-            borderColor: errorFor("name") !== null ? "var(--cn)" : "var(--e-edge-strong, rgba(255,255,255,.18))",
+            borderColor:
+              errorFor("name") !== null
+                ? "var(--cn)"
+                : "var(--e-edge-strong, rgba(255,255,255,.18))",
           }}
         />
         <Problem error={errorFor("name")} />
@@ -429,7 +432,10 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
           placeholder="you@example.com"
           style={{
             ...CONTROL.input,
-            borderColor: errorFor("email") !== null ? "var(--cn)" : "var(--e-edge-strong, rgba(255,255,255,.18))",
+            borderColor:
+              errorFor("email") !== null
+                ? "var(--cn)"
+                : "var(--e-edge-strong, rgba(255,255,255,.18))",
           }}
         />
         <Problem error={errorFor("email")} />
@@ -441,7 +447,13 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     maxCo === 0 ? null : (
       <div style={{ display: "grid", gap: 14 }}>
         <div>
-          <p style={{ font: "500 13px var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: 0 }}>
+          <p
+            style={{
+              font: "500 13px var(--font-manrope), sans-serif",
+              color: "var(--e-muted, #9A9FB1)",
+              margin: 0,
+            }}
+          >
             Anyone else on stage with you
             <Optional />
           </p>
@@ -551,10 +563,20 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
             : []),
         ].map((row) => (
           <div key={row.k} className="cfp-summary">
-            <span style={{ font: "400 13px var(--font-manrope), sans-serif", color: "var(--e-faint, #7C8093)" }}>
+            <span
+              style={{
+                font: "400 13px var(--font-manrope), sans-serif",
+                color: "var(--e-faint, #7C8093)",
+              }}
+            >
               {row.k}
             </span>
-            <span style={{ font: "400 14px/1.6 var(--font-manrope), sans-serif", color: "var(--e-text, #F3F4F8)" }}>
+            <span
+              style={{
+                font: "400 14px/1.6 var(--font-manrope), sans-serif",
+                color: "var(--e-text, #F3F4F8)",
+              }}
+            >
               {row.v}
             </span>
           </div>
@@ -621,68 +643,83 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     </div>
   );
 
-  const body = (() => {
-    if (step === 0)
-      return (
-        <div style={{ display: "grid", gap: 22 }}>
-          <div
-            style={{
-              border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
-              background: "var(--e-raised, #101018)",
-              borderRadius: 14,
-              padding: 24,
-            }}
-          >
-            <p
-              style={{
-                font: "600 14px var(--font-manrope), sans-serif",
-                color: "var(--e-text, #F3F4F8)",
-                margin: "0 0 10px",
-              }}
-            >
-              What you will need · about 15 minutes
-            </p>
-            <ul
-              style={{
-                margin: 0,
-                paddingLeft: 20,
-                display: "grid",
-                gap: 7,
-                listStyleType: "disc",
-                font: "400 14px/1.6 var(--font-manrope), sans-serif",
-                color: "var(--e-muted, #9A9FB1)",
-              }}
-            >
-              {sections.flatMap((section) =>
-                section.fields
-                  .filter((field) => required.has(field.key))
-                  .map((field) => (
-                    <li key={field.key}>
-                      {field.label}
-                      {field.help_text ? (
-                        <span style={{ color: "var(--e-muted, #9A9FB1)" }}> — {field.help_text}</span>
-                      ) : null}
-                    </li>
-                  )),
-              )}
-            </ul>
-          </div>
-          <p style={{ font: "400 14px/1.65 var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: 0 }}>
-            Your work is saved as you go, so you can close this and come back. Nothing is sent until
-            you press submit on the last step.
-          </p>
-          {needsTerms && (
-            <Consent
-              checked={terms}
-              error={errorFor("terms")}
-              label="I agree to the speaker terms: recording consent is asked separately after acceptance, and my talk contains no vendor pitch."
-              onToggle={() => setTerms((current) => !current)}
-            />
+  /** What used to be a screen of its own before step one. It said nothing a
+   *  speaker had to act on except the consent, so it cost a click and left the
+   *  rail with no active step on arrival. It now sits above the two identity
+   *  fields, on step one. */
+  const preamble = (
+    <div style={{ display: "grid", gap: 22 }}>
+      <div
+        style={{
+          border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
+          background: "var(--e-raised, #101018)",
+          borderRadius: 14,
+          padding: 24,
+        }}
+      >
+        <p
+          style={{
+            font: "600 14px var(--font-manrope), sans-serif",
+            color: "var(--e-text, #F3F4F8)",
+            margin: "0 0 10px",
+          }}
+        >
+          What you will need · about 15 minutes
+        </p>
+        <ul
+          style={{
+            margin: 0,
+            paddingLeft: 20,
+            display: "grid",
+            gap: 7,
+            listStyleType: "disc",
+            font: "400 14px/1.6 var(--font-manrope), sans-serif",
+            color: "var(--e-muted, #9A9FB1)",
+          }}
+        >
+          {sections.flatMap((section) =>
+            section.fields
+              .filter((field) => required.has(field.key))
+              .map((field) => (
+                <li key={field.key}>
+                  {field.label}
+                  {field.help_text ? (
+                    <span style={{ color: "var(--e-muted, #9A9FB1)" }}> — {field.help_text}</span>
+                  ) : null}
+                </li>
+              )),
           )}
+        </ul>
+      </div>
+      <p
+        style={{
+          font: "400 14px/1.65 var(--font-manrope), sans-serif",
+          color: "var(--e-muted, #9A9FB1)",
+          margin: 0,
+        }}
+      >
+        Your work is saved as you go, so you can close this and come back. Nothing is sent until you
+        press submit on the last step.
+      </p>
+      {needsTerms && (
+        <Consent
+          checked={terms}
+          error={errorFor("terms")}
+          label="I agree to the speaker terms: recording consent is asked separately after acceptance, and my talk contains no vendor pitch."
+          onToggle={() => setTerms((current) => !current)}
+        />
+      )}
+    </div>
+  );
+
+  const body = (() => {
+    if (step === 1)
+      return (
+        <div style={{ display: "grid", gap: 26 }}>
+          {preamble}
+          {identity}
         </div>
       );
-
-    if (step === 1) return identity;
     if (step === last) return review;
 
     const section = sections[step - 2];
@@ -708,7 +745,6 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     <Shell
       css={CFP_CSS}
       form={form}
-      slug={slug}
       isPending={isPending}
       isError={isError}
       onRetry={() => void refetch()}
@@ -726,7 +762,7 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
         setTerms(false);
         setErrors([]);
         setSave({ kind: "idle" });
-        setStep(0);
+        setStep(1);
         setResumed(null);
         token.current = null;
         lastSaved.current = "";
@@ -747,16 +783,19 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
         />
 
         <div>
-          <h1
+          {/* An h2, not an h1: the shell's title is the page's heading now, and
+              two h1s on one document is a heading order a screen reader reads
+              as two documents. This names the step, which is what changes. */}
+          <h2
             style={{
-              font: "700 clamp(26px,4vw,38px)/1.1 var(--font-manrope), sans-serif",
+              font: "700 clamp(22px,3vw,30px)/1.15 var(--font-manrope), sans-serif",
               letterSpacing: "-0.02em",
               color: "var(--e-text, #F3F4F8)",
               margin: "0 0 10px",
             }}
           >
-            {step === 0 ? `Speak at ${form?.event_name ?? "this event"}` : steps[step - 1]}
-          </h1>
+            {steps[step - 1]}
+          </h2>
           <p
             style={{
               font: "400 15px/1.65 var(--font-manrope), sans-serif",
