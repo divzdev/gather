@@ -50,6 +50,20 @@ function toLocalInputValue(iso: string): string {
   return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`;
 }
 
+/** "2027-05-12" -> "Wed 12 May". Built from the parts rather than parsed:
+ *  `new Date("2027-05-12")` is UTC midnight, which renders as the 11th in every
+ *  timezone west of Greenwich — the same class of bug that had the demo opening
+ *  at 2am. */
+function dayLabel(dayDate: string): string {
+  const [year, month, day] = dayDate.split("-").map(Number);
+  if (year === undefined || month === undefined || day === undefined) return dayDate;
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 /** Room and starts save through a different endpoint than everything else in
  *  the drawer (see the `place`/`unschedule` mutations below), so a Save that
  *  touches both kinds of field fires two requests — and each one must clear
@@ -443,6 +457,27 @@ export default function SessionsPage() {
   const dayForLocalDate = (localDateTime: string): string | null =>
     (data?.days ?? []).find((day) => day.day_date === localDateTime.slice(0, 10))?.id ?? null;
 
+  /** "YYYY-MM-DDTHH:mm", split so the day can be a list and the time an input.
+   *  Held as one edit key because that is what the placement endpoint takes. */
+  const startsLocal = field(
+    "starts_at",
+    open?.starts_at == null ? "" : toLocalInputValue(open.starts_at),
+  );
+  const startDay = startsLocal.slice(0, 10);
+  const startTime = startsLocal.slice(11, 16);
+
+  /** Neither half is useful alone, so each supplies a default for the other:
+   *  picking a day with no time assumes the hour most conferences open, and
+   *  setting a time on an unplaced session assumes the first day. Without this,
+   *  choosing one control silently produced an unparseable half-value. */
+  const setStart = (day: string, time: string) =>
+    setEdits((current) => ({
+      ...current,
+      starts_at: day === "" ? "" : `${day}T${time === "" ? "09:00" : time}`,
+    }));
+
+  const firstDay = (data?.days ?? [])[0]?.day_date ?? "";
+
   const saving = patch.isPending || place.isPending || unschedule.isPending;
 
   const screen: SessionsData = {
@@ -636,7 +671,8 @@ export default function SessionsPage() {
       tr: field("track_id", open?.track_id ?? ""),
       fmt: field("session_format_id", open?.session_format_id ?? ""),
       room: field("room_id", open?.room_id ?? ""),
-      starts: field("starts_at", open?.starts_at == null ? "" : toLocalInputValue(open.starts_at)),
+      startDay,
+      startTime,
       cap: field("duration_minutes", String(open?.duration_minutes ?? "")),
       st: open === null ? "" : (STATUS[open.status] ?? STATUS.unscheduled!).label,
       stFg: (STATUS[open?.status ?? "unscheduled"] ?? STATUS.unscheduled!).fg,
@@ -659,6 +695,14 @@ export default function SessionsPage() {
       { v: "", l: "Not placed" },
       ...(data?.rooms ?? []).map((entry) => ({ v: entry.id, l: entry.name })),
     ],
+    // The event's real days, so the date cannot be wrong. This was a bare
+    // `datetime-local`: it accepted 2023-04-20 on a 2027 conference and only
+    // objected after the fact, which is a validation message standing in for a
+    // control that should never have offered the value.
+    dayOpts: [
+      { v: "", l: "No day" },
+      ...(data?.days ?? []).map((entry) => ({ v: entry.day_date, l: dayLabel(entry.day_date) })),
+    ],
     onT: edit("title", (value) => value),
     onDesc: edit("abstract", (value) => value),
     onTr: edit("track_id", (value) => (value === "" ? null : value)),
@@ -670,7 +714,10 @@ export default function SessionsPage() {
     // comma the moment it was typed, so a separator could never be entered.
     onTags: edit("tags", (value) => value),
     onRoom: edit("room_id", (value) => (value === "" ? null : value)),
-    onStarts: edit("starts_at", (value) => value),
+    onStartDay: (event: React.SyntheticEvent) =>
+      setStart((event.target as HTMLSelectElement).value, startTime),
+    onStartTime: (event: React.SyntheticEvent) =>
+      setStart(startDay === "" ? firstDay : startDay, (event.target as HTMLInputElement).value),
 
     tabs: [
       { key: "detail", label: "Detail" },

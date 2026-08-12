@@ -45,7 +45,8 @@ export type SessionsData = {
     readonly st: string;
     readonly stFg: string;
     readonly stBg: string;
-    readonly starts: string;
+    readonly startDay: string;
+    readonly startTime: string;
     readonly t: string;
     readonly tr: string;
     readonly level: string;
@@ -60,6 +61,12 @@ export type SessionsData = {
    *  (Main stage/Room 2/Room 3/Workshop lab) baked into the JSX regardless of
    *  which rooms the event actually has. */
   readonly roomOpts: readonly { readonly v: string; readonly l: React.ReactNode }[];
+  /** The event's days. Placement used to be a bare `datetime-local`, which let
+   *  anyone type 2023-04-20 into a 2027 conference and only told them it was
+   *  wrong after they had picked a room and a time. The valid set is known and
+   *  small, so it is a list — the invalid date is now unrepresentable rather
+   *  than merely rejected. */
+  readonly dayOpts: readonly { readonly v: string; readonly l: React.ReactNode }[];
   /** Whether a placement edit (room or starts) failed validation — shown next
    *  to the fields it concerns, not as a toast that vanishes before it's read. */
   readonly placementErr: React.ReactNode;
@@ -115,7 +122,8 @@ export type SessionsData = {
   readonly onPartDraft: (event: React.SyntheticEvent) => void;
   readonly onQ: (event: React.SyntheticEvent) => void;
   readonly onRoom: (event: React.SyntheticEvent) => void;
-  readonly onStarts: (event: React.SyntheticEvent) => void;
+  readonly onStartDay: (event: React.SyntheticEvent) => void;
+  readonly onStartTime: (event: React.SyntheticEvent) => void;
   readonly onT: (event: React.SyntheticEvent) => void;
   readonly onTr: (event: React.SyntheticEvent) => void;
   readonly openNew: (event: React.SyntheticEvent) => void;
@@ -697,7 +705,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    Accepted
+                    Scheduled
                   </span>
                 </span>{" "}
               </button>{" "}
@@ -762,7 +770,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    In the accept queue
+                    Waiting for a slot
                   </span>
                 </span>{" "}
               </button>{" "}
@@ -827,7 +835,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    Pending decision
+                    Not approved for the public site
                   </span>
                 </span>{" "}
               </button>{" "}
@@ -1933,7 +1941,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                         <div>
                           {" "}
                           <label
-                            htmlFor="sessions-starts"
+                            htmlFor="sessions-start-day"
                             style={{
                               font: "500 12px 'IBM Plex Sans',sans-serif",
                               color: "var(--i2,#3E4E58)",
@@ -1942,24 +1950,56 @@ export function Sessions({ d }: { d: SessionsData }) {
                           >
                             Starts
                           </label>
-                          <input
-                            id="sessions-starts"
-                            type="datetime-local"
-                            value={d.f.starts}
-                            onChange={d.onStarts}
-                            style={{
-                              width: "100%",
-                              boxSizing: "border-box",
-                              height: "40px",
-                              padding: "0 12px",
-                              borderRadius: "6px",
-                              border: "1px solid var(--ls,#C8D2D5)",
-                              background: "var(--cd,#FFFFFF)",
-                              font: "400 12.5px 'IBM Plex Mono',monospace",
-                              color: "var(--ik,#16232B)",
-                              outlineColor: "var(--sg, #E04E4E)",
-                            }}
-                          />{" "}
+                          <div style={{ display: "flex", gap: "7px" }}>
+                            <select
+                              id="sessions-start-day"
+                              value={d.f.startDay}
+                              onChange={d.onStartDay}
+                              style={{
+                                flex: "1",
+                                minWidth: "0",
+                                boxSizing: "border-box",
+                                height: "40px",
+                                padding: "0 12px",
+                                borderRadius: "6px",
+                                border: "1px solid var(--ls,#C8D2D5)",
+                                background: "var(--cd,#FFFFFF)",
+                                font: "400 13px 'IBM Plex Sans',sans-serif",
+                                color: "var(--ik,#16232B)",
+                                outlineColor: "var(--sg, #E04E4E)",
+                              }}
+                            >
+                              {(d.dayOpts ?? []).map((o, oIndex) => (
+                                <Fragment key={oIndex}>
+                                  <option value={o.v}>{o.l}</option>
+                                </Fragment>
+                              ))}
+                            </select>
+                            <input
+                              id="sessions-start-time"
+                              type="time"
+                              // Five-minute granularity. The free input produced
+                              // sessions starting at 01:07 PM, which no grid has
+                              // a row for.
+                              step={300}
+                              value={d.f.startTime}
+                              onChange={d.onStartTime}
+                              aria-label="Start time"
+                              style={{
+                                width: "120px",
+                                flex: "none",
+                                boxSizing: "border-box",
+                                height: "40px",
+                                padding: "0 12px",
+                                borderRadius: "6px",
+                                border: "1px solid var(--ls,#C8D2D5)",
+                                background: "var(--cd,#FFFFFF)",
+                                font: "400 12.5px 'IBM Plex Mono',monospace",
+                                color: "var(--ik,#16232B)",
+                                outlineColor: "var(--sg, #E04E4E)",
+                              }}
+                            />
+                          </div>{" "}
                         </div>{" "}
                         <div>
                           {" "}
