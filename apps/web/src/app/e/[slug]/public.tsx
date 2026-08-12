@@ -42,7 +42,18 @@ export function PublicShell({
   active: string;
   children: React.ReactNode;
 }) {
-  const dates = `${new Date(event.starts_on).toLocaleDateString(undefined, { day: "numeric", month: "short" })} – ${new Date(event.ends_on).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`;
+  // `2027-05-12` parses as UTC midnight, and formatting that in the reader's own
+  // zone renders 11 May for everyone west of Greenwich — the schedule page said
+  // "May 11 – 13" for a conference that runs the 12th to the 14th. A calendar
+  // date has no timezone, so it is formatted in the one it was written in.
+  const day = (value: string, withYear: boolean) =>
+    new Date(`${value}T00:00:00Z`).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      timeZone: "UTC",
+      ...(withYear ? { year: "numeric" } : {}),
+    });
+  const dates = `${day(event.starts_on, false)} – ${day(event.ends_on, true)}`;
 
   return (
     <div style={{ fontSize: 16, minHeight: "100vh", background: "var(--pp)" }}>

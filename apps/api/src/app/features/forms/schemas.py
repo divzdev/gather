@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -54,6 +54,12 @@ class PublicFormRead(BaseModel):
     event_name: str
     event_slug: str
     event_description: str | None
+    #: The public shell draws its header from this endpoint, because it is the
+    #: only public one that answers before a schedule is published. Without
+    #: these it printed `new Date()` — today's date, twice, on every event.
+    event_starts_on: date
+    event_ends_on: date
+    event_location: str | None
     form_id: uuid.UUID
     form_name: str
     schema_: FormSchema = Field(alias="schema", serialization_alias="schema")

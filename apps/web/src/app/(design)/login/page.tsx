@@ -23,12 +23,17 @@ function firstProblem(fields: {
   organisation: string;
   email: string;
   password: string;
-}): string | null {
-  if (fields.name.trim() === "") return "Your name is needed.";
+}): { field: "name" | "email" | "password"; message: string } | null {
+  // Returns *which* field failed, not just a sentence. Both borders used to
+  // redden on any error, so "Your name is needed." marked the email and
+  // password fields and left the name field looking fine.
+  if (fields.name.trim() === "") return { field: "name", message: "Your name is needed." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email.trim())) {
-    return "That email address does not look right.";
+    return { field: "email", message: "That email address does not look right." };
   }
-  if (fields.password.length < 12) return "Use a passphrase of at least 12 characters.";
+  if (fields.password.length < 12) {
+    return { field: "password", message: "Use a passphrase of at least 12 characters." };
+  }
   return null;
 }
 
@@ -61,6 +66,8 @@ function LoginPage() {
   const [organisation, setOrganisation] = useState("");
   const [reveal, setReveal] = useState(false);
   const [error, setError] = useState("");
+  /** Which field the message is about, so only that one is marked. */
+  const [badField, setBadField] = useState<"name" | "email" | "password" | null>(null);
   const [sent, setSent] = useState<{ title: string; body: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -141,7 +148,8 @@ function LoginPage() {
     // the authority, this only saves the trip.
     const problem = firstProblem({ name, organisation, email, password });
     if (problem !== null) {
-      setError(problem);
+      setError(problem.message);
+      setBadField(problem.field);
       return;
     }
     setBusy(true);
@@ -170,11 +178,30 @@ function LoginPage() {
   const sendMagicLink = async () => {
     if (email.trim() === "") {
       setError("Enter your email first.");
+      setBadField("email");
       return;
     }
-    // Always 204, whether or not the address exists — the response must not
-    // reveal who has an account.
-    await apiFetch("/auth/magic-link", { method: "POST", body: { email } });
+    // Checked here because the endpoint 422s on a malformed address, and this
+    // call had no try/catch: the request fired, the rejection went unhandled,
+    // and the screen simply did not change.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("That email address does not look right.");
+      setBadField("email");
+      return;
+    }
+    setError("");
+    setBadField(null);
+    try {
+      // Always 204, whether or not the address exists — the response must not
+      // reveal who has an account. Rate limiting and malformed input can still
+      // fail, and the speaker has to be told.
+      await apiFetch("/auth/magic-link", { method: "POST", body: { email } });
+    } catch (caught) {
+      setError(
+        caught instanceof ApiError ? caught.message : "Could not send the link. Try again shortly.",
+      );
+      return;
+    }
     setSent({
       title: "Check your email",
       body: `If ${email} belongs to a speaker on this event, a sign-in link is on its way. It works once and expires in 30 minutes.`,
@@ -223,11 +250,12 @@ function LoginPage() {
 
     email,
     onEmail: (event: React.SyntheticEvent) => setEmail((event.target as HTMLInputElement).value),
-    emailBd: error === "" ? "var(--ls,#C8D2D5)" : "var(--cn,#D8432B)",
+    emailBd: badField === "email" ? "var(--cn,#D8432B)" : "var(--ls,#C8D2D5)",
+    nameBd: badField === "name" ? "var(--cn,#D8432B)" : "var(--ls,#C8D2D5)",
 
     pw: password,
     onPw: (event: React.SyntheticEvent) => setPassword((event.target as HTMLInputElement).value),
-    pwBd: error === "" ? "var(--ls,#C8D2D5)" : "var(--cn,#D8432B)",
+    pwBd: badField === "password" ? "var(--cn,#D8432B)" : "var(--ls,#C8D2D5)",
     pwType: reveal ? "text" : "password",
     pwToggle: reveal ? "Hide" : "Show",
     pwPlaceholder: "Your password",

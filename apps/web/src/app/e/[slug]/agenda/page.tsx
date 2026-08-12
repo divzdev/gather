@@ -22,10 +22,10 @@ export default async function Agenda({ params }: { params: Promise<{ slug: strin
     data = null;
   }
   if (data === null) {
-    const form = await getPublic<{ event_name: string; event_description: string | null }>(slug, "/cfp-form");
+    const form = await getPublic<{ event_name: string; event_description: string | null; event_starts_on: string; event_ends_on: string; event_location: string | null }>(slug, "/cfp-form");
     return (
       <PublicShell
-        event={{ name: form.event_name, slug, description: form.event_description, location: null, starts_on: new Date().toISOString(), ends_on: new Date().toISOString() }}
+        event={{ name: form.event_name, slug, description: form.event_description, location: form.event_location, starts_on: form.event_starts_on, ends_on: form.event_ends_on }}
         slug={slug}
         active="Agenda"
       >

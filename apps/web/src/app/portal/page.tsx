@@ -350,7 +350,12 @@ export default function PortalPage() {
   const tasks = home?.tasks ?? [];
   const open = tasks.filter((task) => task.status !== "complete");
   const done = tasks.filter((task) => task.status === "complete");
-  const talk = home?.sessions[0] ?? null;
+  // A speaker with two accepted talks saw one. The card shows the next one by
+  // start time, and says how many others there are rather than hiding them.
+  const sessions = [...(home?.sessions ?? [])].sort((a, b) =>
+    (a.starts_at ?? "").localeCompare(b.starts_at ?? ""),
+  );
+  const talk = sessions[0] ?? null;
   // Server values until the speaker touches something, their edit after that.
   // Seeding state from the query would need an effect, and an effect that writes
   // state on arrival re-renders the whole screen for nothing.
@@ -406,6 +411,17 @@ export default function PortalPage() {
 
   const screen: PortalData = {
     youName: home?.speaker.name ?? "",
+    /* Both contact blocks rendered `youName` and `youInitials` — so the card
+     * headed "Your organiser" showed the speaker their own name and their own
+     * avatar. The portal has no organiser identity to show, and inventing one
+     * would be the same defect again, so it names the event. */
+    contactName: home?.event.name ?? "The organisers",
+    contactInitials: (home?.event.name ?? "")
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((word) => word[0]?.toUpperCase() ?? "")
+      .join(""),
     youInitials: (home?.speaker.name ?? "")
       .split(" ")
       .filter(Boolean)
@@ -448,7 +464,13 @@ export default function PortalPage() {
     tProfile: tab === "profile",
 
     heroEyebrow: talk === null ? "YOU ARE ON THE PROGRAMME" : "YOU ARE ON THE PROGRAMME",
-    greet: `${greeting(new Date(now).getHours())}, ${(home?.speaker.name ?? "").split(" ")[0] ?? ""}.`,
+    /* Was "Good evening, ." on every first paint — the greeting rendered before
+     * the name arrived, with the comma and full stop already in place. */
+    greet: (() => {
+      const hello = greeting(new Date(now).getHours());
+      const first = (home?.speaker.name ?? "").trim().split(" ")[0] ?? "";
+      return first === "" ? `${hello}.` : `${hello}, ${first}.`;
+    })(),
     heroSub:
       progress.total === 0
         ? "Nothing is assigned to you yet. We will email you the moment there is."
@@ -493,9 +515,15 @@ export default function PortalPage() {
     })),
 
     guide: () => say("The speaker guide arrives with your confirmation email."),
-    msgTeam: () => {
-      window.location.href = `mailto:?subject=${encodeURIComponent(home?.event.name ?? "")}`;
-    },
+    /* Was `mailto:?subject=…` — no recipient, so it opened an empty compose
+     * window addressed to nobody, under a heading offering to message the
+     * organiser. The portal has no organiser address to give, so it says that
+     * instead of pretending. */
+    msgTeam: () =>
+      say(
+        "Reply to any email you have had from " +
+          `${home?.event.name ?? "the event"} — it reaches the organisers directly.`,
+      ),
 
     // The prototype hardcoded all six of these. A speaker was shown "AI Engineer
     // 2026", "Opening keynote" and a 5 October deadline whichever conference,
@@ -579,7 +607,7 @@ export default function PortalPage() {
               : "We email you the moment there is news.",
         onView: () => {
           if (home !== undefined) {
-            window.open(`/e/${home.event.slug}/status/${row.code}`, "_blank", "noopener");
+            window.open(`/e/${home.event.slug}/submissions/${row.code}`, "_blank", "noopener");
           }
         },
       };
