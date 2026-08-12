@@ -117,7 +117,7 @@ const ICONS: Record<string, React.ReactNode> = {
  *  one exists. */
 const EVENT_LINKS = [
   { href: "/admin/settings", icon: "settings", label: "Event settings" },
-  { href: "/admin/program", icon: "program", label: "Program setup" },
+  { href: "/admin/program", icon: "program", label: "Rooms & tracks" },
   { href: "/admin/forms", icon: "forms", label: "Forms & pages" },
   { href: "/admin/publishing", icon: "publishing", label: "Publishing" },
 ] as const;

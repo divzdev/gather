@@ -118,7 +118,7 @@ export function ProgramShell({ children }: { children: React.ReactNode }) {
         <ConsoleHeader />
         <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
           <nav
-            aria-label="Program setup"
+            aria-label="Rooms & tracks"
             style={{
               width: 208,
               flex: "none",

@@ -35,7 +35,7 @@ const SCREENS: Item[] = [
   { label: "Review", hint: "Screen", href: "/admin/review" },
   { label: "Speakers", hint: "Screen", href: "/admin/speakers" },
   { label: "Speaker directory", hint: "Screen", href: "/admin/directory" },
-  { label: "Program setup", hint: "Screen", href: "/admin/program" },
+  { label: "Rooms & tracks", hint: "Screen", href: "/admin/program" },
   { label: "Agenda", hint: "Screen", href: "/admin/agenda" },
   { label: "Tasks", hint: "Screen", href: "/admin/tasks" },
   { label: "Messages", hint: "Screen", href: "/admin/messages" },

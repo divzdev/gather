@@ -60,9 +60,9 @@ export default function ProgramOverviewPage() {
       <div style={{ padding: "20px 28px 80px" }}>
         <PageHead
           icon={PAGE_ICON.program}
-          crumbs={["Program", "Setup"]}
-          title="Program setup"
-          summary="The agenda is drawn from these. Until they exist there is nothing to drag a session onto."
+          crumbs={["Setup", "Rooms & tracks"]}
+          title="Rooms & tracks"
+          summary="Days, rooms, tracks and session formats. The agenda is drawn from these, so until they exist there is nothing to drag a session onto."
         />
 
         {/* A list of what is missing tells you the state; it does not tell you what
