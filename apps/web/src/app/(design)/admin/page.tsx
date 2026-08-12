@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
+import { FirstRun } from "@/components/console/FirstRun";
 import { useProgramStats } from "@/components/console/stats";
 import { Overview, type OverviewData } from "@/components/design/Overview";
 import { authed, getEventId } from "@/lib/session";
@@ -20,7 +21,11 @@ type Event = {
 
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long" });
 const MONTH_YEAR = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
-const LONG_DATE = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" });
+const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
 
 /** `starts_on` is a calendar date, not an instant. `new Date("2027-05-12")` reads
  *  it as UTC midnight, which is the day before in any western timezone. */
@@ -94,7 +99,8 @@ export default function OverviewPage() {
   const { data: overdue } = useQuery({
     queryKey: ["overdue-summary", eventId],
     enabled: eventId !== null,
-    queryFn: () => authed<{ task_name: string; status: string }[]>(`/events/${eventId}/tasks/summary`),
+    queryFn: () =>
+      authed<{ task_name: string; status: string }[]>(`/events/${eventId}/tasks/summary`),
   });
   const overdueRows = useMemo(() => {
     const counts = new Map<string, number>();
@@ -136,6 +142,13 @@ export default function OverviewPage() {
         ? "No overdue speaker tasks"
         : `${stats.overdueTasks} overdue speaker task${stats.overdueTasks === 1 ? "" : "s"}`,
     overdueRows: overdueRows,
+    // A primary-weighted invitation to email nobody was three of this screen's
+    // four solid buttons on an empty event. The weight is gone; so is the offer.
+    nudgeOff: stats.overdueTasks === 0,
+    nudgeTitle:
+      stats.overdueTasks === 0
+        ? "Nothing is overdue, so there is nobody to nudge."
+        : `Email the ${stats.overdueTasks} speakers with something past due.`,
     reviewerNote:
       total === 0
         ? "No proposals yet, so nothing to review."
@@ -155,6 +168,11 @@ export default function OverviewPage() {
     legendCfp: legend(0, "CFP closes"),
     legendReviews: legend(1, "Reviews close"),
     legendDecisions: legend(2, "Decisions out"),
+
+    // A slot inside the content column, not a sibling of <Overview>. Overview
+    // renders the whole shell — rail and topbar included — so anything placed
+    // beside it lands outside the console entirely and above the chrome.
+    firstRun: <FirstRun />,
 
     nudge: () => toast("Nudges are queued in Messages. Nothing sends until you confirm."),
     toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),
