@@ -137,6 +137,13 @@ export type AgendaData = {
   readonly onQ: (event: React.SyntheticEvent) => void;
   readonly openConf: (event: React.SyntheticEvent) => void;
   readonly openPub: (event: React.SyntheticEvent) => void;
+  readonly dismissOpen: boolean;
+  readonly dismissLabel: React.ReactNode;
+  readonly dismissReason: string;
+  readonly onDismissReason: (event: React.SyntheticEvent) => void;
+  readonly closeDismiss: (event: React.SyntheticEvent) => void;
+  readonly confirmDismiss: (event: React.SyntheticEvent) => void;
+  readonly canDismiss: boolean;
   readonly pub: boolean;
   readonly pubBlurb: React.ReactNode;
   readonly pubChanges: readonly React.ReactNode[];
@@ -1250,6 +1257,22 @@ export function Agenda({ d }: { d: AgendaData }) {
             </div>{" "}
           </div>{" "}
         </div>{" "}
+        {d.dismissOpen ? (
+          <>
+            <button onClick={d.closeDismiss} aria-label="Close" style={{position: "fixed", inset: "0", background: "rgba(13,16,32,.4)", border: "none", zIndex: "70", cursor: "default"}}></button>
+            <div role="dialog" aria-label="Ignore this conflict" style={{position: "fixed", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: "min(460px,94vw)", boxSizing: "border-box", background: "var(--cd,#FFFFFF)", border: "1px solid var(--ln,#E1E7E9)", borderRadius: "16px", boxShadow: "0 12px 32px rgba(16,19,25,.24)", zIndex: "71", padding: "24px 26px"}}>
+              <div style={{font: "600 17px 'IBM Plex Sans',sans-serif", color: "var(--ik,#16232B)", marginBottom: "8px"}}>Ignore this conflict</div>
+              <p style={{font: "400 13.5px/1.6 'IBM Plex Sans',sans-serif", color: "var(--i2,#3E4E58)", margin: "0 0 4px"}}>{d.dismissLabel}</p>
+              <p style={{font: "400 12.5px/1.55 'IBM Plex Sans',sans-serif", color: "var(--i3,#6B7B84)", margin: "0 0 16px"}}>The clash stays on the grid and stops being flagged. It comes back if the placement changes, so the reason is read later by whoever finds it.</p>
+              <label htmlFor="agenda-ignore-why" style={{display: "block", font: "500 12.5px 'IBM Plex Sans',sans-serif", color: "var(--i2,#3E4E58)", marginBottom: "7px"}}>Why is this one acceptable?</label>
+              <textarea id="agenda-ignore-why" value={d.dismissReason} onChange={d.onDismissReason} rows={3} placeholder="Both talks are the same speaker's, back to back by request." style={{width: "100%", boxSizing: "border-box", minHeight: "76px", padding: "11px 13px", borderRadius: "10px", border: "1px solid var(--ls,#C8D2D5)", background: "var(--cd,#FFFFFF)", font: "400 13px/1.55 'IBM Plex Sans',sans-serif", color: "var(--ik,#16232B)", resize: "vertical", outlineColor: "var(--sg, #E04E4E)"}}></textarea>
+              <div style={{display: "flex", justifyContent: "space-between", gap: "10px", marginTop: "18px"}}>
+                <button onClick={d.closeDismiss} style={{height: "44px", padding: "0 18px", borderRadius: "999px", border: "none", background: "none", font: "500 13px 'IBM Plex Sans',sans-serif", color: "var(--i3,#6B7B84)", cursor: "pointer"}}>Cancel</button>
+                <button onClick={d.confirmDismiss} disabled={!d.canDismiss} style={{height: "44px", padding: "0 22px", borderRadius: "999px", border: "none", background: d.canDismiss ? "var(--bt,#FF6B6B)" : "var(--ls,#C8D2D5)", color: d.canDismiss ? "var(--bf,#331313)" : "var(--i3,#6B7B84)", font: "600 13.5px 'IBM Plex Sans',sans-serif", cursor: d.canDismiss ? "pointer" : "not-allowed"}}>Ignore it</button>
+              </div>
+            </div>
+          </>
+        ) : null}{" "}
         {d.pub ? (
           <>
             {" "}

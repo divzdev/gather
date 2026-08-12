@@ -190,6 +190,11 @@ export default function AgendaPage() {
    *  tidy-up, and mailing eighty speakers about nothing is how an organiser
    *  teaches them to ignore the next one. */
   const [notifyAffected, setNotifyAffected] = useState(false);
+  /** Dismissing a conflict is recorded against a `conflict_key` and survives
+   *  unrelated edits, so the reason is read months later by someone who was not
+   *  in the room. It was collected with `window.prompt`. */
+  const [dismissing, setDismissing] = useState<{ key: string; label: string } | null>(null);
+  const [dismissReason, setDismissReason] = useState("");
   /** The new-session sheet. Null is closed, so there is no second flag that can
    *  disagree with the contents. */
   const [compose, setCompose] = useState<Compose | null>(null);
@@ -896,10 +901,8 @@ export default function AgendaPage() {
       label: `${row.label} · ${clockAt(windowStart, Math.round((Date.parse(row.starts_at) - windowStart) / 60_000))}`,
       onGoto: () => setSelected(row.session_ids[0] ?? null),
       onIgnore: () => {
-        const reason = window.prompt("Why is this one acceptable?");
-        if (reason !== null && reason.trim() !== "") {
-          ignore.mutate({ key: row.conflict_key, reason: reason.trim() });
-        }
+        setDismissReason("");
+        setDismissing({ key: row.conflict_key, label: row.label });
       },
     })),
 
@@ -959,6 +962,19 @@ export default function AgendaPage() {
           }}
         />
       ),
+
+    dismissOpen: dismissing !== null,
+    dismissLabel: dismissing?.label ?? "",
+    dismissReason,
+    onDismissReason: (event: React.SyntheticEvent) =>
+      setDismissReason((event.target as HTMLTextAreaElement).value),
+    closeDismiss: () => setDismissing(null),
+    canDismiss: dismissReason.trim() !== "",
+    confirmDismiss: () => {
+      if (dismissing === null || dismissReason.trim() === "") return;
+      ignore.mutate({ key: dismissing.key, reason: dismissReason.trim() });
+      setDismissing(null);
+    },
 
     pub: publishOpen,
     pubBlurb: diffLoading
