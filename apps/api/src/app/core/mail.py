@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
@@ -175,6 +176,33 @@ async def send_account_mail(*, to_email: str, subject: str, body: str) -> None:
             await anyio.to_thread.run_sync(_send_via_ses, to_email, subject, body)
     except Exception:  # noqa: BLE001 - see docstring; the caller has no recovery
         return
+
+
+async def deliver_batch(session: AsyncSession, messages: Sequence[Message]) -> int:
+    """Deliver rows already queued, and report how many reached `sent`.
+
+    `queue` writes `MessageStatus.QUEUED` and nothing in the product ever read
+    it back: `deliver` had exactly one call site, inside `send_now`, and the
+    worker runs only the nightly overdue sweep. So send-decisions and resend —
+    the two flows this product is *about* — recorded a row, returned a success
+    count, and delivered nothing. The outbox said "queued", which reads as
+    in-flight rather than never.
+
+    Delivery is inline rather than deferred to the worker on purpose: the sweep
+    interval is a day, and a decision notice that arrives tomorrow is its own
+    kind of broken. With `MAIL_TRANSPORT=log` each send is a file write off the
+    event loop, so a full programme is comfortably inside a request. Against a
+    real SES account this wants moving behind the worker with a short interval —
+    the shape to reach for is a drain of `QUEUED` rather than a second sender.
+    """
+    await session.flush()
+    sent = 0
+    for message in messages:
+        await deliver(message)
+        if message.status is MessageStatus.SENT:
+            sent += 1
+    await session.flush()
+    return sent
 
 
 async def send_now(

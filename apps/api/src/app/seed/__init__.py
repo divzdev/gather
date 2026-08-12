@@ -173,6 +173,13 @@ CFP_SCHEMA: dict[str, Any] = {
                     "type": "long_text",
                     "label": "Speaker bio",
                     "required": True,
+                    # A bio names its author in the first sentence, so it is the
+                    # one answer blind review has to strip. Nothing in the seed
+                    # carried this flag, which meant the demo could only ever
+                    # show blindness hiding the `speakers` array — the stripping
+                    # of a flagged *answer* was correct code demonstrated by
+                    # nothing.
+                    "identity_bearing": True,
                 },
                 {"key": "links", "type": "url", "label": "Website or profile"},
             ],

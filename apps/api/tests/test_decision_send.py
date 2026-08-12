@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import tenancy
@@ -82,7 +83,7 @@ async def test_a_stale_count_is_refused(
 
 
 async def test_sending_marks_them_sent_so_they_cannot_go_twice(
-    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
 ) -> None:
     headers, event, form = cfp
     submission_id = await _submit(client, event, form, "Taming CI", "ada@example.com")
@@ -103,6 +104,23 @@ async def test_sending_marks_them_sent_so_they_cannot_go_twice(
 
     again = await client.get(f"/v1/events/{event.id}/messages/decision-recipients", headers=headers)
     assert again.json()["total"] == 0
+
+    # The assertion this test was missing, and the reason a stop-ship defect
+    # shipped green: `sent == 1` is the endpoint's claim about itself. The row
+    # is the fact. `send_decisions` queued rows nothing ever drained, so every
+    # decision notice sat at QUEUED for ever while the API reported success.
+    with tenancy.tenant_scope(org_id=event.org_id, event_id=event.id):
+        rows = (
+            await session.execute(select(Message).where(Message.event_id == event.id))
+        ).scalars()
+        # Batched rows only: this speaker also has a submission confirmation,
+        # which goes through `send_now` and was never part of the defect.
+        decisions = [row for row in rows if row.batch_id is not None]
+    assert decisions, "send-decisions wrote no outbox row"
+    assert [row.status for row in decisions] == [MessageStatus.SENT], (
+        "a decision notice is still QUEUED — the row was recorded and never delivered"
+    )
+    assert all(row.sent_at is not None for row in decisions)
 
 
 async def test_only_a_failed_message_can_be_resent(

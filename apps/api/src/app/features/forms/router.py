@@ -77,10 +77,14 @@ async def update_form(
         )
         form.schema = body.schema_.model_dump(mode="json")
 
+    # Driven by what the caller actually sent, not by whether the value is None.
+    # A `None` check cannot tell an omitted field from an explicit null, so
+    # `opens_at` and `closes_at` could be overwritten but never *cleared* — an
+    # organiser who set a close date by mistake had no route back to an open
+    # call except setting a different one.
     for field in ("name", "status", "opens_at", "closes_at"):
-        value = getattr(body, field)
-        if value is not None:
-            setattr(form, field, value)
+        if field in body.model_fields_set:
+            setattr(form, field, getattr(body, field))
 
     await session.flush()
     return _read(form)

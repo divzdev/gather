@@ -278,7 +278,9 @@ async def resend(
         to_speaker_id=original.to_speaker_id,
         batch_id=original.batch_id,
     )
-    await session.flush()
+    # Same defect, same fix: a resend that only re-queues cannot recover
+    # anything, which made the documented recovery path a no-op.
+    await mail.deliver_batch(session, [retry])
     return ResendResult(id=retry.id, status=retry.status)
 
 
@@ -320,21 +322,29 @@ async def send_decisions(
     await session.flush()
     batch_id = batch.id
 
+    queued: list[Message] = []
     for recipient in recipients:
-        await mail.queue(
-            session,
-            event_id=tenant.event_id,
-            to_email=recipient.email,
-            # Exactly the strings the preview returned, not a second rendering
-            # that could drift from it.
-            subject=recipient.subject,
-            body=recipient.body,
-            purpose=PURPOSES[recipient.outcome],
-            batch_id=batch_id,
+        queued.append(
+            await mail.queue(
+                session,
+                event_id=tenant.event_id,
+                to_email=recipient.email,
+                # Exactly the strings the preview returned, not a second rendering
+                # that could drift from it.
+                subject=recipient.subject,
+                body=recipient.body,
+                purpose=PURPOSES[recipient.outcome],
+                batch_id=batch_id,
+            )
         )
         submission = await session.get(Submission, recipient.submission_id)
         if submission is not None:
             submission.decision_status = DecisionStatus.SENT
 
+    # The rows were queued and nothing ever drained them, so this endpoint
+    # reported `sent` for mail that was never delivered. `sent` is now what
+    # actually left, not how many recipients were addressed.
+    sent = await mail.deliver_batch(session, queued)
+    batch.status = MessageStatus.SENT if sent == len(queued) else MessageStatus.FAILED
     await session.flush()
-    return SendResult(sent=len(recipients), batch_id=batch_id)
+    return SendResult(sent=sent, batch_id=batch_id)

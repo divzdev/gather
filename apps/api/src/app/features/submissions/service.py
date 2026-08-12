@@ -87,9 +87,12 @@ async def _check_limit(session: AsyncSession, event: Event, speaker: Speaker) ->
         )
     )
     if int(used or 0) >= event.submission_limit_per_speaker:
+        limit = event.submission_limit_per_speaker
+        # A speaker reads this one. "at most 1 proposals" is the kind of thing
+        # that makes a careful person doubt the rest of the form.
         raise SubmissionLimitReachedError(
-            f"You can submit at most {event.submission_limit_per_speaker} proposals to this event.",
-            details={"limit": event.submission_limit_per_speaker},
+            f"You can submit at most {limit} proposal{'' if limit == 1 else 's'} to this event.",
+            details={"limit": limit},
         )
 
 

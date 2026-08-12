@@ -296,6 +296,12 @@ async def _fill_submissions(
                 "format": format_name,
                 "audience_level": rng.choice(["Beginner", "Intermediate", "Advanced"]),
                 "key_takeaway": "One decision you can copy on Monday morning.",
+                # The CFP marks this required, and the bulk seed left it out —
+                # so every proposal a judge opened showed a required question
+                # blank. It is also the field flagged `identity_bearing`, which
+                # means a blind round now visibly strips something other than
+                # the speakers array.
+                "speaker_bio": people[index % len(people)].bio,
             },
             track_id=track.id,
             session_format_id=session_format.id,
