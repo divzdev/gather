@@ -35,6 +35,35 @@ const when = (timezone: string) =>
     timeZone: timezone,
   });
 
+/** Sortable, in the event's zone. `en-CA` is the shortest way to a real
+ *  `YYYY-MM-DD`; slicing the ISO string instead would group by UTC and put a
+ *  09:00 Sydney talk on the previous day. */
+const dayKey = (timezone: string) =>
+  new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: timezone,
+  });
+
+const dayName = (timezone: string) =>
+  new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: timezone,
+  });
+
+const clock = (timezone: string) =>
+  new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: timezone,
+  });
+
+const UNDATED = "zzzz";
+
 export function Picker({
   slug,
   sessions,
@@ -45,6 +74,7 @@ export function Picker({
   timezone: string;
 }) {
   const WHEN = when(timezone);
+  const CLOCK = clock(timezone);
   const router = useRouter();
   const params = useSearchParams();
 
@@ -75,6 +105,31 @@ export function Picker({
 
   const mine = sessions.filter((row) => picked.has(row.id));
 
+  /** Sixty-one talks ran as one flat list, with the day readable only in a line
+   *  of grey mono beside the time. A conference is lived one day at a time, and
+   *  a visitor deciding what to see on Thursday had to read every row to find
+   *  where Thursday started. */
+  const days = useMemo(() => {
+    const KEY = dayKey(timezone);
+    const NAME = dayName(timezone);
+    const groups = new Map<string, { heading: string; rows: Session[] }>();
+    for (const row of sessions) {
+      const key = row.starts_at === null ? UNDATED : KEY.format(new Date(row.starts_at));
+      const heading =
+        row.starts_at === null ? "Time to be confirmed" : NAME.format(new Date(row.starts_at));
+      const group = groups.get(key) ?? { heading, rows: [] };
+      group.rows.push(row);
+      groups.set(key, group);
+    }
+    return [...groups.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, group]) => ({
+        key,
+        heading: group.heading,
+        rows: [...group.rows].sort((a, b) => (a.starts_at ?? "").localeCompare(b.starts_at ?? "")),
+      }));
+  }, [sessions, timezone]);
+
   /** Two picks at the same time is the thing an attendee most wants told. */
   const clashes = useMemo(() => {
     const byTime = new Map<string, string[]>();
@@ -96,9 +151,9 @@ export function Picker({
       {clashes.length > 0 ? (
         <div
           style={{
-            border: "1px solid #F3C7C2",
-            background: "#FBE8E6",
-            color: "#D8432B",
+            border: "1px solid var(--cnl)",
+            background: "var(--cnw)",
+            color: "var(--cn)",
             borderRadius: 10,
             padding: "10px 14px",
             marginBottom: 16,
@@ -118,7 +173,7 @@ export function Picker({
           <button
             onClick={() => setPicked(new Set())}
             style={{
-              height: 32,
+              height: "var(--control-h-sm, 36px)",
               padding: "0 14px",
               borderRadius: 999,
               border: "1px solid var(--ls)",
@@ -134,11 +189,11 @@ export function Picker({
             style={{
               display: "inline-flex",
               alignItems: "center",
-              height: 32,
+              height: "var(--control-h-sm, 36px)",
               padding: "0 14px",
               borderRadius: 999,
-              background: "#FF6B6B",
-              color: "#331313",
+              background: "var(--bt)",
+              color: "var(--bf)",
               font: "600 12.5px var(--font-plex-sans)",
               textDecoration: "none",
             }}
@@ -148,67 +203,116 @@ export function Picker({
         </div>
       ) : null}
 
-      <div style={{ display: "grid", gap: 10 }}>
-        {sessions.map((row) => {
-          const on = picked.has(row.id);
-          return (
-            <article
-              key={row.id}
+      {days.map((day) => {
+        const chosen = day.rows.filter((row) => picked.has(row.id)).length;
+        return (
+          <section key={day.key} style={{ marginBottom: 26 }}>
+            <div
               style={{
                 display: "flex",
-                alignItems: "flex-start",
-                gap: 14,
-                background: "var(--cd)",
-                border: `1px solid ${on ? "var(--sl)" : "var(--ln)"}`,
-                borderLeft: `3px solid ${on ? "var(--sg)" : "var(--ln)"}`,
-                borderRadius: 14,
-                padding: 16,
+                alignItems: "baseline",
+                gap: 10,
+                flexWrap: "wrap",
+                margin: "0 0 12px",
+                paddingBottom: 8,
+                borderBottom: "1px solid var(--ln)",
               }}
             >
-              {/* This is the whole point of the page, and it was a native
+              <h2
+                style={{
+                  font: "600 15px var(--font-plex-sans)",
+                  color: "var(--ik)",
+                  margin: 0,
+                  flex: 1,
+                }}
+              >
+                {day.heading}
+              </h2>
+              <span
+                className="tabular"
+                style={{ font: "400 12px var(--font-plex-mono)", color: "var(--i3)" }}
+              >
+                {chosen === 0
+                  ? `${day.rows.length} ${day.rows.length === 1 ? "talk" : "talks"}`
+                  : `${chosen} of ${day.rows.length} picked`}
+              </span>
+            </div>
+            <div style={{ display: "grid", gap: 10 }}>
+              {day.rows.map((row) => {
+                const on = picked.has(row.id);
+                return (
+                  <article
+                    key={row.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 14,
+                      background: "var(--cd)",
+                      border: `1px solid ${on ? "var(--sl)" : "var(--ln)"}`,
+                      borderLeft: `3px solid ${on ? "var(--sg)" : "var(--ln)"}`,
+                      borderRadius: 14,
+                      padding: 16,
+                    }}
+                  >
+                    {/* This is the whole point of the page, and it was a native
                   unstyled checkbox measuring 13x13px — a third of the touch
                   floor, on a page a visitor uses on a phone in a hallway. The
                   title beside it is a link, so there was no larger target for
                   picking either. */}
-              <input
-                type="checkbox"
-                checked={on}
-                onChange={() => toggle(row.id)}
-                aria-label={`Add ${row.title} to my schedule`}
-                style={{
-                  width: 24,
-                  height: 24,
-                  marginTop: 2,
-                  flex: "none",
-                  accentColor: "var(--bt)",
-                  cursor: "pointer",
-                }}
-              />
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <h2 style={{ font: "600 16px var(--font-plex-sans)", color: "var(--ik)", margin: "0 0 4px" }}>
-                  <Link
-                    href={`/e/${slug}/schedule/${row.slug}` as never}
-                    style={{ color: "inherit", textDecoration: "none" }}
-                  >
-                    {row.title}
-                  </Link>
-                </h2>
-                <p
-                  className="tabular"
-                  style={{ font: "400 12.5px var(--font-plex-mono)", color: "var(--i3)", margin: 0 }}
-                >
-                  {row.starts_at === null ? "Time to be confirmed" : WHEN.format(new Date(row.starts_at))}
-                  {row.room !== null ? ` · ${row.room}` : ""}
-                  {row.track !== null ? ` · ${row.track}` : ""}
-                  {row.speakers.length > 0
-                    ? ` · ${row.speakers.map((person) => person.name).join(", ")}`
-                    : ""}
-                </p>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={() => toggle(row.id)}
+                      aria-label={`Add ${row.title} to my schedule`}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        marginTop: 2,
+                        flex: "none",
+                        accentColor: "var(--bt)",
+                        cursor: "pointer",
+                      }}
+                    />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <h2
+                        style={{
+                          font: "600 16px var(--font-plex-sans)",
+                          color: "var(--ik)",
+                          margin: "0 0 4px",
+                        }}
+                      >
+                        <Link
+                          href={`/e/${slug}/schedule/${row.slug}` as never}
+                          style={{ color: "inherit", textDecoration: "none" }}
+                        >
+                          {row.title}
+                        </Link>
+                      </h2>
+                      <p
+                        className="tabular"
+                        style={{
+                          font: "400 12.5px var(--font-plex-mono)",
+                          color: "var(--i3)",
+                          margin: 0,
+                        }}
+                      >
+                        {/* The weekday moved to the day heading above, so the row
+                      carries the time and nothing the heading already said. */}
+                        {row.starts_at === null ? "—" : CLOCK.format(new Date(row.starts_at))}
+                        {row.room !== null ? ` · ${row.room}` : ""}
+                        {row.track !== null ? ` · ${row.track}` : ""}
+                        {row.speakers.length > 0
+                          ? ` · ${row.speakers.map((person) => person.name).join(", ")}`
+                          : ""}
+                      </p>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
     </>
   );
 }

@@ -692,6 +692,15 @@ export default function AgendaPage() {
    *  a clashing placement and reports it. */
   const canPlace = days.length > 0 && rooms.length > 0;
 
+  /** Whichever half of the program is missing, named — not "no results", which
+   *  would read as a broken query on a grid that has nothing wrong with it. */
+  const programEmptyReason =
+    days.length === 0 && rooms.length === 0
+      ? "no rooms and no event days"
+      : rooms.length === 0
+        ? "no rooms"
+        : "no event days";
+
   /** The sheet's choices with the blanks filled in from what the agenda is
    *  currently showing. Everything downstream — the selects, the warning, the
    *  footer, the write — reads this rather than the raw choice, so a day that
@@ -744,6 +753,10 @@ export default function AgendaPage() {
     setCompose((current) => (current === null ? current : { ...current, ...patch }));
 
   const screen: AgendaData = {
+    // Nothing is broken — the grid just has nothing to draw against yet. A
+    // blank unlabelled column reads as a crash; this reads as a first day.
+    programEmpty: !canPlace,
+    programEmptyBody: `This event has ${programEmptyReason} yet, so there is nothing to place sessions against. Set them up in Program, then come back here to build the schedule.`,
     roomCount: String(columns),
     roomCols: rooms.map((room) => ({ n: room.name.toUpperCase() })),
     roomRules: rooms.slice(1).map((_room, index) => ({
@@ -958,7 +971,8 @@ export default function AgendaPage() {
             unscheduled: data?.unscheduled ?? [],
             conflicted,
             dayId: day?.id ?? null,
-            onSelect: (id) => setSelected(id),
+            selected,
+            onSelect: (id) => setSelected((current) => (current === id ? null : id)),
           }}
         />
       ),

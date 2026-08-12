@@ -102,6 +102,7 @@ export default function TasksPage() {
     enabled: eventId !== null,
     queryFn: () => authed<FileThread[]>(`/events/${eventId}/file-comments`),
   });
+  const fileCount = (threads ?? []).length;
 
   const comment = useMutation({
     mutationFn: ({ fileId, body }: { fileId: string; body: string }) =>
@@ -279,6 +280,13 @@ export default function TasksPage() {
       }
       nudge.mutate(ids);
     },
+    // Zero overdue can never send anything, so the button says that up front
+    // rather than dressing a no-op as the loudest thing on the toolbar.
+    nudgeDisabled: overdue.length === 0,
+    nudgeTitle:
+      overdue.length === 0
+        ? "Nothing is overdue."
+        : `Email every speaker with an overdue task (${overdue.length}).`,
 
     summary: perTemplate.map((entry) => ({
       n: entry.name,
@@ -330,6 +338,13 @@ export default function TasksPage() {
     }),
 
     downloadPack: () => void downloadPack(),
+    // Same reasoning as the nudge button: zero uploaded files means the zip
+    // would be empty, so it is disabled rather than pretending to work.
+    downloadDisabled: fileCount === 0,
+    downloadTitle:
+      fileCount === 0
+        ? "No files have been uploaded yet."
+        : `Download the current version of every uploaded file (${fileCount}) as one zip.`,
 
     toasts: toasts.map((entry) => ({
       msg: entry.msg,
@@ -341,8 +356,6 @@ export default function TasksPage() {
       onX: () => dismiss(entry.id),
     })),
   };
-
-  const fileCount = (threads ?? []).length;
 
   return (
     <>
@@ -369,9 +382,7 @@ export default function TasksPage() {
           whiteSpace: "nowrap",
         }}
       >
-        {showComments
-          ? "Close files"
-          : `Files${fileCount > 0 ? ` · ${fileCount}` : ""}`}
+        {showComments ? "Close files" : `Files${fileCount > 0 ? ` · ${fileCount}` : ""}`}
       </button>
       {showComments ? (
         <aside
@@ -407,9 +418,9 @@ export default function TasksPage() {
                 margin: "0",
               }}
             >
-              Every deliverable uploaded to this event, each with its versions and its
-              conversation. Speakers read these comments in their portal and can reply; for notes
-              only staff should see, use the submission&rsquo;s internal notes.
+              Every deliverable uploaded to this event, each with its versions and its conversation.
+              Speakers read these comments in their portal and can reply; for notes only staff
+              should see, use the submission&rsquo;s internal notes.
             </p>
           </header>
           <div style={{ flex: "1", overflowY: "auto", padding: "0 18px 72px" }}>

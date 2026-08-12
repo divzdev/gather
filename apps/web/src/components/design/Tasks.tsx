@@ -22,6 +22,12 @@ export type TasksData = {
   readonly byTask: (event: React.SyntheticEvent) => void;
   readonly cfpShort: React.ReactNode;
   readonly downloadPack: (event: React.SyntheticEvent) => void;
+  /** Disabled with a reason rather than drawn as a live action when there is
+   *  nothing behind it — zero files, zero overdue. */
+  readonly downloadDisabled: boolean;
+  readonly downloadTitle: string;
+  readonly nudgeDisabled: boolean;
+  readonly nudgeTitle: string;
   readonly groups: readonly {
     readonly chev: React.ReactNode;
     readonly hasOd: boolean;
@@ -278,6 +284,8 @@ export function Tasks({ d }: { d: TasksData }) {
                 <button
                   className="dch-c4989b43"
                   onClick={d.downloadPack}
+                  disabled={d.downloadDisabled}
+                  title={d.downloadTitle}
                   style={{
                     height: "36px",
                     padding: "0 13px",
@@ -285,23 +293,28 @@ export function Tasks({ d }: { d: TasksData }) {
                     border: "1px solid var(--ls,#C8D2D5)",
                     background: "none",
                     font: "500 12px 'IBM Plex Sans',sans-serif",
-                    color: "var(--i2,#3E4E58)",
+                    color: d.downloadDisabled ? "var(--i4,#99A6AD)" : "var(--i2,#3E4E58)",
                     whiteSpace: "nowrap",
+                    opacity: d.downloadDisabled ? 0.55 : 1,
+                    cursor: d.downloadDisabled ? "not-allowed" : "pointer",
                   }}
                 >
                   Download all files
                 </button>{" "}
                 <button
                   onClick={d.nudgeAll}
+                  disabled={d.nudgeDisabled}
+                  title={d.nudgeTitle}
                   style={{
                     height: "36px",
                     padding: "0 13px",
                     borderRadius: "999px",
                     border: "none",
-                    background: "var(--bt,#FF6B6B)",
-                    color: "var(--bf,#331313)",
+                    background: d.nudgeDisabled ? "var(--ls,#C8D2D5)" : "var(--bt,#FF6B6B)",
+                    color: d.nudgeDisabled ? "var(--i3,#6B7B84)" : "var(--bf,#331313)",
                     font: "600 12px 'IBM Plex Sans',sans-serif",
                     whiteSpace: "nowrap",
+                    cursor: d.nudgeDisabled ? "not-allowed" : "pointer",
                   }}
                 >
                   Nudge all overdue

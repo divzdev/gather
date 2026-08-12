@@ -31,6 +31,7 @@ type SessionRow = {
   speakers: { id: string; name: string; role: string }[];
 };
 type Named = { id: string; name: string; hue_index?: number };
+type EventDayRow = { id: string; day_date: string };
 
 const TRACK_HUES = ["#3E8896", "#A85788", "#5A6BA8", "#7E5CB8", "#C4703A", "#34526B"];
 
@@ -39,6 +40,26 @@ const STATUS: Record<string, { label: string; fg: string; bg: string }> = {
   scheduled: { label: "Scheduled", fg: "var(--if,#47599F)", bg: "var(--ifw,#E9ECF7)" },
   confirmed: { label: "Confirmed", fg: "var(--ok,#0E7A5F)", bg: "var(--okw,#E2F1EC)" },
 };
+
+/** `datetime-local` inputs read and write "YYYY-MM-DDTHH:mm" in whatever
+ *  timezone the browser is in — no `Z`, no offset. Round-tripping through
+ *  `Date` keeps that local reading intact instead of drifting through UTC. */
+function toLocalInputValue(iso: string): string {
+  const at = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`;
+}
+
+/** Room and starts save through a different endpoint than everything else in
+ *  the drawer (see the `place`/`unschedule` mutations below), so a Save that
+ *  touches both kinds of field fires two requests — and each one must clear
+ *  only the edits it actually persisted, or a mixed save silently drops
+ *  whichever half didn't get a helper of its own. */
+const PLACEMENT_KEYS = new Set(["room_id", "starts_at"]);
+const withoutPlacementKeys = (edits: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(edits).filter(([key]) => !PLACEMENT_KEYS.has(key)));
+const onlyPlacementKeys = (edits: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(edits).filter(([key]) => PLACEMENT_KEYS.has(key)));
 
 type View = "All" | "Unscheduled" | "Scheduled" | "Needs approval";
 type SortKey = "title" | "code" | "track" | "sched";
@@ -128,17 +149,26 @@ export default function SessionsPage() {
   });
   const [addError, setAddError] = useState<string | null>(null);
 
-  const { data } = useQuery({
+  const [placementError, setPlacementError] = useState<string | null>(null);
+
+  const {
+    data,
+    isPending: sessionsLoading,
+    isError: sessionsErrored,
+    error: sessionsError,
+    refetch: refetchSessions,
+  } = useQuery({
     queryKey: ["sessions", eventId],
     enabled: eventId !== null,
     queryFn: async () => {
-      const [sessions, tracks, formats, rooms] = await Promise.all([
+      const [sessions, tracks, formats, rooms, days] = await Promise.all([
         authed<SessionRow[]>(`/events/${eventId}/sessions`),
         authed<Named[]>(`/events/${eventId}/tracks?per_page=100`),
         authed<Named[]>(`/events/${eventId}/session-formats?per_page=100`),
         authed<Named[]>(`/events/${eventId}/rooms?per_page=100`),
+        authed<EventDayRow[]>(`/events/${eventId}/days?per_page=100`),
       ]);
-      return { sessions, tracks, formats, rooms };
+      return { sessions, tracks, formats, rooms, days };
     },
   });
 
@@ -199,8 +229,45 @@ export default function SessionsPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["sessions", eventId] });
       void queryClient.invalidateQueries({ queryKey: ["agenda", eventId] });
-      setEdits({});
+      setEdits((current) => onlyPlacementKeys(current));
       toast("Saved.");
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  /** Room and start time are not columns on the generic PATCH — `SessionPatch`
+   *  forbids them on purpose, because placing a session is more than setting two
+   *  fields: it has to land on a real event day and it flips `status`. That is
+   *  exactly what `/placement` and `/unschedule` do, so this drawer calls the
+   *  same two endpoints the agenda's drag-drop calls, rather than teaching the
+   *  generic PATCH a special case. */
+  const place = useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: { event_day_id: string; room_id: string; starts_at: string };
+    }) => authed(`/events/${eventId}/sessions/${id}/placement`, { method: "PATCH", body }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["sessions", eventId] });
+      void queryClient.invalidateQueries({ queryKey: ["agenda", eventId] });
+      setEdits((current) => withoutPlacementKeys(current));
+      setPlacementError(null);
+      toast("Placed. Saved.");
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  const unschedule = useMutation({
+    mutationFn: (id: string) =>
+      authed(`/events/${eventId}/sessions/${id}/unschedule`, { method: "POST" }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["sessions", eventId] });
+      void queryClient.invalidateQueries({ queryKey: ["agenda", eventId] });
+      setEdits((current) => withoutPlacementKeys(current));
+      setPlacementError(null);
+      toast("Cleared. Back in the unscheduled tray.");
     },
     onError: (error: Error) => toast(error.message),
   });
@@ -338,7 +405,9 @@ export default function SessionsPage() {
   const notBuilt = (what: string) => () => toast(`${what} is not built yet.`);
   const impPreview = useMemo(() => previewRows(impRaw), [impRaw]);
 
-  const dirty = Object.keys(edits).length > 0;
+  const placementDirty = "room_id" in edits || "starts_at" in edits;
+  const fieldsDirty = Object.keys(edits).some((key) => !PLACEMENT_KEYS.has(key));
+  const dirty = placementDirty || fieldsDirty;
 
   /** What the field shows: the unsaved edit if there is one, else the record. */
   const field = (key: string, saved: string): string =>
@@ -352,17 +421,29 @@ export default function SessionsPage() {
 
   const tagText = "tags" in edits ? String(edits.tags ?? "") : (open?.tags ?? []).join(", ");
 
-  /** The wire shape. Only `tags` differs from what the drawer holds. */
-  const patchBody = (): Record<string, unknown> =>
-    "tags" in edits
+  /** The wire shape for the generic PATCH. Room and starts never go in this
+   *  body — they are not `SessionPatch` fields, see the `place` mutation. */
+  const patchBody = (): Record<string, unknown> => {
+    const generic = withoutPlacementKeys(edits);
+    return "tags" in generic
       ? {
-          ...edits,
-          tags: String(edits.tags ?? "")
+          ...generic,
+          tags: String(generic.tags ?? "")
             .split(",")
             .map((part) => part.trim())
             .filter(Boolean),
         }
-      : edits;
+      : generic;
+  };
+
+  /** Placement requires a real event day, and `starts_at` has to fall on it —
+   *  the same rule `scheduling/router.py` enforces server-side. Matching it
+   *  here means a bad date is a same-screen validation message, not a 422
+   *  the user has to decode. */
+  const dayForLocalDate = (localDateTime: string): string | null =>
+    (data?.days ?? []).find((day) => day.day_date === localDateTime.slice(0, 10))?.id ?? null;
+
+  const saving = patch.isPending || place.isPending || unschedule.isPending;
 
   const screen: SessionsData = {
     ...stripData(stats),
@@ -400,23 +481,37 @@ export default function SessionsPage() {
     onQ: (event: React.SyntheticEvent) =>
       refilter(() => setQuery((event.target as HTMLInputElement).value)),
     // The pager already says "1 — 25 of 121". What it cannot say is what the
-    // filter removed, which is the number somebody is checking for.
-    countLine: filtered.length === all.length ? "" : `filtered from ${all.length}`,
-    pager: (
-      <Pager
-        page={page}
-        perPage={perPage}
-        total={filtered.length}
-        noun="sessions"
-        onPage={setPage}
-        onPerPage={(next) => refilter(() => setPerPage(next))}
-      />
-    ),
+    // filter removed, which is the number somebody is checking for. Neither
+    // claim means anything while the table is loading or failed to load.
+    countLine:
+      sessionsLoading || sessionsErrored || filtered.length === all.length
+        ? ""
+        : `filtered from ${all.length}`,
+    pager:
+      sessionsLoading || sessionsErrored ? null : (
+        <Pager
+          page={page}
+          perPage={perPage}
+          total={filtered.length}
+          noun="sessions"
+          onPage={setPage}
+          onPerPage={(next) => refilter(() => setPerPage(next))}
+        />
+      ),
     sumLine: `${counts.Scheduled} placed · ${counts.Unscheduled} still to schedule · ${counts["Needs approval"]} awaiting approval`,
     schedN: counts.Scheduled,
+    // Loading, failed and genuinely-empty used to all render "Nothing in this
+    // queue" — indistinguishable from each other on an event with 61 sessions.
+    loading: sessionsLoading,
+    loadError: sessionsErrored
+      ? sessionsError instanceof Error
+        ? sessionsError.message
+        : "Something went wrong."
+      : null,
+    onRetry: () => void refetchSessions(),
     // The filtered length, not the whole list: filtering to nothing used to
     // render a blank table with no explanation and no way back.
-    empty: pageRows.length === 0,
+    empty: !sessionsLoading && !sessionsErrored && pageRows.length === 0,
 
     soTitle: sorter("title"),
     soCode: sorter("code"),
@@ -480,34 +575,72 @@ export default function SessionsPage() {
     titleBd: "var(--ls,#C8D2D5)",
     // One primary action, two meanings: unsaved edits outrank approving, because
     // approving content you have half-rewritten publishes the old wording.
+    // Room/starts are dirty too, but they save through a different endpoint
+    // (see `place`/`unschedule` above) than title, track, format and the rest —
+    // so a save with both kinds of edit pending fires both requests.
     save: () => {
       if (open === null) return;
-      if (dirty) {
-        patch.mutate({ id: open.id, body: patchBody() });
+      setPlacementError(null);
+      if (!dirty) {
+        approve.mutate({
+          id: open.id,
+          status: open.content_status === "approved" ? "pending" : "approved",
+        });
         return;
       }
-      approve.mutate({
+      if (fieldsDirty) patch.mutate({ id: open.id, body: patchBody() });
+      if (!placementDirty) return;
+
+      const roomId = "room_id" in edits ? (edits.room_id as string | null) : open.room_id;
+      if (roomId === null) {
+        unschedule.mutate(open.id);
+        return;
+      }
+      const startsRaw =
+        "starts_at" in edits
+          ? (edits.starts_at as string)
+          : open.starts_at === null
+            ? ""
+            : toLocalInputValue(open.starts_at);
+      if (startsRaw === "") {
+        setPlacementError("Pick a start time to place it in this room.");
+        return;
+      }
+      const eventDayId = dayForLocalDate(startsRaw);
+      if (eventDayId === null) {
+        setPlacementError(`${startsRaw.slice(0, 10)} isn't one of the event's days.`);
+        return;
+      }
+      place.mutate({
         id: open.id,
-        status: open.content_status === "approved" ? "pending" : "approved",
+        body: {
+          event_day_id: eventDayId,
+          room_id: roomId,
+          starts_at: new Date(startsRaw).toISOString(),
+        },
       });
     },
     saveLabel: dirty
-      ? patch.isPending
+      ? saving
         ? "Saving…"
         : "Save changes"
       : open?.content_status === "approved"
         ? "Withdraw approval"
         : "Approve for the public site",
+    saveDisabled: saving,
+    placementErr: placementError,
 
     f: {
       t: field("title", open?.title ?? ""),
       desc: field("abstract", open?.abstract ?? ""),
       tr: field("track_id", open?.track_id ?? ""),
       fmt: field("session_format_id", open?.session_format_id ?? ""),
-      room: open?.room_id == null ? "Not placed" : (roomById.get(open.room_id)?.name ?? ""),
-      starts: open?.starts_at == null ? "Not scheduled" : WHEN.format(new Date(open.starts_at)),
+      room: field("room_id", open?.room_id ?? ""),
+      starts: field("starts_at", open?.starts_at == null ? "" : toLocalInputValue(open.starts_at)),
       cap: field("duration_minutes", String(open?.duration_minutes ?? "")),
       st: open === null ? "" : (STATUS[open.status] ?? STATUS.unscheduled!).label,
+      stFg: (STATUS[open?.status ?? "unscheduled"] ?? STATUS.unscheduled!).fg,
+      stBg: (STATUS[open?.status ?? "unscheduled"] ?? STATUS.unscheduled!).bg,
       level: field("expertise_level", open?.expertise_level ?? ""),
       language: field("language", open?.language ?? ""),
       tags: tagText,
@@ -520,6 +653,12 @@ export default function SessionsPage() {
       { v: "", l: "No format" },
       ...(data?.formats ?? []).map((entry) => ({ v: entry.id, l: entry.name })),
     ],
+    // This used to be four names baked into the JSX — Main stage, Room 2, Room
+    // 3, Workshop lab — regardless of which rooms the event actually has.
+    roomOpts: [
+      { v: "", l: "Not placed" },
+      ...(data?.rooms ?? []).map((entry) => ({ v: entry.id, l: entry.name })),
+    ],
     onT: edit("title", (value) => value),
     onDesc: edit("abstract", (value) => value),
     onTr: edit("track_id", (value) => (value === "" ? null : value)),
@@ -530,10 +669,8 @@ export default function SessionsPage() {
     // Held as raw text and split only on save: parsing every keystroke ate the
     // comma the moment it was typed, so a separator could never be entered.
     onTags: edit("tags", (value) => value),
-    // Placement is the agenda's, and saying where it lives beats a flat refusal.
-    onRoom: notBuilt("Placing a session is the agenda's job — drag it there"),
-    onStarts: notBuilt("Scheduling is the agenda's job — drag it there"),
-    onSt: notBuilt("A session's status follows its placement"),
+    onRoom: edit("room_id", (value) => (value === "" ? null : value)),
+    onStarts: edit("starts_at", (value) => value),
 
     tabs: [
       { key: "detail", label: "Detail" },

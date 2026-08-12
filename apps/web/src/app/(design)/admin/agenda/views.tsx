@@ -39,6 +39,10 @@ export type ViewInput = {
   unscheduled: ViewSession[];
   conflicted: Set<string>;
   dayId: string | null;
+  /** The session Delete/Backspace would act on. These views are read-only —
+   *  selecting here does the same thing selecting in the day grid does, so a
+   *  card needs to show it was picked, not just accept the click silently. */
+  selected: string | null;
   onSelect: (id: string) => void;
 };
 
@@ -106,17 +110,20 @@ function Card({
   hue,
   meta,
   conflicted,
+  active,
   onSelect,
 }: {
   row: ViewSession;
   hue: string;
   meta: string;
   conflicted: boolean;
+  active: boolean;
   onSelect: (id: string) => void;
 }) {
   return (
     <button
       onClick={() => onSelect(row.id)}
+      aria-pressed={active}
       style={{
         display: "block",
         width: "100%",
@@ -124,7 +131,10 @@ function Card({
         border: "none",
         borderLeft: `3px solid ${hue}`,
         borderBottom: "1px solid var(--ln)",
-        background: conflicted ? "var(--cnw)" : "none",
+        background: conflicted ? "var(--cnw)" : active ? "var(--sw)" : "none",
+        // A ring rather than a border swap, so selecting a card never nudges
+        // its neighbours by changing box height.
+        boxShadow: active ? "inset 0 0 0 1.5px var(--sg)" : "none",
         padding: "9px 12px",
         cursor: "pointer",
       }}
@@ -141,6 +151,9 @@ function Card({
         {row.starts_at === null ? "unplaced" : CLOCK.format(new Date(row.starts_at))}
         <span>{row.duration_minutes} min</span>
         {conflicted ? <span style={{ marginLeft: "auto" }}>⚠ clash</span> : null}
+        {!conflicted && active ? (
+          <span style={{ marginLeft: "auto", color: "var(--sg)" }}>selected</span>
+        ) : null}
       </span>
       <span
         style={{
@@ -211,6 +224,7 @@ function Columns({
                   hue={group.hue}
                   meta={meta(row)}
                   conflicted={input.conflicted.has(row.id)}
+                  active={input.selected === row.id}
                   onSelect={input.onSelect}
                 />
               ))
@@ -250,6 +264,7 @@ export function AgendaView({ input }: { input: ViewInput }) {
                 hue={hueOf(row)}
                 meta={`${roomName(row.room_id)} · ${track(row.track_id)?.name ?? "no track"}`}
                 conflicted={input.conflicted.has(row.id)}
+                active={input.selected === row.id}
                 onSelect={input.onSelect}
               />
             ))
@@ -271,6 +286,7 @@ export function AgendaView({ input }: { input: ViewInput }) {
                 hue={hueOf(row)}
                 meta={track(row.track_id)?.name ?? "no track"}
                 conflicted={false}
+                active={input.selected === row.id}
                 onSelect={input.onSelect}
               />
             ))}

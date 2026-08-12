@@ -347,7 +347,7 @@ function Thread({
         <textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          rows={2}
+          rows={3}
           aria-label={`Comment on ${thread.filename}`}
           placeholder={
             viewer === "staff"
@@ -358,12 +358,15 @@ function Thread({
             flex: "1",
             minWidth: "0",
             resize: "vertical",
-            padding: "8px 10px",
+            // A request for a re-shot headshot is prose, and prose does not fit
+            // in two lines. The floor for a composer is 60px, not a control's 36.
+            minHeight: "68px",
+            padding: "10px 12px",
             borderRadius: "8px",
             border: "1px solid var(--ls,#C8D2D5)",
             background: "var(--cd,#FFFFFF)",
             color: "var(--ik,#16232B)",
-            font: "400 13px 'IBM Plex Sans',sans-serif",
+            font: "400 13px/1.5 'IBM Plex Sans',sans-serif",
           }}
         />
         <button
@@ -371,7 +374,7 @@ function Thread({
           onClick={() => void send()}
           disabled={draft.trim() === "" || sending}
           style={{
-            height: "32px",
+            height: "var(--control-h-sm, 36px)",
             padding: "0 14px",
             borderRadius: "999px",
             border: "none",
