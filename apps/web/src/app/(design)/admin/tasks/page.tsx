@@ -84,7 +84,7 @@ export default function TasksPage() {
 
   // The clock is read once, when the rows arrive. Reading it during render makes
   // "3d overdue" depend on which re-render you happened to catch.
-  const { data } = useQuery({
+  const { data, isPending } = useQuery({
     queryKey: ["tasks", eventId],
     enabled: eventId !== null,
     queryFn: async () => ({
@@ -228,11 +228,16 @@ export default function TasksPage() {
     ...stripData(stats),
 
     odCount: overdue.length,
-    sumLine:
-      all.length === 0
+    /* Until the query resolves, `all` is [] — so this screen stated "No
+     * deliverables assigned yet" and four zeroes on an event with 79 overdue
+     * tasks, every single load. An empty state and a loading state are
+     * different claims and were rendering identically. */
+    sumLine: isPending
+      ? "Loading deliverables…"
+      : all.length === 0
         ? "No deliverables assigned yet. Create a task template and assign it to the roster."
         : `${openRows.length} open across ${waiting.size} speaker${waiting.size === 1 ? "" : "s"}, ${overdue.length} overdue.`,
-    allClear: groups.length === 0,
+    allClear: !isPending && groups.length === 0,
     // Was the literal "84 speakers, zero open tasks here", printed on any
     // event and flashed on every load before the data arrived. An empty view
     // has two very different causes and the operator needs to know which.
