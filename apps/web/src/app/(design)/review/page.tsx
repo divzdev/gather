@@ -27,6 +27,18 @@ type Criterion = {
   is_required: boolean;
   sort_order: number;
 };
+type ProposalScore = { criterion_id: string; label: string; value: number; reason: string };
+type Proposal = {
+  id: string;
+  status: string;
+  output: {
+    scores?: ProposalScore[];
+    summary?: string;
+    is_stub?: boolean;
+    error?: string;
+  };
+  model: string | null;
+};
 type Subject = {
   id: string;
   code: string;
@@ -98,6 +110,43 @@ export default function ReviewPage() {
         `/events/${eventId}/review/submissions/${current?.submission_id}?round_id=${round?.id}`,
       ),
   });
+
+  /** The suggestion for the submission on screen, or null.
+   *
+   *  Deliberately not cached per submission: a suggestion is a thing you asked
+   *  for about the proposal in front of you, and silently resurrecting one when
+   *  you navigate back would make it look like a stored property of the
+   *  submission rather than something a person requested.
+   */
+  const [proposal, setProposal] = useState<Proposal | null>(null);
+
+  const suggest = useMutation({
+    mutationFn: (submissionId: string) =>
+      authed<Proposal>(`/events/${eventId}/ai/review-rounds/${round?.id}/score`, {
+        method: "POST",
+        body: { submission_id: submissionId },
+      }),
+    onSuccess: (result) => setProposal(result),
+    // A failed *request* is different from a proposal that came back `failed`,
+    // which is handled in `aiNote` — that one is the model answering badly, and
+    // it is recorded rather than thrown away.
+    onError: (error: Error) => toast(error.message),
+  });
+
+  /** What the panel has to admit, in priority order. */
+  const aiNote = (): string | null => {
+    if (proposal?.status === "failed") {
+      const detail = proposal.output.error;
+      return typeof detail === "string" ? detail : "The model could not answer that.";
+    }
+    if (proposal?.output.is_stub === true) {
+      return "No model is configured, so these are placeholder values rather than a reading of the proposal. Set ANTHROPIC_API_KEY to get real suggestions.";
+    }
+    if (proposal === null) {
+      return "Suggested scores against this round's rubric, with a reason for each. They fill the form; they never save on your behalf.";
+    }
+    return null;
+  };
 
   const save = useMutation({
     mutationFn: async (submissionId: string) =>
@@ -247,10 +296,6 @@ export default function ReviewPage() {
       ab: answer(subject, "abstract"),
       before: answer(subject, "audience_level") || "—",
       tools: answer(subject, "key_takeaway") || "—",
-      a1: "Who is this for?",
-      a1r: answer(subject, "audience_level") || "—",
-      a2: "What will they leave with?",
-      a2r: answer(subject, "key_takeaway") || "—",
     },
 
     crits: criteria.map((criterion, position) => {
@@ -290,6 +335,42 @@ export default function ReviewPage() {
     aiOpen,
     togAi: () => setAiOpen((open) => !open),
     aiChev: aiOpen ? "hide" : "show",
+    aiItems: (proposal?.output.scores ?? []).map((item) => ({
+      label: item.label,
+      value: item.value,
+      reason: item.reason,
+    })),
+    aiNote: aiNote(),
+    aiBusy: suggest.isPending,
+    aiRunLabel: suggest.isPending
+      ? "Reading the proposal…"
+      : proposal === null
+        ? "Suggest scores"
+        : "Ask again",
+    aiCanUse: (proposal?.output.scores ?? []).length > 0,
+    aiRun: () => {
+      if (current === undefined) return;
+      suggest.mutate(current.submission_id);
+    },
+    // Fills the form and nothing else. The reviewer still presses save, and what
+    // saves is their scorecard — see the note at the foot of the panel.
+    aiUse: () => {
+      if (current === undefined || proposal === null) return;
+      setScores((all) => ({
+        ...all,
+        [current.submission_id]: {
+          ...all[current.submission_id],
+          ...Object.fromEntries(
+            (proposal.output.scores ?? []).map((item) => [item.criterion_id, item.value]),
+          ),
+        },
+      }));
+      toast("Scores filled in. Adjust anything you disagree with, then save.");
+    },
+    aiDiscard: () => {
+      setProposal(null);
+      toast("Suggestion discarded.");
+    },
 
     saveNext: saveAndNext,
     saveLabel: index >= queue.length - 1 ? "Save and finish" : "Save and next",

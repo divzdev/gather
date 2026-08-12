@@ -14,6 +14,23 @@ import { Rail } from "@/components/console/Rail";
 export type ReviewData = {
   readonly aiChev: React.ReactNode;
   readonly aiOpen: boolean;
+  /** Hand-bound. The prototype drew two fixed rows labelled "Relevance" and
+   *  "Originality" with no way to ask for them — a picture of the feature. These
+   *  are the round's real criteria, however many it has. */
+  readonly aiItems: readonly {
+    readonly label: React.ReactNode;
+    readonly value: React.ReactNode;
+    readonly reason: React.ReactNode;
+  }[];
+  /** Whatever the panel has to admit: that no model is configured, or why the
+   *  last attempt produced nothing. Null when there is nothing to say. */
+  readonly aiNote: React.ReactNode | null;
+  readonly aiBusy: boolean;
+  readonly aiRunLabel: React.ReactNode;
+  readonly aiCanUse: boolean;
+  readonly aiRun: () => void;
+  readonly aiUse: () => void;
+  readonly aiDiscard: () => void;
   readonly blindLabel: React.ReactNode;
   readonly closesLine: React.ReactNode;
   readonly comment: string;
@@ -45,10 +62,6 @@ export type ReviewData = {
   readonly shortcutHint: React.ReactNode;
   readonly flag: (event: React.SyntheticEvent) => void;
   readonly it: {
-    readonly a1: React.ReactNode;
-    readonly a1r: React.ReactNode;
-    readonly a2: React.ReactNode;
-    readonly a2r: React.ReactNode;
     readonly ab: React.ReactNode;
     readonly before: React.ReactNode;
     readonly col: string;
@@ -486,6 +499,13 @@ export function Review({ d }: { d: ReviewData }) {
                       border: "1px solid var(--sl,#FFC9C0)",
                       borderRadius: "8px",
                       overflow: "hidden",
+                      // The prototype's panel was two fixed rows and always
+                      // fitted. A real rubric can have six criteria with a
+                      // sentence each, and the flex parent was shrinking this to
+                      // 238px against 477px of content — with `overflow: hidden`
+                      // for the rounded corners, that put "Fill my scorecard"
+                      // permanently out of reach with no scrollbar to say so.
+                      flex: "none",
                     }}
                   >
                     {" "}
@@ -522,82 +542,128 @@ export function Review({ d }: { d: ReviewData }) {
                       </span>{" "}
                     </button>{" "}
                     {d.aiOpen ? (
-                      <>
-                        {" "}
+                      <div
+                        style={{
+                          padding: "13px",
+                          background: "var(--sw,#FFEAE6)",
+                          borderTop: "1px solid var(--sl,#FFC9C0)",
+                          display: "grid",
+                          gap: "10px",
+                        }}
+                      >
+                        {d.aiNote === null ? null : (
+                          <div
+                            role="status"
+                            style={{
+                              font: "400 11.5px/17px 'IBM Plex Sans',sans-serif",
+                              color: "var(--i2,#3E4E58)",
+                              background: "var(--cd,#FFFFFF)",
+                              border: "1px solid var(--sl,#FFC9C0)",
+                              borderRadius: "6px",
+                              padding: "8px 10px",
+                            }}
+                          >
+                            {d.aiNote}
+                          </div>
+                        )}
+                        {(d.aiItems ?? []).map((item, itemIndex) => (
+                          <div key={itemIndex}>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: "10px",
+                                marginBottom: "3px",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  font: "400 12px 'IBM Plex Sans',sans-serif",
+                                  color: "var(--i2,#3E4E58)",
+                                }}
+                              >
+                                {item.label}
+                              </span>
+                              <span
+                                style={{
+                                  font: "600 12px 'IBM Plex Mono',monospace",
+                                  fontVariantNumeric: "tabular-nums",
+                                  color: "var(--ik,#16232B)",
+                                }}
+                              >
+                                {item.value}
+                              </span>
+                            </div>
+                            <div
+                              style={{
+                                font: "400 11.5px/16px 'IBM Plex Sans',sans-serif",
+                                color: "var(--i3,#6B7B84)",
+                              }}
+                            >
+                              {item.reason}
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                          <button
+                            onClick={d.aiRun}
+                            disabled={d.aiBusy}
+                            style={{
+                              minHeight: "36px",
+                              padding: "0 14px",
+                              borderRadius: "999px",
+                              border: "none",
+                              background: "var(--bt,#FF6B6B)",
+                              color: "var(--bf,#331313)",
+                              font: "600 12.5px 'IBM Plex Sans',sans-serif",
+                              opacity: d.aiBusy ? 0.6 : 1,
+                            }}
+                          >
+                            {d.aiRunLabel}
+                          </button>
+                          {d.aiCanUse ? (
+                            <>
+                              <button
+                                onClick={d.aiUse}
+                                style={{
+                                  minHeight: "36px",
+                                  padding: "0 14px",
+                                  borderRadius: "999px",
+                                  border: "1px solid var(--ls,#C8D2D5)",
+                                  background: "var(--cd,#FFFFFF)",
+                                  font: "500 12.5px 'IBM Plex Sans',sans-serif",
+                                  color: "var(--ik,#16232B)",
+                                }}
+                              >
+                                Fill my scorecard
+                              </button>
+                              <button
+                                onClick={d.aiDiscard}
+                                style={{
+                                  minHeight: "36px",
+                                  padding: "0 12px",
+                                  borderRadius: "999px",
+                                  border: "none",
+                                  background: "none",
+                                  font: "500 12.5px 'IBM Plex Sans',sans-serif",
+                                  color: "var(--i3,#6B7B84)",
+                                }}
+                              >
+                                Discard
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
                         <div
                           style={{
-                            padding: "11px 13px",
-                            background: "var(--sw,#FFEAE6)",
-                            borderTop: "1px solid var(--sl,#FFC9C0)",
+                            font: "400 10.5px/15px 'IBM Plex Sans',sans-serif",
+                            color: "var(--i4,#99A6AD)",
                           }}
                         >
-                          {" "}
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              marginBottom: "4px",
-                            }}
-                          >
-                            <span
-                              style={{
-                                font: "400 12px 'IBM Plex Sans',sans-serif",
-                                color: "var(--i2,#3E4E58)",
-                              }}
-                            >
-                              Relevance{" "}
-                              <span style={{ font: "500 12px 'IBM Plex Mono',monospace" }}>
-                                {d.it.a1}
-                              </span>
-                            </span>
-                          </div>{" "}
-                          <div
-                            style={{
-                              font: "400 11.5px/16px 'IBM Plex Sans',sans-serif",
-                              color: "var(--i3,#6B7B84)",
-                              marginBottom: "8px",
-                            }}
-                          >
-                            {d.it.a1r}
-                          </div>{" "}
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              marginBottom: "4px",
-                            }}
-                          >
-                            <span
-                              style={{
-                                font: "400 12px 'IBM Plex Sans',sans-serif",
-                                color: "var(--i2,#3E4E58)",
-                              }}
-                            >
-                              Originality{" "}
-                              <span style={{ font: "500 12px 'IBM Plex Mono',monospace" }}>
-                                {d.it.a2}
-                              </span>
-                            </span>
-                          </div>{" "}
-                          <div
-                            style={{
-                              font: "400 11.5px/16px 'IBM Plex Sans',sans-serif",
-                              color: "var(--i3,#6B7B84)",
-                              marginBottom: "8px",
-                            }}
-                          >
-                            {d.it.a2r}
-                          </div>{" "}
-                          <div
-                            style={{
-                              font: "400 10.5px 'IBM Plex Sans',sans-serif",
-                              color: "var(--i4,#99A6AD)",
-                            }}
-                          >
-                            Never pre-fills your scores. Never counts toward the average.
-                          </div>{" "}
-                        </div>{" "}
-                      </>
+                          A suggestion, not a score. Nothing is recorded until you save, and what
+                          saves is your scorecard under your name.
+                        </div>
+                      </div>
                     ) : null}{" "}
                   </div>{" "}
                   <div
