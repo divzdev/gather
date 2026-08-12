@@ -13,7 +13,7 @@ import { ParticipationBand, type Participation as ParticipationState } from "./p
 import { PortalComments, useFeedbackCount } from "./comments";
 import { useTheme } from "@/components/ThemeProvider";
 import { API_BASE_URL, ApiError } from "@/lib/api";
-import { getSpeakerToken, portal, portalDownload } from "@/lib/session";
+import { getSpeakerToken, portal, portalBlobUrl, portalDownload } from "@/lib/session";
 import type { ThemeMode } from "@/lib/theme";
 
 type PortalFile = {
@@ -49,6 +49,7 @@ type Home = {
     starts_on: string;
     ends_on: string;
     location: string | null;
+    cfp_closes_at: string | null;
   };
   speaker: {
     id: string;
@@ -200,6 +201,45 @@ function calendarLink(
         `&subject=${title}&startdt=${starts.toISOString()}&enddt=${ends.toISOString()}&location=${where}`;
 }
 
+/** The CFP deadline, every part of it read in the conference's timezone.
+ *
+ *  Not a detail: this event closes at 23:59 on 30 April in San Francisco, which
+ *  is 06:59 on 1 May in UTC. Formatting any part of it in UTC — as the rest of
+ *  this file does for due dates, which carry no time of day — puts the wrong
+ *  month on the chip and tells a speaker their deadline is a day later than it
+ *  is. `en-US` rather than `en-GB` only because it names the zone "PDT" instead
+ *  of "GMT-7".
+ */
+function cfpClose(event: { cfp_closes_at: string | null; timezone: string }): {
+  mon: string;
+  day: string;
+  n: string;
+  sub: string;
+  bt: string;
+  cb: string;
+  cbd: string;
+  cf: string;
+} {
+  const at = new Date(event.cfp_closes_at ?? "");
+  const inZone = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-US", { ...options, timeZone: event.timezone }).format(at);
+  return {
+    mon: inZone({ month: "short" }).toUpperCase(),
+    day: inZone({ day: "numeric" }),
+    n: "CFP closes",
+    sub: `edits lock at ${inZone({
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZoneName: "short",
+    })}`,
+    bt: "none",
+    cb: "var(--sw,#FFEAE6)",
+    cbd: "var(--sl,#FFC9C0)",
+    cf: "var(--sg,#E04E4E)",
+  };
+}
+
 /** The single Key dates row shown when nothing is outstanding: the speaker's own
  *  slot if they have one, and otherwise an honest note that no date is set. */
 function restingKeyDate(talk: { starts_at: string | null; room: string | null } | null): {
@@ -341,6 +381,21 @@ export default function PortalPage() {
 
   const home = data?.home;
   const now = data?.now ?? 0;
+
+  // The headshot is read through the speaker's own token: no public route will
+  // serve it until the programme is published, and the window before that is
+  // exactly when the speaker wants to see whether the photo they just uploaded
+  // is the one they want on the programme.
+  const shotId = home?.speaker.headshot_file_id ?? null;
+  const { data: shotUrl } = useQuery({
+    queryKey: ["portal-headshot", shotId],
+    enabled: shotId !== null,
+    staleTime: Infinity,
+    queryFn: async () => {
+      if (shotId === null) throw new Error("No headshot to load.");
+      return portalBlobUrl(`/files/${shotId}`);
+    },
+  });
 
   const saveProfile = useMutation({
     mutationFn: (fields: Draft) =>
@@ -730,6 +785,11 @@ export default function PortalPage() {
         },
       };
     }),
+    // Only the date the schema actually holds. "Reviews wrap up" and "Decisions
+    // out" were the other two rows here; nothing in the model knows when either
+    // happens, so they are gone rather than guessed — a speaker planning around
+    // an invented date is worse served than one told nothing.
+    cfpDates: home?.event.cfp_closes_at == null ? [] : [cfpClose(home.event)],
     subCount: `${submissions?.length ?? 0} in total`,
     subLine:
       (submissions?.length ?? 0) === 0
@@ -751,6 +811,12 @@ export default function PortalPage() {
     pvName: home?.speaker.name ?? "",
     pvRole: [fields.title, fields.co].filter(Boolean).join(" · "),
     upShot: () => headshot.current?.click(),
+    shotUrl: shotUrl ?? null,
+    shotAction: shotId === null ? "Add photo" : "Replace photo",
+    // The rules the server already enforces (files.check_upload), said out loud.
+    // Stating them is not decoration: the picker below is narrowed to the same
+    // list, and between them a speaker cannot pick a file that will bounce.
+    shotHint: "JPG, PNG or WebP · max 8 MB",
 
     toasts: notices.map((notice) => ({
       msg: notice.msg,
@@ -791,7 +857,11 @@ export default function PortalPage() {
       <input
         ref={headshot}
         type="file"
-        accept="image/*"
+        // Exactly what files.check_upload accepts on the other end. `image/*`
+        // let a phone offer its camera roll's HEIC, which the picker took and
+        // the API then refused — a failure the speaker could do nothing about
+        // and which looked like the portal was broken.
+        accept="image/jpeg,image/png,image/webp"
         hidden
         onChange={(event) => {
           const file = event.target.files?.[0];

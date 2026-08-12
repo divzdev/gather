@@ -21,6 +21,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Providers
+         * @description Which sign-in methods this install can actually perform.
+         *
+         *     The screen asks before drawing the buttons. A "Continue with GitHub" that
+         *     leads to a 404 is worse than no button at all, and whether it works is a
+         *     deployment fact the browser has no other way to learn.
+         */
+        get: operations["providers_v1_auth_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/github/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Github Start
+         * @description Send the browser to GitHub, remembering where it was going.
+         */
+        get: operations["github_start_v1_auth_github_start_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/github/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Github Callback
+         * @description Where GitHub sends the browser back.
+         *
+         *     Never returns a token in the URL. The session is handed over as the same
+         *     httpOnly refresh cookie every other sign-in sets, and the page it lands on
+         *     exchanges that for an access token — so nothing sensitive is ever in a
+         *     location bar, a history entry or a server log.
+         */
+        get: operations["github_callback_v1_auth_github_callback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/login": {
         parameters: {
             query?: never;
@@ -147,7 +216,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Consume Magic Link */
+        /**
+         * Consume Magic Link
+         * @description Spend a link. What comes back depends on who the link was issued to.
+         *
+         *     A staff link also sets the rotating refresh cookie, because a console session
+         *     is expected to survive longer than the fifteen minutes an access token lasts,
+         *     and confirms the address on the way through.
+         */
         post: operations["consume_magic_link_v1_auth_magic_link_consume_post"];
         delete?: never;
         options?: never;
@@ -2627,6 +2703,15 @@ export interface components {
             /** Assigned */
             assigned: number;
         };
+        /**
+         * AuthProviders
+         * @description What this install actually offers, so the screen stops advertising what
+         *     it cannot do. GitHub is absent unless a client id is configured.
+         */
+        AuthProviders: {
+            /** Github */
+            github: boolean;
+        };
         /** AutoDistributeRequest */
         AutoDistributeRequest: {
             /** User Ids */
@@ -3315,6 +3400,8 @@ export interface components {
             ends_on: unknown;
             /** Location */
             location: string | null;
+            /** Cfp Closes At */
+            cfp_closes_at?: string | null;
         };
         /**
          * EventStatus
@@ -3765,6 +3852,23 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** MagicLinkConsumeResponse */
+        MagicLinkConsumeResponse: {
+            /** Access Token */
+            access_token: string;
+            /**
+             * Token Type
+             * @default bearer
+             */
+            token_type: string;
+            /** Expires In */
+            expires_in: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "staff" | "speaker";
+        };
         /** MagicLinkRequest */
         MagicLinkRequest: {
             /**
@@ -4146,6 +4250,18 @@ export interface components {
             /** Event Description */
             event_description: string | null;
             /**
+             * Event Starts On
+             * Format: date
+             */
+            event_starts_on: string;
+            /**
+             * Event Ends On
+             * Format: date
+             */
+            event_ends_on: string;
+            /** Event Location */
+            event_location: string | null;
+            /**
              * Form Id
              * Format: uuid
              */
@@ -4301,6 +4417,20 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** RegisterResponse */
+        RegisterResponse: {
+            /** Access Token */
+            access_token: string;
+            /**
+             * Token Type
+             * @default bearer
+             */
+            token_type: string;
+            /** Expires In */
+            expires_in: number;
+            /** Email Verified */
+            email_verified: boolean;
         };
         /** ResendResult */
         ResendResult: {
@@ -5168,6 +5298,11 @@ export interface components {
             role: string;
             /** Org Name */
             org_name?: string | null;
+            /**
+             * Email Verified
+             * @default false
+             */
+            email_verified: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -5425,7 +5560,91 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenResponse"];
+                    "application/json": components["schemas"]["RegisterResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    providers_v1_auth_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthProviders"];
+                };
+            };
+        };
+    };
+    github_start_v1_auth_github_start_get: {
+        parameters: {
+            query?: {
+                next?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            307: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    github_callback_v1_auth_github_callback_get: {
+        parameters: {
+            query?: {
+                code?: string | null;
+                state?: string | null;
+                error?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            307: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -5635,7 +5854,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenResponse"];
+                    "application/json": components["schemas"]["MagicLinkConsumeResponse"];
                 };
             };
             /** @description Validation Error */

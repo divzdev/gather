@@ -29,6 +29,8 @@ from app.features.tasks import service as tasks
 from app.models import (
     Event,
     EventSpeaker,
+    Form,
+    FormKind,
     Page,
     PageVisibility,
     Room,
@@ -137,6 +139,10 @@ class EventRead(BaseModel):
     starts_on: Any
     ends_on: Any
     location: str | None
+    #: When this event's call for papers shuts, or None if it has no dated CFP.
+    #: The portal drew a "CFP TIMELINE" card of prototype dates before this
+    #: existed, so every speaker on every event read the same invented deadline.
+    cfp_closes_at: datetime | None = None
 
 
 class Progress(BaseModel):
@@ -338,6 +344,14 @@ async def home(session: DbSession, speaker: PortalSpeaker) -> Home:
     complete = sum(1 for task in mine if task.status is TaskStatus.COMPLETE)
     overdue = sum(1 for task in mine if task.status is TaskStatus.OVERDUE)
 
+    # The same precedence `submissions.service.check_window_open` enforces: the
+    # form's own close date wins, and the event's is the fallback. Reading either
+    # one alone would let the portal advertise a deadline the API does not apply.
+    form_closes_at = await session.scalar(
+        select(Form.closes_at).where(Form.kind == FormKind.CFP).order_by(Form.created_at).limit(1)
+    )
+    cfp_closes_at = form_closes_at or event.cfp_closes_at
+
     return Home(
         event=EventRead(
             id=event.id,
@@ -347,6 +361,7 @@ async def home(session: DbSession, speaker: PortalSpeaker) -> Home:
             starts_on=event.starts_on,
             ends_on=event.ends_on,
             location=event.location,
+            cfp_closes_at=cfp_closes_at,
         ),
         speaker=_profile(person),
         participation=_participation_read(await _participation(session, speaker.speaker_id)),

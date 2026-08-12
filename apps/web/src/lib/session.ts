@@ -171,12 +171,26 @@ export async function download(
  *  asking for a new link rather than silently renewing.
  */
 export async function portalDownload(path: string, filename: string): Promise<void> {
-  const token = getSpeakerToken();
-  const response = await fetch(`${API_BASE_URL}/portal${path}`, {
-    headers: token === null ? {} : { Authorization: `Bearer ${token}` },
-  });
+  const response = await portalFetch(path);
   if (!response.ok) throw await failure(response, filename);
   await save(response, filename);
+}
+
+/** A speaker's own file as an object URL, for showing rather than saving — the
+ *  `blobUrl` above on the other token. The portal needs it for one thing: a
+ *  headshot the speaker just uploaded, which their own token can read but no
+ *  public route will serve until the programme is published. */
+export async function portalBlobUrl(path: string): Promise<string> {
+  const response = await portalFetch(path);
+  if (!response.ok) throw await failure(response, "that image");
+  return URL.createObjectURL(await response.blob());
+}
+
+function portalFetch(path: string): Promise<Response> {
+  const token = getSpeakerToken();
+  return fetch(`${API_BASE_URL}/portal${path}`, {
+    headers: token === null ? {} : { Authorization: `Bearer ${token}` },
+  });
 }
 
 async function failure(response: Response, filename: string): Promise<Error> {

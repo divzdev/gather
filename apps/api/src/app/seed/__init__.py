@@ -13,6 +13,7 @@ import asyncio
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -261,7 +262,12 @@ async def _upsert_event(session: AsyncSession, org: Organization) -> Event:
     )
     event.status = EventStatus.CFP_OPEN
     event.cfp_opens_at = datetime.now(UTC) - timedelta(days=30)
-    event.cfp_closes_at = datetime(2027, 4, 30, 23, 59, tzinfo=UTC)
+    # 23:59 in the conference's own timezone, which is what "closes on the 30th"
+    # means to everyone involved. Stamping that wall time as UTC — as this line
+    # used to — made the portal's deadline read 16:59 to a San Francisco speaker.
+    event.cfp_closes_at = datetime(2027, 4, 30, 23, 59, tzinfo=ZoneInfo(event.timezone)).astimezone(
+        UTC
+    )
     await session.flush()
     return event
 
