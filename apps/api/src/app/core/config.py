@@ -50,6 +50,14 @@ class Settings(BaseSettings):
     #: Where links in outbound email point. The API never serves these routes.
     web_origin: str = "http://localhost:3000"
 
+    #: The prefix a reverse proxy strips before the request reaches this app.
+    #: Caddy serves the API under /api and strips it, so the app sees /v1/... and
+    #: renders a docs page pointing at /v1/openapi.json — which, from the browser,
+    #: is the Next app's root and a 404. Routing is unaffected either way; this
+    #: only tells FastAPI what to put in the docs page and the servers block.
+    #: Empty locally, where the API is reached directly.
+    api_root_path: str = ""
+
     #: GitHub OAuth. Absent by default and absent is a supported configuration:
     #: with no client id the routes 404 and the sign-in screen does not offer the
     #: button, which is what keeps `make setup && make dev` credential-free.

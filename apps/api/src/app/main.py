@@ -7,7 +7,8 @@ import redis.asyncio as aioredis
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import text
 
 from app.core.config import get_settings
@@ -60,9 +61,27 @@ def create_app() -> FastAPI:
         description="Speaker and session management for conferences",
         version="0.1.0",
         openapi_url="/v1/openapi.json",
-        docs_url="/v1/docs",
+        # Served by hand below, so the page can point at the spec relatively.
+        docs_url=None,
+        root_path=settings.api_root_path,
         lifespan=lifespan,
     )
+
+    # The API is reached three ways — directly on :8051, through the web app's
+    # /api/v1 rewrite in dev, and through Caddy's /api prefix in production —
+    # and only the last of those tells the app what prefix was stripped. An
+    # absolute spec URL is therefore wrong in at least one of them: FastAPI's
+    # own docs page asked for /v1/openapi.json, which behind either proxy is
+    # the Next app's root, and 404s. A relative URL resolves against whatever
+    # the browser actually used, so all three work with nothing configured.
+    @app.get("/v1/docs", include_in_schema=False)
+    async def swagger_ui() -> HTMLResponse:
+        return get_swagger_ui_html(
+            openapi_url="openapi.json",
+            title="Gather API",
+            swagger_ui_parameters={"tryItOutEnabled": True},
+        )
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
