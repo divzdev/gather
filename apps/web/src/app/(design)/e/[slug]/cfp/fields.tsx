@@ -34,15 +34,15 @@ export const CONTROL = {
     height: 46,
     padding: "0 15px",
     borderRadius: 10,
-    border: "1px solid var(--ls)",
-    background: "var(--cd)",
-    color: "var(--ik)",
-    font: "400 15px var(--font-plex-sans)",
+    border: "1px solid var(--e-edge-strong, rgba(255,255,255,.18))",
+    background: "var(--e-raised, #101018)",
+    color: "var(--e-text, #F3F4F8)",
+    font: "400 15px var(--font-manrope), sans-serif",
   },
   label: {
     display: "block",
-    font: "500 13px var(--font-plex-sans)",
-    color: "var(--i2)",
+    font: "500 13px var(--font-manrope), sans-serif",
+    color: "var(--e-muted, #9A9FB1)",
     marginBottom: 8,
   },
 } satisfies Record<string, React.CSSProperties>;
@@ -63,20 +63,20 @@ export function button(kind: "primary" | "secondary" | "ghost"): React.CSSProper
     height: kind === "primary" ? 50 : 46,
     padding: kind === "ghost" ? "0 16px" : "0 24px",
     borderRadius: 999,
-    font: `600 ${kind === "primary" ? 15 : 14}px var(--font-plex-sans)`,
+    font: `600 ${kind === "primary" ? 15 : 14}px var(--font-manrope), sans-serif`,
     cursor: "pointer",
     whiteSpace: "nowrap",
   };
   if (kind === "primary")
-    return { ...base, border: "none", background: "var(--bt)", color: "var(--bf)" };
+    return { ...base, border: "none", background: "var(--e-accent, #FF6B6B)", color: "var(--e-on-accent, #331313)" };
   if (kind === "secondary")
     return {
       ...base,
-      border: "1px solid var(--ls)",
-      background: "var(--cd)",
-      color: "var(--i2)",
+      border: "1px solid var(--e-edge-strong, rgba(255,255,255,.18))",
+      background: "var(--e-raised, #101018)",
+      color: "var(--e-muted, #9A9FB1)",
     };
-  return { ...base, border: "none", background: "none", color: "var(--i3)" };
+  return { ...base, border: "none", background: "none", color: "var(--e-muted, #9A9FB1)" };
 }
 
 export type FieldProps = {
@@ -102,7 +102,7 @@ export function Field({ field, value, required, error, onChange }: FieldProps) {
   const text = typeof value === "string" ? value : "";
   const chosen = Array.isArray(value) ? (value as string[]) : [];
   const isMulti = MULTI_TYPES.has(field.type);
-  const border = error !== null ? "var(--cn)" : "var(--ls)";
+  const border = error !== null ? "var(--cn)" : "var(--e-edge-strong, rgba(255,255,255,.18))";
   const count = counter(field, text);
 
   const help =
@@ -110,8 +110,8 @@ export function Field({ field, value, required, error, onChange }: FieldProps) {
       <p
         id={`${id}-help`}
         style={{
-          font: "400 13px/1.55 var(--font-plex-sans)",
-          color: "var(--i3)",
+          font: "400 13px/1.55 var(--font-manrope), sans-serif",
+          color: "var(--e-muted, #9A9FB1)",
           margin: "0 0 10px",
         }}
       >
@@ -136,7 +136,7 @@ export function Field({ field, value, required, error, onChange }: FieldProps) {
     <div>
       <label htmlFor={id} style={CONTROL.label}>
         {field.label}
-        {required ? <span style={{ color: "var(--sg)" }}> *</span> : <Optional />}
+        {required ? <span style={{ color: "var(--e-accent, #FF6B6B)" }}> *</span> : <Optional />}
       </label>
       {help}
 
@@ -194,10 +194,10 @@ export function Field({ field, value, required, error, onChange }: FieldProps) {
                   padding: "0 18px",
                   borderRadius: 999,
                   cursor: "pointer",
-                  font: `${picked ? 600 : 400} 14px var(--font-plex-sans)`,
-                  border: `1px solid ${picked ? "var(--sg)" : error !== null ? "var(--cn)" : "var(--ls)"}`,
-                  background: picked ? "var(--sw)" : "var(--cd)",
-                  color: picked ? "var(--sg)" : "var(--i2)",
+                  font: `${picked ? 600 : 400} 14px var(--font-manrope), sans-serif`,
+                  border: `1px solid ${picked ? "var(--e-accent, #FF6B6B)" : error !== null ? "var(--cn)" : "var(--e-edge-strong, rgba(255,255,255,.18))"}`,
+                  background: picked ? "color-mix(in srgb, var(--e-accent, #FF6B6B) 15%, transparent)" : "var(--e-raised, #101018)",
+                  color: picked ? "var(--e-accent, #FF6B6B)" : "var(--e-muted, #9A9FB1)",
                 }}
               >
                 {picked ? "✓ " : ""}
@@ -222,8 +222,8 @@ export function Field({ field, value, required, error, onChange }: FieldProps) {
           <span
             className="tabular"
             style={{
-              font: "400 12px var(--font-plex-mono), monospace",
-              color: count.over ? "var(--cn)" : "var(--i3)",
+              font: "400 12px ui-monospace,'SF Mono',Menlo,monospace, monospace",
+              color: count.over ? "var(--cn)" : "var(--e-muted, #9A9FB1)",
               marginLeft: "auto",
             }}
           >
@@ -237,7 +237,7 @@ export function Field({ field, value, required, error, onChange }: FieldProps) {
 
 export function Optional() {
   return (
-    <span style={{ font: "400 12px var(--font-plex-sans)", color: "var(--i4)" }}> optional</span>
+    <span style={{ font: "400 12px var(--font-manrope), sans-serif", color: "var(--e-faint, #7C8093)" }}> optional</span>
   );
 }
 
@@ -248,7 +248,7 @@ export function Problem({ error, style }: { error: string | null; style?: React.
     <p
       role="alert"
       style={{
-        font: "400 13px var(--font-plex-sans)",
+        font: "400 13px var(--font-manrope), sans-serif",
         color: "var(--cn)",
         margin: "8px 0 0",
         ...style,
@@ -288,8 +288,8 @@ export function Consent({
         borderRadius: 12,
         cursor: "pointer",
         textAlign: "left",
-        background: checked ? "var(--sw)" : "var(--cd)",
-        border: `1px solid ${checked ? "var(--sl)" : error !== null ? "var(--cn)" : "var(--ln)"}`,
+        background: checked ? "color-mix(in srgb, var(--e-accent, #FF6B6B) 15%, transparent)" : "var(--e-raised, #101018)",
+        border: `1px solid ${checked ? "var(--e-edge-strong, rgba(255,255,255,.18))" : error !== null ? "var(--cn)" : "var(--e-edge, rgba(255,255,255,.10))"}`,
       }}
     >
       <span
@@ -301,18 +301,18 @@ export function Consent({
           borderRadius: 7,
           display: "grid",
           placeItems: "center",
-          font: "600 14px var(--font-plex-sans)",
-          background: checked ? "var(--bt)" : "var(--cd)",
-          color: "var(--bf)",
-          border: `1px solid ${checked ? "var(--bt)" : "var(--ls)"}`,
+          font: "600 14px var(--font-manrope), sans-serif",
+          background: checked ? "var(--e-accent, #FF6B6B)" : "var(--e-raised, #101018)",
+          color: "var(--e-on-accent, #331313)",
+          border: `1px solid ${checked ? "var(--e-accent, #FF6B6B)" : "var(--e-edge-strong, rgba(255,255,255,.18))"}`,
         }}
       >
         {checked ? "✓" : ""}
       </span>
       <span
         style={{
-          font: "400 14px/1.55 var(--font-plex-sans)",
-          color: "var(--i2)",
+          font: "400 14px/1.55 var(--font-manrope), sans-serif",
+          color: "var(--e-muted, #9A9FB1)",
           paddingTop: 3,
         }}
       >

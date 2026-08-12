@@ -14,8 +14,8 @@ import Link from "next/link";
 import { button } from "./fields";
 
 export const CFP_CSS = `
-.cfp-control:focus-visible{outline:2px solid var(--sg);outline-offset:2px;border-radius:10px}
-.cfp-control::placeholder{color:var(--i4)}
+.cfp-control:focus-visible{outline:2px solid var(--e-accent, #FF6B6B);outline-offset:2px;border-radius:10px}
+.cfp-control::placeholder{color:var(--e-faint, #7C8093)}
 .cfp-shell{display:grid;grid-template-columns:212px minmax(0,1fr);gap:44px;align-items:start}
 .cfp-rail{position:sticky;top:26px}
 .cfp-summary{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:baseline}
@@ -80,8 +80,8 @@ function remaining(iso: string): string | null {
 
 const page: React.CSSProperties = {
   minHeight: "100vh",
-  background: "var(--pp)",
-  color: "var(--ik)",
+  background: "var(--e-page, #07080E)",
+  color: "var(--e-text, #F3F4F8)",
 };
 const wrap: React.CSSProperties = { maxWidth: 1000, margin: "0 auto", padding: "34px 24px 96px" };
 
@@ -89,7 +89,7 @@ function Header({ form, slug }: { form: FormInfo | undefined; slug: string }) {
   const closes = form?.closes_at ?? null;
   const left = closes === null ? null : remaining(closes);
   return (
-    <div style={{ borderBottom: "1px solid var(--ln)", background: "var(--cd)" }}>
+    <div style={{ borderBottom: "1px solid var(--e-edge, rgba(255,255,255,.10))", background: "var(--e-raised, #101018)" }}>
       <div
         style={{
           maxWidth: 1000,
@@ -112,9 +112,9 @@ function Header({ form, slug }: { form: FormInfo | undefined; slug: string }) {
         <Link
           href={`/e/${form?.event_slug ?? slug}`}
           style={{
-            font: "700 16px var(--font-bricolage), sans-serif",
+            font: "700 16px var(--font-manrope), sans-serif",
             letterSpacing: "-0.01em",
-            color: "var(--ik)",
+            color: "var(--e-text, #F3F4F8)",
             textDecoration: "none",
           }}
         >
@@ -125,8 +125,8 @@ function Header({ form, slug }: { form: FormInfo | undefined; slug: string }) {
           <span
             className="tabular"
             style={{
-              font: "400 12.5px var(--font-plex-mono), monospace",
-              color: left === null ? "var(--cn)" : "var(--i3)",
+              font: "400 12.5px ui-monospace,'SF Mono',Menlo,monospace, monospace",
+              color: left === null ? "var(--cn)" : "var(--e-muted, #9A9FB1)",
             }}
           >
             {left === null ? "Closed" : left}
@@ -153,10 +153,10 @@ export function Rail({
   resumed: string | null;
 }) {
   const state = (() => {
-    if (save.kind === "saving") return { text: "Saving…", tone: "var(--i3)" };
+    if (save.kind === "saving") return { text: "Saving…", tone: "var(--e-muted, #9A9FB1)" };
     if (save.kind === "saved") return { text: `Saved ${save.at}`, tone: "var(--ok)" };
     if (save.kind === "failed") return { text: `Not saved — ${save.message}`, tone: "var(--cn)" };
-    return { text: "Not saved yet", tone: "var(--i3)" };
+    return { text: "Not saved yet", tone: "var(--e-muted, #9A9FB1)" };
   })();
 
   return (
@@ -182,9 +182,9 @@ export function Rail({
                 border: "none",
                 cursor: "pointer",
                 textAlign: "left",
-                background: active ? "var(--sw)" : "transparent",
-                font: `${active ? 600 : 400} 13.5px var(--font-plex-sans)`,
-                color: active ? "var(--sg)" : complete ? "var(--i2)" : "var(--i3)",
+                background: active ? "color-mix(in srgb, var(--e-accent, #FF6B6B) 15%, transparent)" : "transparent",
+                font: `${active ? 600 : 400} 13.5px var(--font-manrope), sans-serif`,
+                color: active ? "var(--e-accent, #FF6B6B)" : complete ? "var(--e-muted, #9A9FB1)" : "var(--e-muted, #9A9FB1)",
               }}
             >
               <span
@@ -196,10 +196,10 @@ export function Rail({
                   borderRadius: 999,
                   display: "grid",
                   placeItems: "center",
-                  font: "600 11px var(--font-plex-sans)",
-                  background: active ? "var(--bt)" : complete ? "var(--ok)" : "transparent",
-                  color: active || complete ? "#FFFFFF" : "var(--i3)",
-                  border: active || complete ? "none" : "1px solid var(--ls)",
+                  font: "600 11px var(--font-manrope), sans-serif",
+                  background: active ? "var(--e-accent, #FF6B6B)" : complete ? "var(--ok)" : "transparent",
+                  color: active || complete ? "#FFFFFF" : "var(--e-muted, #9A9FB1)",
+                  border: active || complete ? "none" : "1px solid var(--e-edge-strong, rgba(255,255,255,.18))",
                 }}
               >
                 {complete ? "✓" : position}
@@ -212,26 +212,26 @@ export function Rail({
 
       {/* A phone gets a bar and a name, not four tabs it has to scroll. */}
       <div className="cfp-narrow">
-        <div style={{ height: 5, borderRadius: 999, background: "var(--sk)", overflow: "hidden" }}>
+        <div style={{ height: 5, borderRadius: 999, background: "var(--e-raised, #101018)", overflow: "hidden" }}>
           <div
             style={{
               height: "100%",
               width: `${Math.round((Math.max(step, 0) / steps.length) * 100)}%`,
-              background: "var(--bt)",
+              background: "var(--e-accent, #FF6B6B)",
               transition: "width var(--dur-base) var(--ease)",
             }}
           />
         </div>
         <p
           className="tabular"
-          style={{ font: "400 12.5px var(--font-plex-sans)", color: "var(--i3)", margin: 0 }}
+          style={{ font: "400 12.5px var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: 0 }}
         >
           {step === 0 ? "Before you start" : `Step ${step} of ${steps.length} · ${steps[step - 1]}`}
         </p>
       </div>
 
       <div style={{ marginTop: 18, display: "grid", gap: 6 }}>
-        <p style={{ font: "400 12px var(--font-plex-sans)", color: state.tone, margin: 0 }}>
+        <p style={{ font: "400 12px var(--font-manrope), sans-serif", color: state.tone, margin: 0 }}>
           {state.text}
         </p>
         {save.kind === "failed" && (
@@ -243,7 +243,7 @@ export function Rail({
               ...button("secondary"),
               height: 36,
               padding: "0 14px",
-              font: "500 12.5px var(--font-plex-sans)",
+              font: "500 12.5px var(--font-manrope), sans-serif",
               justifySelf: "start",
             }}
           >
@@ -251,7 +251,7 @@ export function Rail({
           </button>
         )}
         {resumed !== null && (
-          <p style={{ font: "400 12px var(--font-plex-sans)", color: "var(--i3)", margin: 0 }}>
+          <p style={{ font: "400 12px var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: 0 }}>
             Picked up your draft <span className="tabular">{resumed}</span>.
           </p>
         )}
@@ -290,11 +290,11 @@ export function Toasts({
             alignItems: "center",
             padding: "13px 16px",
             borderRadius: 12,
-            background: "var(--cd)",
-            border: "1px solid var(--ln)",
+            background: "var(--e-raised, #101018)",
+            border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
             boxShadow: "0 10px 30px rgba(13,16,32,.14)",
-            font: "400 13.5px var(--font-plex-sans)",
-            color: "var(--i2)",
+            font: "400 13.5px var(--font-manrope), sans-serif",
+            color: "var(--e-muted, #9A9FB1)",
           }}
         >
           {entry.msg}
@@ -311,8 +311,8 @@ export function Toasts({
               border: "none",
               background: "none",
               cursor: "pointer",
-              color: "var(--i3)",
-              font: "400 15px var(--font-plex-sans)",
+              color: "var(--e-muted, #9A9FB1)",
+              font: "400 15px var(--font-manrope), sans-serif",
             }}
           >
             ✕
@@ -328,8 +328,8 @@ function Card({ children }: { children: React.ReactNode }) {
     <div
       style={{
         maxWidth: 560,
-        border: "1px solid var(--ln)",
-        background: "var(--cd)",
+        border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
+        background: "var(--e-raised, #101018)",
         borderRadius: 16,
         padding: 32,
       }}
@@ -340,14 +340,14 @@ function Card({ children }: { children: React.ReactNode }) {
 }
 
 const heading: React.CSSProperties = {
-  font: "700 26px/1.15 var(--font-bricolage), sans-serif",
+  font: "700 26px/1.15 var(--font-manrope), sans-serif",
   letterSpacing: "-0.02em",
-  color: "var(--ik)",
+  color: "var(--e-text, #F3F4F8)",
   margin: "0 0 12px",
 };
 const prose: React.CSSProperties = {
-  font: "400 15px/1.65 var(--font-plex-sans)",
-  color: "var(--i2)",
+  font: "400 15px/1.65 var(--font-manrope), sans-serif",
+  color: "var(--e-muted, #9A9FB1)",
   margin: 0,
 };
 
@@ -396,13 +396,13 @@ export function Shell({
     if (isPending || form === undefined)
       return (
         <div style={{ display: "grid", gap: 16, maxWidth: 560 }} aria-busy>
-          <p style={{ font: "400 14px var(--font-plex-sans)", color: "var(--i3)", margin: 0 }}>
+          <p style={{ font: "400 14px var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: 0 }}>
             Loading the call for papers…
           </p>
           {[64, 220, 120].map((height, index) => (
             <div
               key={index}
-              style={{ height, borderRadius: 14, background: "var(--sk)", opacity: 0.75 }}
+              style={{ height, borderRadius: 14, background: "var(--e-raised, #101018)", opacity: 0.75 }}
             />
           ))}
         </div>
@@ -413,7 +413,7 @@ export function Shell({
         <Card>
           <p
             style={{
-              font: "600 11px var(--font-plex-mono), monospace",
+              font: "600 11px ui-monospace,'SF Mono',Menlo,monospace, monospace",
               letterSpacing: "0.14em",
               color: "var(--ok)",
               margin: "0 0 12px",
@@ -431,13 +431,13 @@ export function Shell({
               margin: "24px 0",
               padding: "16px 20px",
               borderRadius: 12,
-              background: "var(--sk)",
+              background: "var(--e-raised, #101018)",
               flexWrap: "wrap",
             }}
           >
             <span
               className="tabular"
-              style={{ font: "600 22px var(--font-plex-mono), monospace", color: "var(--ik)" }}
+              style={{ font: "600 22px ui-monospace,'SF Mono',Menlo,monospace, monospace", color: "var(--e-text, #F3F4F8)" }}
             >
               {done.code}
             </span>
@@ -450,7 +450,7 @@ export function Shell({
               Copy code
             </button>
           </div>
-          <p style={{ ...prose, font: "400 13.5px/1.6 var(--font-plex-sans)", color: "var(--i3)" }}>
+          <p style={{ ...prose, font: "400 13.5px/1.6 var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)" }}>
             Keep that code — it is how you check this proposal&rsquo;s status. We have emailed it to
             you as well.
           </p>
@@ -487,7 +487,7 @@ export function Shell({
             {form.closed_reason ?? "This call for papers is not accepting proposals."}
           </p>
           {form.closes_at !== null && (
-            <p style={{ ...prose, color: "var(--i3)", marginTop: 12 }}>
+            <p style={{ ...prose, color: "var(--e-muted, #9A9FB1)", marginTop: 12 }}>
               The deadline was {deadline(form.closes_at, form.event_timezone)}.
             </p>
           )}
@@ -517,10 +517,10 @@ export function Shell({
             padding: "13px 18px",
             borderRadius: 12,
             border: "1px solid var(--ifl)",
-            background: "var(--ifw)",
+            background: "var(--e-raised, #101018)",
             marginBottom: 30,
-            font: "400 13px var(--font-plex-sans)",
-            color: "var(--i2)",
+            font: "400 13px var(--font-manrope), sans-serif",
+            color: "var(--e-muted, #9A9FB1)",
           }}
         >
           {form.closes_at !== null && (
@@ -528,7 +528,7 @@ export function Shell({
               Closes{" "}
               <span
                 className="tabular"
-                style={{ font: "500 12.5px var(--font-plex-mono), monospace" }}
+                style={{ font: "500 12.5px ui-monospace,'SF Mono',Menlo,monospace, monospace" }}
               >
                 {deadline(form.closes_at, form.event_timezone)}
               </span>
@@ -539,7 +539,7 @@ export function Shell({
               Limit{" "}
               <span
                 className="tabular"
-                style={{ font: "500 12.5px var(--font-plex-mono), monospace" }}
+                style={{ font: "500 12.5px ui-monospace,'SF Mono',Menlo,monospace, monospace" }}
               >
                 {form.submission_limit_per_speaker} per speaker
               </span>
@@ -554,7 +554,7 @@ export function Shell({
   })();
 
   return (
-    <div data-screen-label="Public CFP wizard" style={page}>
+    <div data-screen-label="Public CFP wizard" data-event="" style={page}>
       <style>{css}</style>
       <Header form={form} slug={slug} />
       <div style={wrap}>{inner}</div>

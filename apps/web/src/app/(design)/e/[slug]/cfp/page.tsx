@@ -375,12 +375,12 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     <div style={{ display: "grid", gap: 22 }}>
       <div>
         <label htmlFor="cfp-name" style={CONTROL.label}>
-          Your name<span style={{ color: "var(--sg)" }}> *</span>
+          Your name<span style={{ color: "var(--e-accent, #FF6B6B)" }}> *</span>
         </label>
         <p
           style={{
-            font: "400 13px/1.55 var(--font-plex-sans)",
-            color: "var(--i3)",
+            font: "400 13px/1.55 var(--font-manrope), sans-serif",
+            color: "var(--e-muted, #9A9FB1)",
             margin: "0 0 10px",
           }}
         >
@@ -397,19 +397,19 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
           placeholder="Alex Rivera"
           style={{
             ...CONTROL.input,
-            borderColor: errorFor("name") !== null ? "var(--cn)" : "var(--ls)",
+            borderColor: errorFor("name") !== null ? "var(--cn)" : "var(--e-edge-strong, rgba(255,255,255,.18))",
           }}
         />
         <Problem error={errorFor("name")} />
       </div>
       <div>
         <label htmlFor="cfp-email" style={CONTROL.label}>
-          Email<span style={{ color: "var(--sg)" }}> *</span>
+          Email<span style={{ color: "var(--e-accent, #FF6B6B)" }}> *</span>
         </label>
         <p
           style={{
-            font: "400 13px/1.55 var(--font-plex-sans)",
-            color: "var(--i3)",
+            font: "400 13px/1.55 var(--font-manrope), sans-serif",
+            color: "var(--e-muted, #9A9FB1)",
             margin: "0 0 10px",
           }}
         >
@@ -429,7 +429,7 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
           placeholder="you@example.com"
           style={{
             ...CONTROL.input,
-            borderColor: errorFor("email") !== null ? "var(--cn)" : "var(--ls)",
+            borderColor: errorFor("email") !== null ? "var(--cn)" : "var(--e-edge-strong, rgba(255,255,255,.18))",
           }}
         />
         <Problem error={errorFor("email")} />
@@ -441,14 +441,14 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     maxCo === 0 ? null : (
       <div style={{ display: "grid", gap: 14 }}>
         <div>
-          <p style={{ font: "500 13px var(--font-plex-sans)", color: "var(--i2)", margin: 0 }}>
+          <p style={{ font: "500 13px var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: 0 }}>
             Anyone else on stage with you
             <Optional />
           </p>
           <p
             style={{
-              font: "400 13px/1.55 var(--font-plex-sans)",
-              color: "var(--i3)",
+              font: "400 13px/1.55 var(--font-manrope), sans-serif",
+              color: "var(--e-muted, #9A9FB1)",
               margin: "6px 0 0",
             }}
           >
@@ -516,8 +516,8 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
     <div style={{ display: "grid", gap: 20 }}>
       <div
         style={{
-          border: "1px solid var(--ln)",
-          background: "var(--cd)",
+          border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
+          background: "var(--e-raised, #101018)",
           borderRadius: 14,
           padding: 24,
           display: "grid",
@@ -551,10 +551,10 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
             : []),
         ].map((row) => (
           <div key={row.k} className="cfp-summary">
-            <span style={{ font: "400 13px var(--font-plex-sans)", color: "var(--i4)" }}>
+            <span style={{ font: "400 13px var(--font-manrope), sans-serif", color: "var(--e-faint, #7C8093)" }}>
               {row.k}
             </span>
-            <span style={{ font: "400 14px/1.6 var(--font-plex-sans)", color: "var(--ik)" }}>
+            <span style={{ font: "400 14px/1.6 var(--font-manrope), sans-serif", color: "var(--e-text, #F3F4F8)" }}>
               {row.v}
             </span>
           </div>
@@ -585,7 +585,7 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
         >
           <p
             style={{
-              font: "600 14px var(--font-plex-sans)",
+              font: "600 14px var(--font-manrope), sans-serif",
               color: "var(--cn)",
               margin: "0 0 10px",
             }}
@@ -606,8 +606,8 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
                     padding: 0,
                     cursor: "pointer",
                     textAlign: "left",
-                    font: "400 13.5px/1.55 var(--font-plex-sans)",
-                    color: "var(--i2)",
+                    font: "400 13.5px/1.55 var(--font-manrope), sans-serif",
+                    color: "var(--e-muted, #9A9FB1)",
                     textDecoration: "underline",
                   }}
                 >
@@ -627,16 +627,16 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
         <div style={{ display: "grid", gap: 22 }}>
           <div
             style={{
-              border: "1px solid var(--ln)",
-              background: "var(--cd)",
+              border: "1px solid var(--e-edge, rgba(255,255,255,.10))",
+              background: "var(--e-raised, #101018)",
               borderRadius: 14,
               padding: 24,
             }}
           >
             <p
               style={{
-                font: "600 14px var(--font-plex-sans)",
-                color: "var(--ik)",
+                font: "600 14px var(--font-manrope), sans-serif",
+                color: "var(--e-text, #F3F4F8)",
                 margin: "0 0 10px",
               }}
             >
@@ -649,8 +649,8 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
                 display: "grid",
                 gap: 7,
                 listStyleType: "disc",
-                font: "400 14px/1.6 var(--font-plex-sans)",
-                color: "var(--i2)",
+                font: "400 14px/1.6 var(--font-manrope), sans-serif",
+                color: "var(--e-muted, #9A9FB1)",
               }}
             >
               {sections.flatMap((section) =>
@@ -660,14 +660,14 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
                     <li key={field.key}>
                       {field.label}
                       {field.help_text ? (
-                        <span style={{ color: "var(--i3)" }}> — {field.help_text}</span>
+                        <span style={{ color: "var(--e-muted, #9A9FB1)" }}> — {field.help_text}</span>
                       ) : null}
                     </li>
                   )),
               )}
             </ul>
           </div>
-          <p style={{ font: "400 14px/1.65 var(--font-plex-sans)", color: "var(--i3)", margin: 0 }}>
+          <p style={{ font: "400 14px/1.65 var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: 0 }}>
             Your work is saved as you go, so you can close this and come back. Nothing is sent until
             you press submit on the last step.
           </p>
@@ -749,9 +749,9 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
         <div>
           <h1
             style={{
-              font: "700 clamp(26px,4vw,38px)/1.1 var(--font-bricolage), sans-serif",
+              font: "700 clamp(26px,4vw,38px)/1.1 var(--font-manrope), sans-serif",
               letterSpacing: "-0.02em",
-              color: "var(--ik)",
+              color: "var(--e-text, #F3F4F8)",
               margin: "0 0 10px",
             }}
           >
@@ -759,8 +759,8 @@ export default function CfpPage({ params }: { params: Promise<{ slug: string }> 
           </h1>
           <p
             style={{
-              font: "400 15px/1.65 var(--font-plex-sans)",
-              color: "var(--i2)",
+              font: "400 15px/1.65 var(--font-manrope), sans-serif",
+              color: "var(--e-muted, #9A9FB1)",
               margin: "0 0 30px",
               maxWidth: "62ch",
             }}
