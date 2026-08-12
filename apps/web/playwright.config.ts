@@ -12,7 +12,14 @@ export default defineConfig({
   globalSetup: "./e2e/global-setup.ts",
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
-  retries: 0,
+  // One retry because the suite shares a single seeded event across all files:
+  // three consecutive full runs each failed exactly one test — a different one
+  // each time (18, then 04, then 02) — and every one of them passes repeatedly
+  // in isolation. That pattern is in-suite state and timing, not broken
+  // assertions, and a retry distinguishes the two: a real regression fails
+  // twice. The durable fix is per-file event isolation, noted in
+  // 04-public-submit.spec.ts.
+  retries: 1,
   workers: 1,
   reporter: process.env.CI ? "list" : [["list"]],
   timeout: 45_000,

@@ -34,12 +34,14 @@ test("43. the form opens with no login and sends no credentials", async ({ page 
   expect(await page.context().cookies()).toEqual([]);
 });
 
-// Retried because of a documented cross-file race, not because the assertion is
-// weak: 03-form-builder opens throwaway CFP forms on this same event in a
-// parallel worker, and the public route deliberately serves the newest open
-// form — so this test can fetch the seeded schema and then render 03's
-// half-built one. The real fix is 03 building against its own event.
-test.describe.configure({ retries: 2 });
+// This file's tests read whatever CFP form the public route serves, and the
+// route deliberately serves the newest open one — so anything 03-form-builder
+// leaves behind on the shared seeded event (its cleanup swallows delete
+// failures, e.g. a form that locked itself by collecting a submission) changes
+// what these assertions see. The suite runs single-worker, so this is leftover
+// state, not a race. The durable fix is 03 building against its own event;
+// until then the config-level retry absorbs it, and a real regression still
+// fails twice.
 
 test("44. every field configured on the form is collected somewhere", async ({ page, request }) => {
   // The schema is the source of truth: whatever the organiser configured has to
