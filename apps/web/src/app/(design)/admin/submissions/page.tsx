@@ -10,6 +10,7 @@ import { stripData, useProgramStats } from "@/components/console/stats";
 import { Submissions, type SubmissionsData } from "@/components/design/Submissions";
 import type { Note, Outcome } from "@/components/console/SubmissionPanels";
 import { Pager, StatusTabs } from "@/components/ui";
+import { useHotkeys } from "@/lib/hotkeys";
 import { authed, download } from "@/lib/session";
 
 type Speaker = { name: string; organisation: string | null };
@@ -288,6 +289,39 @@ export default function SubmissionsPage() {
 
   const open = openId === null ? null : (rows.find((row) => row.id === openId) ?? linked ?? null);
   const allSelected = rows.length > 0 && rows.every((row) => selected.includes(row.id));
+
+  /** The same shortcuts the header advertises here — "j / k to move · x selects
+   *  · Enter opens" — sharing `lib/hotkeys.ts` with the review queue and the
+   *  roster. `hover` is the cursor, so the highlight the mouse draws and the one
+   *  the keyboard draws are the same highlight.
+   *
+   *  Off while the drawer or any popover is open, so the list never moves behind
+   *  something the reader is looking at.
+   */
+  const step = (delta: number) => {
+    if (rows.length === 0) return;
+    const at = rows.findIndex((row) => row.id === hover);
+    const next = at < 0 ? 0 : Math.min(rows.length - 1, Math.max(0, at + delta));
+    setHover(rows[next]!.id);
+  };
+
+  useHotkeys(
+    [
+      { key: "j", run: () => step(1) },
+      { key: "k", run: () => step(-1) },
+      {
+        key: "x",
+        run: () => {
+          if (hover === null) return;
+          setSelected((current) =>
+            current.includes(hover) ? current.filter((id) => id !== hover) : [...current, hover],
+          );
+        },
+      },
+      { key: "Enter", run: () => hover !== null && setOpenId(hover) },
+    ],
+    openId === null && popover === null,
+  );
 
   /** Changing what is being looked at returns you to its first page — page 12
    *  of a filter that now has three matches is an empty screen. */

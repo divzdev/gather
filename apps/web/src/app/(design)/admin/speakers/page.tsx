@@ -11,6 +11,7 @@ import { Speakers, type SpeakersData } from "@/components/design/Speakers";
 import { API_BASE_URL } from "@/lib/api";
 import { authed, blobUrl, download, getToken } from "@/lib/session";
 import { Pager, pill, quietPill } from "@/components/ui";
+import { useHotkeys } from "@/lib/hotkeys";
 
 type Roster = {
   id: string;
@@ -389,6 +390,41 @@ export default function SpeakersPage() {
   };
 
   const allSelected = pageRows.length > 0 && pageRows.every((row) => selected.includes(row.id));
+
+  /** The shortcuts the header has always advertised — "j / k to move · x
+   *  selects · Enter opens" — which nothing implemented until now.
+   *
+   *  `hover` doubles as the keyboard cursor rather than a second piece of state:
+   *  it already draws the row highlight, so the caret is visible for free and
+   *  mouse and keyboard cannot disagree about which row is current.
+   *
+   *  Off while a drawer or the add sheet is open. Moving the list behind a modal
+   *  is the kind of thing that looks like a bug even when it is deliberate.
+   */
+  const step = (delta: number) => {
+    if (pageRows.length === 0) return;
+    const at = pageRows.findIndex((row) => row.id === hover);
+    const next = at < 0 ? 0 : Math.min(pageRows.length - 1, Math.max(0, at + delta));
+    setHover(pageRows[next]!.id);
+  };
+
+  useHotkeys(
+    [
+      { key: "j", run: () => step(1) },
+      { key: "k", run: () => step(-1) },
+      {
+        key: "x",
+        run: () => {
+          if (hover === null) return;
+          setSelected((current) =>
+            current.includes(hover) ? current.filter((id) => id !== hover) : [...current, hover],
+          );
+        },
+      },
+      { key: "Enter", run: () => hover !== null && setOpenId(hover) },
+    ],
+    openId === null && !adding,
+  );
 
   /** Changing what is being looked at returns you to its first page. */
   const refilter = (change: () => void) => {
