@@ -10,6 +10,7 @@ import Link from "next/link";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import { DesignMotion } from "@/components/DesignMotion";
 import { Rail } from "@/components/console/Rail";
+import { EmptyState } from "@/components/ui";
 
 export type MessagesData = {
   readonly body: string;
@@ -28,6 +29,7 @@ export type MessagesData = {
     readonly canResend: boolean;
     readonly fg: string;
     readonly onResend: (event: React.SyntheticEvent) => void;
+    readonly resending: boolean;
     readonly st: React.ReactNode;
     readonly subj: React.ReactNode;
     readonly to: React.ReactNode;
@@ -38,11 +40,13 @@ export type MessagesData = {
   readonly sendNote: React.ReactNode;
   readonly pvSubj: React.ReactNode;
   readonly resendAll: (event: React.SyntheticEvent) => void;
+  readonly resendAllPending: boolean;
   readonly segCount: React.ReactNode;
   readonly segs: readonly {
     readonly bd: string;
     readonly bg: string;
     readonly c: React.ReactNode;
+    readonly checked: boolean;
     readonly n: React.ReactNode;
     readonly on: (event: React.SyntheticEvent) => void;
     readonly rb: string;
@@ -98,14 +102,6 @@ export type MessagesData = {
   }[];
   readonly togCk: (event: React.SyntheticEvent) => void;
   readonly togWho: (event: React.SyntheticEvent) => void;
-  readonly tplName: React.ReactNode;
-  readonly tplRows: readonly {
-    readonly n: React.ReactNode;
-    readonly on: (event: React.SyntheticEvent) => void;
-    readonly purpose: React.ReactNode;
-    readonly subj: React.ReactNode;
-    readonly used: React.ReactNode;
-  }[];
   readonly tpls: readonly {
     readonly bd: string;
     readonly bg: string;
@@ -269,41 +265,42 @@ export function Messages({ d }: { d: MessagesData }) {
                         <Fragment key={sgIndex}>
                           {" "}
                           <button
+                            role="checkbox"
+                            aria-checked={sg.checked}
                             onClick={sg.on}
                             style={{
                               width: "100%",
                               display: "flex",
                               alignItems: "center",
                               gap: "10px",
+                              minHeight: "36px",
                               padding: "8px 10px",
                               borderRadius: "6px",
                               border: `1px solid ${sg.bd}`,
                               background: sg.bg,
                               marginBottom: "6px",
                               textAlign: "left",
+                              cursor: "pointer",
                             }}
                           >
                             {" "}
                             <span
+                              aria-hidden
                               style={{
-                                width: "13px",
-                                height: "13px",
-                                borderRadius: "50%",
+                                width: "16px",
+                                height: "16px",
+                                borderRadius: "4px",
                                 border: `1.5px solid ${sg.rb}`,
+                                background: sg.checked ? sg.rb : "var(--cd,#FFFFFF)",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 flex: "none",
+                                font: "700 11px 'IBM Plex Sans',sans-serif",
+                                color: "var(--cd,#FFFFFF)",
                               }}
                             >
-                              <span
-                                style={{
-                                  width: "6px",
-                                  height: "6px",
-                                  borderRadius: "50%",
-                                  background: sg.rd,
-                                }}
-                              ></span>
+                              {sg.rd}
                             </span>{" "}
                             <span
                               style={{
@@ -1103,6 +1100,7 @@ export function Messages({ d }: { d: MessagesData }) {
                       </span>{" "}
                       <button
                         onClick={d.resendAll}
+                        disabled={d.resendAllPending}
                         style={{
                           height: "36px",
                           padding: "0 10px",
@@ -1112,9 +1110,11 @@ export function Messages({ d }: { d: MessagesData }) {
                           font: "500 12px 'IBM Plex Sans',sans-serif",
                           color: "var(--cn,#D8432B)",
                           whiteSpace: "nowrap",
+                          opacity: d.resendAllPending ? 0.6 : 1,
+                          cursor: d.resendAllPending ? "default" : "pointer",
                         }}
                       >
-                        Resend failed
+                        {d.resendAllPending ? "Resending…" : "Resend failed"}
                       </button>{" "}
                     </div>{" "}
                   </>
@@ -1252,6 +1252,7 @@ export function Messages({ d }: { d: MessagesData }) {
                             {" "}
                             <button
                               onClick={m.onResend}
+                              disabled={m.resending}
                               style={{
                                 height: "36px",
                                 padding: "0 9px",
@@ -1260,9 +1261,11 @@ export function Messages({ d }: { d: MessagesData }) {
                                 background: "none",
                                 font: "500 11px 'IBM Plex Sans',sans-serif",
                                 color: "var(--i2,#3E4E58)",
+                                opacity: m.resending ? 0.6 : 1,
+                                cursor: m.resending ? "default" : "pointer",
                               }}
                             >
-                              Resend
+                              {m.resending ? "Resending…" : "Resend"}
                             </button>{" "}
                           </>
                         ) : null}{" "}
@@ -1348,75 +1351,17 @@ export function Messages({ d }: { d: MessagesData }) {
                     </div>
                   </div>{" "}
                 </div>{" "}
-                <div
-                  style={{
-                    border: "1px solid var(--ln,#E1E7E9)",
-                    borderRadius: "14px",
-                    background: "var(--cd,#FFFFFF)",
-                    boxShadow: "0 1px 2px rgba(13,16,32,.04),0 8px 24px rgba(13,16,32,.04)",
-                  }}
-                >
-                  {" "}
-                  {(d.tplRows ?? []).map((tr, trIndex) => (
-                    <Fragment key={trIndex}>
-                      {" "}
-                      <button
-                        className="dch-c4989b43"
-                        onClick={tr.on}
-                        style={{
-                          width: "100%",
-                          display: "grid",
-                          gridTemplateColumns: "minmax(140px,0.8fr) minmax(220px,1.6fr) 120px 90px",
-                          gap: "8px",
-                          alignItems: "center",
-                          padding: "0 14px",
-                          height: "42px",
-                          border: "none",
-                          borderBottom: "1px solid var(--ln,#E1E7E9)",
-                          background: "none",
-                          textAlign: "left",
-                        }}
-                      >
-                        {" "}
-                        <span
-                          style={{
-                            font: "500 13px 'IBM Plex Sans',sans-serif",
-                            color: "var(--ik,#16232B)",
-                          }}
-                        >
-                          {tr.n}
-                        </span>{" "}
-                        <span
-                          style={{
-                            font: "400 12.5px 'IBM Plex Sans',sans-serif",
-                            color: "var(--i3,#6B7B84)",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {tr.subj}
-                        </span>{" "}
-                        <span
-                          style={{
-                            font: "400 11px 'IBM Plex Mono',monospace",
-                            color: "var(--i4,#99A6AD)",
-                          }}
-                        >
-                          {tr.purpose}
-                        </span>{" "}
-                        <span
-                          style={{
-                            font: "400 11px 'IBM Plex Mono',monospace",
-                            color: "var(--i4,#99A6AD)",
-                          }}
-                        >
-                          {tr.used}
-                        </span>{" "}
-                      </button>{" "}
-                    </Fragment>
-                  ))}{" "}
-                </div>{" "}
+                {/* There is no template CRUD anywhere in the product: decision
+                    wording is fixed in the API's message constants, one subject
+                    and one body per outcome, and the Compose tab already renders
+                    a live preview of those exact strings for a real recipient.
+                    An editor here would be a second copy of that text with no
+                    path back into what actually sends — so this tab says the
+                    true thing instead of shipping an empty card. */}
+                <EmptyState
+                  title="Template editing isn't built"
+                  body="Decision wording lives in the API's message constants — one subject and body per outcome — not in an editable template. The preview on the Send decisions tab renders those same constants for a real recipient, so it is always what will actually go out."
+                />{" "}
               </>
             ) : null}{" "}
           </div>{" "}

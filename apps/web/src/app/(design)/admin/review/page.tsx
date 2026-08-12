@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
 import { Evaluations, type EvaluationsData } from "@/components/design/Evaluations";
+import { RubricEditor } from "@/components/console/RubricEditor";
 import { authed, getEventId } from "@/lib/session";
 
 type Round = {
@@ -14,6 +15,7 @@ type Round = {
   status: string;
   sort_order: number;
   closes_at: string | null;
+  submission_count: number;
 };
 
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
@@ -21,6 +23,10 @@ const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" })
 type Member = { user_id: string; name: string; email: string; role: string };
 
 /** Everyone who can be handed a review queue. Owners and admins review too. */
+/** Reviewers per submission — what auto-distribute aims for, and therefore
+ *  what turns an assignment count back into a submission count. */
+const PER_SUBMISSION = 2;
+
 const REVIEWING_ROLES = new Set(["owner", "admin", "coordinator", "reviewer"]);
 
 const ROUND_STATUS: Record<string, { label: string; fg: string; bg: string }> = {
@@ -137,7 +143,7 @@ export default function EvaluationsPage() {
 
   const distribute = useMutation({
     mutationFn: (id: string) =>
-      authed<{ created: number; under_assigned: number }>(
+      authed<{ created: number; under_assigned: number; already_covered: number }>(
         `/events/${eventId}/review-rounds/${id}/auto-distribute`,
         {
           method: "POST",
@@ -145,18 +151,27 @@ export default function EvaluationsPage() {
             user_ids: (members ?? [])
               .filter((member) => REVIEWING_ROLES.has(member.role))
               .map((member) => member.user_id),
-            per_submission: 2,
+            per_submission: PER_SUBMISSION,
           },
         },
       ),
     onSuccess: (result) => {
       refreshRounds();
-      toast(
-        `${result.created} assignments created` +
-          (result.under_assigned > 0
-            ? `; ${result.under_assigned} submissions could not be fully covered.`
-            : "."),
-      );
+      // "0 created" is the normal answer on a round that is already staffed, and
+      // it used to be reported as `N could not be fully covered` — which reads
+      // as a failure and made a working screen look broken. Already-covered and
+      // could-not-cover are opposite facts and now say opposite things.
+      const parts: string[] = [];
+      if (result.created > 0) parts.push(`${result.created} assignments created`);
+      if (result.already_covered > 0) {
+        parts.push(
+          `${result.already_covered} submission${result.already_covered === 1 ? "" : "s"} already had a full panel`,
+        );
+      }
+      if (result.under_assigned > 0) {
+        parts.push(`${result.under_assigned} could not be fully covered`);
+      }
+      toast(parts.length === 0 ? "Nothing to assign." : `${parts.join("; ")}.`);
     },
     onError: (error: Error) => toast(error.message),
   });
@@ -272,7 +287,6 @@ export default function EvaluationsPage() {
   const roundCount = rounds?.length ?? 0;
 
   const screen: EvaluationsData = {
-
     tPlans: tile(view === "plans", roundCount, () => setView("plans")),
     tEvalsT: tile(view === "eval", reviewers.length, () => setView("eval")),
     tBehind: tile(false, chasing, () => {
@@ -356,7 +370,10 @@ export default function EvaluationsPage() {
           round.closes_at == null
             ? "no close date · rubric below"
             : `due ${DAY.format(new Date(round.closes_at))} · ${plan?.criteria.length ?? 0} criteria`,
-        subs: new Set(rows.map((row) => row.user_id)).size === 0 ? 0 : total,
+        // Counted by the API. This used to be the assignment total, which read
+        // as 520 on an event with 215 proposals — a number nothing else in the
+        // product agreed with.
+        subs: round.submission_count,
         evals: rows.length,
         done: finished,
         total,
@@ -366,6 +383,11 @@ export default function EvaluationsPage() {
         onNudge: () => nudge.mutate(),
         onBlind: () => patchRound.mutate({ id: round.id, body: { is_blind: !round.is_blind } }),
         onAdvance: () => advance.mutate(round.id),
+        /* The screen's stated purpose is setting review up, and the rubric is
+         * what review scores against — yet nothing in the product could write
+         * one. It printed a criteria count and offered no way to change it. */
+        rubric:
+          eventId === null ? null : <RubricEditor eventId={eventId} roundId={round.id} />,
       };
     }),
     // The header's New plan button and the create card do the same thing.

@@ -104,6 +104,47 @@ export default function MessagesPage() {
   const queued = outbox?.data ?? [];
   const bounced = queued.filter((row) => row.status === "bounced" || row.status === "failed");
 
+  // One retry, one new row — the original bounce stays in the outbox as the
+  // record of what went wrong the first time. Resending is what the API
+  // offers; there is no bulk endpoint, so "resend all" is this same call made
+  // once per bounced row rather than a second code path pretending otherwise.
+  const resend = useMutation({
+    mutationFn: (messageId: string) =>
+      authed<{ id: string; status: string }>(
+        `/events/${eventId}/messages/outbox/${messageId}/resend`,
+        { method: "POST", idempotencyKey: crypto.randomUUID() },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["outbox", eventId] });
+      toast("Resent. It's queued in the outbox.");
+    },
+    onError: (error: Error) => {
+      toast(error instanceof ApiError ? error.message : "Could not resend that message.");
+    },
+  });
+
+  const resendAllBounced = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.allSettled(
+        bounced.map((row) =>
+          authed<{ id: string; status: string }>(
+            `/events/${eventId}/messages/outbox/${row.id}/resend`,
+            { method: "POST", idempotencyKey: crypto.randomUUID() },
+          ),
+        ),
+      );
+      return {
+        ok: results.filter((r) => r.status === "fulfilled").length,
+        failed: results.filter((r) => r.status === "rejected").length,
+      };
+    },
+    onSuccess: ({ ok, failed }) => {
+      void queryClient.invalidateQueries({ queryKey: ["outbox", eventId] });
+      toast(failed === 0 ? `Resent all ${ok}.` : `Resent ${ok}; ${failed} would not retry.`);
+    },
+    onError: () => toast("Could not resend the bounced messages."),
+  });
+
   const tile = (label: string, count: number, active: boolean, on: () => void) => ({
     c: count,
     on,
@@ -111,7 +152,6 @@ export default function MessagesPage() {
     ring: active ? "0 0 0 3px var(--sw,#FFEAE6)" : "0 1px 2px rgba(13,16,32,.04)",
     numFg: active ? "var(--sg,#E04E4E)" : "var(--ik,#16232B)",
   });
-  const notBuilt = (what: string) => () => toast(`${what} is not built yet.`);
 
   const screen: MessagesData = {
     tabs: (
@@ -140,10 +180,11 @@ export default function MessagesPage() {
     tBn: tile("Bounced", bounced.length, false, () => setTab("outbox")),
 
     // Who is about to be emailed, by outcome. This is the number the server
-    // re-checks before it sends anything.
+    // re-checks before it sends anything. Any combination of the three can be
+    // on at once — that is a checkbox, not a radio, and the glyph now says so.
     segs: OUTCOMES.map((outcome) => {
       const count = preview?.by_outcome[outcome.key] ?? 0;
-      const on = chosen.includes(outcome.key);
+      const checked = chosen.includes(outcome.key);
       return {
         n: outcome.label,
         c: count,
@@ -155,11 +196,12 @@ export default function MessagesPage() {
               : [...current, outcome.key],
           );
         },
-        bg: on ? outcome.bg : "var(--cd,#FFFFFF)",
-        fg: on ? outcome.fg : "var(--i3,#6B7B84)",
-        bd: on ? outcome.fg : "var(--ls,#C8D2D5)",
-        rd: on ? "✓" : "",
-        rb: on ? outcome.fg : "var(--cd,#FFFFFF)",
+        checked,
+        bg: checked ? outcome.bg : "var(--cd,#FFFFFF)",
+        fg: checked ? outcome.fg : "var(--i3,#6B7B84)",
+        bd: checked ? outcome.fg : "var(--ls,#C8D2D5)",
+        rd: checked ? "✓" : "",
+        rb: checked ? outcome.fg : "var(--ls,#C8D2D5)",
       };
     }),
     segCount: selected.length,
@@ -243,17 +285,17 @@ export default function MessagesPage() {
         fg: failed ? "var(--cn,#D8432B)" : "var(--i3,#6B7B84)",
         bg: failed ? "var(--cnw,#FBE8E6)" : "var(--sk,#EDF1F2)",
         canResend: failed,
-        onResend: notBuilt("Resending"),
+        resending: resend.isPending && resend.variables === row.id,
+        onResend: () => resend.mutate(row.id),
       };
     }),
     sumOut: `${queued.length} messages · ${queued.filter((row) => SENT_STATES.has(row.status)).length} away · ${bounced.length} bounced`,
     bounceN: bounced.length,
     hasBounce: bounced.length > 0,
-    resendAll: notBuilt("Resending everything that bounced"),
+    resendAllPending: resendAllBounced.isPending,
+    resendAll: () => resendAllBounced.mutate(),
 
     tpls: [],
-    tplRows: [],
-    tplName: "",
     pvWho:
       shown === undefined
         ? "LIVE PREVIEW"

@@ -12,7 +12,7 @@ import { Portal, type PortalData } from "@/components/design/Portal";
 import { ParticipationBand, type Participation as ParticipationState } from "./participation";
 import { PortalComments, useFeedbackCount } from "./comments";
 import { useTheme } from "@/components/ThemeProvider";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, ApiError } from "@/lib/api";
 import { getSpeakerToken, portal } from "@/lib/session";
 import type { ThemeMode } from "@/lib/theme";
 
@@ -221,6 +221,27 @@ function greeting(hour: number): string {
   return "Good evening";
 }
 
+/** The full-screen shell for both ways this portal has nothing to show: no
+ *  session, and no answer from the server. Shared so the two messages stay
+ *  visually identical apart from the words and the one has a retry. */
+function PortalMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <main
+      style={{
+        display: "grid",
+        placeItems: "center",
+        minHeight: "100vh",
+        padding: 24,
+        font: "400 14px 'IBM Plex Sans',sans-serif",
+        color: "var(--i2,#3E4E58)",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>{children}</div>
+    </main>
+  );
+}
+
 export default function PortalPage() {
   const theme = useTheme();
   const queryClient = useQueryClient();
@@ -244,7 +265,12 @@ export default function PortalPage() {
 
   // The clock is read once per fetch, not per render: "2d overdue" must not
   // change because something else re-rendered.
-  const { data, error } = useQuery({
+  const {
+    data,
+    error,
+    refetch: retryHome,
+    isFetching: retryingHome,
+  } = useQuery({
     queryKey: ["portal-home"],
     enabled: signedIn,
     queryFn: async () => ({ home: await portal<Home>("/home"), now: Date.now() }),
@@ -319,31 +345,55 @@ export default function PortalPage() {
     onError: (problem: Error) => say(problem.message),
   });
 
-  if (!signedIn || error) {
+  // No token, or the token the API actually rejected (401/403): the fix is a
+  // fresh magic link, not a retry. Anything else — a 500, a dropped
+  // connection — is the server's fault, not the speaker's, and a retry can
+  // genuinely fix it; telling them to go re-request a link would not.
+  const needsSignIn =
+    !signedIn || (error instanceof ApiError && (error.status === 401 || error.status === 403));
+
+  if (needsSignIn) {
     return (
-      <main
-        style={{
-          display: "grid",
-          placeItems: "center",
-          minHeight: "100vh",
-          padding: 24,
-          font: "400 14px 'IBM Plex Sans',sans-serif",
-          color: "var(--i2,#3E4E58)",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
-          <strong style={{ font: "600 18px 'IBM Plex Sans',sans-serif" }}>
-            This portal needs your sign-in link
-          </strong>
-          <span>
-            Speakers never have a password. Ask for a fresh link and open it on this device.
-          </span>
-          <a href="/login" style={{ color: "var(--sg,#E04E4E)" }}>
-            Send me a link
-          </a>
-        </div>
-      </main>
+      <PortalMessage>
+        <strong style={{ font: "600 18px 'IBM Plex Sans',sans-serif" }}>
+          This portal needs your sign-in link
+        </strong>
+        <span>
+          Speakers never have a password. Ask for a fresh link and open it on this device.
+        </span>
+        <a href="/login" style={{ color: "var(--sg,#E04E4E)" }}>
+          Send me a link
+        </a>
+      </PortalMessage>
+    );
+  }
+
+  if (error) {
+    return (
+      <PortalMessage>
+        <strong style={{ font: "600 18px 'IBM Plex Sans',sans-serif" }}>
+          We could not reach your portal
+        </strong>
+        <span>The server did not answer. Nothing has been lost — try again in a moment.</span>
+        <button
+          type="button"
+          onClick={() => void retryHome()}
+          disabled={retryingHome}
+          style={{
+            justifySelf: "center",
+            height: 44,
+            padding: "0 24px",
+            borderRadius: 999,
+            border: "none",
+            background: "var(--bt,#FF6B6B)",
+            color: "var(--bf,#331313)",
+            font: "600 14px 'IBM Plex Sans',sans-serif",
+            cursor: retryingHome ? "wait" : "pointer",
+          }}
+        >
+          {retryingHome ? "Trying again…" : "Try again"}
+        </button>
+      </PortalMessage>
     );
   }
 
