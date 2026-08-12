@@ -38,6 +38,16 @@ class Submission(Base, PrimaryKey, Timestamps, EventScoped):
         Index("ix_submissions_event_id_score_avg", "event_id", "score_avg"),
         Index("ix_submissions_event_id_decision_status", "event_id", "decision_status"),
         Index("ix_submissions_search_vector", "search_vector", postgresql_using="gin"),
+        # Trigram search for duplicate detection (migration c81f4a20d5e7, which
+        # also installs pg_trgm — the tests' conftest does the same before
+        # create_all). Declared here as well so autogenerate recognises the
+        # index as intentional instead of proposing to drop it.
+        Index(
+            "ix_submissions_title_trgm",
+            "title",
+            postgresql_using="gin",
+            postgresql_ops={"title": "gin_trgm_ops"},
+        ),
     )
 
     form_id: Mapped[uuid.UUID] = mapped_column(
