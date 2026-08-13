@@ -107,7 +107,51 @@ input::placeholder {
  * if that declaration changes — which is the failure mode we want, rather than
  * a structural selector that silently keeps matching the wrong element.
  *
- * The Rail already collapses itself below 900px; it is not part of this. */
+ * The rail is handled first, and separately, because it is the one thing here
+ * that is not a width problem. */
+
+/* ── The rail is a drawer on a phone, not a column ─────────────────────────
+ *
+ * A 64px strip permanently holding a sixth of a 390px screen is a desktop
+ * layout made narrow, which is not the same thing as a mobile layout. Below
+ * this width the rail leaves the flow entirely, slides in over the page when
+ * the header's menu button asks for it, and takes a scrim with it.
+ *
+ * 900px rather than 720px because that is where the rail already decided it
+ * had to collapse to icons, and one breakpoint is easier to reason about than
+ * two that nearly agree. */
+@media (max-width: 900px) {
+  /* The console root is `auto minmax(0,1fr)`: rail, then everything else.
+     With the rail out of flow the content takes the whole width. */
+  [data-screen-label] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  [data-console-rail] {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.22s cubic-bezier(0.25, 0.1, 0.25, 1);
+    box-shadow: 0 0 40px rgba(9, 14, 20, 0.35);
+  }
+  [data-console-rail][data-open="true"] {
+    transform: none;
+  }
+
+  [data-console-menu] {
+    display: inline-flex !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-console-rail] {
+    transition: none;
+  }
+}
+
 @media (max-width: 720px) {
   /* 56px of side padding is a fifth of the usable width. */
   [data-screen-label] [style*="padding: 20px 28px 80px"] {

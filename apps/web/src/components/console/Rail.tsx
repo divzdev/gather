@@ -7,12 +7,19 @@
  * reload under the same localStorage key the prototype used.
  */
 
-import { useState, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { ConsoleRail, type ConsoleRailData } from "@/components/design/ConsoleRail";
 import { useQuery } from "@tanstack/react-query";
 
 import { CommandPalette } from "@/components/console/CommandPalette";
+import {
+  readMobileNav,
+  serverMobileNav,
+  setMobileNav,
+  subscribeMobileNav,
+} from "@/components/console/mobileNav";
 import { useProgramStats } from "@/components/console/stats";
 import { authed } from "@/lib/session";
 
@@ -94,7 +101,20 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     () => window.localStorage.getItem(railKey),
     () => null,
   );
-  const collapsed = stored === null ? narrow : stored === "1";
+  /** On a phone the rail is not a column, it is a drawer: off-canvas until
+   *  asked for, over the page rather than beside it. A 64px strip permanently
+   *  taking a sixth of a 390px screen is a desktop layout made narrow, which is
+   *  not the same thing as a mobile layout. */
+  const drawerOpen = useSyncExternalStore(subscribeMobileNav, readMobileNav, serverMobileNav);
+  /** An open drawer always shows labels. Collapsing to icons is a trade a
+   *  desktop user makes to buy back screen width they can see the value of;
+   *  someone who has just tapped a menu open has asked to read it, and there is
+   *  no width to save because the drawer is floating over the page anyway. */
+  const collapsed = drawerOpen ? false : stored === null ? narrow : stored === "1";
+  // Navigating closes it. Without this the drawer stays over the page you just
+  // asked for, which reads as the tap not having worked.
+  const pathname = usePathname();
+  useEffect(() => setMobileNav(false), [pathname]);
   const [logoHover, setLogoHover] = useState(false);
   const { stats } = useProgramStats();
 
@@ -190,9 +210,25 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
   };
 
   return (
-    <div style={{ ...style, position: "relative" }}>
-      <ConsoleRail d={data} />
-      <CommandPalette />
-    </div>
+    <>
+      {/* Dismisses the drawer, and blocks the page behind it from being poked
+       *  through. Only rendered while open, so it costs nothing on a desktop. */}
+      {drawerOpen ? (
+        <div
+          data-console-scrim
+          onClick={() => setMobileNav(false)}
+          aria-hidden
+          style={{ position: "fixed", inset: 0, background: "rgba(9,14,20,.5)", zIndex: 59 }}
+        />
+      ) : null}
+      <div
+        data-console-rail
+        data-open={drawerOpen ? "true" : "false"}
+        style={{ ...style, position: "relative" }}
+      >
+        <ConsoleRail d={data} />
+        <CommandPalette />
+      </div>
+    </>
   );
 }

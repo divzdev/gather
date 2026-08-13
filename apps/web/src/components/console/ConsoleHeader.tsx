@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 
 import { openCommandPalette } from "@/components/console/CommandPalette";
 import { EventSwitcher } from "@/components/console/EventSwitcher";
+import { toggleMobileNav } from "@/components/console/mobileNav";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { useProgramStats } from "@/components/console/stats";
 
@@ -53,9 +54,24 @@ export function ConsoleHeader() {
   // these is actually non-zero, so an empty console shows a clean bell.
   const alerts = (
     [
-      { n: stats.conflicts, label: "schedule conflict", href: "/admin/agenda", tone: "var(--cn,#D8432B)" },
-      { n: stats.overdueTasks, label: "overdue speaker task", href: "/admin/tasks", tone: "var(--pd,#B96A1F)" },
-      { n: stats.unreviewed, label: "submission awaiting review", href: "/review", tone: "var(--if,#47599F)" },
+      {
+        n: stats.conflicts,
+        label: "schedule conflict",
+        href: "/admin/agenda",
+        tone: "var(--cn,#D8432B)",
+      },
+      {
+        n: stats.overdueTasks,
+        label: "overdue speaker task",
+        href: "/admin/tasks",
+        tone: "var(--pd,#B96A1F)",
+      },
+      {
+        n: stats.unreviewed,
+        label: "submission awaiting review",
+        href: "/review",
+        tone: "var(--if,#47599F)",
+      },
     ] as const
   ).filter((row) => row.n > 0);
 
@@ -75,6 +91,40 @@ export function ConsoleHeader() {
       }}
     >
       <style>{HOVER_CSS}</style>
+
+      {/* The way into the rail on a screen too narrow to keep one. Hidden above
+       *  the breakpoint by `[data-console-menu]` in globals.css, where the rail
+       *  is a column again and this would be a second way to do nothing. */}
+      <button
+        type="button"
+        data-console-menu
+        onClick={toggleMobileNav}
+        aria-label="Open navigation"
+        style={{
+          width: 38,
+          height: 38,
+          flex: "none",
+          display: "none",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 10,
+          border: "1px solid var(--ln,#E1E7E9)",
+          background: "var(--cd,#FFFFFF)",
+          color: "var(--i2,#3E4E58)",
+        }}
+      >
+        <svg
+          viewBox="0 0 16 16"
+          width="17"
+          height="17"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        >
+          <path d="M2 4h12M2 8h12M2 12h12" />
+        </svg>
+      </button>
 
       <EventSwitcher />
 
@@ -376,7 +426,9 @@ export function ConsoleHeader() {
               >
                 THEME
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 10px 10px" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 10px 10px" }}
+              >
                 {chrome.accents.map((accent) => (
                   <button
                     type="button"
