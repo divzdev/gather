@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
 import { GatherLanding } from "@/components/design/GatherLanding";
@@ -32,7 +33,29 @@ function subscribe(listener: () => void): () => void {
   return () => window.removeEventListener("storage", listener);
 }
 
-function useEntry(): { signInHref: string; signInLabel: string } {
+type Entry = { signInHref: string; signInLabel: string; navExtra?: React.ReactNode };
+
+/** The quiet second door.
+ *
+ *  A session in localStorage turned the pill into that session's destination
+ *  and nothing else, so a visitor holding a speaker token — anyone who has
+ *  looked at the portal, which is most of a walkthrough — met a nav offering
+ *  "Your portal" and no way to sign in as an organiser. `/login` was reachable
+ *  the whole time; the marketing page simply stopped linking to it.
+ */
+const ORGANISER_SIGN_IN = (
+  <Link className="nalt" href="/login">
+    Organiser sign-in
+  </Link>
+);
+
+const SPEAKER_PORTAL = (
+  <Link className="nalt" href="/portal">
+    Speaker portal
+  </Link>
+);
+
+function useEntry(): Entry {
   const staff = useSyncExternalStore(
     subscribe,
     () => getToken() !== null,
@@ -43,8 +66,15 @@ function useEntry(): { signInHref: string; signInLabel: string } {
     () => getSpeakerToken() !== null,
     () => false,
   );
-  if (staff) return { signInHref: "/admin", signInLabel: "Open console" };
-  if (speaker) return { signInHref: "/portal", signInLabel: "Your portal" };
+  // Both surfaces are named, always, and never by a pronoun. "Your portal"
+  // beside "Console" told a visitor which one was theirs but not what either
+  // one was — and offering "Sign in" to somebody already signed in is worse
+  // than offering nothing.
+  if (staff && speaker)
+    return { signInHref: "/admin", signInLabel: "Console", navExtra: SPEAKER_PORTAL };
+  if (staff) return { signInHref: "/admin", signInLabel: "Console" };
+  if (speaker)
+    return { signInHref: "/portal", signInLabel: "Speaker portal", navExtra: ORGANISER_SIGN_IN };
   return { signInHref: "/login", signInLabel: "Sign in" };
 }
 

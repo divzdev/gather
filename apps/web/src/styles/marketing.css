@@ -50,6 +50,8 @@
 [data-marketing] .ghb {display:inline-flex;align-items:center;min-height:36px;gap:8px;border:1px solid rgba(255,255,255,.16);border-radius:980px;padding:7px 14px;font-size:13px;font-weight:700;color:var(--tx);transition:background .18s var(--e),border-color .18s var(--e)}
 [data-marketing] .ghb:hover {background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.28)}
 [data-marketing] .ghb svg {width:16px;height:16px;fill:currentColor;display:block}
+[data-marketing] .nalt {font-size:13.5px;font-weight:600;color:var(--mut);display:inline-flex;align-items:center;min-height:36px}
+[data-marketing] .nalt:hover {color:var(--tx)}
 [data-marketing] .npill {background:var(--tx);color:#0A0B12;font-size:13.5px;font-weight:700;padding:8px 17px;border-radius:980px;transition:transform .18s var(--e)}
 [data-marketing] .npill:hover {transform:scale(1.04);color:#0A0B12}
 @media(max-width:840px) {
