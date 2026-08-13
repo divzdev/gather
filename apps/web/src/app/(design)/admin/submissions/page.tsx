@@ -27,8 +27,13 @@ type Submission = {
   score_avg: string | null;
   review_count: number;
   submitted_at: string | null;
+  coordinator_user_id: string | null;
   speakers: Speaker[];
 };
+type Member = { user_id: string; name: string; email: string; role: string };
+
+/** Who can be a proposal's point of contact — reviewers only score. */
+const COORDINATING_ROLES = new Set(["owner", "admin", "coordinator"]);
 type Named = { id: string; name: string; hue_index?: number };
 
 /** The prototype's status palette, kept verbatim so the table reads the same. */
@@ -306,6 +311,35 @@ export default function SubmissionsPage() {
 
   const open = openId === null ? null : (rows.find((row) => row.id === openId) ?? linked ?? null);
   const allSelected = rows.length > 0 && rows.every((row) => selected.includes(row.id));
+
+  /** The drawer's COORDINATOR select was scenery: three fixture names and an
+   *  onChange that toasted an unrelated sentence, over a model column nothing
+   *  exposed. These are the real people, and picking one records it. */
+  const { data: members } = useQuery({
+    queryKey: ["members", eventId],
+    enabled: eventId !== null,
+    queryFn: () => authed<Member[]>(`/events/${eventId}/members`),
+  });
+  const coordinators = (members ?? []).filter((member) => COORDINATING_ROLES.has(member.role));
+
+  const setCoordinator = useMutation({
+    mutationFn: (vars: { id: string; userId: string | null }) =>
+      authed<Submission>(`/events/${eventId}/submissions/${vars.id}/coordinator`, {
+        method: "PATCH",
+        body: { coordinator_user_id: vars.userId },
+      }),
+    onSuccess: (_result, vars) => {
+      void queryClient.invalidateQueries({ queryKey: ["submissions", eventId] });
+      void queryClient.invalidateQueries({ queryKey: ["submission", eventId, vars.id] });
+      const who = coordinators.find((member) => member.user_id === vars.userId)?.name;
+      toast(
+        who === undefined
+          ? "Point of contact cleared."
+          : `${who} is now this proposal's point of contact.`,
+      );
+    },
+    onError: (error: Error) => toast(error.message),
+  });
 
   /** The same shortcuts the header advertises here — "j / k to move · x selects
    *  · Enter opens" — sharing `lib/hotkeys.ts` with the review queue and the
@@ -665,7 +699,9 @@ export default function SubmissionsPage() {
       stFg: openStatus.fg,
       stBg: openStatus.bg,
       ab: String(open?.answers["abstract"] ?? ""),
-      rev: `${open?.review_count ?? 0} REVIEWS`,
+      // The heading beside it already says REVIEWS, so this is just the count —
+      // it used to render "REVIEWS · 1 REVIEWS".
+      rev: String(open?.review_count ?? 0),
       spList: (open?.speakers ?? []).map((speaker) => ({
         ini: initials(speaker.name),
         n: speaker.name,
@@ -711,15 +747,19 @@ export default function SubmissionsPage() {
       rejBd: rejected.bd,
     },
     onDecide: (outcome: Outcome, reason: string) =>
-      openId === null
-        ? Promise.resolve()
-        : decide.mutateAsync({ ids: [openId], outcome, reason }),
+      openId === null ? Promise.resolve() : decide.mutateAsync({ ids: [openId], outcome, reason }),
     decisionBusy: decide.isPending,
     onAddNote: (body: string) =>
       openId === null ? Promise.resolve() : addNote.mutateAsync({ id: openId, body }),
     notesBusy: addNote.isPending,
 
-    onCoord: () => toast("Coordinator notes stay internal; speakers never see them."),
+    coordVal: open?.coordinator_user_id ?? "",
+    coordOpts: coordinators.map((member) => ({ v: member.user_id, n: member.name })),
+    onCoord: (event: React.SyntheticEvent) => {
+      if (openId === null) return;
+      const value = (event.target as HTMLSelectElement).value;
+      setCoordinator.mutate({ id: openId, userId: value === "" ? null : value });
+    },
 
     togTrack: () => setPopover((current) => (current === "track" ? null : "track")),
     togStatus: () => setPopover((current) => (current === "status" ? null : "status")),

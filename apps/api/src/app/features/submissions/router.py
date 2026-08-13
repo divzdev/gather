@@ -18,6 +18,7 @@ from app.features.submissions import service
 from app.features.submissions.schemas import (
     BulkDecisionRequest,
     BulkDecisionResponse,
+    CoordinatorAssign,
     DecisionRequest,
     PendingDecisions,
     PromotedSession,
@@ -90,6 +91,7 @@ async def _with_speakers(session: DbSession, rows: list[Submission]) -> list[Sub
             score_avg=s.score_avg,
             review_count=s.review_count,
             submitted_at=s.submitted_at,
+            coordinator_user_id=s.coordinator_user_id,
             speakers=by_submission.get(s.id, []),
         )
         for s in rows
@@ -201,6 +203,21 @@ async def decide(
         outcome=body.outcome,
         user_id=user.id,
         reason=body.reason,
+    )
+    return (await _with_speakers(session, [submission]))[0]
+
+
+@router.patch("/{submission_id}/coordinator", response_model=SubmissionRead)
+async def assign_coordinator(
+    submission_id: uuid.UUID,
+    body: CoordinatorAssign,
+    session: DbSession,
+    _: User = Depends(require_role(*READ)),
+) -> SubmissionRead:
+    """Set or clear the proposal's point of contact. Coordinators may do this —
+    handing work around the team is the day-to-day they exist for."""
+    submission = await service.set_coordinator(
+        session, submission_id=submission_id, coordinator_user_id=body.coordinator_user_id
     )
     return (await _with_speakers(session, [submission]))[0]
 

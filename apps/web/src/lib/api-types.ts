@@ -590,7 +590,13 @@ export interface paths {
          */
         get: operations["list_members_v1_events__event_id__members_get"];
         put?: never;
-        post?: never;
+        /**
+         * Add Member
+         * @description Put someone on this event's team and email them a sign-in link.
+         *
+         *     Verified-sender gated: this reaches another human's inbox.
+         */
+        post: operations["add_member_v1_events__event_id__members_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -620,6 +626,30 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/members/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Member
+         * @description Take someone off this event. Their account survives; their access here ends.
+         */
+        delete: operations["remove_member_v1_events__event_id__members__user_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Change Member Role
+         * @description Set someone's role on this event (a per-event override of any org role).
+         */
+        patch: operations["change_member_role_v1_events__event_id__members__user_id__patch"];
         trace?: never;
     };
     "/v1/events/{event_id}/files/{file_id}/comments": {
@@ -1441,6 +1471,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/portal/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Events
+         * @description Every conference this speaker is on, not only the one they are looking at.
+         *
+         *     A speaker session is scoped to one event, so until now a person speaking at
+         *     three of an organiser's conferences held three links, three sessions and
+         *     three portals, with nothing anywhere that named the other two.
+         *
+         *     Widened to the organisation, never past it: `tenant_scope` with no event is
+         *     still a fence, and `Speaker` is unique per `(org_id, email)`, so the same
+         *     person at a different organisation is a different row by design. Seeing
+         *     across that boundary needs a person-level identity this schema does not have
+         *     — and would mean one organiser's roster leaking into another's portal.
+         */
+        get: operations["my_events_v1_portal_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/portal/switch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Switch Event
+         * @description Trade this session for one on another of the speaker's own conferences.
+         *
+         *     No new magic link and no second email: the caller has already proved who
+         *     they are, and the only question is whether this person is on that event.
+         *     Both halves are checked — the event belongs to the organisation the current
+         *     session is bound to, and there is an `EventSpeaker` row joining them to it —
+         *     so a token cannot be talked into an event its holder has no part in.
+         */
+        post: operations["switch_event_v1_portal_switch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/portal/link": {
         parameters: {
             query?: never;
@@ -1534,6 +1620,27 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/submissions/{submission_id}/coordinator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Assign Coordinator
+         * @description Set or clear the proposal's point of contact. Coordinators may do this —
+         *     handing work around the team is the day-to-day they exist for.
+         */
+        patch: operations["assign_coordinator_v1_events__event_id__submissions__submission_id__coordinator_patch"];
         trace?: never;
     };
     "/v1/events/{event_id}/submissions/{submission_id}/withdraw": {
@@ -3191,6 +3298,15 @@ export interface components {
          * @enum {string}
          */
         ContentStatus: "pending" | "approved" | "changes_requested";
+        /**
+         * CoordinatorAssign
+         * @description Explicit null clears the assignment; the field is always present so a
+         *     typo'd body cannot silently do nothing.
+         */
+        CoordinatorAssign: {
+            /** Coordinator User Id */
+            coordinator_user_id: string | null;
+        };
         /** CriterionCreate */
         CriterionCreate: {
             /** Label */
@@ -4081,6 +4197,21 @@ export interface components {
             email: string;
             /** Event Id */
             event_id?: string | null;
+        };
+        /** MemberAdd */
+        MemberAdd: {
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            role: components["schemas"]["Role"];
+        };
+        /** MemberPatch */
+        MemberPatch: {
+            role: components["schemas"]["Role"];
         };
         /** MemberRead */
         MemberRead: {
@@ -5036,6 +5167,8 @@ export interface components {
             expertise_level?: components["schemas"]["ExpertiseLevel"] | null;
             /** Language */
             language?: string | null;
+            /** Speaker Ids */
+            speaker_ids?: string[] | null;
         };
         /** SessionSpeakerRead */
         SessionSpeakerRead: {
@@ -5075,6 +5208,36 @@ export interface components {
             pronouns?: string | null;
             /** Bio */
             bio?: string | null;
+        };
+        /**
+         * SpeakerEvent
+         * @description One conference this speaker is part of.
+         */
+        SpeakerEvent: {
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            status: components["schemas"]["SpeakerStatus"];
+            /** Open Tasks */
+            open_tasks: number;
+            /** Is Current */
+            is_current: boolean;
         };
         /**
          * SpeakerFile
@@ -5221,6 +5384,21 @@ export interface components {
             status: components["schemas"]["SubmissionStatus"];
             /** Confirmation Message */
             confirmation_message: string;
+        };
+        /** SwitchRequest */
+        SwitchRequest: {
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+        };
+        /** SwitchResult */
+        SwitchResult: {
+            /** Access Token */
+            access_token: string;
+            /** Expires In */
+            expires_in: number;
         };
         /**
          * TaskKind
@@ -5771,6 +5949,8 @@ export interface components {
             review_count: number;
             /** Submitted At */
             submitted_at: string | null;
+            /** Coordinator User Id */
+            coordinator_user_id: string | null;
             /** Speakers */
             speakers?: components["schemas"]["SpeakerSummary"][];
         };
@@ -7188,6 +7368,41 @@ export interface operations {
             };
         };
     };
+    add_member_v1_events__event_id__members_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberAdd"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     my_events_v1_events_get: {
         parameters: {
             query?: never;
@@ -7228,6 +7443,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_member_v1_events__event_id__members__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_member_role_v1_events__event_id__members__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberRead"];
                 };
             };
             /** @description Validation Error */
@@ -8815,6 +9096,59 @@ export interface operations {
             };
         };
     };
+    my_events_v1_portal_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpeakerEvent"][];
+                };
+            };
+        };
+    };
+    switch_event_v1_portal_switch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SwitchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SwitchResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rotate_portal_link_v1_portal_link_post: {
         parameters: {
             query?: never;
@@ -8947,6 +9281,42 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__features__submissions__schemas__SubmissionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_coordinator_v1_events__event_id__submissions__submission_id__coordinator_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinatorAssign"];
             };
         };
         responses: {

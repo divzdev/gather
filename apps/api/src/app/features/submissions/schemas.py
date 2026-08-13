@@ -72,7 +72,17 @@ class SubmissionRead(Strict):
     score_avg: Decimal | None
     review_count: int
     submitted_at: datetime | None
+    #: The staff member shepherding this proposal — the console's point of
+    #: contact. Was a column nothing exposed, under a select nothing wired.
+    coordinator_user_id: uuid.UUID | None
     speakers: list[SpeakerSummary] = Field(default_factory=list)
+
+
+class CoordinatorAssign(Strict):
+    """Explicit null clears the assignment; the field is always present so a
+    typo'd body cannot silently do nothing."""
+
+    coordinator_user_id: uuid.UUID | None
 
 
 class DecisionRequest(Strict):

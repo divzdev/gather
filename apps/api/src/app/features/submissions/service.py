@@ -27,6 +27,7 @@ from app.models import (
     Form,
     FormStatus,
     MessagePurpose,
+    Role,
     Session,
     SessionFormat,
     SessionSpeaker,
@@ -401,6 +402,32 @@ async def get(session: AsyncSession, submission_id: uuid.UUID) -> Submission:
     submission = await session.get(Submission, submission_id)
     if submission is None:
         raise NotFoundError(f"No submission with id {submission_id}.")
+    return submission
+
+
+async def set_coordinator(
+    session: AsyncSession, *, submission_id: uuid.UUID, coordinator_user_id: uuid.UUID | None
+) -> Submission:
+    """Point a staff member at a proposal, or clear the assignment.
+
+    Reviewers are deliberately not assignable: the point of contact fields
+    questions from the speaker, which is day-to-day programme work, and a
+    reviewer's only relationship with the proposal is a scorecard.
+    """
+    from app.core.deps import resolve_role
+
+    submission = await get(session, submission_id)
+    if coordinator_user_id is not None:
+        role = await resolve_role(session, coordinator_user_id, submission.event_id)
+        if role not in (Role.OWNER, Role.ADMIN, Role.COORDINATOR):
+            raise ApiError(
+                "The point of contact must be an owner, admin or coordinator on this event.",
+                code="VALIDATION_FAILED",
+                status_code=422,
+                field="coordinator_user_id",
+            )
+    submission.coordinator_user_id = coordinator_user_id
+    await session.flush()
     return submission
 
 
