@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 
+import { TeamPanel } from "@/components/console/TeamPanel";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { Settings, type SettingsData } from "@/components/design/Settings";
 import { SETTINGS_ICON } from "@/components/ui";
@@ -24,10 +25,11 @@ type Event = {
   cfp_closes_at: string | null;
 };
 
-type Panel = "event" | "brand" | "email" | "integrations";
+type Panel = "event" | "team" | "brand" | "email" | "integrations";
 
 const PANELS: { key: Panel; label: string }[] = [
   { key: "event", label: "Event" },
+  { key: "team", label: "Team" },
   { key: "brand", label: "Brand" },
   { key: "email", label: "Email" },
   { key: "integrations", label: "Integrations" },
@@ -224,6 +226,9 @@ export default function SettingsPage() {
       };
     }),
     pEvent: panel === "event",
+    pTeam: panel === "team",
+    teamPanel:
+      panel !== "team" || eventId === null ? null : <TeamPanel eventId={eventId} toast={toast} />,
     pBrand: panel === "brand",
     pEmail: panel === "email",
     pInteg: panel === "integrations",
