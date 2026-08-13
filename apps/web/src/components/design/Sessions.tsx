@@ -1386,7 +1386,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                     >
                       {r.sched}
                     </span>{" "}
-                    <span
+                    <span style={{display: "inline-flex", alignItems: "center", gap: "5px", rowGap: "3px", minWidth: 0, flexWrap: "wrap"}}><span
                       style={{
                         justifySelf: "start",
                         display: "inline-flex",
@@ -1409,7 +1409,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                         }}
                       ></span>
                       {r.st}
-                    </span>{r.pub != null ? (<span style={{marginLeft: "6px", padding: "2px 7px", borderRadius: "4px", font: "500 10px 'IBM Plex Mono',monospace", letterSpacing: "0.04em", color: "var(--i4,#99A6AD)", background: "var(--sk,#EDF1F2)", whiteSpace: "nowrap"}}>{r.pub}</span>) : null}{" "}
+                    </span>{r.pub != null ? (<span style={{marginLeft: "6px", padding: "2px 7px", borderRadius: "4px", font: "500 10px 'IBM Plex Mono',monospace", letterSpacing: "0.04em", color: "var(--i4,#99A6AD)", background: "var(--sk,#EDF1F2)", whiteSpace: "nowrap"}}>{r.pub}</span>) : null}</span>{" "}
                   </button>{" "}
                 </Fragment>
               ))}{" "}
