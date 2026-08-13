@@ -322,6 +322,39 @@ export default function SubmissionsPage() {
   });
   const coordinators = (members ?? []).filter((member) => COORDINATING_ROLES.has(member.role));
 
+  /** Accepting deliberately does not create a session; this is the missing
+   *  second half. The endpoint has existed since the schema — idempotent,
+   *  accepted-only — and no screen offered it. */
+  const { data: sessionRows } = useQuery({
+    queryKey: ["event-sessions", eventId],
+    enabled: eventId !== null && openId !== null,
+    staleTime: 60_000,
+    queryFn: () =>
+      authed<{ id: string; submission_id: string | null }[]>(`/events/${eventId}/sessions`),
+  });
+  const promotedIds = useMemo(
+    () =>
+      new Set(
+        (sessionRows ?? [])
+          .map((row) => row.submission_id)
+          .filter((id): id is string => id !== null),
+      ),
+    [sessionRows],
+  );
+
+  const promote = useMutation({
+    mutationFn: (id: string) =>
+      authed<{ title: string }>(`/events/${eventId}/submissions/${id}/promote`, {
+        method: "POST",
+      }),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["event-sessions", eventId] });
+      void queryClient.invalidateQueries({ queryKey: ["program-stats", eventId] });
+      toast(`“${result.title}” is a session now — waiting in the agenda's unscheduled tray.`);
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
   const setCoordinator = useMutation({
     mutationFn: (vars: { id: string; userId: string | null }) =>
       authed<Submission>(`/events/${eventId}/submissions/${vars.id}/coordinator`, {
@@ -748,7 +781,11 @@ export default function SubmissionsPage() {
     },
     onDecide: (outcome: Outcome, reason: string) =>
       openId === null ? Promise.resolve() : decide.mutateAsync({ ids: [openId], outcome, reason }),
-    decisionBusy: decide.isPending,
+    decisionBusy: decide.isPending || promote.isPending,
+    onPromote: () => {
+      if (openId !== null) promote.mutate(openId);
+    },
+    promoted: openId !== null && promotedIds.has(openId),
     onAddNote: (body: string) =>
       openId === null ? Promise.resolve() : addNote.mutateAsync({ id: openId, body }),
     notesBusy: addNote.isPending,

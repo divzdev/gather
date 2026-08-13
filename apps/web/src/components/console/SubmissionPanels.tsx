@@ -279,10 +279,17 @@ export function DecisionBar({
   current,
   onDecide,
   busy,
+  onPromote,
+  promoted,
 }: {
   current: Outcome | null;
   onDecide: (outcome: Outcome, reason: string) => Promise<unknown>;
   busy: boolean;
+  /** Accepting does not create a session — promotion is its own step, and
+   *  until now the API's promote endpoint had no button anywhere in the
+   *  console. Only offered on an accepted submission. */
+  onPromote?: (() => void) | null;
+  promoted?: boolean;
 }) {
   const [picked, setPicked] = useState<Outcome | null>(null);
   const [reason, setReason] = useState("");
@@ -495,6 +502,35 @@ export function DecisionBar({
         );
       })}
       <span style={{ flex: "1" }} />
+      {current === "accepted" && onPromote != null ? (
+        promoted === true ? (
+          <span
+            style={{
+              font: "500 11.5px 'IBM Plex Sans',sans-serif",
+              color: "var(--ok,#0E7A5F)",
+            }}
+          >
+            Already a session — it&apos;s on the Sessions screen.
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onPromote}
+            disabled={busy}
+            style={{
+              height: "36px",
+              padding: "0 16px",
+              borderRadius: "8px",
+              border: "1px solid var(--okl,#BFE0D6)",
+              background: "var(--okw,#E2F1EC)",
+              color: "var(--ok,#0E7A5F)",
+              font: "600 13px 'IBM Plex Sans',sans-serif",
+            }}
+          >
+            Make it a session
+          </button>
+        )
+      ) : null}
       <span
         style={{
           font: "400 11.5px 'IBM Plex Sans',sans-serif",
