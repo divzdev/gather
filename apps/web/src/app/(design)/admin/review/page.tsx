@@ -4,10 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { AssignmentPanel } from "@/components/console/AssignmentPanel";
+import { SideDrawer } from "@/components/console/SideDrawer";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { Evaluations, type EvaluationsData } from "@/components/design/Evaluations";
 import { RubricEditor } from "@/components/console/RubricEditor";
 import { authed, getEventId } from "@/lib/session";
+import { pill, quietPill } from "@/components/ui";
 
 type Round = {
   id: string;
@@ -39,19 +41,21 @@ type Progress = {
   completed: number;
 };
 
-type Pace = "Done" | "On pace" | "Behind" | "Not started";
+type Pace = "Done" | "On pace" | "Behind" | "Not started" | "Nothing assigned";
 
 const PACE_COLOURS: Record<Pace, { fg: string; bg: string }> = {
   Done: { fg: "var(--ok,#0E7A5F)", bg: "var(--okw,#E2F1EC)" },
   "On pace": { fg: "var(--ok,#0E7A5F)", bg: "var(--okw,#E2F1EC)" },
   Behind: { fg: "var(--pd,#B96A1F)", bg: "var(--pdw,#F9EDDF)" },
   "Not started": { fg: "var(--cn,#D8432B)", bg: "var(--cnw,#FBE8E6)" },
+  "Nothing assigned": { fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)" },
 };
 
-/** Behind is under half done. The prototype's four bands, derived from the two
- *  numbers the API actually reports rather than a stored status. */
+/** Behind is under half done. Derived from the two numbers the API actually
+ *  reports rather than a stored status. A person with no queue is neither done
+ *  nor behind — they are waiting for Assign reviewers to give them work. */
 function paceOf(row: Progress): Pace {
-  if (row.assigned === 0) return "Done";
+  if (row.assigned === 0) return "Nothing assigned";
   if (row.completed === 0) return "Not started";
   if (row.completed >= row.assigned) return "Done";
   return row.completed / row.assigned < 0.5 ? "Behind" : "On pace";
@@ -79,9 +83,14 @@ export default function EvaluationsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<1 | -1>(1);
 
+  const [planOpen, setPlanOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newBlind, setNewBlind] = useState(false);
   const [assignFor, setAssignFor] = useState<string | null>(null);
+
+  const [addingEval, setAddingEval] = useState(false);
+  const [evalDraft, setEvalDraft] = useState({ name: "", email: "", role: "reviewer" });
+  const [evalError, setEvalError] = useState<string | null>(null);
 
   const { data: rounds } = useQuery({
     queryKey: ["review-rounds-admin", eventId],
@@ -124,10 +133,43 @@ export default function EvaluationsPage() {
     onSuccess: (round) => {
       refreshRounds();
       setNewName("");
+      setNewBlind(false);
+      setPlanOpen(false);
+      setView("plans");
       toast(`Created ${round.name}. Add its criteria, then assign reviewers.`);
     },
     onError: (error: Error) => toast(error.message),
   });
+
+  const addEvaluator = useMutation({
+    mutationFn: () =>
+      authed<Member>(`/events/${eventId}/members`, {
+        method: "POST",
+        body: {
+          name: evalDraft.name.trim(),
+          email: evalDraft.email.trim(),
+          role: evalDraft.role,
+        },
+      }),
+    onSuccess: (member) => {
+      void queryClient.invalidateQueries({ queryKey: ["members", eventId] });
+      setAddingEval(false);
+      setEvalDraft({ name: "", email: "", role: "reviewer" });
+      setEvalError(null);
+      setView("eval");
+      toast(`${member.name} is on the team — a sign-in link is on its way to ${member.email}.`);
+    },
+    onError: (error: Error) => setEvalError(error.message),
+  });
+
+  const submitEvaluator = () => {
+    if (evalDraft.name.trim() === "") return setEvalError("They need a name.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(evalDraft.email.trim())) {
+      return setEvalError("That does not look like an email address.");
+    }
+    setEvalError(null);
+    return addEvaluator.mutate();
+  };
 
   const patchRound = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
@@ -189,7 +231,27 @@ export default function EvaluationsPage() {
     onError: (error: Error) => toast(error.message),
   });
 
-  const reviewers = progress ?? [];
+  /** The Evaluators tab is the team, not just the already-assigned. The
+   *  progress endpoint only knows people with a queue, so someone added a
+   *  minute ago would be invisible on the very screen that added them —
+   *  merged with the member list, they appear at 0/0, "Nothing assigned". */
+  const teamReviewers = (members ?? []).filter((member) => REVIEWING_ROLES.has(member.role));
+  const progressByUser = new Map((progress ?? []).map((row) => [row.user_id, row]));
+  const reviewers: Progress[] = [
+    ...teamReviewers.map(
+      (member) =>
+        progressByUser.get(member.user_id) ?? {
+          user_id: member.user_id,
+          name: member.name,
+          email: member.email,
+          assigned: 0,
+          completed: 0,
+        },
+    ),
+    ...(progress ?? []).filter(
+      (row) => !teamReviewers.some((member) => member.user_id === row.user_id),
+    ),
+  ];
   const done = reviewers.reduce((total, row) => total + row.completed, 0);
   const assigned = reviewers.reduce((total, row) => total + row.assigned, 0);
   const chasing = reviewers.filter((row) => {
@@ -261,15 +323,21 @@ export default function EvaluationsPage() {
     sumLine:
       `${roundCount} ${roundCount === 1 ? "round" : "rounds"} configured · ` +
       `${done} of ${assigned} reviews in · ` +
-      `${chasing} ${chasing === 1 ? "evaluator needs" : "evaluators need"} a nudge`,
+      (reviewers.length === 0
+        ? "nobody can score yet — add an evaluator"
+        : `${chasing} ${chasing === 1 ? "person is" : "people are"} behind`),
 
     coverage: assigned === 0 ? "—" : `${Math.round((done / assigned) * 100)}%`,
     evalsFrac: `${done}/${assigned}`,
     medianScore: median === null ? "—" : median.toFixed(1),
     notStartedLine:
-      chasing === 0
-        ? "EVERY REVIEWER HAS STARTED"
-        : `${chasing} ${chasing === 1 ? "REVIEWER NEEDS" : "REVIEWERS NEED"} A NUDGE`,
+      reviewers.length === 0
+        ? "NO EVALUATORS YET"
+        : assigned === 0
+          ? "NOTHING ASSIGNED YET"
+          : chasing === 0
+            ? "EVERYONE IS ON PACE"
+            : `${chasing} ${chasing === 1 ? "PERSON IS" : "PEOPLE ARE"} BEHIND`,
     closesLine:
       openRound === null
         ? "no round configured"
@@ -312,9 +380,41 @@ export default function EvaluationsPage() {
         // than showing a number nothing computed.
         bias: "·",
         biasFg: "var(--i4,#99A6AD)",
+        // A reminder goes to people with outstanding work; someone finished or
+        // never assigned would get an email about nothing.
+        canRemind: pace === "Behind" || pace === "Not started" || pace === "On pace",
         onNudge: () => nudge.mutate(),
       };
     }),
+
+    evalEmpty:
+      sorted.length > 0 ? null : (
+        <div style={{ padding: "36px 24px", textAlign: "center" }}>
+          <div
+            style={{
+              font: "600 14px var(--font-plex-sans),sans-serif",
+              color: "var(--ik,#16232B)",
+              marginBottom: 6,
+            }}
+          >
+            Nobody can score proposals yet
+          </div>
+          <p
+            style={{
+              font: "400 12.5px/1.6 var(--font-plex-sans),sans-serif",
+              color: "var(--i3,#6B7B84)",
+              maxWidth: 420,
+              margin: "0 auto 16px",
+            }}
+          >
+            Evaluators are teammates who score submissions against your rubric. Add one and they get
+            an email that signs them in — nothing to install, no password to set up.
+          </p>
+          <button type="button" style={pill} onClick={() => setAddingEval(true)}>
+            + Add your first evaluator
+          </button>
+        </div>
+      ),
 
     rounds: (rounds ?? []).map((round) => {
       const plan = plans?.[round.id];
@@ -370,30 +470,221 @@ export default function EvaluationsPage() {
           ),
       };
     }),
-    // The header's New plan button and the create card do the same thing.
-    newPlan: () => {
-      setView("plans");
-      toast("Name the round in the card below, then create it.");
-    },
-    newName,
-    onNewName: (e: React.SyntheticEvent) => setNewName((e.target as HTMLInputElement).value),
-    newBlindLabel: newBlind ? "Blind: on" : "Blind: off",
-    togNewBlind: () => setNewBlind((on) => !on),
-    createRound: () => {
-      const name = newName.trim();
-      if (name === "") {
-        toast("Give the round a name first.");
-        return;
-      }
-      createRound.mutate({ name, is_blind: newBlind });
-    },
+    newPlan: () => setPlanOpen(true),
+    addEval: () => setAddingEval(true),
     plansNote:
-      (members ?? []).filter((member) => REVIEWING_ROLES.has(member.role)).length === 0
-        ? "No reviewers on this event yet — assignment needs someone to assign to."
-        : `${(members ?? []).filter((m) => REVIEWING_ROLES.has(m.role)).length} people can review. Assignment balances by current load and never gives anyone their own submission.`,
+      teamReviewers.length === 0
+        ? "Nobody can score yet — add an evaluator (top right) so assignment has someone to assign to."
+        : `${teamReviewers.length} people can score. Assignment balances by current load and never gives anyone their own submission.`,
 
     toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),
   };
 
-  return <Evaluations d={screen} />;
+  const field = {
+    height: 38,
+    padding: "0 12px",
+    borderRadius: 9,
+    border: "1px solid var(--ls)",
+    background: "var(--cd)",
+    color: "var(--ik)",
+    font: "400 13.5px var(--font-plex-sans)",
+  } as const;
+  const label = { font: "600 12.5px var(--font-plex-sans)", color: "var(--ik)" } as const;
+  const hint = { font: "400 11.5px/1.5 var(--font-plex-sans)", color: "var(--i4)" } as const;
+
+  return (
+    <>
+      <Evaluations d={screen} />
+
+      <SideDrawer
+        open={addingEval}
+        title="Add an evaluator"
+        subtitle="They get an email that signs them in — no password to set up, no account ceremony. They only see this event."
+        onClose={() => setAddingEval(false)}
+        footer={
+          <>
+            <button type="button" style={quietPill} onClick={() => setAddingEval(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              style={{ ...pill, opacity: addEvaluator.isPending ? 0.6 : 1 }}
+              disabled={addEvaluator.isPending}
+              onClick={submitEvaluator}
+            >
+              {addEvaluator.isPending ? "Adding…" : "Add & send sign-in link"}
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="eval-name" style={label}>
+              Full name
+            </label>
+            <input
+              id="eval-name"
+              value={evalDraft.name}
+              onChange={(event) =>
+                setEvalDraft((current) => ({ ...current, name: event.target.value }))
+              }
+              style={field}
+            />
+          </div>
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="eval-email" style={label}>
+              Email
+            </label>
+            <input
+              id="eval-email"
+              type="email"
+              value={evalDraft.email}
+              onChange={(event) =>
+                setEvalDraft((current) => ({ ...current, email: event.target.value }))
+              }
+              style={field}
+            />
+            <span style={hint}>Their sign-in link goes here.</span>
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            <span style={label}>What can they do?</span>
+            {(
+              [
+                {
+                  value: "reviewer",
+                  name: "Reviewer",
+                  blurb:
+                    "Scores the proposals assigned to them, from a focused queue. Cannot decide, publish or email anyone.",
+                },
+                {
+                  value: "coordinator",
+                  name: "Coordinator",
+                  blurb:
+                    "Day-to-day programme work — agenda, tasks, editing submissions. Cannot publish or send.",
+                },
+                {
+                  value: "admin",
+                  name: "Admin",
+                  blurb: "Everything except owning the workspace: decides, publishes, sends.",
+                },
+              ] as const
+            ).map((choice) => (
+              <label
+                key={choice.value}
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border:
+                    evalDraft.role === choice.value
+                      ? "1px solid var(--sg,#E04E4E)"
+                      : "1px solid var(--ln)",
+                  background: evalDraft.role === choice.value ? "var(--sw,#FFEAE6)" : "var(--cd)",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="eval-role"
+                  checked={evalDraft.role === choice.value}
+                  onChange={() => setEvalDraft((current) => ({ ...current, role: choice.value }))}
+                  style={{ marginTop: 3, accentColor: "var(--sg,#E04E4E)" }}
+                />
+                <span>
+                  <span style={{ ...label, display: "block" }}>{choice.name}</span>
+                  <span style={hint}>{choice.blurb}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {evalError === null ? null : (
+            <p
+              role="alert"
+              style={{ font: "500 12.5px var(--font-plex-sans)", color: "var(--cn)", margin: 0 }}
+            >
+              {evalError}
+            </p>
+          )}
+        </div>
+      </SideDrawer>
+
+      <SideDrawer
+        open={planOpen}
+        title="New review round"
+        subtitle="A round is one pass over the submissions: its own rubric, its own reviewers, its own deadline. Most events need just one; add a second for shortlisting."
+        onClose={() => setPlanOpen(false)}
+        footer={
+          <>
+            <button type="button" style={quietPill} onClick={() => setPlanOpen(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              style={{ ...pill, opacity: createRound.isPending ? 0.6 : 1 }}
+              disabled={createRound.isPending}
+              onClick={() => {
+                const name = newName.trim();
+                if (name === "") {
+                  toast("Give the round a name first.");
+                  return;
+                }
+                createRound.mutate({ name, is_blind: newBlind });
+              }}
+            >
+              {createRound.isPending ? "Creating…" : "Create round"}
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="round-name" style={label}>
+              Round name
+            </label>
+            <input
+              id="round-name"
+              value={newName}
+              placeholder="Round 1 · First pass"
+              onChange={(event) => setNewName(event.target.value)}
+              style={field}
+            />
+            <span style={hint}>Reviewers see this name at the top of their queue.</span>
+          </div>
+          <label
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: newBlind ? "1px solid var(--sg,#E04E4E)" : "1px solid var(--ln)",
+              background: newBlind ? "var(--sw,#FFEAE6)" : "var(--cd)",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={newBlind}
+              onChange={() => setNewBlind((on) => !on)}
+              style={{ marginTop: 3, accentColor: "var(--sg,#E04E4E)" }}
+            />
+            <span>
+              <span style={{ ...label, display: "block" }}>Blind review</span>
+              <span style={hint}>
+                Reviewers score without seeing who submitted — names and any answer marked
+                identity-bearing are hidden from them, enforced by the server. You can switch this
+                later.
+              </span>
+            </span>
+          </label>
+          <p style={{ ...hint, margin: 0 }}>
+            After creating it: add scoring criteria on the round&apos;s card, then Assign reviewers
+            to hand out the queue.
+          </p>
+        </div>
+      </SideDrawer>
+    </>
+  );
 }

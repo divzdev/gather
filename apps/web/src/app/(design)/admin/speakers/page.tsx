@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SideDrawer } from "@/components/console/SideDrawer";
 import { useConsoleChrome } from "@/components/console/chrome";
@@ -450,6 +450,20 @@ export default function SpeakersPage() {
     setStatusError(null);
   };
 
+  /** The drawer is hand-rolled markup (not SideDrawer), so Escape-to-close
+   *  has to be wired here — every other overlay in the console closes on
+   *  Escape, and this one silently didn't. */
+  useEffect(() => {
+    if (openId === null) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeDrawer();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // closeDrawer is stable in behaviour: it only calls setState setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId]);
+
   useHotkeys(
     [
       { key: "j", run: () => step(1) },
@@ -734,7 +748,6 @@ export default function SpeakersPage() {
       // every roster row and shown on none of them.
       c: [open?.job_title, open?.company, open?.pronouns].filter(Boolean).join(" · ") || "—",
       email: open?.email ?? "",
-      missN: open === null ? 0 : missingFor(open).length,
       sessT: mySessions.length === 0 ? "Not on the schedule yet" : mySessions[0]!.title,
       sessMeta:
         mySessions.length === 0
@@ -790,13 +803,25 @@ export default function SpeakersPage() {
       noFiles: (files ?? []).length === 0,
       notes: openId === null ? [] : (notes[openId] ?? []),
     },
-    tabs: (["sessions", "tasks", "files", "notes"] as const).map((key) => ({
-      n: key[0]!.toUpperCase() + key.slice(1),
-      on: () => setTab(key),
-      fg: tab === key ? "var(--ik,#16232B)" : "var(--i3,#6B7B84)",
-      ul: tab === key ? "2px solid var(--sg,#E04E4E)" : "2px solid transparent",
-      wt: tab === key ? "600" : "500",
-    })),
+    tabs: (["sessions", "tasks", "files", "notes"] as const).map((key) => {
+      const count =
+        key === "sessions"
+          ? mySessions.length
+          : key === "tasks"
+            ? myTasks.length
+            : key === "files"
+              ? (files ?? []).length
+              : openId === null
+                ? 0
+                : (notes[openId] ?? []).length;
+      return {
+        n: `${key[0]!.toUpperCase() + key.slice(1)}${count > 0 ? ` · ${count}` : ""}`,
+        on: () => setTab(key),
+        fg: tab === key ? "var(--ik,#16232B)" : "var(--i3,#6B7B84)",
+        ul: tab === key ? "var(--sg,#E04E4E)" : "transparent",
+        wt: tab === key ? "600" : "500",
+      };
+    }),
     tabSessions: tab === "sessions",
     tabTasks: tab === "tasks",
     tabFiles: tab === "files",
@@ -812,13 +837,117 @@ export default function SpeakersPage() {
       }));
       setNoteDraft("");
     },
-    // Was `setStatus → "confirmed"`. A button labelled "Nudge about N missing
-    // items" silently marked the speaker confirmed — a different verb, a
-    // different noun, and no way to tell it had happened.
-    dNudge: () => {
-      if (open === null) return;
-      nudge.mutate([open.speaker_id]);
-    },
+    /** The answer to "5 missing something — missing *what*?": the actual gaps,
+     *  named, with where each kind gets filled and the chase action beside
+     *  them. Pinned above every tab so the state of this person is never more
+     *  than one glance away. */
+    missPanel: (() => {
+      if (open === null) return null;
+      const gaps = missingFor(open);
+      if (gaps.length === 0) {
+        return (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid var(--okw,#E2F1EC)",
+              background: "var(--okw,#E2F1EC)",
+              marginBottom: 16,
+              font: "500 12.5px var(--font-plex-sans),sans-serif",
+              color: "var(--ok,#0E7A5F)",
+            }}
+          >
+            Nothing missing — profile complete and every deliverable in.
+          </div>
+        );
+      }
+      const owesTasks = (owedBySpeaker.get(open.speaker_id) ?? []).length > 0;
+      const profileGaps = gaps.filter((gap) => !gap.key.startsWith("task:"));
+      return (
+        <div
+          style={{
+            border: "1px solid var(--pdl,#EFD3B6)",
+            background: "var(--pdw,#F9EDDF)",
+            borderRadius: 12,
+            padding: "14px 16px",
+            marginBottom: 18,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 8,
+            }}
+          >
+            <span
+              style={{
+                font: "600 10px var(--font-plex-condensed),sans-serif",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--pd,#B96A1F)",
+              }}
+            >
+              Still missing · {gaps.length}
+            </span>
+            <div style={{ flex: 1 }} />
+            {owesTasks ? (
+              <button
+                type="button"
+                onClick={() => nudge.mutate([open.speaker_id])}
+                style={{
+                  height: 32,
+                  padding: "0 13px",
+                  borderRadius: 8,
+                  border: "1px solid var(--pdl,#EFD3B6)",
+                  background: "var(--cd,#FFFFFF)",
+                  font: "500 12px var(--font-plex-sans),sans-serif",
+                  color: "var(--pd,#B96A1F)",
+                  cursor: "pointer",
+                }}
+              >
+                Email {open.name.split(" ")[0]} a reminder
+              </button>
+            ) : null}
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+            {gaps.map((gap) => (
+              <span
+                key={gap.key}
+                style={{
+                  padding: "3px 10px",
+                  borderRadius: 6,
+                  background: "var(--cd,#FFFFFF)",
+                  border: "1px solid var(--pdl,#EFD3B6)",
+                  font: "500 11.5px var(--font-plex-sans),sans-serif",
+                  color: "var(--pd,#B96A1F)",
+                }}
+              >
+                {gap.label}
+              </span>
+            ))}
+          </div>
+          <p
+            style={{
+              font: "400 11.5px/1.6 var(--font-plex-sans),sans-serif",
+              color: "var(--i3,#6B7B84)",
+              margin: 0,
+            }}
+          >
+            {profileGaps.length > 0
+              ? "Profile fields are filled in by the speaker from their portal. "
+              : ""}
+            {owesTasks
+              ? "Deliverables are the tasks this event assigned — a reminder emails them about what is still owed (at most once a day)."
+              : "This clears itself as things arrive."}
+          </p>
+        </div>
+      );
+    })(),
 
     toasts: toasts.map((entry) => ({
       msg: entry.msg,

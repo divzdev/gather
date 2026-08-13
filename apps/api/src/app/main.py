@@ -18,6 +18,7 @@ from app.core.idempotency import IdempotencyMiddleware
 from app.features.ai.router import router as ai_router
 from app.features.auth.router import router as auth_router
 from app.features.crm.router import router as crm_router
+from app.features.events.members import router as event_members_router
 from app.features.events.router import router as events_router
 from app.features.files.router import portal_router as file_comments_portal_router
 from app.features.files.router import staff_router as file_comments_router
@@ -153,6 +154,7 @@ def create_app() -> FastAPI:
         app.include_router(program_router)
     app.include_router(crm_router)
     app.include_router(events_router)
+    app.include_router(event_members_router)
     app.include_router(file_comments_router)
     app.include_router(file_comments_portal_router)
     app.include_router(forms_router)

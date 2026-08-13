@@ -252,6 +252,26 @@ async def revoke(session: AsyncSession, *, refresh_token: str) -> None:
         record.revoked_at = _now()
 
 
+async def issue_invite_link(
+    session: AsyncSession, *, user: User, event_name: str, role: str, invited_by: str
+) -> str:
+    """Mail a newly added team member a link that signs them in.
+
+    The invite *is* the sign-in: the invited account has no password (the column
+    holds a hash nobody has seen), so the emailed link is the only door — the
+    same rule speakers live under, applied to staff someone else created.
+    """
+    return await _send_staff_link(
+        session,
+        user=user,
+        subject=f"{invited_by} added you to {event_name} on Gather",
+        lead=(
+            f"<p>{invited_by} added you to <strong>{event_name}</strong> as a "
+            f"{role}. This link signs you in — no password needed.</p>"
+        ),
+    )
+
+
 async def _send_staff_link(
     session: AsyncSession, *, user: User, subject: str, lead: str, ip: str | None = None
 ) -> str:

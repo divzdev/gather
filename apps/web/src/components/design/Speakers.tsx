@@ -30,7 +30,9 @@ export type SpeakersData = {
   readonly countLine: React.ReactNode;
   readonly headerAction: React.ReactNode;
   readonly pager: React.ReactNode;
-  readonly dNudge: (event: React.SyntheticEvent) => void;
+  /** Hand-bound: the "still missing" card pinned above the drawer's tab
+   *  content. Owns the chase action; replaced the footer's nudge button. */
+  readonly missPanel: React.ReactNode;
   readonly empty: boolean;
   readonly exportCsv: (event: React.SyntheticEvent) => void;
   readonly fBd: string;
@@ -80,7 +82,6 @@ export type SpeakersData = {
       readonly v: React.ReactNode;
     }[];
     readonly ini: React.ReactNode;
-    readonly missN: React.ReactNode;
     readonly n: React.ReactNode;
     readonly nextLabel: React.ReactNode | null;
     readonly noFiles: boolean;
@@ -1537,7 +1538,7 @@ export function Speakers({ d }: { d: SpeakersData }) {
                 top: "0",
                 right: "0",
                 bottom: "0",
-                width: "min(640px,94vw)",
+                width: "min(780px,94vw)",
                 background: "var(--cd,#FFFFFF)",
                 borderLeft: "1px solid var(--ln,#E1E7E9)",
                 boxShadow: "0 12px 32px rgba(16,19,25,.24)",
@@ -1560,16 +1561,18 @@ export function Speakers({ d }: { d: SpeakersData }) {
                   {" "}
                   <span
                     style={{
-                      width: "44px",
-                      height: "44px",
+                      width: "52px",
+                      height: "52px",
                       borderRadius: "50%",
                       background: "var(--sk,#EDF1F2)",
                       border: "1px solid var(--ln,#E1E7E9)",
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      font: "600 13px 'IBM Plex Sans Condensed',sans-serif",
+                      font: "600 15px 'IBM Plex Sans Condensed',sans-serif",
                       color: "var(--i3,#6B7B84)",
+                      overflow: "hidden",
+                      flex: "none",
                     }}
                   >
                     {d.o.ini}
@@ -1578,7 +1581,8 @@ export function Speakers({ d }: { d: SpeakersData }) {
                     {" "}
                     <div
                       style={{
-                        font: "600 17px 'IBM Plex Sans',sans-serif",
+                        font: "600 19px 'IBM Plex Sans',sans-serif",
+                        letterSpacing: "-0.01em",
                         color: "var(--ik,#16232B)",
                       }}
                     >
@@ -1598,11 +1602,11 @@ export function Speakers({ d }: { d: SpeakersData }) {
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
-                      height: "30px",
-                      padding: "0 12px",
-                      borderRadius: "6px",
+                      height: "36px",
+                      padding: "0 14px",
+                      borderRadius: "8px",
                       border: "1px solid var(--ls,#C8D2D5)",
-                      font: "500 12px 'IBM Plex Sans',sans-serif",
+                      font: "500 12.5px 'IBM Plex Sans',sans-serif",
                       color: "var(--ik,#16232B)",
                       textDecoration: "none",
                       whiteSpace: "nowrap",
@@ -1821,7 +1825,7 @@ export function Speakers({ d }: { d: SpeakersData }) {
                   Recorded immediately as an organiser decision — {d.o.n} is not emailed when this
                   changes.
                 </p>{" "}
-                <div style={{ display: "flex", gap: "2px" }}>
+                <div style={{ display: "flex", gap: "8px" }}>
                   {" "}
                   {(d.tabs ?? []).map((tb, tbIndex) => (
                     <Fragment key={tbIndex}>
@@ -1829,13 +1833,14 @@ export function Speakers({ d }: { d: SpeakersData }) {
                       <button
                         onClick={tb.on}
                         style={{
-                          height: "34px",
-                          padding: "0 13px",
+                          height: "42px",
+                          padding: "0 18px",
                           border: "none",
                           background: "none",
-                          font: `${tb.wt} 12.5px 'IBM Plex Sans',sans-serif`,
+                          font: `${tb.wt} 13.5px 'IBM Plex Sans',sans-serif`,
                           color: tb.fg,
                           borderBottom: `2px solid ${tb.ul}`,
+                          cursor: "pointer",
                         }}
                       >
                         {tb.n}
@@ -1846,6 +1851,7 @@ export function Speakers({ d }: { d: SpeakersData }) {
               </div>{" "}
               <div style={{ flex: "1", overflowY: "auto", padding: "20px 24px" }}>
                 {" "}
+                {d.missPanel}{" "}
                 {d.tabTasks ? (
                   <>
                     {" "}
@@ -2142,20 +2148,6 @@ export function Speakers({ d }: { d: SpeakersData }) {
                 }}
               >
                 {" "}
-                <button
-                  onClick={d.dNudge}
-                  style={{
-                    height: "30px",
-                    padding: "0 13px",
-                    borderRadius: "6px",
-                    border: "1px solid var(--pdl,#EFD3B6)",
-                    background: "var(--pdw,#F9EDDF)",
-                    font: "500 12.5px 'IBM Plex Sans',sans-serif",
-                    color: "var(--pd,#B96A1F)",
-                  }}
-                >
-                  Nudge about {d.o.missN} missing items
-                </button>{" "}
                 <div style={{ flex: "1" }}></div>{" "}
                 <span
                   style={{

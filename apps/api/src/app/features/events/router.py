@@ -162,9 +162,10 @@ async def list_members(event_id: uuid.UUID, session: DbSession) -> list[MemberRe
     Assignment and reviewer chasing both need to name people, and until now
     nothing could: the console had no way to learn who the reviewers are.
     """
-    # Mirrors resolve_role: a per-event role wins, and an org member with no
-    # event row still works on every event in the org. Listing only EventMember
-    # would report an empty team on an event nobody has been overridden on.
+    # Mirrors resolve_role: a per-event role wins, an org member with no event
+    # row still works on every event in the org, and someone invited to just
+    # this event exists *only* as an EventMember — all three must be listed, or
+    # an invited evaluator has access the team screen cannot see.
     event = await session.get(Event, event_id)
     if event is None:
         raise RoleRequiredError("You do not have access to this event.")
@@ -181,22 +182,26 @@ async def list_members(event_id: uuid.UUID, session: DbSession) -> list[MemberRe
             .tuples()
             .all()
         )
-        overrides = {
-            member.user_id: member.role
-            for member in (
-                await session.scalars(select(EventMember).where(EventMember.event_id == event_id))
-            ).all()
-        }
+        event_rows = (
+            (
+                await session.execute(
+                    select(EventMember, User)
+                    .join(User, User.id == EventMember.user_id)
+                    .where(EventMember.event_id == event_id)
+                )
+            )
+            .tuples()
+            .all()
+        )
 
     by_user = {
-        user.id: MemberRead(
-            user_id=user.id,
-            name=user.name,
-            email=user.email,
-            role=overrides.get(user.id, member.role),
-        )
+        user.id: MemberRead(user_id=user.id, name=user.name, email=user.email, role=member.role)
         for member, user in org_rows
     }
+    for member, user in event_rows:
+        by_user[user.id] = MemberRead(
+            user_id=user.id, name=user.name, email=user.email, role=member.role
+        )
     return sorted(by_user.values(), key=lambda member: member.name)
 
 
