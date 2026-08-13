@@ -13,12 +13,14 @@ exists.
 make setup && make dev     # a running, seeded conference. no API keys, no accounts.
 ```
 
-<!-- Hosted as a release asset rather than committed: git history is permanent, and a
-     52MB file would ride in every clone of the repo forever. -->
+<!-- A poster that links out, not a <video> tag: GitHub strips <video> from a README
+     unless the source is one of its own upload URLs, and the films are release assets
+     (`media-v1`) rather than commits — a 52MB file in git history rides in every clone. -->
 
-<video src="https://github.com/divzdev/gather/releases/download/media-v1/gather-launch-story.mp4" controls width="100%"></video>
+[![Gather — a conference programme, start to finish](.github/media/film-poster.jpg)](https://github.com/divzdev/gather/releases/download/media-v1/gather-launch-story.mp4)
 
-**▶ [Watch the film](https://github.com/divzdev/gather/releases/download/media-v1/gather-launch-story.mp4)** · or the [28-second cut](https://github.com/divzdev/gather/releases/download/media-v1/gather-sizzle.mp4)
+**▶ [Watch the film](https://github.com/divzdev/gather/releases/download/media-v1/gather-launch-story.mp4)** · 1m47s, the whole programme end to end
+· or the **[28-second cut](https://github.com/divzdev/gather/releases/download/media-v1/gather-sizzle.mp4)**
 
 ---
 
