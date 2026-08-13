@@ -161,6 +161,20 @@ export const PAGE_ICON = {
       <path d="M4 16.5c0-2.8 2.7-4.5 6-4.5s6 1.7 6 4.5" />
     </svg>
   ),
+  pages: (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    >
+      <path d="M11.4 2.6H5.4a1.4 1.4 0 0 0-1.4 1.4v12a1.4 1.4 0 0 0 1.4 1.4h9.2a1.4 1.4 0 0 0 1.4-1.4V7.2z" />
+      <path d="M11.4 2.6v4.6H16" />
+      <path d="M6.8 11h6.4M6.8 14h4.2" />
+    </svg>
+  ),
   profile: (
     <svg
       width="20"

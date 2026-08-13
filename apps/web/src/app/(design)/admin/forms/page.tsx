@@ -13,6 +13,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
+import { SectionTabs } from "@/components/console/SectionTabs";
 import { Forms, type FormsData } from "@/components/design/Forms";
 import {
   blankField,
@@ -379,6 +380,7 @@ export default function FormsPage() {
   const adminCheck = check(settings?.notify_admins_on_submit ?? true);
 
   const screen: FormsData = {
+    tabs: <SectionTabs />,
     ...stripData(stats),
 
     inList: !inBuilder,
