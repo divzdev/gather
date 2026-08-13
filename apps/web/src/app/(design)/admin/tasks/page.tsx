@@ -126,9 +126,9 @@ export default function TasksPage() {
       invalidate();
       toast(
         result.sent === 0
-          ? `Nobody emailed. ${result.skipped} were already nudged in the last 24 hours.`
+          ? `Nobody emailed. ${result.skipped} were already reminded in the last 24 hours.`
           : `Reminded ${result.sent} speaker${result.sent === 1 ? "" : "s"}.` +
-              (result.skipped > 0 ? ` ${result.skipped} skipped, nudged today already.` : ""),
+              (result.skipped > 0 ? ` ${result.skipped} skipped, reminded today already.` : ""),
       );
     },
     onError: (error: Error) => toast(error.message),

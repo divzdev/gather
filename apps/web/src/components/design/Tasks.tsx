@@ -318,7 +318,7 @@ export function Tasks({ d }: { d: TasksData }) {
                     cursor: d.nudgeDisabled ? "not-allowed" : "pointer",
                   }}
                 >
-                  Nudge all overdue
+                  Remind all overdue
                 </button>
               </div>{" "}
             </div>{" "}
@@ -814,7 +814,7 @@ export function Tasks({ d }: { d: TasksData }) {
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              Nudge
+                              Remind
                             </button>{" "}
                             <button
                               onClick={r.onDone}
