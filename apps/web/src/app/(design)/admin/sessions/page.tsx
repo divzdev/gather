@@ -488,6 +488,7 @@ export default function SessionsPage() {
       id: row.slug.slice(-6).toUpperCase(),
       t: row.title,
       sp: row.speakers.map((speaker) => speaker.name).join(", ") || "No speaker yet",
+      pub: row.content_status === "approved" ? null : "not public",
       tr: trackName(row),
       trCol: trackColour(row),
       fmt: formatName(row),
@@ -608,21 +609,12 @@ export default function SessionsPage() {
           : "promoted from a proposal",
     titleCount: `${(open?.title ?? "").length}/300`,
     titleBd: "var(--ls,#C8D2D5)",
-    // One primary action, two meanings: unsaved edits outrank approving, because
-    // approving content you have half-rewritten publishes the old wording.
-    // Room/starts are dirty too, but they save through a different endpoint
-    // (see `place`/`unschedule` above) than title, track, format and the rest —
-    // so a save with both kinds of edit pending fires both requests.
+    // Room/starts save through a different endpoint (see `place`/`unschedule`
+    // above) than title, track, format and the rest — a save with both kinds of
+    // edit pending fires both requests.
     save: () => {
-      if (open === null) return;
+      if (open === null || !dirty) return;
       setPlacementError(null);
-      if (!dirty) {
-        approve.mutate({
-          id: open.id,
-          status: open.content_status === "approved" ? "pending" : "approved",
-        });
-        return;
-      }
       if (fieldsDirty) patch.mutate({ id: open.id, body: patchBody() });
       if (!placementDirty) return;
 
@@ -655,14 +647,25 @@ export default function SessionsPage() {
         },
       });
     },
-    saveLabel: dirty
-      ? saving
-        ? "Saving…"
-        : "Save changes"
-      : open?.content_status === "approved"
-        ? "Withdraw approval"
-        : "Approve for the public site",
-    saveDisabled: saving,
+    saveLabel: saving ? "Saving…" : "Save changes",
+    saveDisabled: saving || !dirty,
+    // Approval is its own button, always visible, never conflated with saving.
+    // Approving with edits still pending would publish the old wording, so the
+    // handler saves the fields first and then flips approval.
+    approveLabel:
+      open === null
+        ? null
+        : open.content_status === "approved"
+          ? "Withdraw from public site"
+          : "Approve for the public site",
+    onApprove: () => {
+      if (open === null) return;
+      if (fieldsDirty) patch.mutate({ id: open.id, body: patchBody() });
+      approve.mutate({
+        id: open.id,
+        status: open.content_status === "approved" ? "pending" : "approved",
+      });
+    },
     placementErr: placementError,
 
     f: {

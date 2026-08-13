@@ -147,6 +147,10 @@ export type SessionsData = {
     readonly sched: React.ReactNode;
     readonly schedFg: string;
     readonly sp: React.ReactNode;
+    /** Bound by hand: non-null renders a second, muted pill — the session is
+     *  not approved for the public site, which the table otherwise never showed
+     *  while a stat tile counted it. */
+    readonly pub: React.ReactNode;
     readonly st: React.ReactNode;
     readonly stBg: string;
     readonly stFg: string;
@@ -156,6 +160,11 @@ export type SessionsData = {
   }[];
   readonly save: (event: React.SyntheticEvent) => void;
   readonly saveLabel: React.ReactNode;
+  /** Bound by hand: approval used to share the save button, switching identity
+   *  on whether the form was dirty — the same click either saved or published
+   *  depending on invisible state. It is its own control now. */
+  readonly approveLabel: React.ReactNode;
+  readonly onApprove: (event: React.SyntheticEvent) => void;
   readonly schedN: React.ReactNode;
   readonly soCode: {
     readonly fg: string;
@@ -1400,7 +1409,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                         }}
                       ></span>
                       {r.st}
-                    </span>{" "}
+                    </span>{r.pub != null ? (<span style={{marginLeft: "6px", padding: "2px 7px", borderRadius: "4px", font: "500 10px 'IBM Plex Mono',monospace", letterSpacing: "0.04em", color: "var(--i4,#99A6AD)", background: "var(--sk,#EDF1F2)", whiteSpace: "nowrap"}}>{r.pub}</span>) : null}{" "}
                   </button>{" "}
                 </Fragment>
               ))}{" "}
@@ -2264,6 +2273,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                 >
                   {d.saveLabel}
                 </button>{" "}
+                {d.approveLabel != null ? (<button onClick={d.onApprove} style={{height: "40px", padding: "0 15px", borderRadius: "999px", border: "1px solid var(--ls,#C8D2D5)", background: "none", font: "500 13px 'IBM Plex Sans',sans-serif", color: "var(--ik,#16232B)", cursor: "pointer"}}>{d.approveLabel}</button>) : null}{" "}
                 <button
                   onClick={d.closeDrawer}
                   style={{
