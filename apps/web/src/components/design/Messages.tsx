@@ -854,7 +854,7 @@ export function Messages({ d }: { d: MessagesData }) {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        All sends
+                        Decisions to send
                       </span>
                     </span>{" "}
                   </button>{" "}
@@ -984,7 +984,7 @@ export function Messages({ d }: { d: MessagesData }) {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        Queued
+                        Selected to send
                       </span>
                     </span>{" "}
                   </button>{" "}
