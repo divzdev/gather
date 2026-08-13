@@ -227,8 +227,13 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
         style={{ ...style, position: "relative" }}
       >
         <ConsoleRail d={data} />
-        <CommandPalette />
       </div>
+      {/* Outside the rail, and it has to be. The rail carries a `transform` on
+       *  mobile to slide off-canvas, and a transformed ancestor becomes the
+       *  containing block for `position: fixed` descendants — so the palette,
+       *  which is fixed and full-viewport, was being positioned against a box
+       *  parked at -100% and rendered with its left half off the screen. */}
+      <CommandPalette />
     </>
   );
 }

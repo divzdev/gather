@@ -74,8 +74,13 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
   program: (
     <svg
-      width="15" height="15" viewBox="0 0 15 15" fill="none"
-      stroke="currentColor" strokeWidth="1.5" style={{ flex: "none" }}
+      width="15"
+      height="15"
+      viewBox="0 0 15 15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      style={{ flex: "none" }}
     >
       <rect x="1.6" y="2.4" width="11.8" height="10.2" rx="1.8" />
       <path d="M1.6 6h11.8M6 6v6.6" />
@@ -83,8 +88,13 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
   forms: (
     <svg
-      width="15" height="15" viewBox="0 0 15 15" fill="none"
-      stroke="currentColor" strokeWidth="1.5" style={{ flex: "none" }}
+      width="15"
+      height="15"
+      viewBox="0 0 15 15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      style={{ flex: "none" }}
     >
       <rect x="2.5" y="1.5" width="10" height="12" rx="2" />
       <rect x="5" y="4.4" width="5" height="1.4" rx="0.7" fill="currentColor" stroke="none" />
@@ -93,8 +103,13 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
   publishing: (
     <svg
-      width="15" height="15" viewBox="0 0 15 15" fill="none"
-      stroke="currentColor" strokeWidth="1.5" style={{ flex: "none" }}
+      width="15"
+      height="15"
+      viewBox="0 0 15 15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      style={{ flex: "none" }}
     >
       <path d="M5 4L1.8 7.5 5 11" />
       <path d="M10 4l3.2 3.5L10 11" />
@@ -102,8 +117,13 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
   directory: (
     <svg
-      width="15" height="15" viewBox="0 0 15 15" fill="none"
-      stroke="currentColor" strokeWidth="1.5" style={{ flex: "none" }}
+      width="15"
+      height="15"
+      viewBox="0 0 15 15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      style={{ flex: "none" }}
     >
       <rect x="2" y="1.8" width="11" height="11.4" rx="1.8" />
       <path d="M2 5.2h11M5.4 1.8v11.4" />
@@ -207,9 +227,15 @@ export function EventSwitcher() {
           /* Fixed, not content-sized. Everything to the right of this capsule is
              flexed, so a content width would move the search field as the event
              query resolves — "Loading…" is 60px narrower than a real name — and
-             again for every event with a longer name than the last. */
+             again for every event with a longer name than the last.
+
+             Below the mobile breakpoint `[data-event-switcher]` in globals.css
+             lets it shrink instead: at 236px it pushed the bell and the avatar
+             clean off a 390px screen, which is a worse problem than the search
+             field twitching once on load. */
           width: 236,
         }}
+        data-event-switcher
       >
         <span
           style={{

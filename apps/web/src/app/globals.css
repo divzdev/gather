@@ -144,6 +144,41 @@ input::placeholder {
   [data-console-menu] {
     display: inline-flex !important;
   }
+
+  /* ── The header, which had four controls and room for two ─────────────────
+   *
+   * At 390px the event switcher's fixed 236px plus a flexed search field left
+   * the bell 68px off the right edge and the avatar further still — not
+   * clipped, gone. You could not reach notifications or sign out at all.
+   *
+   * Search becomes its icon. A search field squeezed to a sliver is worse than
+   * a search button: it still looks like somewhere you could type, and it is
+   * not. The switcher gives up its fixed width, which it only had so the field
+   * beside it would not twitch as the event name loaded — a real concern at
+   * 1440 and an irrelevant one when the field is a 38px button. */
+  [data-screen-label] header,
+  header:has([data-console-search]) {
+    gap: 8px !important;
+    padding: 0 12px !important;
+  }
+
+  [data-console-search] {
+    flex: 0 0 auto !important;
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+  }
+  [data-search-label],
+  [data-search-key] {
+    display: none !important;
+  }
+
+  [data-event-switcher] {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

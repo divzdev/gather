@@ -128,9 +128,13 @@ export function ConsoleHeader() {
 
       <EventSwitcher />
 
+      {/* On a phone this becomes the icon alone — see `[data-console-search]` in
+       *  globals.css. A search field squeezed to a sliver is worse than a search
+       *  button, because it still looks like somewhere you could type. */}
       <button
         type="button"
         className="gh-search"
+        data-console-search
         onClick={() => openCommandPalette()}
         style={{
           display: "flex",
@@ -164,11 +168,13 @@ export function ConsoleHeader() {
           <path d="M8 8l2.6 2.6" />
         </svg>
         <span
+          data-search-label
           style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
         >
           Search or jump to…
         </span>
         <span
+          data-search-key
           style={{
             font: "500 10px var(--font-plex-mono), monospace",
             border: "1px solid var(--ls,#C8D2D5)",
