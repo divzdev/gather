@@ -18,10 +18,19 @@ import { authed } from "@/lib/session";
 
 const RAIL_KEY = "gather.rail";
 
+/** Below this, an expanded rail eats two-thirds of the viewport and the
+ *  content column wraps into a one-word-per-line tower. The console is not a
+ *  phone product — the drag-drop screens never will be — but reading a count
+ *  or approving a session from a hallway has to work. */
+const NARROW_QUERY = "(max-width: 900px)";
 
 /** Collapsed state lives in localStorage, so it is read through an external
  *  store rather than an effect: the server renders expanded and the client
- *  corrects on hydration without a second render pass. */
+ *  corrects on hydration without a second render pass.
+ *
+ *  Narrow screens keep their own key: with one shared flag, expanding on a
+ *  desktop would write "0" and a later phone visit would inherit a rail it
+ *  has no room for. Absent key = the width decides. */
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void): () => void {
@@ -33,8 +42,14 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-function setCollapsed(next: boolean): void {
-  window.localStorage.setItem(RAIL_KEY, next ? "1" : "0");
+function subscribeNarrow(listener: () => void): () => void {
+  const query = window.matchMedia(NARROW_QUERY);
+  query.addEventListener("change", listener);
+  return () => query.removeEventListener("change", listener);
+}
+
+function setCollapsed(next: boolean, key: string): void {
+  window.localStorage.setItem(key, next ? "1" : "0");
   for (const listener of listeners) listener();
 }
 
@@ -68,11 +83,18 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     .map((part) => part[0] ?? "")
     .join("")
     .toUpperCase();
-  const collapsed = useSyncExternalStore(
-    subscribe,
-    () => window.localStorage.getItem(RAIL_KEY) === "1",
+  const narrow = useSyncExternalStore(
+    subscribeNarrow,
+    () => window.matchMedia(NARROW_QUERY).matches,
     () => false,
   );
+  const railKey = narrow ? `${RAIL_KEY}.narrow` : RAIL_KEY;
+  const stored = useSyncExternalStore(
+    subscribe,
+    () => window.localStorage.getItem(railKey),
+    () => null,
+  );
+  const collapsed = stored === null ? narrow : stored === "1";
   const [logoHover, setLogoHover] = useState(false);
   const { stats } = useProgramStats();
 
@@ -162,7 +184,7 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     lgIn: () => setLogoHover(true),
     lgOut: () => setLogoHover(false),
     togRail: () => {
-      setCollapsed(!collapsed);
+      setCollapsed(!collapsed, railKey);
       setLogoHover(false);
     },
   };
