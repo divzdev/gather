@@ -421,6 +421,22 @@ async def consume_magic_link(
     )
 
 
+def speaker_session_token(*, speaker_id: uuid.UUID, event_id: uuid.UUID) -> str:
+    """A speaker session bound to one event.
+
+    Only `sub` and `event_id` are ever read back out (`core/deps.py`), so those
+    are the only claims here — the address that appears alongside them on the
+    magic-link path is decorative.
+    """
+    settings = get_settings()
+    return create_access_token(
+        speaker_id,
+        kind="speaker",
+        expires_in=timedelta(days=settings.speaker_session_ttl_days),
+        claims={"event_id": str(event_id)},
+    )
+
+
 async def rotate_portal_link(
     session: AsyncSession, *, speaker_id: uuid.UUID, event_id: uuid.UUID
 ) -> str:

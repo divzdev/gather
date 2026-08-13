@@ -9,6 +9,7 @@ import { useRef, useState, useSyncExternalStore } from "react";
 
 import { Portal, type PortalData } from "@/components/design/Portal";
 
+import { ConferenceSwitcher } from "./conferences";
 import { ParticipationBand, type Participation as ParticipationState } from "./participation";
 import { PortalComments, useFeedbackCount } from "./comments";
 import { useTheme } from "@/components/ThemeProvider";
@@ -845,6 +846,9 @@ export default function PortalPage() {
     // carries no media query. `data-portal-tab` is read by the same file to hide
     // the prototype's footer on the two tabs whose body is injected after it.
     <div data-portal data-portal-tab={tab}>
+      {/* Above the participation band: which conference you are looking at
+          outranks anything it is asking of you. */}
+      <ConferenceSwitcher />
       <ParticipationBand state={home?.participation} />
       <Portal d={screen} />
       {/* Rendered here rather than through the Portal prototype, which has no

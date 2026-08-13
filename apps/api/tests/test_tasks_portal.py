@@ -401,3 +401,106 @@ async def test_deleting_an_assigned_deliverable_is_refused_with_the_count(
     assert [row["id"] for row in listing.json()] == [template_id]
     summary = await client.get(f"/v1/events/{event.id}/tasks/summary", headers=headers)
     assert len(summary.json()) == 2
+
+
+async def _second_event(session: AsyncSession, first: Event, slug: str) -> Event:
+    """Another conference belonging to the same organiser."""
+    with tenancy_disabled():
+        event = Event(
+            org_id=first.org_id,
+            name="Northbound Summit",
+            slug=slug,
+            timezone=first.timezone,
+            starts_on=first.starts_on,
+            ends_on=first.ends_on,
+        )
+        session.add(event)
+        await session.commit()
+    return event
+
+
+async def test_a_speaker_sees_every_conference_they_are_on(
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    _headers, event, _form = cfp
+    rosa = await _add_speaker(session, event, "Rosa Lindqvist", "rosa@northbound.example")
+    second = await _second_event(session, event, "northbound-summit")
+    with tenancy_disabled():
+        session.add(
+            EventSpeaker(
+                org_id=second.org_id,
+                event_id=second.id,
+                speaker_id=rosa.id,
+                status=SpeakerStatus.ACCEPTED,
+            )
+        )
+        await session.commit()
+
+    listing = await client.get("/v1/portal/events", headers=_token(rosa.id, event.id))
+
+    assert listing.status_code == 200
+    rows = listing.json()
+    assert {row["slug"] for row in rows} == {event.slug, "northbound-summit"}
+    # Exactly one is the session's own event, and the token still names it.
+    assert [row["is_current"] for row in rows].count(True) == 1
+    assert next(row for row in rows if row["is_current"])["event_id"] == str(event.id)
+
+
+async def test_a_speaker_does_not_see_a_conference_they_are_not_on(
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """The other event belongs to the same organiser, which is not the fence."""
+    _headers, event, _form = cfp
+    rosa = await _add_speaker(session, event, "Rosa Lindqvist", "rosa@northbound.example")
+    await _second_event(session, event, "not-mine")
+
+    listing = await client.get("/v1/portal/events", headers=_token(rosa.id, event.id))
+
+    assert [row["slug"] for row in listing.json()] == [event.slug]
+
+
+async def test_switching_needs_a_participation_not_just_an_event_id(
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    _headers, event, _form = cfp
+    rosa = await _add_speaker(session, event, "Rosa Lindqvist", "rosa@northbound.example")
+    stranger = await _second_event(session, event, "stranger-event")
+
+    refused = await client.post(
+        "/v1/portal/switch",
+        headers=_token(rosa.id, event.id),
+        json={"event_id": str(stranger.id)},
+    )
+
+    assert refused.status_code == 404
+
+
+async def test_switching_returns_a_session_for_the_other_conference(
+    client: AsyncClient, session: AsyncSession, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    _headers, event, _form = cfp
+    rosa = await _add_speaker(session, event, "Rosa Lindqvist", "rosa@northbound.example")
+    second = await _second_event(session, event, "northbound-summit-2")
+    with tenancy_disabled():
+        session.add(
+            EventSpeaker(
+                org_id=second.org_id,
+                event_id=second.id,
+                speaker_id=rosa.id,
+                status=SpeakerStatus.ACCEPTED,
+            )
+        )
+        await session.commit()
+
+    switched = await client.post(
+        "/v1/portal/switch",
+        headers=_token(rosa.id, event.id),
+        json={"event_id": str(second.id)},
+    )
+
+    assert switched.status_code == 200
+    token = switched.json()["access_token"]
+    # The new token is a working session on the *other* conference.
+    home = await client.get("/v1/portal/home", headers={"Authorization": f"Bearer {token}"})
+    assert home.status_code == 200
+    assert home.json()["event"]["slug"] == "northbound-summit-2"

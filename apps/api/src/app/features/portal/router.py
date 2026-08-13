@@ -12,17 +12,18 @@ opening this on hotel wifi should wait for one round trip, not five.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, File, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core import storage
+from app.core.config import get_settings
 from app.core.deps import DbSession, PortalSpeaker
 from app.core.errors import ApiError, NotFoundError
-from app.core.tenancy import current_tenant, tenancy_disabled
+from app.core.tenancy import current_tenant, tenancy_disabled, tenant_scope
 from app.features.auth import service as auth_service
 from app.features.files import service as files
 from app.features.publishing import ics
@@ -750,6 +751,120 @@ class PortalLinkRead(BaseModel):
     #: client must build and copy the URL now or ask again — asking again
     #: rotates, which quietly revokes whatever was copied before.
     token: str
+
+
+class SpeakerEvent(BaseModel):
+    """One conference this speaker is part of."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    event_id: uuid.UUID
+    name: str
+    slug: str
+    starts_on: date
+    ends_on: date
+    status: SpeakerStatus
+    open_tasks: int
+    is_current: bool
+
+
+@router.get("/events", response_model=list[SpeakerEvent])
+async def my_events(session: DbSession, speaker: PortalSpeaker) -> list[SpeakerEvent]:
+    """Every conference this speaker is on, not only the one they are looking at.
+
+    A speaker session is scoped to one event, so until now a person speaking at
+    three of an organiser's conferences held three links, three sessions and
+    three portals, with nothing anywhere that named the other two.
+
+    Widened to the organisation, never past it: `tenant_scope` with no event is
+    still a fence, and `Speaker` is unique per `(org_id, email)`, so the same
+    person at a different organisation is a different row by design. Seeing
+    across that boundary needs a person-level identity this schema does not have
+    — and would mean one organiser's roster leaking into another's portal.
+    """
+    tenant = current_tenant()
+    with tenant_scope(org_id=tenant.org_id, event_id=None):
+        rows = (
+            await session.execute(
+                select(EventSpeaker.status, Event)
+                .join(Event, Event.id == EventSpeaker.event_id)
+                .where(EventSpeaker.speaker_id == speaker.speaker_id)
+                .order_by(Event.starts_on.desc())
+            )
+        ).all()
+
+        # What a speaker actually wants from a list of conferences is which one
+        # is asking something of them. One grouped query rather than one per row.
+        counted = (
+            await session.execute(
+                select(SpeakerTask.event_id, func.count(SpeakerTask.id))
+                .where(
+                    SpeakerTask.speaker_id == speaker.speaker_id,
+                    SpeakerTask.status.not_in([TaskStatus.COMPLETE, TaskStatus.SUBMITTED]),
+                )
+                .group_by(SpeakerTask.event_id)
+            )
+        ).all()
+        outstanding: dict[uuid.UUID, int] = {row[0]: row[1] for row in counted}
+
+    return [
+        SpeakerEvent(
+            event_id=event.id,
+            name=event.name,
+            slug=event.slug,
+            starts_on=event.starts_on,
+            ends_on=event.ends_on,
+            status=status,
+            open_tasks=int(outstanding.get(event.id, 0)),
+            is_current=event.id == speaker.event_id,
+        )
+        for status, event in rows
+    ]
+
+
+class SwitchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    event_id: uuid.UUID
+
+
+class SwitchResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    access_token: str
+    expires_in: int
+
+
+@router.post("/switch", response_model=SwitchResult)
+async def switch_event(
+    body: SwitchRequest, session: DbSession, speaker: PortalSpeaker
+) -> SwitchResult:
+    """Trade this session for one on another of the speaker's own conferences.
+
+    No new magic link and no second email: the caller has already proved who
+    they are, and the only question is whether this person is on that event.
+    Both halves are checked — the event belongs to the organisation the current
+    session is bound to, and there is an `EventSpeaker` row joining them to it —
+    so a token cannot be talked into an event its holder has no part in.
+    """
+    tenant = current_tenant()
+    with tenant_scope(org_id=tenant.org_id, event_id=None):
+        target = await session.get(Event, body.event_id)
+        member = await session.scalar(
+            select(EventSpeaker.id).where(
+                EventSpeaker.event_id == body.event_id,
+                EventSpeaker.speaker_id == speaker.speaker_id,
+            )
+        )
+    if target is None or member is None:
+        raise NotFoundError("You are not on that event.")
+
+    return SwitchResult(
+        access_token=auth_service.speaker_session_token(
+            speaker_id=speaker.speaker_id, event_id=target.id
+        ),
+        expires_in=get_settings().speaker_session_ttl_days * 24 * 60 * 60,
+    )
 
 
 @router.post("/link", response_model=PortalLinkRead)
