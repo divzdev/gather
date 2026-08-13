@@ -1,10 +1,4 @@
-import {
-    PublicShell,
-  calendarDate,
-  getPublic,
-  getPublicOptional,
-  type EventInfo,
-} from "../public";
+import { PublicShell, calendarDate, getPublic, getPublicOptional, type EventInfo } from "../public";
 import { Card, INK, MONO, SANS, display, trackHue } from "../chrome";
 import { NotPublished } from "../chrome";
 
@@ -74,10 +68,17 @@ export default async function Agenda({ params }: { params: Promise<{ slug: strin
     );
   }
 
+  // An attendee reads this page to plan their days, and a day with nothing on
+  // it is not a plan — it is scaffolding the organiser has not used yet. Skip
+  // empty days once anything is scheduled; if nothing is scheduled anywhere,
+  // keep them, because a wall of headings at least shows the shape to come.
+  const anyScheduled = data.days.some((day) => day.sessions.length > 0);
+  const days = anyScheduled ? data.days.filter((day) => day.sessions.length > 0) : data.days;
+
   return (
     <PublicShell event={data.event} slug={slug} active="Agenda">
       <div style={{ display: "grid", gap: 40 }}>
-        {data.days.map((day, dayIndex) => (
+        {days.map((day, dayIndex) => (
           <section key={day.id}>
             <h2
               style={{
