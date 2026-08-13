@@ -257,10 +257,50 @@ html.js [data-marketing] [data-rv].in .pair:nth-child(4) {transition-delay:.24s}
   [data-marketing] .fgrid {grid-template-columns:1fr 1fr}
   [data-marketing] .fbrand {grid-column:1/-1}
 }
+
+/* 03 · Assisted review. The vignette animates the actual mechanic rather than
+   decorating it: a pass over the proposal, three suggestions arriving with
+   their reasons, the values landing in the reviewer's own scorecard, and a
+   save button that is never pressed. That last part is the product's whole
+   argument, so it had to be the thing the eye ends on. */
+[data-marketing] .aip {margin-top:11px;border:1px solid rgba(125,140,255,.34);border-radius:9px;background:rgba(125,140,255,.06);overflow:hidden;position:relative}
+[data-marketing] .aih {display:flex;align-items:center;gap:7px;padding:7px 11px;border-bottom:1px solid rgba(125,140,255,.22);font-size:9.5px;font-weight:800;letter-spacing:.09em;color:#AEB8FF}
+[data-marketing] .aih .dot {width:5px;height:5px;border-radius:50%;background:var(--indigo);animation:aipulse 2.4s var(--e) infinite}
+@keyframes aipulse {0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+
+/* The read-through. A single line crossing the text once per cycle says
+   "it is looking at this" without a spinner, which would say nothing. */
+[data-marketing] .aiscan {position:absolute;left:0;right:0;height:34px;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(125,140,255,.16),transparent);animation:aiscan 9s var(--e) infinite;z-index:2}
+@keyframes aiscan {0%{top:-34px;opacity:0}4%{opacity:1}22%{top:100%;opacity:0}22.1%,100%{opacity:0}}
+[data-marketing] .airow {display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 11px;opacity:0;animation:airow 9s var(--e) infinite}
+[data-marketing] .airow+.airow {border-top:1px solid rgba(125,140,255,.14)}
+[data-marketing] .airow:nth-child(3) {animation-delay:.5s}
+[data-marketing] .airow:nth-child(4) {animation-delay:1s}
+@keyframes airow {0%,24%{opacity:0}30%,88%{opacity:1}96%,100%{opacity:0}}
+[data-marketing] .airow .n {font-size:11px;color:#C9CCDA;font-weight:600}
+[data-marketing] .airow .v {font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:#EBEDF7}
+[data-marketing] .airow .why {grid-column:1/-1;font-size:10.5px;line-height:1.45;color:#8E93A6}
+
+/* The refusal is the interesting sentence, so it is the only coloured one. */
+[data-marketing] .airow.hold .why {color:#FFB3B3}
+[data-marketing] .aifoot {display:flex;align-items:center;gap:8px;padding:8px 11px;border-top:1px solid rgba(125,140,255,.22);font-size:10px;color:#8E93A6}
+[data-marketing] .aibtn {margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.04em;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.9);color:#0A0B12;opacity:0;animation:airow 9s var(--e) 1.5s infinite}
+
+/* Never pressed. It breathes to draw the eye and then simply waits. */
+[data-marketing] .aiwait {width:6px;height:6px;border-radius:50%;background:var(--coral);animation:aipulse 2.4s var(--e) infinite}
+
+/* Hovering holds the loop. The page is full of things that move once and are
+   gone; being able to stop one and read it is the difference between a
+   demonstration and a claim. */
+[data-marketing] .shot:hover .aip *, [data-marketing] .shot:hover .aiscan {animation-play-state:paused}
+[data-marketing] .hintp {position:absolute;right:10px;top:10px;z-index:7;font-size:9.5px;font-weight:800;letter-spacing:.06em;padding:4px 9px;border-radius:999px;background:rgba(10,11,18,.82);color:#C9CCDA;border:1px solid rgba(255,255,255,.14);opacity:0;transition:opacity .22s var(--e)}
+[data-marketing] .shot:hover .hintp {opacity:1}
 @media(prefers-reduced-motion:reduce) {
   [data-marketing] .hline span, [data-marketing] [data-hero] {animation:none;transform:none;opacity:1}
   html.js [data-marketing] [data-rv] {opacity:1;transform:none;transition:none}
   html.js [data-marketing] [data-rv] :is(.fr, [data-marketing] .cl, [data-marketing] .vr, [data-marketing] .pair), html.js [data-marketing] [data-rv] .term .out {opacity:1;transform:none;transition:none}
   [data-marketing] .fr.cond, [data-marketing] .tst, [data-marketing] .dlg, [data-marketing] .clash, [data-marketing] .cfl, [data-marketing] .sc.mv, [data-marketing] .term .cur:after {animation:none;opacity:1}
+  [data-marketing] .airow, [data-marketing] .aibtn {animation:none;opacity:1}
+  [data-marketing] .aiscan, [data-marketing] .aih .dot, [data-marketing] .aiwait {animation:none;opacity:0}
   html.js [data-marketing] [data-rv]:not(.in) .pgb i {width:78%!important}
 }
