@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
@@ -47,6 +47,7 @@ function daysUntil(iso: string | null): number | null {
  *  come from the event; everything visual is the generated component's. */
 export default function OverviewPage() {
   const { chrome, toasts, toast, dismiss } = useConsoleChrome();
+  const queryClient = useQueryClient();
   const eventId = typeof window === "undefined" ? null : getEventId();
 
   const { data } = useQuery({
@@ -90,6 +91,28 @@ export default function OverviewPage() {
 
   const { stats } = useProgramStats();
 
+  /** The button used to toast "Nudges are queued in Messages" and queue
+   *  nothing anywhere — a success message for an action that never ran. This
+   *  is the real one: the same 24-hour-floored reminder the Tasks screen
+   *  sends, aimed at everyone with something past due. */
+  const sendReminders = useMutation({
+    mutationFn: (speakerIds: string[]) =>
+      authed<{ sent: number; skipped: number }>(`/events/${eventId}/tasks/nudge`, {
+        method: "POST",
+        body: { speaker_ids: speakerIds },
+      }),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["overdue-summary", eventId] });
+      toast(
+        result.sent === 0
+          ? `Nothing sent — all ${result.skipped} were reminded in the last 24 hours.`
+          : `${result.sent} reminder${result.sent === 1 ? "" : "s"} sent.` +
+              (result.skipped > 0 ? ` ${result.skipped} skipped, reminded within 24 hours.` : ""),
+      );
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
   // The overdue card named specific deliverables and speaker counts that were
   // fixture copy. Real rows, grouped by what is being chased.
   //
@@ -100,7 +123,9 @@ export default function OverviewPage() {
     queryKey: ["overdue-summary", eventId],
     enabled: eventId !== null,
     queryFn: () =>
-      authed<{ task_name: string; status: string }[]>(`/events/${eventId}/tasks/summary`),
+      authed<{ task_name: string; status: string; speaker_id: string }[]>(
+        `/events/${eventId}/tasks/summary`,
+      ),
   });
   const overdueRows = useMemo(() => {
     const counts = new Map<string, number>();
@@ -174,7 +199,15 @@ export default function OverviewPage() {
     // beside it lands outside the console entirely and above the chrome.
     firstRun: <FirstRun />,
 
-    nudge: () => toast("Nudges are queued in Messages. Nothing sends until you confirm."),
+    nudge: () => {
+      const ids = [
+        ...new Set(
+          (overdue ?? []).filter((row) => row.status === "overdue").map((row) => row.speaker_id),
+        ),
+      ];
+      if (ids.length === 0) return;
+      sendReminders.mutate(ids);
+    },
     toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),
   };
 
@@ -201,11 +234,14 @@ function keyDates(event: Event | null): KeyDate[] {
   }
 
   const at = (fraction: number) => new Date(closes.getTime() + span * fraction);
+  // Only the CFP close and event days are real records; the middle three are
+  // suggestions spaced across the window. Saying so is the difference between
+  // a plan and a fabrication.
   return [
     { date: closes, name: "CFP closes", fill: true },
-    { date: at(1 / 3), name: "Reviews close", fill: false },
-    { date: at(2 / 3), name: "Decisions out", fill: false },
-    { date: at(5 / 6), name: "Schedule live", fill: false },
+    { date: at(1 / 3), name: "Reviews close (suggested)", fill: false },
+    { date: at(2 / 3), name: "Decisions out (suggested)", fill: false },
+    { date: at(5 / 6), name: "Schedule live (suggested)", fill: false },
     { date: start, name: "Event days", fill: false },
   ];
 }

@@ -19,7 +19,14 @@ type Event = {
   ends_on: string;
   cfp_closes_at: string | null;
 };
-type Conflict = { severity: string; label: string; detail?: string | null };
+type Conflict = { severity: string; kind: string; label: string };
+
+/** What each conflict kind means, in words a first-time organiser reads cold. */
+const CONFLICT_KIND_WORDS: Record<string, string> = {
+  room: "room double-booked",
+  speaker: "speaker in two places at once",
+  track: "track overlaps itself",
+};
 type TaskRow = { status: string };
 
 /** Every status the lifecycle has, so a count can never quietly omit one. */
@@ -121,19 +128,23 @@ export function useProgramStats(): { stats: ProgramStats; eventId: string | null
       );
       const [page, event, conflicts, sessions, tasks, byStatusPairs, pending, ready] =
         await Promise.all([
-        authed<Page>(`/events/${eventId}/submissions?per_page=1`),
-        authed<Event>(`/events/${eventId}`),
-        authed<Conflict[]>(`/events/${eventId}/conflicts`).catch(() => [] as Conflict[]),
-        authed<{ id: string }[]>(`/events/${eventId}/sessions`).catch(() => [] as { id: string }[]),
-        authed<TaskRow[]>(`/events/${eventId}/tasks/summary`).catch(() => [] as TaskRow[]),
-        counts,
-        authed<{ total: number }>(`/events/${eventId}/submissions/pending-decisions`).catch(() => ({
-          total: 0,
-        })),
-        authed<Page>(
-          `/events/${eventId}/submissions?per_page=1&filter[status]=in_review&filter[reviewed]=true`,
-        ),
-      ]);
+          authed<Page>(`/events/${eventId}/submissions?per_page=1`),
+          authed<Event>(`/events/${eventId}`),
+          authed<Conflict[]>(`/events/${eventId}/conflicts`).catch(() => [] as Conflict[]),
+          authed<{ id: string }[]>(`/events/${eventId}/sessions`).catch(
+            () => [] as { id: string }[],
+          ),
+          authed<TaskRow[]>(`/events/${eventId}/tasks/summary`).catch(() => [] as TaskRow[]),
+          counts,
+          authed<{ total: number }>(`/events/${eventId}/submissions/pending-decisions`).catch(
+            () => ({
+              total: 0,
+            }),
+          ),
+          authed<Page>(
+            `/events/${eventId}/submissions?per_page=1&filter[status]=in_review&filter[reviewed]=true`,
+          ),
+        ]);
       // Computed here rather than in render: the countdown reads the clock, and
       // an impure read during render is a re-render hazard.
       const closesAt =
@@ -150,9 +161,12 @@ export function useProgramStats(): { stats: ProgramStats; eventId: string | null
         sessions: sessions.length,
         conflicts: conflicts.filter((row) => row.severity === "hard").length,
         conflictsAll: conflicts.length,
+        // `label` is the colliding room/speaker/track's name; the API sends no
+        // prose. It used to fall back to the label again, so the overview card
+        // read "Main Stage — Main Stage" and explained nothing.
         conflictList: conflicts.slice(0, 3).map((row) => ({
           label: row.label,
-          detail: row.detail ?? row.label,
+          detail: CONFLICT_KIND_WORDS[row.kind] ?? `${row.kind} conflict`,
         })),
         overdueTasks: tasks.filter((row) => row.status === "overdue").length,
       };
@@ -202,7 +216,7 @@ export function stripData(stats: ProgramStats): {
   //: An em-dash rather than a skeleton: the strip is one line of small mono
   //: text, so a shimmer would be more motion than the thing it stands in for.
   //: It cannot be mistaken for a count, which is the whole point.
-  const known = <T,>(value: T): T | string => (stats.ready ? value : "—");
+  const known = <T>(value: T): T | string => (stats.ready ? value : "—");
   return {
     subCount: known(stats.total),
     unreviewedCount: known(stats.unreviewed),
