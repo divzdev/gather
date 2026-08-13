@@ -14,7 +14,7 @@ import { ParticipationBand, type Participation as ParticipationState } from "./p
 import { PortalComments, useFeedbackCount } from "./comments";
 import { useTheme } from "@/components/ThemeProvider";
 import { API_BASE_URL, ApiError } from "@/lib/api";
-import { getSpeakerToken, portal, portalBlobUrl, portalDownload } from "@/lib/session";
+import { getSpeakerToken, getToken, portal, portalBlobUrl, portalDownload } from "@/lib/session";
 import type { ThemeMode } from "@/lib/theme";
 
 type PortalFile = {
@@ -461,6 +461,10 @@ export default function PortalPage() {
     !signedIn || (error instanceof ApiError && (error.status === 401 || error.status === 403));
 
   if (needsSignIn) {
+    // An organiser who clicked "Speaker portal" in the console rail lands here
+    // holding a staff token but no speaker session — a dead end unless the
+    // page says how previewing actually works.
+    const isStaff = typeof window !== "undefined" && getToken() !== null;
     return (
       <PortalMessage>
         <strong style={{ font: "600 18px 'IBM Plex Sans',sans-serif" }}>
@@ -472,6 +476,21 @@ export default function PortalPage() {
         <a href="/login" style={{ color: "var(--sg,#E04E4E)" }}>
           Send me a link
         </a>
+        {isStaff ? (
+          <span
+            style={{
+              font: "400 12.5px/1.6 'IBM Plex Sans',sans-serif",
+              color: "var(--i3,#6B7B84)",
+            }}
+          >
+            You are signed in as staff, and staff have no portal of their own. To see what a speaker
+            sees, open anyone on the{" "}
+            <a href="/admin/speakers" style={{ color: "var(--sg,#E04E4E)" }}>
+              Speakers screen
+            </a>{" "}
+            and use “Open portal as speaker”.
+          </span>
+        ) : null}
       </PortalMessage>
     );
   }
@@ -705,7 +724,9 @@ export default function PortalPage() {
       talk === null
         ? "Your session time is not set yet."
         : talk.starts_at === null
-          ? `${talk.title} · time to be confirmed`
+          ? // The title is the card's heading two lines up; repeating it here
+            // read as a glitch. What this line owes the speaker is the when.
+            "Time to be confirmed — we email you the moment it is set."
           : `${DAY.format(new Date(talk.starts_at))} · ${new Date(
               talk.starts_at,
             ).toLocaleTimeString("en-GB", {
