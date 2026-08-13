@@ -124,8 +124,18 @@ def create_app() -> FastAPI:
     # HEAD as well as GET: Starlette's built-in route answered both, and a probe
     # that only asks whether the spec is there should not meet a 405.
     @app.api_route("/v1/openapi.json", methods=["GET", "HEAD"], include_in_schema=False)
-    async def openapi_spec() -> JSONResponse:
-        return JSONResponse(app.openapi(), headers={"Cache-Control": "no-store"})
+    async def openapi_spec(request: Request) -> JSONResponse:
+        schema = app.openapi()
+        # FastAPI injects the stripped prefix as a `servers` entry inside its own
+        # spec route, not in `app.openapi()` — so replacing the route silently
+        # dropped it, and "Try it out" on the deployed docs called /v1/... at a
+        # host that serves the web app there. Idempotent: the schema is cached.
+        prefix = request.scope.get("root_path", "").rstrip("/")
+        if prefix:
+            servers = schema.setdefault("servers", [])
+            if not any(entry.get("url") == prefix for entry in servers):
+                servers.insert(0, {"url": prefix})
+        return JSONResponse(schema, headers={"Cache-Control": "no-store"})
 
     app.add_middleware(
         CORSMiddleware,
