@@ -90,3 +90,81 @@ input::placeholder {
   outline: 2px solid var(--sg);
   outline-offset: 2px;
 }
+
+/* ── Console on a phone ────────────────────────────────────────────────────
+ *
+ * The console is a desktop product and the drag-drop screens will never be
+ * anything else. But reading a count, approving a session or checking who has
+ * not sent a headshot from a hallway has to work, and at 390px it did not:
+ * 56px of horizontal padding out of 326px, stat cards pinned to a 190px
+ * three-column grid inside a 270px column, and side-by-side panels each too
+ * narrow to read.
+ *
+ * These are overrides rather than fixes at source because the console screens
+ * are generated from prototypes and carry inline styles, which no stylesheet
+ * beats without `!important`. The selectors match on the inline style itself,
+ * so each one names the exact declaration it is overriding and stops matching
+ * if that declaration changes — which is the failure mode we want, rather than
+ * a structural selector that silently keeps matching the wrong element.
+ *
+ * The Rail already collapses itself below 900px; it is not part of this. */
+@media (max-width: 720px) {
+  /* 56px of side padding is a fifth of the usable width. */
+  [data-screen-label] [style*="padding: 20px 28px 80px"] {
+    padding: 14px 14px 72px !important;
+  }
+
+  /* Card strips pinned to a fixed minimum overflow into a horizontal scroll
+     the eye reads as "cut off" rather than "scrollable". One per row instead.
+     Matched on `repeat(` specifically: a bare `minmax(200px` also matches the
+     submissions table row, whose ten columns collapsed into one and stacked
+     every cell on top of the next. Card strips are the only grids written as
+     a repeat. */
+  [data-screen-label] [style*="grid-template-columns: repeat(2, minmax("],
+  [data-screen-label] [style*="grid-template-columns: repeat(3, minmax("],
+  [data-screen-label] [style*="grid-template-columns: repeat(4, minmax("] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Two- and three-pane page layouts stack. A 325px column split three ways
+     is three columns of nothing. */
+  [data-screen-label] [style*="grid-template-columns: 1fr 250px"],
+  [data-screen-label] [style*="grid-template-columns: 1fr 280px"],
+  [data-screen-label] [style*="grid-template-columns: 1.2fr 1fr 1.2fr"],
+  [data-screen-label] [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* The agenda is three panes beside each other: tray, room-by-time grid,
+     conflict inspector. At 325px the two fixed-width panes took all of it and
+     squeezed the grid to zero, so the middle of the screen was empty and the
+     inspector was sliced in half. Stacked, each pane gets the full width and
+     the grid keeps its own horizontal scroll, which a room-by-time grid needs
+     on any screen. Dragging a session on a phone remains out of scope; reading
+     the day and opening a conflict does not. */
+  [data-screen-label="Agenda builder"] [style*="display: flex; min-height: 0px"] {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+  [data-screen-label="Agenda builder"] [style*="width: 240px"],
+  [data-screen-label="Agenda builder"] [style*="width: 280px"] {
+    width: 100% !important;
+    flex: 0 0 auto !important;
+  }
+
+  /* Tables keep their columns and scroll sideways, which is the honest
+     behaviour on a phone — but the scroll has to be reachable by thumb and
+     obvious, rather than clipped by an ancestor that hid its overflow. */
+  [data-screen-label] [style*="overflow-x: auto"],
+  [data-screen-label] [style*="overflow: auto"] {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* A 28px control is a target most thumbs miss. This lifts only the ones that
+     carry a label; icon-only buttons keep their size so toolbars do not grow
+     a second row. */
+  [data-screen-label] button:not([aria-label]),
+  [data-screen-label] a:not([aria-label]) {
+    min-height: 36px;
+  }
+}
