@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 
 import { openCommandPalette } from "@/components/console/CommandPalette";
+import { SideDrawer } from "@/components/console/SideDrawer";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Submissions, type SubmissionsData } from "@/components/design/Submissions";
@@ -31,6 +32,24 @@ type Submission = {
   speakers: Speaker[];
 };
 type Member = { user_id: string; name: string; email: string; role: string };
+
+type DupePair = {
+  left_id: string;
+  left_code: string;
+  left_title: string;
+  right_id: string;
+  right_code: string;
+  right_title: string;
+  text_similarity: number;
+  is_duplicate: boolean;
+  confidence: string;
+  reason: string;
+};
+type DupesProposal = {
+  id: string;
+  status: string;
+  output: { pairs?: DupePair[]; summary?: string; is_stub?: boolean; error?: string };
+};
 
 /** Who can be a proposal's point of contact — reviewers only score. */
 const COORDINATING_ROLES = new Set(["owner", "admin", "coordinator"]);
@@ -352,6 +371,16 @@ export default function SubmissionsPage() {
       void queryClient.invalidateQueries({ queryKey: ["program-stats", eventId] });
       toast(`“${result.title}” is a session now — waiting in the agenda's unscheduled tray.`);
     },
+    onError: (error: Error) => toast(error.message),
+  });
+
+  /** The duplicates proposal: shortlist by text similarity server-side, then a
+   *  model judges which pairs are the same talk twice. Read-only by design —
+   *  there is no merge to accept, so the drawer shows the pairs and the
+   *  organiser acts by hand. The last missing front door on the AI feature. */
+  const [dupesOpen, setDupesOpen] = useState(false);
+  const findDupes = useMutation({
+    mutationFn: () => authed<DupesProposal>(`/events/${eventId}/ai/duplicates`, { method: "POST" }),
     onError: (error: Error) => toast(error.message),
   });
 
@@ -702,6 +731,10 @@ export default function SubmissionsPage() {
     bulkRej: () => decide.mutate({ ids: selected, outcome: "rejected" }),
     bulkAssign: () => toast("Reviewer assignment lives on the Review screen."),
     exportCsv,
+    onDupes: () => {
+      setDupesOpen(true);
+      if (!findDupes.isPending) findDupes.mutate();
+    },
     exportXlsx,
 
     firstRun: false,
@@ -828,5 +861,157 @@ export default function SubmissionsPage() {
     })),
   };
 
-  return <Submissions d={screen} />;
+  const dupes = findDupes.data;
+  const dupePairs = dupes?.output.pairs ?? [];
+  const likely = dupePairs.filter((pair) => pair.is_duplicate);
+  const unlikely = dupePairs.filter((pair) => !pair.is_duplicate);
+  const openFromDupes = (id: string) => {
+    setDupesOpen(false);
+    setOpenId(id);
+  };
+  const pairCard = (pair: DupePair, tone: "warn" | "quiet") => (
+    <div
+      key={`${pair.left_id}-${pair.right_id}`}
+      style={{
+        border: tone === "warn" ? "1px solid var(--pdl,#EFD3B6)" : "1px solid var(--ln)",
+        background: tone === "warn" ? "var(--pdw,#F9EDDF)" : "var(--cd)",
+        borderRadius: 10,
+        padding: "12px 14px",
+      }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
+        {(
+          [
+            [pair.left_id, pair.left_code, pair.left_title],
+            [pair.right_id, pair.right_code, pair.right_title],
+          ] as const
+        ).map(([id, code, title]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => openFromDupes(id)}
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "baseline",
+              background: "none",
+              border: "none",
+              padding: 0,
+              textAlign: "left",
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ font: "500 11px var(--font-plex-mono)", color: "var(--i4)" }}>
+              {code}
+            </span>
+            <span
+              style={{
+                font: "500 13px var(--font-plex-sans)",
+                color: "var(--sg,#E04E4E)",
+                textDecoration: "underline",
+              }}
+            >
+              {title}
+            </span>
+          </button>
+        ))}
+      </div>
+      <p
+        style={{
+          font: "400 12px/1.5 var(--font-plex-sans)",
+          color: "var(--i3)",
+          margin: 0,
+        }}
+      >
+        {pair.reason} · {pair.confidence} confidence · {Math.round(pair.text_similarity * 100)}%
+        text match
+      </p>
+    </div>
+  );
+
+  return (
+    <>
+      <Submissions d={screen} />
+      <SideDrawer
+        open={dupesOpen}
+        title="Possible duplicates"
+        subtitle="A shortlist by text similarity, judged by the model. Read-only on purpose: withdrawing somebody's talk is not a decision to hand to a machine — open a pair and decide yourself."
+        onClose={() => setDupesOpen(false)}
+        width="min(560px, 94vw)"
+      >
+        <div style={{ display: "grid", gap: 14 }}>
+          {findDupes.isPending ? (
+            <p style={{ font: "400 13px var(--font-plex-sans)", color: "var(--i3)", margin: 0 }}>
+              Reading the submissions…
+            </p>
+          ) : null}
+          {dupes?.status === "failed" ? (
+            <p
+              role="alert"
+              style={{ font: "500 12.5px var(--font-plex-sans)", color: "var(--cn)", margin: 0 }}
+            >
+              {typeof dupes.output.error === "string"
+                ? dupes.output.error
+                : "The model could not answer that."}
+            </p>
+          ) : null}
+          {dupes !== undefined && dupes.status !== "failed" ? (
+            <>
+              {dupes.output.is_stub === true ? (
+                <p
+                  style={{
+                    font: "400 12px/1.5 var(--font-plex-sans)",
+                    color: "var(--pd)",
+                    margin: 0,
+                  }}
+                >
+                  No model is configured, so this is a placeholder answer rather than a reading of
+                  the submissions. Set ANTHROPIC_API_KEY to get a real one.
+                </p>
+              ) : null}
+              <p
+                style={{
+                  font: "400 12.5px/1.6 var(--font-plex-sans)",
+                  color: "var(--i2)",
+                  margin: 0,
+                }}
+              >
+                {dupes.output.summary}
+              </p>
+              {likely.length > 0 ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <span
+                    style={{
+                      font: "600 10px var(--font-plex-condensed),sans-serif",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "var(--pd)",
+                    }}
+                  >
+                    Likely the same talk · {likely.length}
+                  </span>
+                  {likely.map((pair) => pairCard(pair, "warn"))}
+                </div>
+              ) : null}
+              {unlikely.length > 0 ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <span
+                    style={{
+                      font: "600 10px var(--font-plex-condensed),sans-serif",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "var(--i4)",
+                    }}
+                  >
+                    Looked at and cleared · {unlikely.length}
+                  </span>
+                  {unlikely.map((pair) => pairCard(pair, "quiet"))}
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      </SideDrawer>
+    </>
+  );
 }

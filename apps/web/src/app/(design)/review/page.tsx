@@ -119,6 +119,13 @@ export default function ReviewPage() {
    *  submission rather than something a person requested.
    */
   const [proposal, setProposal] = useState<Proposal | null>(null);
+  /** Set when "Use these" filled the form from this proposal. The next save
+   *  then goes through the accept endpoint — same `review.score()` underneath,
+   *  but the proposal row resolves to `accepted` instead of sitting `ready`
+   *  forever, so the ai_proposals ledger stays honest about what was used. */
+  const [usedProposal, setUsedProposal] = useState<{ id: string; submissionId: string } | null>(
+    null,
+  );
 
   const suggest = useMutation({
     mutationFn: (submissionId: string) =>
@@ -149,16 +156,35 @@ export default function ReviewPage() {
   };
 
   const save = useMutation({
-    mutationFn: async (submissionId: string) =>
-      authed(`/events/${eventId}/review/submissions/${submissionId}/scores?round_id=${round?.id}`, {
-        method: "PUT",
-        body: {
-          values: scores[submissionId] ?? {},
-          comment: comments[submissionId] ?? null,
-          conflict_of_interest: false,
+    mutationFn: async (submissionId: string) => {
+      // A save that started from "Use these" adopts the proposal instead:
+      // the same review.score() runs server-side with these exact (possibly
+      // edited) values under the reviewer's id, and the proposal is resolved.
+      if (usedProposal !== null && usedProposal.submissionId === submissionId) {
+        return authed(`/events/${eventId}/ai/proposals/${usedProposal.id}/accept`, {
+          method: "POST",
+          body: {
+            review_round_id: round?.id,
+            submission_id: submissionId,
+            values: scores[submissionId] ?? {},
+            comment: comments[submissionId] ?? null,
+          },
+        });
+      }
+      return authed(
+        `/events/${eventId}/review/submissions/${submissionId}/scores?round_id=${round?.id}`,
+        {
+          method: "PUT",
+          body: {
+            values: scores[submissionId] ?? {},
+            comment: comments[submissionId] ?? null,
+            conflict_of_interest: false,
+          },
         },
-      }),
-    onSuccess: () => {
+      );
+    },
+    onSuccess: (_result, submissionId) => {
+      if (usedProposal?.submissionId === submissionId) setUsedProposal(null);
       void queryClient.invalidateQueries({ queryKey: ["review-queue", eventId, round?.id] });
       void queryClient.invalidateQueries({ queryKey: ["program-stats", eventId] });
     },
@@ -175,6 +201,11 @@ export default function ReviewPage() {
   const move = (delta: number) => {
     setIndex((current) => Math.min(Math.max(0, current + delta), Math.max(0, queue.length - 1)));
     setFocus(0);
+    // The suggestion belongs to the submission it was asked about. Without
+    // this, requesting scores on one proposal and pressing j showed them —
+    // reasons and all — beside the next proposal, as if they were its reading.
+    setProposal(null);
+    setUsedProposal(null);
   };
 
   const setScore = (criterionId: string, value: number) => {
@@ -365,10 +396,19 @@ export default function ReviewPage() {
           ),
         },
       }));
+      setUsedProposal({ id: proposal.id, submissionId: current.submission_id });
       toast("Scores filled in. Adjust anything you disagree with, then save.");
     },
     aiDiscard: () => {
+      // Recorded server-side too, so the proposals ledger distinguishes
+      // "discarded" from "asked for and never resolved".
+      if (proposal !== null && proposal.status === "ready") {
+        void authed(`/events/${eventId}/ai/proposals/${proposal.id}/discard`, {
+          method: "POST",
+        }).catch(() => undefined);
+      }
       setProposal(null);
+      setUsedProposal(null);
       toast("Suggestion discarded.");
     },
 
