@@ -14,6 +14,15 @@ import { Rail } from "@/components/console/Rail";
 export type SessionsData = {
   readonly conflictCount: React.ReactNode;
   readonly addPart: (event: React.SyntheticEvent) => void;
+  /** Bound by hand: the roster typeahead. The tab shipped as a dead input —
+   *  no search, Add stubbed — and these carry the real results and the empty
+   *  answer ("nobody matches") that an input owes the person typing into it. */
+  readonly partHits: readonly {
+    readonly n: React.ReactNode;
+    readonly sub: React.ReactNode;
+    readonly onPick: (event: React.SyntheticEvent) => void;
+  }[];
+  readonly partEmpty: React.ReactNode;
   readonly bulkApproval: (event: React.SyntheticEvent) => void;
   readonly bulkFormat: (event: React.SyntheticEvent) => void;
   readonly bulkTrack: (event: React.SyntheticEvent) => void;
@@ -222,14 +231,6 @@ export type SessionsData = {
   };
   readonly tabDet: (event: React.SyntheticEvent) => void;
   readonly tabPar: (event: React.SyntheticEvent) => void;
-  readonly tabs: readonly {
-    readonly bd: string;
-    readonly bg: string;
-    readonly c: React.ReactNode;
-    readonly fg: string;
-    readonly n: React.ReactNode;
-    readonly on: (event: React.SyntheticEvent) => void;
-  }[];
   readonly titleBd: string;
   readonly titleCount: React.ReactNode;
   readonly toasts: readonly {
@@ -1095,29 +1096,9 @@ export function Sessions({ d }: { d: SessionsData }) {
                   </>
                 ) : null}{" "}
               </div>{" "}
-              {(d.tabs ?? []).map((tb, tbIndex) => (
-                <Fragment key={tbIndex}>
-                  {" "}
-                  <button
-                    onClick={tb.on}
-                    style={{
-                      height: "36px",
-                      padding: "0 12px",
-                      borderRadius: "999px",
-                      background: tb.bg,
-                      border: `1px solid ${tb.bd}`,
-                      font: "500 12px 'IBM Plex Sans',sans-serif",
-                      color: tb.fg,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {tb.n}{" "}
-                    <span style={{ font: "500 10.5px 'IBM Plex Mono',monospace", opacity: ".75" }}>
-                      {tb.c}
-                    </span>
-                  </button>{" "}
-                </Fragment>
-              ))}{" "}
+              {/* The drawer's Detail/Speakers tabs used to render here too, as dead
+                  toolbar chips showing another surface's state. The drawer keeps its
+                  own tabs; the toolbar keeps none. */}{" "}
             </div>{" "}
             <div
               style={{
@@ -2232,7 +2213,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                           Add
                         </button>{" "}
                       </div>{" "}
-                      <div
+                      {(d.partHits ?? []).length > 0 ? (<div style={{border: "1px solid var(--ln,#E1E7E9)", borderRadius: "8px", overflow: "hidden", marginBottom: "8px"}}>{(d.partHits ?? []).map((hit, hitIndex) => (<button key={hitIndex} onClick={hit.onPick} style={{display: "flex", alignItems: "baseline", gap: "8px", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", borderTop: hitIndex === 0 ? "none" : "1px solid var(--sk,#EDF1F2)", background: "var(--cd,#FFFFFF)", cursor: "pointer"}}><span style={{font: "500 13px 'IBM Plex Sans',sans-serif", color: "var(--ik,#16232B)"}}>{hit.n}</span><span style={{font: "400 11.5px 'IBM Plex Mono',monospace", color: "var(--i4,#99A6AD)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{hit.sub}</span></button>))}</div>) : d.partEmpty != null ? (<div style={{font: "400 12px 'IBM Plex Sans',sans-serif", color: "var(--i4,#99A6AD)", padding: "2px 2px 8px"}}>{d.partEmpty}</div>) : null}<div
                         style={{
                           font: "400 11.5px 'IBM Plex Sans',sans-serif",
                           color: "var(--i4,#99A6AD)",

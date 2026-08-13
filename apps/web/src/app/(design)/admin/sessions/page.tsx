@@ -237,6 +237,15 @@ export default function SessionsPage() {
     onError: (error: Error) => toast(error.message),
   });
 
+  // The event roster, fetched once and filtered as the organiser types in the
+  // Participants tab. Demo scale (≤80 people) makes client-side filtering the
+  // honest choice over a search endpoint.
+  const { data: roster } = useQuery({
+    queryKey: ["speakers", eventId],
+    queryFn: () => authed<{ speaker_id: string; name: string; email: string; company: string | null }[]>(`/events/${eventId}/speakers`),
+    enabled: eventId !== null,
+  });
+
   const patch = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
       authed(`/events/${eventId}/sessions/${id}`, { method: "PATCH", body }),
@@ -722,17 +731,7 @@ export default function SessionsPage() {
     onStartTime: (event: React.SyntheticEvent) =>
       setStart(startDay === "" ? firstDay : startDay, (event.target as HTMLInputElement).value),
 
-    tabs: [
-      { key: "detail", label: "Detail" },
-      { key: "participants", label: "Speakers" },
-    ].map((entry) => ({
-      n: entry.label,
-      c: entry.key === "participants" ? (open?.speakers.length ?? 0) : 0,
-      on: () => setTab(entry.key as "detail" | "participants"),
-      fg: tab === entry.key ? "var(--ik,#16232B)" : "var(--i3,#6B7B84)",
-      bd: tab === entry.key ? "var(--sg,#E04E4E)" : "transparent",
-      bg: tab === entry.key ? "var(--sw,#FFEAE6)" : "none",
-    })),
+    // The drawer owns its tabs; the toolbar copies of them are gone.
     tabDet: () => setTab("detail"),
     tabPar: () => setTab("participants"),
     onDet: tab === "detail",
@@ -753,13 +752,73 @@ export default function SessionsPage() {
         .slice(0, 2)
         .toUpperCase(),
       role: speaker.role,
-      onX: notBuilt("Removing a speaker"),
+      onX: () => {
+        if (open === null) return;
+        patch.mutate({
+          id: open.id,
+          body: {
+            speaker_ids: open.speakers
+              .filter((sp) => sp.id !== speaker.id)
+              .map((sp) => sp.id),
+          },
+        });
+      },
     })),
     partN: open?.speakers.length ?? 0,
     partDraft,
     onPartDraft: (event: React.SyntheticEvent) =>
       setPartDraft((event.target as HTMLInputElement).value),
-    addPart: notBuilt("Adding a speaker to a session"),
+    // Typeahead over the roster: the tab was a dead input before — typing
+    // searched nothing and Add fired a not-built notice.
+    partHits:
+      open === null || partDraft.trim() === ""
+        ? []
+        : (roster ?? [])
+            .filter((person) => !open.speakers.some((sp) => sp.id === person.speaker_id))
+            .filter((person) => {
+              const q = partDraft.trim().toLowerCase();
+              return (
+                person.name.toLowerCase().includes(q) ||
+                person.email.toLowerCase().includes(q) ||
+                (person.company ?? "").toLowerCase().includes(q)
+              );
+            })
+            .slice(0, 6)
+            .map((person) => ({
+              n: person.name,
+              sub: [person.company, person.email].filter(Boolean).join(" · "),
+              onPick: () => {
+                if (open === null) return;
+                setPartDraft("");
+                patch.mutate({
+                  id: open.id,
+                  body: {
+                    speaker_ids: [...open.speakers.map((sp) => sp.id), person.speaker_id],
+                  },
+                });
+              },
+            })),
+    partEmpty:
+      partDraft.trim() !== "" ? "No one on the roster matches. People join the roster from the Speakers screen." : null,
+    addPart: () => {
+      // Add = take the top match; picking from the list does the same thing.
+      if (open === null) return;
+      const q = partDraft.trim().toLowerCase();
+      const hit = (roster ?? []).find(
+        (person) =>
+          !open.speakers.some((sp) => sp.id === person.speaker_id) &&
+          (person.name.toLowerCase().includes(q) || person.email.toLowerCase().includes(q)),
+      );
+      if (q === "" || hit === undefined) {
+        toast("No one on the roster matches. Add them on the Speakers screen first.");
+        return;
+      }
+      setPartDraft("");
+      patch.mutate({
+        id: open.id,
+        body: { speaker_ids: [...open.speakers.map((sp) => sp.id), hit.speaker_id] },
+      });
+    },
 
     optOpen,
     togOpt: () => setOptOpen((current) => !current),

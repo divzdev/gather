@@ -116,6 +116,10 @@ class SessionPatch(BaseModel):
     tags: list[str] | None = Field(default=None, max_length=MAX_TAGS)
     expertise_level: ExpertiseLevel | None = None
     language: str | None = Field(default=None, max_length=40)
+    #: Replace-all, mirroring create. Unset leaves the speakers alone; an empty
+    #: list removes everyone. The Participants tab was a dead input until this
+    #: existed — the API could attach speakers at creation and never again.
+    speaker_ids: list[uuid.UUID] | None = None
 
 
 @router.post("", status_code=201)
@@ -185,8 +189,31 @@ async def patch_session(
     if "tags" in changes and changes["tags"] is not None:
         changes["tags"] = _clean_tags(changes["tags"])
 
+    speaker_ids = changes.pop("speaker_ids", None)
+
     for key, value in changes.items():
         setattr(talk, key, value)
+
+    if speaker_ids is not None:
+        for speaker_id in speaker_ids:
+            await _require(session, Speaker, speaker_id, "speaker")
+        # ORM deletes, not a bulk statement: bulk DELETE bypasses the tenancy
+        # guard, and a session has at most a handful of speakers anyway.
+        existing = (
+            (
+                await session.execute(
+                    select(SessionSpeaker).where(SessionSpeaker.session_id == talk.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for row in existing:
+            await session.delete(row)
+        await session.flush()
+        for index, speaker_id in enumerate(dict.fromkeys(speaker_ids)):
+            session.add(SessionSpeaker(session_id=talk.id, speaker_id=speaker_id, sort_order=index))
+
     await session.flush()
     return {"id": str(talk.id), "title": talk.title, "slug": talk.slug}
 

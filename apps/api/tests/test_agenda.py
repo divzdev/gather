@@ -646,3 +646,59 @@ async def test_a_placement_whose_time_is_not_on_its_day_is_refused(
     # And the session is untouched, rather than half-moved.
     listed = await client.get(f"/v1/events/{event.id}/schedule/draft", headers=headers)
     assert str(ids["talk0"]) in [row["id"] for row in listed.json()["unscheduled"]]
+
+
+async def test_patching_speaker_ids_replaces_clears_and_dedupes(
+    client: AsyncClient,
+    session: AsyncSession,
+    grid: tuple[dict[str, str], Event, dict[str, uuid.UUID]],
+) -> None:
+    """The Participants tab writes through PATCH speaker_ids: the list replaces
+    what was there, an empty list clears it, and a duplicated id lands once."""
+    headers, event, ids = grid
+
+    with tenancy_disabled():
+        maren = Speaker(org_id=event.org_id, name="Maren Okafor", email="maren@delta.example")
+        session.add(maren)
+        await session.flush()
+        session.add(
+            EventSpeaker(
+                org_id=event.org_id,
+                event_id=event.id,
+                speaker_id=maren.id,
+                status=SpeakerStatus.ACCEPTED,
+            )
+        )
+        await session.commit()
+
+    url = f"/v1/events/{event.id}/sessions/{ids['talk1']}"
+
+    def names(rows: list[dict[str, object]]) -> list[str]:
+        row = next(r for r in rows if r["id"] == str(ids["talk1"]))
+        return [s["name"] for s in row["speakers"]]  # type: ignore[index, union-attr]
+
+    # replace (talk1 starts with Rosa from the fixture) — duplicate id sent once
+    patched = await client.patch(
+        url,
+        headers=headers,
+        json={"speaker_ids": [str(maren.id), str(maren.id)]},
+    )
+    assert patched.status_code == 200, patched.text
+    listed = (await client.get(f"/v1/events/{event.id}/sessions", headers=headers)).json()
+    rows = listed["data"] if isinstance(listed, dict) else listed
+    assert names(rows) == ["Maren Okafor"]
+
+    # clear
+    cleared = await client.patch(url, headers=headers, json={"speaker_ids": []})
+    assert cleared.status_code == 200, cleared.text
+    listed = (await client.get(f"/v1/events/{event.id}/sessions", headers=headers)).json()
+    rows = listed["data"] if isinstance(listed, dict) else listed
+    assert names(rows) == []
+
+    # a patch that says nothing about speakers leaves them alone
+    await client.patch(url, headers=headers, json={"speaker_ids": [str(ids["rosa"])]})
+    untouched = await client.patch(url, headers=headers, json={"title": "Spot fleets, renamed"})
+    assert untouched.status_code == 200, untouched.text
+    listed = (await client.get(f"/v1/events/{event.id}/sessions", headers=headers)).json()
+    rows = listed["data"] if isinstance(listed, dict) else listed
+    assert names(rows) == ["Rosa Lindqvist"]
