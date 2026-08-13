@@ -114,25 +114,74 @@ input::placeholder {
     padding: 14px 14px 72px !important;
   }
 
-  /* Card strips pinned to a fixed minimum overflow into a horizontal scroll
-     the eye reads as "cut off" rather than "scrollable". One per row instead.
-     Matched on `repeat(` specifically: a bare `minmax(200px` also matches the
-     submissions table row, whose ten columns collapsed into one and stacked
-     every cell on top of the next. Card strips are the only grids written as
-     a repeat. */
+  /* Every two- and three-track layout in the console, stacked.
+   *
+   * This list is not a set of patches for the screens somebody happened to
+   * look at. It is every `grid-template-columns` in `components/design`,
+   * enumerated from source and then split by track count: two or three tracks
+   * is a page layout and stacks, seven or more is a table row or the month
+   * calendar and keeps its columns. Nothing in between exists.
+   *
+   * Tables are deliberately left to scroll sideways. Collapsing a ten-column
+   * row is what stacked every cell on top of the next the first time this was
+   * attempted, and a table that scrolls is the honest thing on a phone anyway.
+   *
+   * The rail spine is also `auto minmax(0px, 1fr)`, two tracks, and must not
+   * stack. It is safe because it sits on the `[data-screen-label]` element
+   * itself and these selectors only reach descendants. */
+  [data-screen-label] [style*="grid-template-columns: 1fr 1fr"],
+  [data-screen-label] [style*="grid-template-columns: 1fr 250px"],
+  [data-screen-label] [style*="grid-template-columns: 1.2fr 1fr 1.2fr"],
+  [data-screen-label] [style*="grid-template-columns: 130px 1fr"],
+  [data-screen-label] [style*="grid-template-columns: 150px 1fr"],
+  [data-screen-label] [style*="grid-template-columns: minmax(0px, 1fr) 320px"],
+  [data-screen-label] [style*="grid-template-columns: minmax(0px, 1fr) 340px"],
+  [data-screen-label] [style*="grid-template-columns: minmax(0px, 1fr) 360px"],
+  [data-screen-label] [style*="grid-template-columns: minmax(0px, 1.7fr) minmax(270px"],
+  [data-screen-label] [style*="grid-template-columns: minmax(280px, 380px) minmax(0px"],
   [data-screen-label] [style*="grid-template-columns: repeat(2, minmax("],
   [data-screen-label] [style*="grid-template-columns: repeat(3, minmax("],
   [data-screen-label] [style*="grid-template-columns: repeat(4, minmax("] {
     grid-template-columns: 1fr !important;
   }
 
-  /* Two- and three-pane page layouts stack. A 325px column split three ways
-     is three columns of nothing. */
-  [data-screen-label] [style*="grid-template-columns: 1fr 250px"],
-  [data-screen-label] [style*="grid-template-columns: 1fr 280px"],
-  [data-screen-label] [style*="grid-template-columns: 1.2fr 1fr 1.2fr"],
-  [data-screen-label] [style*="grid-template-columns: 1fr 1fr"] {
-    grid-template-columns: 1fr !important;
+  /* A sidebar that was 320px beside content has no business keeping a minimum
+     width once it is the full row. */
+  [data-screen-label] [style*="grid-template-columns"] > * {
+    min-width: 0;
+  }
+
+  /* Card headers put a title and its buttons on one row. At this width the
+     buttons win and the title becomes a column of single words: "80 / overdue
+     / speaker / tasks". Letting the row wrap costs a line and returns the
+     sentence. Applied to laid-out rows only, never to a row that is
+     deliberately a horizontal scroller. */
+  [data-screen-label]
+    [style*="display: flex"]:is(
+      [style*="align-items: center"],
+      [style*="align-items: baseline"]
+    ):not([style*="overflow-x: auto"]):not([style*="overflow: auto"]):not(
+      [style*="height: 64px"]
+    ):not([style*="height: 40px"]):not([style*="height: 42px"]) {
+    flex-wrap: wrap;
+  }
+
+  /* Rows with an explicit height are excluded above, because the console
+     header is one: wrapping it dropped the search field to two pixels wide.
+     A row that was given a height was designed as a single line. */
+
+  /* Wrapping alone does not save the card title, because it is `flex: 1 1 0%`
+     and shrinks rather than wraps while its buttons keep their width. Giving
+     it a full-width basis puts it on its own line and the buttons underneath,
+     which is the right order to read them in anyway. */
+  [data-screen-label]
+    [style*="align-items: center; gap: 9px; margin-bottom: 10px"]
+    > [style*="flex: 1 1 0%"] {
+    /* `!important` because the inline `flex: 1 1 0%` shorthand sets the basis
+       too, and inline wins otherwise. Short of the full width by the status
+       dot and its gap, so the dot stays on the title's line instead of being
+       pushed above it on a line of its own. */
+    flex-basis: calc(100% - 20px) !important;
   }
 
   /* The agenda is three panes beside each other: tray, room-by-time grid,
@@ -150,6 +199,28 @@ input::placeholder {
   [data-screen-label="Agenda builder"] [style*="width: 280px"] {
     width: 100% !important;
     flex: 0 0 auto !important;
+  }
+
+  /* Settings puts a 210px panel of section links beside the form. Of 298px
+     usable that leaves 88px for the thing you came to edit. Stacked, the same
+     way the agenda is: the panel keeps its own vertical list and sits above
+     the form.
+
+     An earlier attempt turned the panel into a horizontal row of chips, which
+     read better in theory and was much worse in practice — the panel kept its
+     full height from the flex row, so the links ended up scattered down an
+     otherwise empty screen with the form pushed off the bottom. Stacking is
+     duller and actually works. */
+  [data-screen-label="Settings"] [style*="display: flex; min-height: 0px"] {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+  [data-screen-label="Settings"] [style*="width: 210px"] {
+    width: 100% !important;
+    height: auto !important;
+    flex: 0 0 auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--ln) !important;
   }
 
   /* Tables keep their columns and scroll sideways, which is the honest
