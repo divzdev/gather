@@ -9,7 +9,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
@@ -143,6 +143,15 @@ export default function FormsPage() {
   const queryClient = useQueryClient();
 
   const [openId, setOpenId] = useState<string | null>(null);
+  /** Closing an open form is one of the never-optimistic actions: speakers
+   *  lose the live form the moment it lands. First click arms, second click
+   *  does it; anything else disarms. */
+  const [armedClose, setArmedClose] = useState<string | null>(null);
+  useEffect(() => {
+    if (armedClose === null) return undefined;
+    const timer = window.setTimeout(() => setArmedClose(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [armedClose]);
   const [step, setStep] = useState(0);
   const [tab, setTab] = useState<"All" | "Open" | "Draft">("All");
   const [edit, setEdit] = useState<FormRow | null>(null);
@@ -565,12 +574,19 @@ export default function FormsPage() {
                 toast("Add at least one question before opening this form.");
                 return;
               }
+              if (isOpen && armedClose !== row.id) {
+                setArmedClose(row.id);
+                return;
+              }
+              setArmedClose(null);
               setStatus.mutate({ row, status: isOpen ? "closed" : "open" });
             },
-            statusLabel: isOpen ? "Close" : "Open",
+            statusLabel: isOpen ? (armedClose === row.id ? "Sure? Click again" : "Close") : "Open",
             statusOff: !isOpen && empty,
             statusTitle: isOpen
-              ? `Stop “${row.name}” accepting submissions`
+              ? armedClose === row.id
+                ? `Click again and “${row.name}” stops accepting submissions immediately`
+                : `Stop “${row.name}” accepting submissions`
               : empty
                 ? "This form has no questions yet, so there is nothing to submit."
                 : `Make “${row.name}” live and start collecting`,
