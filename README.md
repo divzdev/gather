@@ -13,14 +13,12 @@ exists.
 make setup && make dev     # a running, seeded conference. no API keys, no accounts.
 ```
 
-<!-- VIDEO: replace the src below with a GitHub attachment URL.
-     Drag gather-sizzle.mp4 into any GitHub issue comment (do not submit it), copy the
-     https://github.com/user-attachments/assets/... URL it generates, and paste it here.
-     Do not commit the .mp4 — git history is permanent and a 6MB file rides in every clone.
+<!-- Hosted as a release asset rather than committed: git history is permanent, and a
+     52MB file would ride in every clone of the repo forever. -->
 
-<video src="PASTE_URL_HERE" controls width="100%"></video>
+<video src="https://github.com/divzdev/gather/releases/download/media-v1/gather-launch-story.mp4" controls width="100%"></video>
 
--->
+**▶ [Watch the film](https://github.com/divzdev/gather/releases/download/media-v1/gather-launch-story.mp4)** · or the [28-second cut](https://github.com/divzdev/gather/releases/download/media-v1/gather-sizzle.mp4)
 
 ---
 
