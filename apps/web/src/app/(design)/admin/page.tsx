@@ -9,8 +9,6 @@ import { useProgramStats } from "@/components/console/stats";
 import { Overview, type OverviewData } from "@/components/design/Overview";
 import { authed, getEventId } from "@/lib/session";
 
-type Pending = { accepted: number; waitlisted: number; rejected: number; total: number };
-type SubmissionPage = { data: { status: string }[]; meta: { total: number } };
 type Event = {
   name: string;
   slug: string;
@@ -50,27 +48,20 @@ export default function OverviewPage() {
   const queryClient = useQueryClient();
   const eventId = typeof window === "undefined" ? null : getEventId();
 
-  const { data } = useQuery({
-    queryKey: ["overview", eventId],
-    enabled: eventId !== null,
-    queryFn: async () => {
-      const [event, pending, page] = await Promise.all([
-        authed<Event>(`/events/${eventId}`),
-        authed<Pending>(`/events/${eventId}/submissions/pending-decisions`),
-        authed<SubmissionPage>(`/events/${eventId}/submissions?per_page=200`),
-      ]);
-      return { event, pending, page };
-    },
-  });
+  /** Everything countable comes from useProgramStats, which asks the API for
+   *  per-status totals. This page used to fetch its own 200-row sample and
+   *  count that — so on a 224-submission event the pulse said "146 decided"
+   *  while the ticker two centimetres above it said 127. One source now. */
+  const { stats } = useProgramStats();
+  const event = stats.event as Event | null;
 
-  const rows = data?.page.data ?? [];
-  const total = data?.page.meta.total ?? 0;
-  const unreviewed = rows.filter((row) => row.status === "submitted").length;
-  const decided = rows.filter((row) => row.status !== "submitted" && row.status !== "draft").length;
-  const cfpDays = daysUntil(data?.event.cfp_closes_at ?? null);
-  const eventStart = data?.event.starts_on ?? null;
+  const total = stats.total;
+  const unreviewed = stats.unreviewed;
+  const decided = stats.decided;
+  const cfpDays = stats.cfpDays ?? daysUntil(event?.cfp_closes_at ?? null);
+  const eventStart = event?.starts_on ?? null;
 
-  const dates = useMemo(() => keyDates(data?.event ?? null), [data?.event]);
+  const dates = useMemo(() => keyDates(event), [event]);
   const calendar = useMemo(() => buildCalendar(dates), [dates]);
   const legend = (index: number, fallback: string) => {
     const entry = dates[index];
@@ -88,8 +79,6 @@ export default function OverviewPage() {
     queryFn: () => authed<{ status: string }[]>(`/events/${eventId}/speakers`),
   });
   const confirmedSpeakers = (roster ?? []).filter((row) => row.status === "confirmed").length;
-
-  const { stats } = useProgramStats();
 
   /** The button used to toast "Nudges are queued in Messages" and queue
    *  nothing anywhere — a success message for an action that never ran. This
@@ -151,7 +140,7 @@ export default function OverviewPage() {
   const overview: OverviewData = {
     // Until the event resolves there is no correct public URL, and the console
     // home is a better landing than another organisation's event.
-    cfpHref: data?.event.slug === undefined ? "/admin" : `/e/${data.event.slug}/cfp`,
+    cfpHref: event === null ? "/admin" : `/e/${event.slug}/cfp`,
     greet,
     confirmedCount: confirmedSpeakers,
     overdueCount: stats.overdueTasks,
@@ -182,7 +171,7 @@ export default function OverviewPage() {
     subCount: total,
     unreviewedCount: unreviewed,
     decidedCount: decided,
-    draftCount: rows.filter((row) => row.status === "draft").length,
+    draftCount: stats.drafts,
     cfpShort: cfpDays === null ? "—" : `${cfpDays}d`,
     cfpDays: cfpDays ?? "—",
     readyPct: total === 0 ? 0 : Math.round(((total - unreviewed) / total) * 100),
