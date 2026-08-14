@@ -9,6 +9,7 @@ import {
 
 import { Providers } from "@/components/Providers";
 import { themeBootScript } from "@/components/ThemeProvider";
+import { authBootScript } from "@/lib/authBoot";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -57,6 +58,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Runs before paint so a dark-mode reload never flashes light. */}
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        {/* Same, for the session: a signed-in reload never flashes "Sign in". */}
+        <script dangerouslySetInnerHTML={{ __html: authBootScript }} />
       </head>
       <body
         className={`${plexSans.variable} ${plexMono.variable} ${plexCondensed.variable} ${bricolage.variable} ${manrope.variable} font-sans antialiased`}
