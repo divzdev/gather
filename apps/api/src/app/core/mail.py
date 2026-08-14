@@ -78,7 +78,10 @@ def undeliverable_reason(to_email: str) -> str | None:
     class of address that is *known* undeliverable; anything else is the
     provider's call to make.
     """
-    domain = to_email.rpartition("@")[2].strip().lower()
+    # The trailing dot of a fully-qualified name is legal and addresses carrying
+    # one resolve identically, so leaving it on would let `@example.com.` walk
+    # straight past a guard whose whole value is having no way around it.
+    domain = to_email.rpartition("@")[2].strip().lower().rstrip(".")
     if not domain:
         return f"{to_email!r} has no domain"
     if domain in RESERVED_DOMAINS or domain.endswith(RESERVED_SUFFIXES):

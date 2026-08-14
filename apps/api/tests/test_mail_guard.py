@@ -25,6 +25,9 @@ from app.core import mail
         "ada@localhost",
         "ada@printer.local",
         "  ada@example.com  ",
+        # A trailing dot is a legal fully-qualified name and resolves the same.
+        "ada@example.com.",
+        "ada@mail.example.com.",
     ],
 )
 def test_reserved_addresses_are_refused(address: str) -> None:
