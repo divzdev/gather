@@ -104,9 +104,11 @@ function Verify() {
       >
         <span aria-hidden style={{ font: "600 22px 'IBM Plex Sans',sans-serif" }}>
           <svg width="30" height="30" viewBox="0 0 24 24" role="img" aria-label="Gather">
-            <rect width="24" height="24" rx="6.5" fill="var(--ik,#16232B)" />
-            <circle cx="14.7" cy="14.7" r="5.7" fill="var(--bt,#FF6B6B)" />
-            <circle cx="6.3" cy="6.3" r="2.3" fill="var(--cd,#FFFFFF)" />
+            <rect width="24" height="24" rx="6.5" fill="var(--bt,#141417)" />
+            <circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B" />
+            <circle cx="6.3" cy="6.3" r="2.8" fill="var(--bf,#FFFFFF)" />
+            <circle cx="14.4" cy="5.4" r="2.2" fill="var(--bf,#FFFFFF)" />
+            <circle cx="5.4" cy="14.4" r="2.2" fill="var(--bf,#FFFFFF)" />
           </svg>
         </span>
         {problem === null ? (

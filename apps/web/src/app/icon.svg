@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="Gather">
-  <rect width="24" height="24" rx="6.5" fill="#12142E"/>
+  <rect width="24" height="24" rx="6.5" fill="#17171C"/>
   <circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B"/>
-  <circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7"/>
-  <circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7"/>
-  <circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7"/>
+  <circle cx="6.3" cy="6.3" r="2.8" fill="#FFFFFF"/>
+  <circle cx="14.4" cy="5.4" r="2.2" fill="#FFFFFF"/>
+  <circle cx="5.4" cy="14.4" r="2.2" fill="#FFFFFF"/>
 </svg>
