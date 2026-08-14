@@ -3,7 +3,6 @@
 import { createContext, useCallback, useContext, useSyncExternalStore } from "react";
 
 import {
-  ACCENTS,
   type AccentName,
   applyTheme,
   isDark,
@@ -22,16 +21,13 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-/** Applied before paint so a dark-mode reload never flashes light. Mirrors the
- *  prototypes' behaviour and reads the same localStorage keys. */
+/** Applied before paint so a dark-mode reload never flashes light. Only the
+ *  theme attribute: the palette is fixed in tokens.css (spec 0002), so the
+ *  boot script no longer writes colour variables. */
 export const themeBootScript = `(()=>{try{
   var m=localStorage.getItem("${STORAGE_KEYS.theme}")||"system";
-  var a=localStorage.getItem("${STORAGE_KEYS.accent}")||"Coral";
-  var A=${JSON.stringify(ACCENTS)};
   var d=m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);
-  var r=document.documentElement;r.dataset.theme=d?"dark":"light";
-  var v=(A[a]||A.Coral)[d?"d":"l"];
-  for(var k in v)r.style.setProperty("--"+k,v[k]);
+  document.documentElement.dataset.theme=d?"dark":"light";
 }catch(e){}})()`;
 
 /* Theme lives in localStorage and the OS, not in React. useSyncExternalStore is
@@ -83,9 +79,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ThemeContext.Provider
-      value={{ mode, accent, dark: shade === "d", setMode, setAccent }}
-    >
+    <ThemeContext.Provider value={{ mode, accent, dark: shade === "d", setMode, setAccent }}>
       {children}
     </ThemeContext.Provider>
   );

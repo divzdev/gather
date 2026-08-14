@@ -58,24 +58,17 @@ export const STORAGE_KEYS = { accent: "gather.accent", theme: "gather.theme" } a
 export function isDark(mode: ThemeMode): boolean {
   if (mode === "dark") return true;
   if (mode === "light") return false;
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
+  return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-/** Write the accent variables onto the root element. The dark neutral map lives
- *  in tokens.css under [data-theme="dark"]; only the accent varies at runtime. */
-export function applyTheme(mode: ThemeMode, accent: AccentName): void {
+/** Toggle the theme attribute. Since spec 0002 the palette is fixed in
+ *  tokens.css — chrome is the ink pill, colour is element-level state — so
+ *  nothing writes colour variables at runtime any more. The accent argument
+ *  survives only so stored preferences keep parsing; it changes nothing. */
+export function applyTheme(mode: ThemeMode, _accent?: AccentName): void {
+  void _accent;
   if (typeof document === "undefined") return;
-  const dark = isDark(mode);
-  const root = document.documentElement;
-
-  root.dataset.theme = dark ? "dark" : "light";
-  const vars = ACCENTS[accent][dark ? "d" : "l"];
-  for (const [name, value] of Object.entries(vars)) {
-    root.style.setProperty(`--${name}`, value);
-  }
+  document.documentElement.dataset.theme = isDark(mode) ? "dark" : "light";
 }
 
 export function readStoredTheme(): { mode: ThemeMode; accent: AccentName } {

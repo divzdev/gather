@@ -1,13 +1,21 @@
 /* Gather design tokens.
  *
- * Taken verbatim from GatherDesign/CLAUDE.md (user-locked, Aug 2026) and the
- * .dc.html prototypes, which reference these exact variable names with light
- * fallbacks: var(--pp, #F4F6F7). The dark map and the accent sets are applied to
- * the root element by the theme provider, so a ported screen needs no changes.
+ * Remapped 2026-08-14 per docs/specs/0002-console-palette-restyle.md, decided
+ * against a live prototype the owner signed off. The grammar:
  *
- * Do not reintroduce the retired indigo palette (#3D2FE0, #6C5CFF, #0D1020,
- * #151A2E) or teal/green accents. frontend-spec.md §1.4 is superseded by this
- * file.
+ *   · chrome is black and white — the ink pill (--bt/--bf) is the only
+ *     emphasis; no structural surface carries a hue
+ *   · colour is element-level state on a budget: --ok green = done,
+ *     --pd amber = waiting on a human, --cn rose = wrong,
+ *     --sg/--sw/--sl lavender = in-flight (the smallest allocation)
+ *   · the background is --wash, a pastel radial set; cards float on it
+ *   · neutrals are true grays in both maps — a hue-cast dark theme is how
+ *     the retired palette ended up reading purple
+ *
+ * This file is the single source of colour: the runtime accent picker no
+ * longer writes over these (lib/theme.ts only toggles data-theme). The
+ * pre-0002 coral accent and the GatherDesign "five accents" doctrine are
+ * superseded; tools/check_contrast.py holds every text pair here to AA.
  */
 
 /* The auth and CFP screens are painted in hardcoded light hexes, so they render
@@ -19,57 +27,55 @@
 :root,
 [data-screen-label="Auth"],
 [data-screen-label="Public CFP wizard"] {
-  /* Console light. Cool neutrals, no beige. */
-  --pp: #f4f6f7; /* page */
+  /* Console light. True-gray neutrals; the wash carries the atmosphere. */
+  --wash:
+    radial-gradient(1000px 560px at 12% -8%, rgba(140, 150, 225, 0.14), transparent 62%),
+    radial-gradient(900px 520px at 88% -4%, rgba(240, 140, 170, 0.11), transparent 60%),
+    radial-gradient(1100px 640px at 50% 112%, rgba(250, 175, 120, 0.13), transparent 62%), #f4f3f7;
+  --pp: #f4f3f7; /* page (flat — surfaces that need opacity use this) */
   --cd: #ffffff; /* card */
-  --sk: #edf1f2; /* sunk */
-  --ln: #e1e7e9; /* hairline */
-  --ls: #c8d2d5; /* strong line */
-  --ik: #16232b; /* ink */
-  --i2: #3e4e58;
-  /* Both of these were below AA and both are used for real body copy — --i4 is
-     every timestamp, placeholder, badge digit and empty-state line in the
-     product, and it sat at 2.50:1 on white. Measured against the *sunk* surface
-     (--sk), the darkest of the three the muted tiers land on, so they hold
-     everywhere rather than only on a card. --i3 6.27 / --i4 5.27 on white. */
-  --i3: #56626a;
-  --i4: #5f6e77;
+  --sk: #efeff2; /* sunk */
+  --ln: #e3e3e7; /* hairline */
+  --ls: #c9c9cf; /* strong line */
+  --ik: #141417; /* ink */
+  --i2: #3f3f46;
+  /* Muted tiers carry real body copy — timestamps, placeholders, badge digits,
+     empty-state lines — so both are solved to AA against the *sunk* surface,
+     the darkest of the three they land on. check_contrast.py enforces it. */
+  --i3: #54545c;
+  --i4: #5e5e66;
 
-  /* Accent. Overwritten by the theme provider; Coral is the default. */
-  --sg: #d02525; /* accent text — AA against its own tint; --bt stays vivid */
-  --sw: #ffeae6; /* accent weak */
-  --sl: #ffc9c0; /* accent line */
-  --bt: #ff6b6b; /* primary button */
-  --bf: #331313; /* primary button foreground */
+  /* Emphasis. The ink pill: primary buttons, active nav. Fixed, not a hue,
+     not user-selectable. --sg is the in-flight status set (see below) and no
+     longer an "accent" in the chrome sense. */
+  --bt: #141417; /* primary button fill  */
+  --bf: #ffffff; /* primary button foreground */
 
-  /* Status. Colour only ever means state.
-     These are used as *text* — chip labels at 10.5-12.5px, the overdue count,
-     the decisions-pending banner — so they are held to 4.5:1 against the weak
-     tint they sit on, which is the darkest surface they meet. --cn was 3.74
-     there and --pd 3.54. */
-  --cn: #c03923; /* conflict, orange-red, never pink */
-  --cnw: #fbe8e6;
-  --cnl: #f3c7c2;
-  --pd: #9e5a1a; /* pending, waiting on a human */
-  --pdw: #f9eddf;
-  --pdl: #efd3b6;
-  --ok: #0e7a5f; /* clear, done */
-  --okw: #e2f1ec;
-  --okl: #c2e0d5;
-  --if: #47599f; /* info */
-  --ifw: #e9ecf7;
-  --ifl: #c6cdea;
+  /* Status. Colour only ever means state, and each hue means exactly one:
+     text values are held to 4.5:1 against their own weak tint, the darkest
+     surface they meet. */
+  --cn: #b3243f; /* wrong — hard conflicts, destructive, bounced. Rose. */
+  --cnw: #fbeaee;
+  --cnl: #f4c8d2;
+  --pd: #92590a; /* waiting on a human — pending_send, overdue, unreviewed */
+  --pdw: #faf0dc;
+  --pdl: #efdbb2;
+  --ok: #177a53; /* done — accepted, sent, published */
+  --okw: #e4f3ec;
+  --okl: #c3e3d3;
+  --sg: #5254b0; /* in-flight (in review) — the smallest allocation */
+  --sw: #ededfa;
+  --sl: #d6d7f0;
+  --if: #5254b0; /* info folds into the in-flight family */
+  --ifw: #ededfa;
+  --ifl: #d6d7f0;
 
-  /* Portal-only surfaces. */
-  --zn: #f7f9fa;
-  /* These four are the values the prototypes carry as their var() fallbacks.
-     They must match exactly: while the names were misspelled the fallbacks were
-     what light mode actually rendered, so anything else here changes a screen
-     that was already signed off. */
-  --heroA: #ffede9;
-  --heroB: #fdf6f3;
-  --heroBd: #e9deda;
-  --stepLn: #ffb3aa; /* completed connector — accent, not the hairline */
+  /* Portal-only surfaces. Hero follows the wash, not the retired coral. */
+  --zn: #f8f8fa;
+  --heroA: #f0eefa;
+  --heroB: #fbf7f3;
+  --heroBd: #e4e2ea;
+  --stepLn: #c3e3d3; /* completed connector — done-green line, not the hairline */
 
   /* Track hues, assigned per track and stored so a colour never shifts. */
   --track-agents: #3e8896;
@@ -119,47 +125,51 @@
   --dur-slow: 240ms;
 }
 
-/* Neutral charcoal, no blue cast. The provider sets data-theme; this block is
-   the same map so a no-JS render still looks right in dark mode. */
+/* True-gray dark, no cast. The provider sets data-theme; this block is the
+   same map so a no-JS render still looks right in dark mode. The wash dims to
+   a whisper: dark mode suggests the same warmth, it does not paint it. */
 :root[data-theme="dark"] {
-  --pp: #101013;
-  --cd: #17171b;
-  --sk: #1f1f24;
-  --ln: #2a2a31;
-  --ls: #3f3f49;
-  --ik: #f2f2f0;
-  --i2: #c9c9c6;
-  --i3: #929290;
-  /* 3.20:1 on a card, so the same failure as light mode and for the same text.
-     Lightened rather than darkened here, and solved against every surface it
-     lands on including the status tints — a dismiss glyph on the pending banner
-     was the one that survived a narrower solve. Worst case 4.60:1. */
-  --i4: #93938f;
+  --wash:
+    radial-gradient(1000px 560px at 12% -8%, rgba(150, 160, 230, 0.045), transparent 62%),
+    radial-gradient(900px 520px at 88% -4%, rgba(235, 150, 170, 0.03), transparent 60%), #0d0d0f;
+  --pp: #0d0d0f;
+  --cd: #161618;
+  --sk: #1d1d20;
+  --ln: #27272b;
+  --ls: #3b3b41;
+  --ik: #f1f1f2;
+  --i2: #c5c5ca;
+  /* Solved against every surface they land on, worst case the sunk panel;
+     in dark the fainter tier is the darker one. */
+  --i3: #97979e;
+  --i4: #8f8f96;
 
-  --sg: #ff8e8e;
-  --sw: #3a1d1d;
-  --sl: #66302e;
+  --bt: #f1f1f2; /* dark mirrors the pill: near-white fill, ink text */
+  --bf: #141417;
 
-  --cn: #f0766a;
-  --cnw: #3a1f1e;
-  --cnl: #5e2e2b;
-  --pd: #f0a468;
-  --pdw: #332617;
-  --pdl: #54402a;
-  --ok: #57b899;
-  --okw: #123029;
-  --okl: #1f4a3e;
-  --if: #8b9ad0;
-  --ifw: #262833;
-  --ifl: #3e4152;
+  --cn: #f27e95;
+  --cnw: #301820;
+  --cnl: #522735;
+  --pd: #e3b25c;
+  --pdw: #282013;
+  --pdl: #463a20;
+  --ok: #5fc792;
+  --okw: #13271c;
+  --okl: #204631;
+  --sg: #9fa1e8;
+  --sw: #1e1e2e;
+  --sl: #34355a;
+  --if: #9fa1e8;
+  --ifw: #1e1e2e;
+  --ifl: #34355a;
 
-  --zn: #141416;
-  --heroA: #241a1b;
-  --heroB: #191719;
-  --heroBd: #332826;
-  /* The dark accent line, not the neutral hairline: a completed step has to
+  --zn: #121214;
+  --heroA: #17171b;
+  --heroB: #141416;
+  --heroBd: #2b2b31;
+  /* The done-green line, not the neutral hairline: a completed step has to
      stay distinguishable from one still to come. */
-  --stepLn: #66302e;
+  --stepLn: #204631;
 }
 
 @media (prefers-reduced-motion: reduce) {

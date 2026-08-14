@@ -152,7 +152,7 @@ export default function NewEventPage() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--pp)", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "transparent", position: "relative" }}>
       {/* A wash of the event's own accent, so the page reads as a beginning
           rather than a settings pane. */}
       <div

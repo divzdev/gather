@@ -48,7 +48,15 @@
 }
 
 html {
-  background: var(--pp);
+  /* The wash, not the flat page colour: cards float on a pastel gradient
+   * (spec 0002). Fixed attachment so the radials do not scroll with a long
+   * list. Opaque surfaces that need the flat value still read --pp. */
+  /* Console screens are 100vh roots with inner scrollers, so the html canvas
+   * never scrolls and the radials hold still without background-attachment:
+   * fixed (which is janky on iOS anyway). Long-scrolling portal pages let the
+   * radials scroll out and continue on the base colour — acceptable; revisit
+   * in the portal slice if it reads wrong on a phone. */
+  background: var(--wash, var(--pp));
   color: var(--ik);
 }
 
