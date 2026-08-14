@@ -1,6 +1,7 @@
 "use client";
 
 import { API_BASE_URL, ApiError, apiFetch } from "@/lib/api";
+import { clearWarmCache } from "@/lib/warmCache";
 
 const TOKEN_KEY = "gather.token";
 const EVENT_KEY = "gather.event";
@@ -61,6 +62,9 @@ export function clearSpeakerToken(): void {
  *  page under a user every fifteen minutes would be its own bug.
  */
 export function restartAt(destination: string): void {
+  // The warm-start snapshots mirror the current identity's numbers; the next
+  // page must not paint them under a different account.
+  clearWarmCache();
   window.location.assign(destination);
 }
 

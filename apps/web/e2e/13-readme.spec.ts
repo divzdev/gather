@@ -17,12 +17,15 @@ const SLUG = "devflow-conf-2027";
 
 /** Straight from the README's feature sentence. */
 const ADVERTISED = [
+  // Badged rail items announce their count ("Review 46"), and since the badge
+  // values warm-start from a snapshot the count is present from first paint —
+  // so the anchors match the word, not the whole accessible name.
   { claim: "CFP intake", link: /Submissions/, expect: /\/admin\/submissions/ },
-  { claim: "review and scoring", link: /^Review$/, expect: /\/admin\/review/ },
+  { claim: "review and scoring", link: /^Review\b/, expect: /\/admin\/review/ },
   { claim: "accept/reject", link: /Submissions/, expect: /\/admin\/submissions/ },
-  { claim: "speaker onboarding", link: /^Tasks$/, expect: /\/admin\/tasks/ },
-  { claim: "agenda building", link: /^Agenda$/, expect: /\/admin\/agenda/ },
-  { claim: "published public schedule", link: /^Publishing$/, expect: /\/admin\/publishing/ },
+  { claim: "speaker onboarding", link: /^Tasks\b/, expect: /\/admin\/tasks/ },
+  { claim: "agenda building", link: /^Agenda\b/, expect: /\/admin\/agenda/ },
+  { claim: "published public schedule", link: /^Publishing\b/, expect: /\/admin\/publishing/ },
 ];
 
 async function signIn(page: Page) {
