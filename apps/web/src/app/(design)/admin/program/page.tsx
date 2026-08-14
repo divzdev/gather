@@ -229,8 +229,8 @@ function NextStep({ missing }: { missing: (typeof SECTIONS)[number][] }) {
           padding: "0 20px",
           borderRadius: 999,
           textDecoration: "none",
-          background: "var(--sg)",
-          color: "var(--cd)",
+          background: "var(--bt)",
+          color: "var(--bf)",
           font: "600 13px var(--font-plex-sans)",
         }}
       >

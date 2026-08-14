@@ -90,7 +90,7 @@ export default function ProfilePage() {
   const frame = (body: React.ReactNode) => (
     <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0,1fr)", height: "100vh" }}>
       <Rail active="Settings" style={{ height: "100%", minHeight: 0 }} />
-      <div style={{ overflowY: "auto", background: "var(--pp)" }}>
+      <div style={{ overflowY: "auto", background: "transparent" }}>
         <div style={{ padding: "20px 28px 80px", maxWidth: 640 }}>
           <PageHead
             icon={PAGE_ICON.profile}

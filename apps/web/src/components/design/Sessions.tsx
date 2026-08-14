@@ -262,7 +262,7 @@ export function Sessions({ d }: { d: SessionsData }) {
           gridTemplateColumns: "auto minmax(0,1fr)",
           height: "100vh",
           overflow: "hidden",
-          background: "var(--pp,#F4F6F7)",
+          background: "transparent",
           color: "var(--ik,#16232B)",
         }}
       >
@@ -282,8 +282,7 @@ export function Sessions({ d }: { d: SessionsData }) {
               gap: "16px",
               overflowX: "auto",
               padding: "0 20px",
-              borderBottom: "1px solid var(--ln,#E1E7E9)",
-              background: "var(--cd,#FFFFFF)",
+              background: "transparent",
             }}
           >
             {" "}

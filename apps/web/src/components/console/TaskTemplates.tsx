@@ -475,8 +475,7 @@ export function TaskTemplates({ onToast }: { onToast: (message: string) => void 
                   minHeight: 52,
                   padding: "8px 14px",
                   borderRadius: 10,
-                  border: "1px solid var(--ln,#E1E7E9)",
-                  background: "var(--sk,#EDF1F2)",
+                  background: "var(--sk,#EFEFF2)",
                 }}
               >
                 <span

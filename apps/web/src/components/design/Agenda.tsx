@@ -226,7 +226,7 @@ export function Agenda({ d }: { d: AgendaData }) {
           gridTemplateColumns: "auto minmax(0,1fr)",
           height: "100vh",
           overflow: "hidden",
-          background: "var(--pp,#F4F6F7)",
+          background: "transparent",
           color: "var(--ik,#16232B)",
         }}
       >

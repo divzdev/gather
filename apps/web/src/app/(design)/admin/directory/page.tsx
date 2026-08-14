@@ -210,7 +210,7 @@ export default function DirectoryPage() {
         gridTemplateColumns: "auto minmax(0,1fr)",
         height: "100vh",
         overflow: "hidden",
-        background: "var(--pp,#F4F6F7)",
+        background: "transparent",
         color: "var(--ik,#16232B)",
       }}
     >
@@ -544,7 +544,7 @@ export default function DirectoryPage() {
                     textAlign: "left",
                     cursor: "pointer",
                     background: confirmed ? "var(--sw,#FFEAE6)" : "var(--cd,#FFFFFF)",
-                    border: `1px solid ${confirmed ? "var(--sl,#FFC9C0)" : "var(--ls,#C8D2D5)"}`,
+                    border: `1px solid ${confirmed ? "var(--okl,#C3E3D3)" : "var(--ls,#C9C9CF)"}`,
                   }}
                 >
                   <span

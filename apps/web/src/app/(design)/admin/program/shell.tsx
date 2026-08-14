@@ -86,8 +86,8 @@ export function ProgramShell({ children }: { children: React.ReactNode }) {
           padding: "0 12px",
           borderRadius: 8,
           textDecoration: "none",
-          background: active ? "var(--sw)" : "none",
-          color: active ? "var(--sg)" : "var(--i2)",
+          background: active ? "var(--sk)" : "none",
+          color: active ? "var(--ik)" : "var(--i2)",
           font: `${active ? 600 : 500} 13px var(--font-plex-sans)`,
         }}
       >
@@ -104,7 +104,7 @@ export function ProgramShell({ children }: { children: React.ReactNode }) {
         gridTemplateColumns: "auto minmax(0,1fr)",
         height: "100vh",
         overflow: "hidden",
-        background: "var(--pp)",
+        background: "transparent",
         color: "var(--ik)",
       }}
     >
@@ -122,8 +122,7 @@ export function ProgramShell({ children }: { children: React.ReactNode }) {
             style={{
               width: 208,
               flex: "none",
-              borderRight: "1px solid var(--ln)",
-              background: "var(--cd)",
+              background: "transparent",
               padding: "18px 10px",
               overflowY: "auto",
               display: "grid",

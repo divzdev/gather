@@ -216,8 +216,8 @@ export default function SettingsPage() {
       return {
         n: entry.label,
         on: () => setPanel(entry.key),
-        bg: active ? "var(--sw,#FFEAE6)" : "none",
-        fg: active ? "var(--sg,#E04E4E)" : "var(--i2,#3E4E58)",
+        bg: active ? "var(--sk,#EFEFF2)" : "none",
+        fg: active ? "var(--ik,#141417)" : "var(--i2,#3F3F46)",
         wt: active ? "600" : "500",
         dot: active ? "inline-block" : "none",
       };
