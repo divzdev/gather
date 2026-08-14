@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import { useTheme } from "@/components/ThemeProvider";
-import { authed, clearToken } from "@/lib/session";
+import { authed, clearToken, restartAt } from "@/lib/session";
 
 const TOAST_MS = 6000;
 /** The prototype keeps the last three; more than that stacks off the screen. */
@@ -91,7 +91,7 @@ export function useConsoleChrome(): {
     signOut: () => {
       setUserMenu(false);
       clearToken();
-      router.push("/login");
+      restartAt("/login");
     },
     themeWord: theme.mode.replace(/^./, (c) => c.toUpperCase()),
     themeGlyph: theme.mode === "system" ? "◐" : theme.mode === "light" ? "○" : "●",

@@ -40,6 +40,30 @@ export function clearSpeakerToken(): void {
   window.localStorage.removeItem(SPEAKER_KEY);
 }
 
+/** Leave for `destination` with a document load, not a client-side push. Use at
+ *  every point where *who is signed in* changes: sign-in, sign-out, account
+ *  switch.
+ *
+ *  `router.push` keeps the React tree and the TanStack Query cache alive across
+ *  the switch, and both are keyed to who you *were*. `["me"]` carries a
+ *  five-minute `staleTime`, so signing in as a reviewer while an owner's answer
+ *  is still warm renders the owner's name, counts and console under the
+ *  reviewer's token; going the other way, a stale `role: "reviewer"` bounces a
+ *  genuine organizer to /review on every link they press. The token in
+ *  localStorage was correct in both cases — the screen was reading a memory.
+ *
+ *  Clearing the query cache would fix `["me"]`, but only the caches someone
+ *  remembered to clear, at each of the four sign-in paths. A document load drops
+ *  every cache there is, including component state and the undo stack, which is
+ *  the guarantee an identity change actually needs.
+ *
+ *  Not for token *refresh* — that renews the same identity, and reloading the
+ *  page under a user every fifteen minutes would be its own bug.
+ */
+export function restartAt(destination: string): void {
+  window.location.assign(destination);
+}
+
 /** A speaker session is a single long-lived token from a magic link. There is no
  *  refresh cookie behind it, so an expiry means asking for a new link. */
 export async function portal<T>(

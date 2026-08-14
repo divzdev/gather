@@ -13,7 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
-import { setEventId, setSpeakerToken, setToken } from "@/lib/session";
+import { restartAt, setEventId, setSpeakerToken, setToken } from "@/lib/session";
 
 function Verify() {
   const router = useRouter();
@@ -43,7 +43,7 @@ function Verify() {
         );
         if (issued.kind === "speaker") {
           setSpeakerToken(issued.access_token);
-          router.replace("/portal");
+          restartAt("/portal");
           return;
         }
         setToken(issued.access_token);
@@ -65,7 +65,7 @@ function Verify() {
         } catch {
           // Nothing to do: RequireStaff asks for the list again and routes on it.
         }
-        router.replace("/admin");
+        restartAt("/admin");
       } catch {
         setFailed(true);
       }

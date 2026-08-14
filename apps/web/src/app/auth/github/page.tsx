@@ -14,7 +14,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
-import { setEventId, setToken } from "@/lib/session";
+import { restartAt, setEventId, setToken } from "@/lib/session";
 
 function Return() {
   const router = useRouter();
@@ -41,9 +41,9 @@ function Return() {
         // back, so it is attacker-controlled and the server checks it too.
         const next =
           requested !== null && requested.startsWith("/") && !requested.startsWith("//")
-            ? (requested as Parameters<typeof router.replace>[0])
+            ? requested
             : "/admin";
-        router.replace(next);
+        restartAt(next);
       } catch {
         setFailed(true);
       }

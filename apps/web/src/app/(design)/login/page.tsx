@@ -21,7 +21,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api";
-import { getToken, setEventId, setSpeakerToken, setToken } from "@/lib/session";
+import { getToken, restartAt, setEventId, setSpeakerToken, setToken } from "@/lib/session";
 
 import {
   BrandPanel,
@@ -182,7 +182,9 @@ function LoginPage() {
     });
     const first = events[0];
     if (first !== undefined) setEventId(first.id);
-    router.push(next ?? fallback);
+    // `next` is already restricted to an in-app path above, so this cannot be
+    // walked off-site.
+    restartAt(next ?? fallback);
   };
 
   const run = async (work: () => Promise<void>, whenItFails: string) => {
@@ -251,7 +253,7 @@ function LoginPage() {
       });
       if (issued.kind === "speaker") {
         setSpeakerToken(issued.access_token);
-        router.push("/portal");
+        restartAt("/portal");
         return;
       }
       await enterConsole(issued.access_token, role === "reviewer" ? "/review" : "/admin");

@@ -26,7 +26,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 
 import { VerifyBanner } from "@/components/console/VerifyBanner";
-import { authed, clearToken, getEventId, getToken, setEventId } from "@/lib/session";
+import { authed, clearToken, getEventId, getToken, restartAt, setEventId } from "@/lib/session";
 
 /** The token is read through an external store rather than an effect, matching
  *  the rail: the server renders signed-out and the client corrects on hydration
@@ -155,7 +155,6 @@ export function RequireStaff({ children }: { children: React.ReactNode }) {
  *  are trying again and getting out.
  */
 function RoleUnavailable({ onRetry }: { onRetry: () => void }) {
-  const router = useRouter();
   return (
     <main
       style={{
@@ -210,7 +209,7 @@ function RoleUnavailable({ onRetry }: { onRetry: () => void }) {
             type="button"
             onClick={() => {
               clearToken();
-              router.replace("/login");
+              restartAt("/login");
             }}
             style={{
               minHeight: 36,
