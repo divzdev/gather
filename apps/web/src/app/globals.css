@@ -86,6 +86,20 @@ input::placeholder {
   font-variant-numeric: tabular-nums;
 }
 
+/* The rail's pending-navigation dot. Declared here rather than inline because
+   a keyframe cannot live in a style attribute. */
+@keyframes nav-pending-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Paired with a 160ms delay, this is the whole "only show it if the wait is
+   real" mechanism — no timer, no state, no re-render. */
+@keyframes nav-pending-in {
+  to {
+    opacity: 1;
+  }
 }
 
 :focus-visible {
