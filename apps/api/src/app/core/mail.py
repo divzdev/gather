@@ -12,6 +12,11 @@ is the instance role, so there is no access key anywhere.
 Note that SES in the sandbox delivers ONLY to verified addresses and silently
 drops nothing: a refusal comes back as an error and lands in the outbox as a
 `failed` row with the reason, which is the only honest way to show it.
+
+Reserved domains never reach SES at all — see `undeliverable_reason`. The check
+lives inside `_send_via_ses` rather than at the call sites because that is the
+one function every provider send passes through, and a guard a new caller can
+forget to invoke is not a guard.
 """
 
 from __future__ import annotations
@@ -31,6 +36,58 @@ from app.core.config import get_settings
 from app.models import Message, MessagePurpose, MessageStatus
 
 MAIL_DIR = Path(".mail")
+
+#: Names reserved by RFC 2606 and RFC 6761 precisely so that they never receive
+#: mail, plus mDNS `.local`. Every one of the ~80 seeded demo speakers has an
+#: address at one of the first three.
+RESERVED_DOMAINS = frozenset(
+    {
+        "example.com",
+        "example.net",
+        "example.org",
+        "test",
+        "example",
+        "invalid",
+        "localhost",
+        "local",
+    }
+)
+#: Derived, so a name added above is caught as a subdomain too and the two can
+#: never disagree — `mail.example.com` is as undeliverable as `example.com`.
+RESERVED_SUFFIXES = tuple(f".{name}" for name in sorted(RESERVED_DOMAINS))
+
+
+class UndeliverableRecipientError(Exception):
+    """An address no provider should ever be asked to deliver to.
+
+    Raised instead of calling SES, so it lands in the outbox through the same
+    `failed` path as a provider refusal and the organizer sees why.
+    """
+
+
+def undeliverable_reason(to_email: str) -> str | None:
+    """Why this address must never reach SES, or None if it may.
+
+    Reserved domains hard-bounce by design, and SES scores a hard bounce against
+    the account, not the message. One "send decisions" on the seeded demo event
+    is ~200 recipients at a guaranteed 100% bounce rate, which is four times the
+    5% review threshold and twice the 10% sending pause. The AWS account is
+    shared, so that suspension would not stop at this app.
+
+    This is deliberately not a general address validator. It rejects the one
+    class of address that is *known* undeliverable; anything else is the
+    provider's call to make.
+    """
+    domain = to_email.rpartition("@")[2].strip().lower()
+    if not domain:
+        return f"{to_email!r} has no domain"
+    if domain in RESERVED_DOMAINS or domain.endswith(RESERVED_SUFFIXES):
+        return (
+            f"{domain} is a reserved domain that cannot receive mail (RFC 2606). "
+            "Seeded demo addresses are never delivered to; a hard bounce here "
+            "would count against the sending account."
+        )
+    return None
 
 
 def _write_to_disk(to_email: str, subject: str, body: str, ref: str) -> None:
@@ -60,10 +117,13 @@ def _ses_client() -> Any:
 def _send_via_ses(to_email: str, subject: str, body: str) -> str:
     """Hand one message to SES and return its provider id.
 
-    Blocking, so callers run it in a worker thread. Raises on refusal — the
-    caller turns that into a `failed` outbox row rather than letting it escape.
+    Blocking, so callers run it in a worker thread. Raises on refusal, and on a
+    recipient we already know is undeliverable — the caller turns either into a
+    `failed` outbox row rather than letting it escape.
     """
     settings = get_settings()
+    if reason := undeliverable_reason(to_email):
+        raise UndeliverableRecipientError(reason)
     response = _ses_client().send_email(
         FromEmailAddress=settings.mail_from,
         Destination={"ToAddresses": [to_email]},
