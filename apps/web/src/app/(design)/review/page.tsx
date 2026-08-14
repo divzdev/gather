@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TRACK_HUES } from "@/lib/trackHues";
 import { useState } from "react";
 
 import { useHotkeys } from "@/lib/hotkeys";
@@ -260,7 +259,8 @@ export default function ReviewPage() {
   );
 
   const given = current === undefined ? {} : (scores[current.submission_id] ?? {});
-  const hue = TRACK_HUES[0]!;
+  // Track hues are quarantined to the agenda grid (spec 0002).
+  const hue = "var(--ls,#C9C9CF)";
 
   const screen: ReviewData = {
     // Blind review is enforced by the API, which strips identity before it

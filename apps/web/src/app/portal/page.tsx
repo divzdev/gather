@@ -920,7 +920,7 @@ export default function PortalPage() {
               background: "var(--bt,#141417)",
               color: "var(--bf,#FFFFFF)",
               font: "600 13px 'IBM Plex Sans',sans-serif",
-              boxShadow: "0 10px 28px rgba(216,86,74,.28)",
+              boxShadow: "0 10px 28px rgba(20,20,23,.22)",
             }}
           >
             {saveProfile.isPending ? "Saving…" : "Save profile"}

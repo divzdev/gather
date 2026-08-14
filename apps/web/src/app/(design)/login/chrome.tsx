@@ -22,8 +22,8 @@ export const INK = {
   faint: "#7C8093",
   field: "#121216",
   edge: "#2A2A31",
-  coral: "#F1F1F2",
-  onCoral: "#141417",
+  pill: "#F1F1F2",
+  onPill: "#141417",
 } as const;
 
 export const HAIRLINE = "rgba(255,255,255,.18)";
@@ -143,7 +143,7 @@ export function BrandPanel() {
               marginBottom: 14,
             }}
           >
-            Open source · MIT · <b style={{ color: INK.coral }}>Nothing to buy</b>
+            Open source · MIT · <b style={{ color: INK.pill }}>Nothing to buy</b>
           </div>
           <div
             style={{

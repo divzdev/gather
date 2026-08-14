@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TRACK_HUES } from "@/lib/trackHues";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 
@@ -58,36 +57,36 @@ type Named = { id: string; name: string; hue_index?: number };
 
 /** The prototype's status palette, kept verbatim so the table reads the same. */
 const STATUS = {
-  draft: { label: "Draft", fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)", dot: "#6B7B84" },
+  draft: { label: "Draft", fg: "var(--i3,#54545C)", bg: "var(--sk,#EFEFF2)", dot: "var(--i3,#54545C)" },
   submitted: {
     label: "Submitted",
-    fg: "var(--if,#47599F)",
-    bg: "var(--ifw,#E9ECF7)",
-    dot: "#47599F",
+    fg: "var(--if,#5254B0)",
+    bg: "var(--ifw,#EDEDFA)",
+    dot: "var(--if,#5254B0)",
   },
   in_review: {
     label: "In review",
-    fg: "var(--pd,#B96A1F)",
-    bg: "var(--pdw,#F9EDDF)",
+    fg: "var(--pd,#92590A)",
+    bg: "var(--pdw,#FAF0DC)",
     dot: "var(--pd,#92590A)",
   },
   accepted: {
     label: "Accepted",
-    fg: "var(--ok,#0E7A5F)",
-    bg: "var(--okw,#E2F1EC)",
+    fg: "var(--ok,#177A53)",
+    bg: "var(--okw,#E4F3EC)",
     dot: "var(--ok,#177A53)",
   },
   waitlisted: {
     label: "Waitlisted",
-    fg: "var(--pd,#B96A1F)",
-    bg: "var(--pdw,#F9EDDF)",
+    fg: "var(--pd,#92590A)",
+    bg: "var(--pdw,#FAF0DC)",
     dot: "var(--pd,#92590A)",
   },
-  rejected: { label: "Rejected", fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)", dot: "#6B7B84" },
+  rejected: { label: "Rejected", fg: "var(--i3,#54545C)", bg: "var(--sk,#EFEFF2)", dot: "var(--i3,#54545C)" },
   withdrawn: {
     label: "Withdrawn",
-    fg: "var(--i3,#6B7B84)",
-    bg: "var(--sk,#EDF1F2)",
+    fg: "var(--i3,#54545C)",
+    bg: "var(--sk,#EFEFF2)",
     dot: "var(--i3,#54545C)",
   },
 } as const;
@@ -95,7 +94,6 @@ const STATUS = {
 type StatusKey = keyof typeof STATUS;
 const DECIDABLE = ["accepted", "waitlisted", "rejected"] as const;
 
-/** Track colours in the prototype's order; the API hands back a hue index. */
 
 
 type View = "All" | "Needs review" | "Ready to decide" | "Accepted";
@@ -303,9 +301,11 @@ export default function SubmissionsPage() {
 
   const trackName = (row: Submission) =>
     row.track_id === null ? "" : (trackById.get(row.track_id)?.name ?? "");
-  const trackColour = (row: Submission) => {
-    const hue = row.track_id === null ? undefined : trackById.get(row.track_id)?.hue_index;
-    return TRACK_HUES[((hue ?? 1) - 1) % TRACK_HUES.length] ?? TRACK_HUES[0]!;
+  // Track hues are quarantined to the agenda grid (spec 0002) — here the
+  // track is a name with a neutral tick, not a colour.
+  const trackColour = (row?: Submission) => {
+    void row;
+    return "var(--ls,#C9C9CF)";
   };
   const formatName = (row: Submission) =>
     row.session_format_id === null ? "" : (formatById.get(row.session_format_id)?.name ?? "");
@@ -627,7 +627,7 @@ export default function SubmissionsPage() {
 
     trackOpts: (taxonomy?.tracks ?? []).map((track) => ({
       n: track.name,
-      col: TRACK_HUES[((track.hue_index ?? 1) - 1) % TRACK_HUES.length] ?? TRACK_HUES[0]!,
+      col: "var(--ls,#C9C9CF)",
       ...check(trackFilter.includes(track.id)),
       on: () =>
         refilter(() =>

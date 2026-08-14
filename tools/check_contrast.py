@@ -50,11 +50,19 @@ def contrast(a: str, b: str) -> float:
 
 
 def parse_maps(css: str) -> dict[str, dict[str, str]]:
-    """First :root block is the light map; the data-theme block is dark."""
+    """First :root block is the light map; the data-theme block is dark.
+
+    Markers are anchored to line starts — the prose comments above the light
+    map also contain ":root," and must not win. Neither map nests braces, so
+    slicing to the first "}" holds; a marker that vanishes is a hard error
+    naming the file, not a silent empty map.
+    """
     maps: dict[str, dict[str, str]] = {}
-    for name, marker in (("light", ":root,"), ("dark", ':root[data-theme="dark"]')):
-        start = css.index(marker)
-        block = css[start : css.index("}", start)]
+    for name, marker in (("light", r"^:root,"), ("dark", r'^:root\[data-theme="dark"\]')):
+        match = re.search(marker, css, re.MULTILINE)
+        if match is None:
+            raise SystemExit(f"contrast: {TOKENS} has no line matching {marker!r} — cannot find the {name} map")
+        block = css[match.start() : css.index("}", match.start())]
         maps[name] = {m.group(1): m.group(2) for m in HEX_TOKEN.finditer(block)}
     return maps
 

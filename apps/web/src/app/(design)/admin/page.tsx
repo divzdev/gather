@@ -178,7 +178,7 @@ export default function OverviewPage() {
     eventMonth: eventStart === null ? "the event" : MONTH.format(parseDateOnly(eventStart)),
     calMonth: calendar.label,
     calCells: calendar.cells,
-    miles: buildMilestones(dates),
+    miles: buildMilestones(dates, unreviewed),
     legendCfp: legend(0, "CFP closes"),
     legendReviews: legend(1, "Reviews close"),
     legendDecisions: legend(2, "Decisions out"),
@@ -280,29 +280,61 @@ function buildCalendar(dates: KeyDate[]): { label: string; cells: OverviewData["
   };
 }
 
-function buildMilestones(dates: KeyDate[]): OverviewData["miles"] {
+const MILESTONE_ICONS: readonly [RegExp, string][] = [
+  [/^cfp/i, "\u{1F4E5}"],
+  [/^review/i, "\u{23F3}"],
+  [/^decision/i, "\u{2709}\u{FE0F}"],
+  [/^schedule/i, "\u{1F5D3}\u{FE0F}"],
+  [/^event/i, "\u{1F3A4}"],
+];
+
+/** The prototype's ribbed block list: the NEXT date is ink-emphasised, the one
+ *  genuinely waiting on humans (reviews still open) is amber, done is green,
+ *  the rest sit sunk and neutral. */
+function buildMilestones(dates: KeyDate[], unreviewed: number): OverviewData["miles"] {
   const short = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+  const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
   const now = Date.now();
   const nextIndex = dates.findIndex((entry) => entry.date.getTime() >= now);
 
   return dates.map((entry, index) => {
     const state: MilestoneState =
       index === nextIndex ? "next" : entry.date.getTime() < now ? "done" : "todo";
-    const last = index === dates.length - 1;
+    const suggested = entry.name.includes("(suggested)");
+    const name = entry.name.replace(/\s*\(suggested\)\s*/, "").trim();
+    const waiting = state !== "done" && /^reviews close/i.test(name) && unreviewed > 0;
+    const icon = MILESTONE_ICONS.find(([test]) => test.test(name))?.[1] ?? "\u{1F4CC}";
+
+    const sub =
+      state === "done"
+        ? "done"
+        : waiting
+          ? `${suggested ? "suggested \u00B7 " : ""}${unreviewed} still open`
+          : suggested
+            ? "suggested"
+            : /^cfp/i.test(name)
+              ? `${clock.format(entry.date)} \u00B7 server clock decides`
+              : "scheduled";
+
     return {
-      d: short.format(entry.date),
-      n: entry.name,
-      dotBg:
-        state === "done"
-          ? "var(--ok,#0E7A5F)"
-          : state === "next"
-            ? "var(--ik,#141417)"
-            : "var(--cd,#FFFFFF)",
-      dotBd: state === "todo" ? "1.5px solid var(--ls,#C8D2D5)" : "1.5px solid transparent",
-      dateFg: state === "next" ? "var(--ik,#141417)" : "var(--i3,#6B7B84)",
-      wt: state === "next" ? "600" : "500",
-      line: last ? "none" : "block",
-      pb: last ? "0" : "14px",
+      day: `${state === "next" ? "NEXT \u00B7 " : ""}${short.format(entry.date).toUpperCase()}`,
+      icon,
+      n: name,
+      sub,
+      rib: waiting
+        ? "var(--pd,#92590A)"
+        : state === "next"
+          ? "var(--ik,#141417)"
+          : state === "done"
+            ? "var(--ok,#177A53)"
+            : "var(--ls,#C9C9CF)",
+      bg: waiting ? "var(--pdw,#FAF0DC)" : state === "next" ? "var(--cd,#FFFFFF)" : "var(--sk,#EFEFF2)",
+      bd: waiting ? "var(--pdl,#EFDBB2)" : "var(--ln,#E3E3E7)",
+      shadow:
+        state === "next" && !waiting
+          ? "0 1px 2px rgba(13,16,32,.05),0 8px 20px rgba(13,16,32,.06)"
+          : "none",
+      wt: state === "next" || waiting ? "600" : "500",
     };
   });
 }

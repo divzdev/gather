@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TRACK_HUES } from "@/lib/trackHues";
 import { useMemo, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
@@ -349,9 +348,10 @@ export default function SessionsPage() {
 
   const trackName = (row: SessionRow) =>
     row.track_id === null ? "" : (trackById.get(row.track_id)?.name ?? "");
-  const trackColour = (row: SessionRow) => {
-    const hue = row.track_id === null ? undefined : trackById.get(row.track_id)?.hue_index;
-    return TRACK_HUES[((hue ?? 1) - 1) % TRACK_HUES.length] ?? TRACK_HUES[0]!;
+  // Track hues are quarantined to the agenda grid (spec 0002).
+  const trackColour = (row?: SessionRow) => {
+    void row;
+    return "var(--ls,#C9C9CF)";
   };
   const formatName = (row: SessionRow) =>
     row.session_format_id === null
@@ -569,7 +569,7 @@ export default function SessionsPage() {
     fPopOn: filterPop,
     fTrackOpts: (data?.tracks ?? []).map((track) => ({
       n: track.name,
-      col: TRACK_HUES[((track.hue_index ?? 1) - 1) % TRACK_HUES.length] ?? TRACK_HUES[0]!,
+      col: "var(--ls,#C9C9CF)",
       ...check(trackFilter.includes(track.name)),
       on: () =>
         setTrackFilter((current) =>
@@ -888,7 +888,7 @@ export default function SessionsPage() {
     },
     impRows: impPreview.map((row) => ({
       ...row,
-      trCol: TRACK_HUES[0]!,
+      trCol: "var(--ls,#C9C9CF)",
     })),
     impCount: impPreview.length,
     impErr,

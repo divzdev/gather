@@ -508,7 +508,9 @@ test("the auto-scheduler reads its rules box, and says what it could not read", 
 
   // The box used to discard every keystroke: aiQ was the empty string and
   // onAiQ did nothing, so the panel looked like it was listening and was not.
-  await page.getByRole("button", { name: "✕" }).first().click();
+  // The close control gained a real accessible name in 9adbdff; "✕" is only
+  // its glyph now.
+  await page.getByRole("button", { name: "Close conflict inspector" }).first().click();
   const box = page.getByPlaceholder(/Leave 12:00 free/i);
   await box.fill("Leave 12:00 free. Nothing before 10:00. Make it sparkle.");
 

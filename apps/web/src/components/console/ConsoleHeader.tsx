@@ -344,7 +344,7 @@ export function ConsoleHeader() {
             alignItems: "center",
             justifyContent: "center",
             font: "600 11.5px var(--font-plex-sans), sans-serif",
-            color: "var(--i2,#3E4E58)",
+            color: "var(--i2,#3F3F46)",
             padding: 0,
             transition: "border-color .12s",
           }}

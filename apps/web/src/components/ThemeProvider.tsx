@@ -33,14 +33,21 @@ function emit(): void {
 }
 
 function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
+  /* External signals — an OS scheme change in system mode, or a theme change
+   * in another tab — must also repaint <html data-theme>, not only re-render
+   * React: every colour on the page reads the attribute, none read React. */
+  const sync = () => {
+    applyTheme(readStoredTheme().mode);
+    listener();
+  };
+  listeners.add(sync);
   const query = window.matchMedia("(prefers-color-scheme: dark)");
-  query.addEventListener("change", listener);
-  window.addEventListener("storage", listener);
+  query.addEventListener("change", sync);
+  window.addEventListener("storage", sync);
   return () => {
-    listeners.delete(listener);
-    query.removeEventListener("change", listener);
-    window.removeEventListener("storage", listener);
+    listeners.delete(sync);
+    query.removeEventListener("change", sync);
+    window.removeEventListener("storage", sync);
   };
 }
 

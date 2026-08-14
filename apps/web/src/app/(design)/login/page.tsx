@@ -594,7 +594,7 @@ function DemoLogins({
         style={{
           font: `700 10px ${monoFont}`,
           letterSpacing: ".14em",
-          color: INK.coral,
+          color: INK.pill,
           marginBottom: 10,
         }}
       >

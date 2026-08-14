@@ -13,7 +13,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TRACK_HUES } from "@/lib/trackHues";
+import { trackHue as hueByIndex } from "@/lib/trackHues";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
@@ -474,7 +474,7 @@ export default function AgendaPage() {
 
   const trackHue = (trackId: string | null): string => {
     const track = data?.tracks.find((row) => row.id === trackId);
-    return TRACK_HUES[Number(track?.hue_index ?? 0) % TRACK_HUES.length] ?? TRACK_HUES[0];
+    return hueByIndex(track?.hue_index);
   };
 
   /** Pointer position to a (room, minute) slot. The grid is found from the event
@@ -966,7 +966,7 @@ export default function AgendaPage() {
             tracks: (data?.tracks ?? []).map((entry, index) => ({
               id: entry.id,
               name: entry.name,
-              hue: TRACK_HUES[index % TRACK_HUES.length] ?? TRACK_HUES[0],
+              hue: hueByIndex(entry.hue_index),
             })),
             scheduled: data?.scheduled ?? [],
             unscheduled: data?.unscheduled ?? [],
