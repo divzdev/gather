@@ -268,11 +268,11 @@ function buildCalendar(dates: KeyDate[]): { label: string; cells: OverviewData["
           mark === undefined
             ? "var(--i2,#3E4E58)"
             : mark.fill
-              ? "var(--bf,#331313)"
-              : "var(--sg,#E04E4E)",
+              ? "var(--bf,#FFFFFF)"
+              : "var(--pd,#92590A)",
         bd:
           mark !== undefined && !mark.fill
-            ? "1.5px solid var(--sg,#E04E4E)"
+            ? "1.5px solid var(--pdl,#EFDBB2)"
             : "1.5px solid transparent",
         wt: mark === undefined ? "400" : "600",
       };
@@ -296,10 +296,10 @@ function buildMilestones(dates: KeyDate[]): OverviewData["miles"] {
         state === "done"
           ? "var(--ok,#0E7A5F)"
           : state === "next"
-            ? "var(--sg,#E04E4E)"
+            ? "var(--ik,#141417)"
             : "var(--cd,#FFFFFF)",
       dotBd: state === "todo" ? "1.5px solid var(--ls,#C8D2D5)" : "1.5px solid transparent",
-      dateFg: state === "next" ? "var(--sg,#E04E4E)" : "var(--i3,#6B7B84)",
+      dateFg: state === "next" ? "var(--ik,#141417)" : "var(--i3,#6B7B84)",
       wt: state === "next" ? "600" : "500",
       line: last ? "none" : "block",
       pb: last ? "0" : "14px",
