@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 /** Where the FastAPI service actually listens. Only the Next server talks to it
@@ -28,4 +29,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/** The build-time half of Sentry: it instruments server code and, given a token,
+ *  uploads source maps so a stack trace names a line of ours instead of column
+ *  8000 of a minified chunk.
+ *
+ *  Upload is off unless `SENTRY_AUTH_TOKEN` is set, and that is the load-bearing
+ *  part: `npm run build` has to succeed on a machine with no credentials, so the
+ *  token's absence disables the upload rather than failing the build. */
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  sourcemaps: { disable: process.env.SENTRY_AUTH_TOKEN === undefined },
+  // Nothing about a local build should be chatty, but CI is where a failed
+  // upload needs to be visible rather than swallowed.
+  silent: process.env.CI === undefined,
+  telemetry: false,
+});
