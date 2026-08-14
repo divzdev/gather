@@ -204,7 +204,7 @@ export function EventSwitcher() {
   const org = me?.org_name ?? "Your organisation";
 
   return (
-    <span style={{ position: "relative", flex: "none" }}>
+    <span data-event-switcher-slot style={{ position: "relative", flex: "none" }}>
       {/* A bordered capsule rather than bare text: the header's leftmost element
           is the answer to "which event am I looking at", and it has to hold its
           own against a 40px search field beside it. */}

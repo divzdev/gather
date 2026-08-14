@@ -297,6 +297,7 @@ export function Agenda({ d }: { d: AgendaData }) {
                 }}
               >
                 <span
+                  data-agenda-hint
                   style={{ font: "400 11px 'IBM Plex Mono',monospace", color: "var(--i4,#99A6AD)" }}
                 >
                   drag to place · double-click adds · Delete unschedules · ⌘Z undo
@@ -1245,6 +1246,8 @@ export function Agenda({ d }: { d: AgendaData }) {
                     </span>{" "}
                     <button
                       onClick={d.closeConf}
+                      aria-label="Close conflict inspector"
+                      data-hit-target
                       style={{
                         background: "none",
                         border: "none",

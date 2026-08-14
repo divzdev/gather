@@ -42,7 +42,7 @@ export function SectionTabs() {
             style={{
               display: "inline-flex",
               alignItems: "center",
-              minHeight: 32,
+              minHeight: 36,
               padding: "0 16px",
               borderRadius: 999,
               textDecoration: "none",

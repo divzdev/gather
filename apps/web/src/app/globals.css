@@ -86,6 +86,8 @@ input::placeholder {
   font-variant-numeric: tabular-nums;
 }
 
+}
+
 :focus-visible {
   outline: 2px solid var(--sg);
   outline-offset: 2px;
@@ -174,10 +176,216 @@ input::placeholder {
     display: none !important;
   }
 
-  [data-event-switcher] {
+  /* Both the capsule and the span holding it. Releasing only the button did
+     nothing: its wrapper is `flex: none`, so the row still asked for the full
+     236px and pushed the avatar 12px off the screen. A flex item cannot shrink
+     past a parent that will not. */
+  [data-event-switcher],
+  [data-event-switcher-slot] {
     width: auto !important;
     min-width: 0 !important;
     flex: 1 1 auto !important;
+  }
+
+  /* The bell and the avatar were drawn at 32 and 28, which is a comfortable
+     mouse target and a coin-toss for a thumb. They sit in a 64px header with
+     room to spare, so they match the search button rather than getting the
+     hit-area trick below — a bigger avatar on a phone is also just easier to
+     read. The switcher is the flexible item beside them and absorbs the width. */
+  [aria-label="Notifications"],
+  [aria-label="Account menu"] {
+    width: 38px !important;
+    height: 38px !important;
+    flex: none;
+  }
+
+  /* ── Tap targets that must not change the layout ──────────────────────────
+   *
+   * A selection checkbox is 24px on Submissions and 14px on Speakers. Growing
+   * the box would push every column of an already-wide table sideways, so the
+   * drawn box keeps its size and an invisible pseudo-element carries the touch
+   * area instead. Both are `position: static` with unclipped parents, so
+   * `relative` here changes nothing about how they paint.
+   *
+   * 44 wide is the thumb; 36 tall is deliberately NOT 44. Rows are 36px apart
+   * on the compact density, so the targets tile the column exactly and never
+   * overlap. At 44 the row above would swallow taps meant for the row below,
+   * and selecting the wrong submission is a worse bug than a small target. */
+  [aria-label="Select row"],
+  [aria-label="Select all"],
+  [data-hit-target] {
+    position: relative;
+  }
+  [aria-label="Select row"]::after,
+  [aria-label="Select all"]::after,
+  [data-hit-target]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 36px;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Real checkboxes cannot carry a pseudo-element — they are replaced elements
+     — so these grow for real. Unscoped on purpose: the first version keyed off
+     `[data-screen-label]`, which the cross-event directory does not have
+     because it is hand-built rather than generated from a prototype, so the
+     rule silently missed the one screen that needed it most. On a touch device
+     there is no checkbox anywhere that wants to be 16px. */
+  input[type="checkbox"] {
+    /* `!important` because the directory writes `width: 16` inline, and inline
+       beats a stylesheet without it. */
+    width: 22px !important;
+    height: 22px !important;
+    accent-color: var(--sg);
+  }
+
+  /* A 32px search field is under the 40px floor for text inputs, and typing
+     into one on a phone means aiming. Filters only: this must not catch the
+     inline cell editors in the agenda or a form builder's field rows. */
+  input[aria-label^="Filter by"] {
+    height: 40px !important;
+  }
+
+  /* Anything you type or pick into clears 40px. The console draws these at 32
+     and 36, which is a fine mouse target and a poor thumb one, and "how are you
+     entering those?" is the question this answers. Checkboxes and radios are
+     excluded — they are sized above; range sliders own their own geometry. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+  select,
+  textarea {
+    min-height: 40px;
+    /* A flex item will not shrink below `min-width: auto`, and for an input
+       that is its default 20-character size — not its CSS width. So Settings'
+       "gather.dev/e/ | slug | Copy" row could not compress and pushed Copy 21px
+       off the screen while the pane quietly grew a sideways scroll to hide it.
+       Nothing here wants its intrinsic width honoured on a 390px screen. */
+    min-width: 0;
+  }
+
+  /* A modal's close button is the one control a phone user reaches for most and
+     the one drawn smallest — 28px, and 9px in the form builder. It gets the
+     full 44px because, unlike a row checkbox, it has no neighbour to steal
+     taps from. */
+  [aria-label="Close"],
+  [aria-label="Dismiss"],
+  [aria-label="Clear selection"],
+  [aria-label^="Close "] {
+    position: relative;
+  }
+  [aria-label="Close"]::after,
+  [aria-label="Dismiss"]::after,
+  [aria-label="Clear selection"]::after,
+  [aria-label^="Close "]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ── The bulk action bar ──────────────────────────────────────────────────
+   *
+   * Seven controls on one line inside a 999px capsule. That is a pill on a
+   * desktop and, once the wrap rule reaches it, a three-line blob on a phone:
+   * ends still rounded as if it were one line, right edge past the viewport,
+   * the close button orphaned on a row of its own, floating over the rows it
+   * is describing.
+   *
+   * So on a phone it stops pretending to be a pill. Full width of the content
+   * column, a card radius, the count and the dismiss on the first line, the
+   * actions wrapping underneath in the order you would read them. */
+  [data-bulk-bar] {
+    bottom: 12px;
+  }
+  [data-bulk-bar-inner] {
+    position: relative;
+    width: 100%;
+    flex-wrap: wrap;
+    row-gap: 8px;
+    border-radius: 14px !important;
+    padding: 10px 12px 12px !important;
+  }
+  /* Alone on the first line. The right padding is the gap the dismiss needs,
+     which is why it is stated here rather than left to the flex gap. */
+  [data-bulk-count] {
+    flex: 1 1 100%;
+    padding-right: 40px !important;
+  }
+  /* A vertical rule between a label and the row under it separates nothing. */
+  [data-bulk-divider] {
+    display: none;
+  }
+  [data-bulk-bar-inner] [aria-label="Clear selection"] {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+  }
+
+  /* ── Wide tables scroll. The page does not. ───────────────────────────────
+   *
+   * Tables keep their columns and pan sideways, which is the honest behaviour
+   * on a phone. What was happening instead: the ten-column row simply overflowed
+   * its card, the card let it through, and the only thing that scrolled was the
+   * page pane — which carries `overflow-y: auto` and therefore, by the same
+   * implicit rule that bit the Settings row, scrolls on both axes.
+   *
+   * So dragging the table right dragged the title, the stat cards and the
+   * filters off to the left with it, leaving a screen of empty grey with a few
+   * table columns stranded at the bottom. The table was reachable; nothing else
+   * was where you left it.
+   *
+   * The card takes the scroll, the pane gives it up. Order matters: clipping
+   * the pane before the card can scroll would make those columns unreachable
+   * rather than merely awkward. */
+  /* `!important` because Sessions and Review write `overflow: hidden` on the
+     card inline — which is why those two were not panning at all: their columns
+     past the sixth were simply cut off with no gesture that could reach them. */
+  [data-table-card] {
+    overflow-x: auto !important;
+  }
+  /* `:has()` and not a bare selector, deliberately. Clipping a pane whose table
+     cannot scroll on its own does not tidy the page, it deletes six columns —
+     which is exactly what happened to Sessions and Review the first time this
+     was written without the guard. The pane gives up panning only once
+     something inside it has taken the job. */
+  [data-screen-label]
+    [style*="overflow-y: auto"][style*="padding: 20px 28px 80px"]:has([data-table-card]) {
+    overflow-x: hidden;
+  }
+
+  [data-screen-label] [style*="overflow-x: auto"],
+  [data-screen-label] [style*="overflow: auto"],
+  [data-table-card] {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* A 28px control is a target most thumbs miss. Only the ones carrying a
+     label: icon-only buttons are handled above by hit area instead, so
+     toolbars do not grow a second row.
+
+     Unscoped from `[data-screen-label]`, which missed the hand-built panels —
+     the file list's "Download" was 15px tall and no rule reached it. Inline
+     links in prose are unaffected: `min-height` does not apply to a
+     non-replaced inline box. */
+  button:not([aria-label]),
+  a[href]:not([aria-label]) {
+    min-height: 36px;
+  }
+
+  /* …which immediately broke the stats ribbon. It is a fixed 32px strip of
+     counts, so 36px controls inside it overflowed vertically and the strip
+     quietly became scrollable on both axes — the counts could scroll out of
+     their own bar. The strip grows to hold what it now contains rather than
+     the controls shrinking back below the floor. */
+  [style*="height: 32px"][style*="overflow-x: auto"],
+  [style*="height: var(--control-h-sm, 36px)"][style*="overflow-x: auto"] {
+    height: auto !important;
+    min-height: 40px;
   }
 }
 
@@ -278,6 +486,32 @@ input::placeholder {
   [data-screen-label="Agenda builder"] [style*="width: 280px"] {
     width: 100% !important;
     flex: 0 0 auto !important;
+    /* Bounded, each with its own scroll. Unbounded, the tray's twelve cards
+       stood between you and the grid — a whole screen of scrolling to reach the
+       thing the page is named after. */
+    max-height: 38vh;
+    overflow-y: auto;
+  }
+
+  /* The grid keeps `flex: 1 1 0%`, and in a column that scrolls there is no
+     free space to claim a share of, so it resolved to a height of exactly
+     zero: the agenda rendered its toolbar, rendered its tray, and silently
+     omitted the schedule. Stacking the panes caused this, so it is fixed here
+     rather than left for the next person to find. A stated height gives the
+     grid its own scrollport back, in both directions, which a room-by-time
+     grid needs on any screen. */
+  [data-screen-label="Agenda builder"] [style*="flex: 1 1 0%"][style*="overflow: auto"] {
+    flex: 0 0 auto !important;
+    height: 72vh;
+  }
+
+  /* "drag to place · double-click adds · Delete unschedules · ⌘Z undo" is four
+     instructions for input devices this screen does not have, and it was the
+     only thing on the console still painting outside the viewport. Dragging on
+     a phone is an explicit non-goal, so this is not a hint being hidden — it is
+     a hint that was never true here. */
+  [data-agenda-hint] {
+    display: none !important;
   }
 
   /* Settings puts a 210px panel of section links beside the form. Of 298px
@@ -302,19 +536,25 @@ input::placeholder {
     border-bottom: 1px solid var(--ln) !important;
   }
 
-  /* Tables keep their columns and scroll sideways, which is the honest
-     behaviour on a phone — but the scroll has to be reachable by thumb and
-     obvious, rather than clipped by an ancestor that hid its overflow. */
-  [data-screen-label] [style*="overflow-x: auto"],
-  [data-screen-label] [style*="overflow: auto"] {
-    -webkit-overflow-scrolling: touch;
+  /* Program is the same two-pane shape and was the worst of them — a 208px nav
+     beside 182px of content, so the thing you came to edit had less than half a
+     phone. It is hand-built rather than generated, carries no
+     `data-screen-label`, and so was invisible to both rules above.
+     Matched by position instead: a split pane that is a direct child of the
+     console's content column. That is the shell's own structure, not one
+     screen's markup. */
+  [style*="flex-direction: column"][style*="overflow: hidden"]
+    > [style*="display: flex"][style*="min-height: 0px"] {
+    flex-direction: column !important;
+    overflow-y: auto !important;
   }
-
-  /* A 28px control is a target most thumbs miss. This lifts only the ones that
-     carry a label; icon-only buttons keep their size so toolbars do not grow
-     a second row. */
-  [data-screen-label] button:not([aria-label]),
-  [data-screen-label] a:not([aria-label]) {
-    min-height: 36px;
+  [style*="flex-direction: column"][style*="overflow: hidden"]
+    > [style*="display: flex"][style*="min-height: 0px"]
+    > [style*="width: 208px"] {
+    width: 100% !important;
+    height: auto !important;
+    flex: 0 0 auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--ln) !important;
   }
 }

@@ -96,7 +96,11 @@ html.js [data-rv].in{opacity:1;transform:none}
 .rev .stx{order:2}
 .rev .svz{order:1}
 .svz{position:relative}
-@media(max-width:900px){.sgrid{grid-template-columns:1fr}.rev .stx{order:0}.rev .svz{order:1}}
+@media(max-width:900px){.sgrid{grid-template-columns:1fr}
+/* `1fr` is not a promise that the track fits: a grid item defaults to
+   min-width:auto and refuses to go below its content, so the speaker-portal
+   mock held its column open at 385px inside a 346px page. */
+.sgrid>*{min-width:0}.rev .stx{order:0}.rev .svz{order:1}}
 
 /* app screenshots (dark) */
 .shot{position:relative;background:#101013;border-radius:14px;color:#F2F2F0;text-align:left;overflow:hidden;font-size:13px;line-height:1.45;width:100%;max-width:580px;margin:0 auto;box-shadow:0 0 0 1px rgba(255,255,255,.09),0 24px 60px -12px rgba(0,0,0,.7),0 60px 120px -30px rgba(0,0,0,.55)}
@@ -183,7 +187,16 @@ html.js [data-rv].in :is(.fr,.cl,.vr):nth-child(6){transition-delay:.35s}
 .clash{position:absolute;z-index:5;background:#1F1F24;color:#F2F2F0;font-size:11px;font-weight:700;padding:8px 12px;border-radius:8px;box-shadow:0 0 0 1px rgba(232,106,139,.45),0 14px 34px rgba(0,0,0,.6);opacity:0;animation:sy 8s infinite}
 .clash b{color:#F5A9BE}
 @keyframes sy{0%,28%{opacity:0;transform:translateY(4px)}36%,50%{opacity:1;transform:none}60%,100%{opacity:0}}
-@media(max-width:680px){.ab{transform:scale(.7);transform-origin:top left;width:143%;margin-bottom:-84px}}
+@media(max-width:680px){.ab{transform:scale(.7);transform-origin:top left;width:143%;margin-bottom:-84px}
+/* The agenda mock is 545px of fixed geometry inside 346px of phone, and .shot
+   clips what will not fit, so it read as a screenshot cropped by accident:
+   room C gone, "Paged at scale" halved, the conflict callout losing its last
+   word. Its claim is that the grid catches a clash across rooms, which needs
+   the rooms visible. Scaled the way .ab already is: 346/545. */
+.shot.ag .app{transform:scale(.635);transform-origin:top left;width:157%;margin-bottom:-103px}
+/* Title, three tabs and an avatar came to 353px inside 346, so the avatar lost
+   its right edge. This buys back 20px; margin-left:auto returns it to the edge. */
+.mtb{gap:6px;padding:0 10px}}
 
 /* terminal screenshots */
 .tb{display:flex;align-items:center;gap:10px;height:38px;padding:0 14px;background:#121216;border-bottom:1px solid #1F1F24}

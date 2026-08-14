@@ -348,14 +348,34 @@ export default function DirectoryPage() {
                         exception as Submissions (docs/UI_AUDIT.md "Where the control floor
                         stops, and why"): forcing this to 36px would blow out row height across
                         80 contacts for no real gain, so it stays native-sized inside a row that
-                        already clears 44px. */}
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(row.id)}
-                      onChange={() => toggle(row.id)}
-                      aria-label={`Select ${row.name}`}
-                      style={{ width: 16, height: 16, flex: "none", cursor: "pointer" }}
-                    />
+                        already clears 44px.
+
+                        That decision was made for a mouse and it still holds, but a thumb needs
+                        the target even when the drawing stays small. Elsewhere a pseudo-element
+                        carries the touch area; a checkbox is a replaced element and cannot have
+                        one, so the label does it instead. The padding grows the target to 44px
+                        and the equal negative margin hands the space straight back, so the row
+                        height, the 16px left inset and the 12px gap are all exactly what they
+                        were — the tap area is the only thing that changed. */}
+                    <label
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flex: "none",
+                        padding: 11,
+                        margin: -11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(row.id)}
+                        onChange={() => toggle(row.id)}
+                        aria-label={`Select ${row.name}`}
+                        style={{ width: 16, height: 16, flex: "none", cursor: "pointer" }}
+                      />
+                    </label>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{

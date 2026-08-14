@@ -886,7 +886,7 @@ export function Evaluations({ d }: { d: EvaluationsData }) {
             {d.onEval ? (
               <>
                 {" "}
-                <div
+                <div data-table-card
                   style={{
                     border: "1px solid var(--ln,#E1E7E9)",
                     borderRadius: "14px",

@@ -1100,7 +1100,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                   toolbar chips showing another surface's state. The drawer keeps its
                   own tabs; the toolbar keeps none. */}{" "}
             </div>{" "}
-            <div
+            <div data-table-card
               style={{
                 border: "1px solid var(--ln,#E1E7E9)",
                 borderRadius: "14px",
