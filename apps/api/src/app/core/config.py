@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: str = ""
 
+    #: Sentry. Absent by default and absent is a supported configuration: with
+    #: no DSN the SDK is never initialised and the process reports nothing,
+    #: which is what keeps `make setup && make dev` credential-free.
+    sentry_dsn: str = ""
+    #: Errors are always captured when a DSN is set; this governs only
+    #: performance spans, which are the half that consumes a quota. 0 sends
+    #: none — the right default for a box whose traffic is one demo at a time.
+    sentry_traces_sample_rate: float = 0.0
+
     anthropic_api_key: str = ""
     #: A local model server, when you would rather not meter development against
     #: a paid API. Set it and it wins over `anthropic_api_key` — iterating on a

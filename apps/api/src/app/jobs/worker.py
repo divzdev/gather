@@ -16,8 +16,11 @@ import contextlib
 import signal
 from datetime import UTC, datetime
 
+import sentry_sdk
+
 from app.core.config import get_settings
 from app.core.db import session_factory
+from app.core.observability import init_sentry
 from app.jobs import tasks
 
 #: Long, because the work is a daily sweep and the floor inside it is 24 hours.
@@ -49,6 +52,11 @@ async def loop(stop: asyncio.Event, *, interval: int = INTERVAL_SECONDS) -> None
             # Printed rather than raised: the next tick may well succeed, and a
             # worker that exits on a transient database blip is worse than one
             # that says so and carries on.
+            #
+            # Reported as well as printed, because carrying on is exactly what
+            # makes this invisible: a sweep that fails every night still leaves
+            # a healthy container and a log nobody reads. A no-op without a DSN.
+            sentry_sdk.capture_exception(error)
             print(f"[worker {stamp}] sweep failed: {type(error).__name__}: {error}")
 
         with contextlib.suppress(TimeoutError):
@@ -57,7 +65,11 @@ async def loop(stop: asyncio.Event, *, interval: int = INTERVAL_SECONDS) -> None
 
 async def main() -> None:
     settings = get_settings()
-    print(f"[worker] started, sweeping every {INTERVAL_SECONDS}s (env={settings.env})")
+    reporting = init_sentry("worker", settings)
+    print(
+        f"[worker] started, sweeping every {INTERVAL_SECONDS}s (env={settings.env}, "
+        f"errors {'→ sentry' if reporting else 'local only'})"
+    )
 
     stop = asyncio.Event()
     running = asyncio.get_running_loop()

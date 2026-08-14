@@ -43,6 +43,11 @@ dependencies = [
     # client, so the sync one runs in a worker thread rather than pulling in a
     # second HTTP stack to keep it off the event loop.
     "boto3>=1.35",
+    # Error reporting, reached only from core/observability.py. Inert without a
+    # DSN, so it costs an import and nothing else on a credential-free machine.
+    # Its FastAPI, SQLAlchemy and asyncio integrations auto-enable off libraries
+    # already here, which is why no extras are pinned.
+    "sentry-sdk>=2.20",
 ]
 
 [dependency-groups]

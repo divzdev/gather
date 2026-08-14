@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.db import engine
 from app.core.errors import ApiError, api_error_handler, validation_error_handler
 from app.core.idempotency import IdempotencyMiddleware
+from app.core.observability import init_sentry
 from app.features.ai.router import router as ai_router
 from app.features.auth.router import router as auth_router
 from app.features.crm.router import router as crm_router
@@ -90,6 +91,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    # Before the app exists, so a failure while building it is still reported.
+    init_sentry("api", settings)
     app = FastAPI(
         title="Gather API",
         description=API_DESCRIPTION,
