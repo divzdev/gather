@@ -297,6 +297,12 @@ async def nudge(
     body: NudgeRequest, session: DbSession, _: User = Depends(require_role(*WRITE))
 ) -> NudgeResult:
     sent, skipped = await service.nudge_outstanding(session, speaker_ids=body.speaker_ids)
+    # Committed here, not on teardown. `get_db` commits after the response is
+    # sent, so a second press arriving fast enough read `last_nudged_at` from
+    # before the first press and re-sent every reminder — the 24-hour floor
+    # held in the code and not in the database. Mail has already left; making
+    # the record of it durable before reporting it is the only honest order.
+    await session.commit()
     return NudgeResult(sent=sent, skipped=skipped)
 
 

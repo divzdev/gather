@@ -281,6 +281,9 @@ async def resend(
     # Same defect, same fix: a resend that only re-queues cannot recover
     # anything, which made the documented recovery path a no-op.
     await mail.deliver_batch(session, [retry])
+    # Same commit-before-response rule as send-decisions: the retry row must be
+    # durable before the outbox is told about it.
+    await session.commit()
     return ResendResult(id=retry.id, status=retry.status)
 
 
@@ -346,5 +349,10 @@ async def send_decisions(
     # actually left, not how many recipients were addressed.
     sent = await mail.deliver_batch(session, queued)
     batch.status = MessageStatus.SENT if sent == len(queued) else MessageStatus.FAILED
-    await session.flush()
+    # Committed here, not on teardown — teardown runs after the response is
+    # sent. Uncommitted, `decision_status = SENT` is invisible to a second
+    # press: it recomputes the same recipients, the confirmed count matches
+    # again, and the whole batch goes out twice. The count guard protects
+    # against a stale screen; only a durable write protects against a fast one.
+    await session.commit()
     return SendResult(sent=sent, batch_id=batch_id)
