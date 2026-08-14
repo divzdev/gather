@@ -124,8 +124,7 @@ export function Review({ d }: { d: ReviewData }) {
               alignItems: "center",
               gap: "14px",
               padding: "0 20px",
-              borderBottom: "1px solid var(--ln,#E1E7E9)",
-              background: "var(--cd,#FFFFFF)",
+              background: "transparent",
             }}
           >
             {" "}

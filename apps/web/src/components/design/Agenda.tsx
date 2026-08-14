@@ -241,8 +241,7 @@ export function Agenda({ d }: { d: AgendaData }) {
             style={{
               flex: "none",
               padding: "20px 28px 12px",
-              borderBottom: "1px solid var(--ln,#E1E7E9)",
-              background: "var(--cd,#FFFFFF)",
+              background: "transparent",
             }}
           >
             {" "}
@@ -315,8 +314,7 @@ export function Agenda({ d }: { d: AgendaData }) {
               gap: "6px 10px",
               padding: "5px 14px",
               boxSizing: "border-box",
-              borderBottom: "1px solid var(--ln,#E1E7E9)",
-              background: "var(--cd,#FFFFFF)",
+              background: "transparent",
             }}
           >
             {" "}

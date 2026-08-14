@@ -170,8 +170,7 @@ export function Evaluations({ d }: { d: EvaluationsData }) {
               gap: "16px",
               overflowX: "auto",
               padding: "0 20px",
-              borderBottom: "1px solid var(--ln,#E1E7E9)",
-              background: "var(--cd,#FFFFFF)",
+              background: "transparent",
             }}
           >
             {" "}
