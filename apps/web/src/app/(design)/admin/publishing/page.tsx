@@ -189,7 +189,7 @@ export default function PublishingPage() {
     pvInk: palette.ink,
     pvMut: palette.muted,
     pvLn: palette.line,
-    pvSunk: theme === "dark" ? "#1F1F24" : "#EDF1F2",
+    pvSunk: theme === "dark" ? "#1D1D20" : "#EFEFF2",
     pvTitle: notPublished ? "Nothing published yet" : (schedule?.event.name ?? ""),
     pvSub: notPublished
       ? "Publish the schedule from the agenda, then this preview fills in."

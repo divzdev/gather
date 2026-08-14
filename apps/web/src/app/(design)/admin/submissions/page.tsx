@@ -68,26 +68,26 @@ const STATUS = {
     label: "In review",
     fg: "var(--pd,#B96A1F)",
     bg: "var(--pdw,#F9EDDF)",
-    dot: "#B96A1F",
+    dot: "var(--pd,#92590A)",
   },
   accepted: {
     label: "Accepted",
     fg: "var(--ok,#0E7A5F)",
     bg: "var(--okw,#E2F1EC)",
-    dot: "#0E7A5F",
+    dot: "var(--ok,#177A53)",
   },
   waitlisted: {
     label: "Waitlisted",
     fg: "var(--pd,#B96A1F)",
     bg: "var(--pdw,#F9EDDF)",
-    dot: "#B96A1F",
+    dot: "var(--pd,#92590A)",
   },
   rejected: { label: "Rejected", fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)", dot: "#6B7B84" },
   withdrawn: {
     label: "Withdrawn",
     fg: "var(--i3,#6B7B84)",
     bg: "var(--sk,#EDF1F2)",
-    dot: "#6B7B84",
+    dot: "var(--i3,#54545C)",
   },
 } as const;
 
@@ -531,11 +531,11 @@ export default function SubmissionsPage() {
   const openScore = open === null ? null : score(open);
   const decidedAs = (outcome: string, on: string, off: string, border: string) =>
     open?.status === outcome
-      ? { bg: `var(--${on})`, fg: "#FFFFFF", bd: `var(--${on})` }
+      ? { bg: `var(--${on})`, fg: "var(--cd,#FFFFFF)", bd: `var(--${on})` }
       : { bg: "transparent", fg: `var(--${off})`, bd: `var(--${border})` };
-  const accepted = decidedAs("accepted", "ok,#0E7A5F", "ok,#0E7A5F", "okl,#C2E0D5");
-  const waitlisted = decidedAs("waitlisted", "pd,#B96A1F", "pd,#B96A1F", "pdl,#EFD3B6");
-  const rejected = decidedAs("rejected", "i3,#6B7B84", "i3,#6B7B84", "ls,#C8D2D5");
+  const accepted = decidedAs("accepted", "ok,#177A53", "ok,#177A53", "okl,#C3E3D3");
+  const waitlisted = decidedAs("waitlisted", "pd,#92590A", "pd,#92590A", "pdl,#EFDBB2");
+  const rejected = decidedAs("rejected", "i3,#54545C", "i3,#54545C", "ls,#C9C9CF");
 
   const screen: SubmissionsData = {
     publicHref: stats.event === null ? "/admin" : `/e/${stats.event.slug}`,

@@ -909,7 +909,7 @@ export default function SessionsPage() {
       runImport.mutate();
     },
     impGoBg: impPreview.length === 0 ? "var(--ls,#C8D2D5)" : "var(--sg,#E04E4E)",
-    impGoFg: impPreview.length === 0 ? "var(--i3,#6B7B84)" : "#FFFFFF",
+    impGoFg: impPreview.length === 0 ? "var(--i3,#6B7B84)" : "var(--bf,#FFFFFF)",
     impLabel: runImport.isPending
       ? "Importing…"
       : impPreview.length === 0
@@ -1199,7 +1199,7 @@ function BulkDialog({
               border: "none",
               background: count === 0 ? "var(--ls,#C8D2D5)" : "var(--sg,#E04E4E)",
               font: "600 12.5px var(--font-plex-sans), sans-serif",
-              color: count === 0 ? "var(--i3,#6B7B84)" : "#FFFFFF",
+              color: count === 0 ? "var(--i3,#6B7B84)" : "var(--bf,#FFFFFF)",
             }}
           >
             {pending ? "Applying…" : `Change ${count}`}

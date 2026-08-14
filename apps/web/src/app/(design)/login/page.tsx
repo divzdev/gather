@@ -478,7 +478,7 @@ function LoginPage() {
               style={{
                 fontSize: 13.5,
                 fontWeight: 600,
-                color: "#F0766A",
+                color: "#F27E95",
                 margin: "0 0 16px",
                 lineHeight: 1.5,
               }}

@@ -203,12 +203,12 @@ export function ConsoleHeader() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 32,
-            height: 32,
+            width: 42,
+            height: 42,
             borderRadius: "50%",
-            background: "none",
-            border: "none",
-            color: "var(--i2,#3E4E58)",
+            background: "var(--cd,#FFFFFF)",
+            border: "1px solid var(--ln,#E3E3E7)",
+            color: "var(--i2,#3F3F46)",
           }}
         >
           <svg
@@ -227,8 +227,8 @@ export function ConsoleHeader() {
             <span
               style={{
                 position: "absolute",
-                top: 5,
-                right: 6,
+                top: 9,
+                right: 10,
                 width: 6,
                 height: 6,
                 borderRadius: "50%",
@@ -335,15 +335,15 @@ export function ConsoleHeader() {
           aria-label="Account menu"
           aria-expanded={chrome.popUser}
           style={{
-            width: 28,
-            height: 28,
+            width: 42,
+            height: 42,
             borderRadius: "50%",
-            background: "var(--sk,#EDF1F2)",
-            border: "1px solid var(--ln,#E1E7E9)",
+            background: "var(--cd,#FFFFFF)",
+            border: "1px solid var(--ln,#E3E3E7)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            font: "600 10px var(--font-plex-sans), sans-serif",
+            font: "600 11.5px var(--font-plex-sans), sans-serif",
             color: "var(--i2,#3E4E58)",
             padding: 0,
             transition: "border-color .12s",
@@ -437,8 +437,7 @@ export function ConsoleHeader() {
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 10px 10px" }}
               >
                 {/* The accent swatches sat here until spec 0002 fixed the
-                    palette — only the light/dark/system toggle remains. */}
-                <div style={{ flex: 1 }} />
+                    palette — the toggle now owns the row. */}
                 <button
                   type="button"
                   className="gh-row"
@@ -447,13 +446,15 @@ export function ConsoleHeader() {
                   style={{
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: "center",
                     gap: 6,
-                    height: 26,
+                    flex: 1,
+                    height: 30,
                     padding: "0 10px",
                     borderRadius: 99,
                     border: "1px solid var(--ls,#C8D2D5)",
                     background: "none",
-                    font: "500 11px var(--font-plex-sans), sans-serif",
+                    font: "500 11.5px var(--font-plex-sans), sans-serif",
                     color: "var(--i2,#3E4E58)",
                   }}
                 >

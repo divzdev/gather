@@ -22,8 +22,8 @@ export const INK = {
   faint: "#7C8093",
   field: "#121216",
   edge: "#2A2A31",
-  coral: "#FF6B6B",
-  onCoral: "#331313",
+  coral: "#F1F1F2",
+  onCoral: "#141417",
 } as const;
 
 export const HAIRLINE = "rgba(255,255,255,.18)";
@@ -40,11 +40,11 @@ export const display = (size: string) => ({
 export function Mark({ size = 26 }: { size?: number }) {
   return (
     <svg viewBox="0 0 24 24" style={{ width: size, height: size, borderRadius: size / 3.7 }}>
-      <rect width="24" height="24" rx="6.5" fill="#12142E" />
-      <circle cx="14.7" cy="14.7" r="5.7" fill={INK.coral} />
-      <circle cx="6.3" cy="6.3" r="2.3" fill="#EBEDF7" />
-      <circle cx="14.4" cy="5.4" r="1.5" fill="#EBEDF7" />
-      <circle cx="5.4" cy="14.4" r="1.5" fill="#EBEDF7" />
+      <rect width="24" height="24" rx="6.5" fill="#F1F1F2" />
+      <circle cx="14.7" cy="14.7" r="5.7" fill="#0D0D0F" />
+      <circle cx="6.3" cy="6.3" r="2.3" fill="#0D0D0F" opacity="0.55" />
+      <circle cx="14.4" cy="5.4" r="1.5" fill="#0D0D0F" opacity="0.55" />
+      <circle cx="5.4" cy="14.4" r="1.5" fill="#0D0D0F" opacity="0.55" />
     </svg>
   );
 }
@@ -201,7 +201,7 @@ export function fieldStyle(invalid: boolean): React.CSSProperties {
     boxSizing: "border-box",
     height: 46,
     background: INK.field,
-    border: `1px solid ${invalid ? "#F0766A" : INK.edge}`,
+    border: `1px solid ${invalid ? "#F27E95" : INK.edge}`,
     borderRadius: 11,
     padding: "13px 15px",
     fontFamily: "var(--font-manrope), sans-serif",

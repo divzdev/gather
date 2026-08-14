@@ -615,7 +615,7 @@ export default function FormsPage() {
       wt: index === step ? "600" : "400",
       dotBg: index <= step ? "var(--sg,#E04E4E)" : "var(--cd,#FFFFFF)",
       dotBd: index <= step ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
-      dotFg: index <= step ? "#FFFFFF" : "var(--i4,#99A6AD)",
+      dotFg: index <= step ? "var(--bf,#FFFFFF)" : "var(--i4,#99A6AD)",
     })),
     s1: step === 0,
     s2: step === 1,

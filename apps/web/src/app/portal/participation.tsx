@@ -44,8 +44,8 @@ const primary: React.CSSProperties = {
   padding: "0 18px",
   borderRadius: 999,
   border: "none",
-  background: "#FF6B6B",
-  color: "#331313",
+  background: "var(--bt,#141417)",
+  color: "var(--bf,#FFFFFF)",
   font: "600 13px 'IBM Plex Sans',sans-serif",
   cursor: "pointer",
 };
