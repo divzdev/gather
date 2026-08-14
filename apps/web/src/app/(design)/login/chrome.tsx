@@ -41,7 +41,7 @@ export function Mark({ size = 26 }: { size?: number }) {
   return (
     <svg viewBox="0 0 24 24" style={{ width: size, height: size, borderRadius: size / 3.7 }}>
       <rect width="24" height="24" rx="6.5" fill="#F1F1F2" />
-      <circle cx="14.7" cy="14.7" r="5.7" fill="#9FA1E8" />
+      <circle cx="14.7" cy="14.7" r="5.7" fill="#FF6B6B" />
       <circle cx="6.3" cy="6.3" r="2.7" fill="#141417" />
       <circle cx="14.4" cy="5.4" r="1.9" fill="#141417" />
       <circle cx="5.4" cy="14.4" r="1.9" fill="#141417" />
