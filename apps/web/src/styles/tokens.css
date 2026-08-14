@@ -80,8 +80,8 @@
   /* Track hues, assigned per track and stored so a colour never shifts. */
   --track-agents: #3e8896;
   --track-evals: #a85788;
-  --track-infrastructure: #5a6ba8;
-  --track-retrieval: #7e5cb8;
+  --track-infrastructure: #56789e;
+  --track-retrieval: #8a5ca8;
   --track-multimodal: #c4703a;
   --track-production: #34526b;
 

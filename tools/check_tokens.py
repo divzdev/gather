@@ -164,7 +164,7 @@ THEME_INDEPENDENT = (
 # light hexes on purpose, and the converted prototypes are full of them. So it
 # is a ratchet — the count may fall and never rise. Drop the number whenever it
 # does; the message tells you to.
-RAW_HEX_BUDGET = 94
+RAW_HEX_BUDGET = 68
 
 HEX = re.compile(r"#[0-9A-Fa-f]{3,8}\b")
 #: `var(--token, #fallback)` is the documented pattern, not a violation.

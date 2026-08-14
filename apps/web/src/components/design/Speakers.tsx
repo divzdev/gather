@@ -1924,7 +1924,7 @@ export function Speakers({ d }: { d: SpeakersData }) {
                     <div
                       style={{
                         border: "1px solid var(--ln,#E1E7E9)",
-                        borderLeft: "3px solid #3E8896",
+                        borderLeft: "3px solid var(--track-agents,#3E8896)",
                         borderRadius: "8px",
                         padding: "12px 14px",
                         marginBottom: "8px",

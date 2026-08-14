@@ -13,6 +13,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TRACK_HUES } from "@/lib/trackHues";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
@@ -25,7 +26,7 @@ import { AgendaView, type ViewKey } from "./views";
 const MINUTES_PER_PX = 1.5;
 const GRID_MINUTES = 480;
 const SNAP = 5;
-const TRACK_HUES = ["#3E8896", "#A85788", "#5A6BA8", "#7E5CB8", "#C4703A", "#34526B"] as const;
+
 
 type GridSession = {
   id: string;
@@ -965,7 +966,7 @@ export default function AgendaPage() {
             tracks: (data?.tracks ?? []).map((entry, index) => ({
               id: entry.id,
               name: entry.name,
-              hue: TRACK_HUES[index % TRACK_HUES.length] ?? "#3E8896",
+              hue: TRACK_HUES[index % TRACK_HUES.length] ?? TRACK_HUES[0],
             })),
             scheduled: data?.scheduled ?? [],
             unscheduled: data?.unscheduled ?? [],

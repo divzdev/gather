@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TRACK_HUES } from "@/lib/trackHues";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 
@@ -95,7 +96,7 @@ type StatusKey = keyof typeof STATUS;
 const DECIDABLE = ["accepted", "waitlisted", "rejected"] as const;
 
 /** Track colours in the prototype's order; the API hands back a hue index. */
-const TRACK_HUES = ["#3E8896", "#A85788", "#5A6BA8", "#7E5CB8", "#C4703A", "#34526B"];
+
 
 type View = "All" | "Needs review" | "Ready to decide" | "Accepted";
 type SortKey = "title" | "score" | "date";

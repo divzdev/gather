@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TRACK_HUES } from "@/lib/trackHues";
 import { useMemo, useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
@@ -33,7 +34,7 @@ type SessionRow = {
 type Named = { id: string; name: string; hue_index?: number };
 type EventDayRow = { id: string; day_date: string };
 
-const TRACK_HUES = ["#3E8896", "#A85788", "#5A6BA8", "#7E5CB8", "#C4703A", "#34526B"];
+
 
 const STATUS: Record<string, { label: string; fg: string; bg: string }> = {
   unscheduled: { label: "Unscheduled", fg: "var(--i3,#6B7B84)", bg: "var(--sk,#EDF1F2)" },

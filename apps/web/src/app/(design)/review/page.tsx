@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TRACK_HUES } from "@/lib/trackHues";
 import { useState } from "react";
 
 import { useHotkeys } from "@/lib/hotkeys";
@@ -57,7 +58,7 @@ function firstSpeakerName(subject: Subject | undefined): string | null {
   return typeof name === "string" ? name : null;
 }
 
-const TRACK_HUES = ["#3E8896", "#A85788", "#5A6BA8", "#7E5CB8", "#C4703A", "#34526B"];
+
 
 function answer(subject: Subject | undefined, key: string): string {
   const value = subject?.answers[key];
