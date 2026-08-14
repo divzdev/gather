@@ -573,11 +573,11 @@ export default function PortalPage() {
   const step = (index: number, reached: boolean, name: string, note: string, last: boolean) => ({
     fx: last ? "0 0 auto" : "1",
     g: reached ? "✓" : String(index),
-    db: reached ? "var(--sg,#E04E4E)" : "var(--cd,#FFFFFF)",
-    bd: reached ? "var(--sg,#E04E4E)" : "var(--ls,#C8D2D5)",
+    db: reached ? "var(--ok,#177A53)" : "var(--cd,#FFFFFF)",
+    bd: reached ? "var(--ok,#177A53)" : "var(--ls,#C9C9CF)",
     dc: reached ? "var(--bf,#FFFFFF)" : "var(--i4,#99A6AD)",
     ln: last ? "none" : "block",
-    lc: reached ? "var(--sl,#FFC9C0)" : "var(--ln,#E1E7E9)",
+    lc: reached ? "var(--okl,#C3E3D3)" : "var(--ln,#E3E3E7)",
     tf: reached ? "var(--ik,#16232B)" : "var(--i3,#6B7B84)",
     n: name,
     d: note,
@@ -679,7 +679,7 @@ export default function PortalPage() {
             : (task.description ?? (task.is_required ? "Required" : "Optional")),
         due: due.text,
         dueFg: due.fg,
-        bar: task.status === "overdue" ? "var(--cn,#D8432B)" : "var(--sg,#E04E4E)",
+        bar: task.status === "overdue" ? "var(--cn,#B3243F)" : "var(--pd,#92590A)",
         cta: task.files.length > 0 ? "Replace" : CTA[task.kind],
         onGo: () => startUpload(task),
       };
