@@ -56,6 +56,19 @@ RESERVED_DOMAINS = frozenset(
 #: never disagree — `mail.example.com` is as undeliverable as `example.com`.
 RESERVED_SUFFIXES = tuple(f".{name}" for name in sorted(RESERVED_DOMAINS))
 
+#: The full stops UTS-46 folds to ASCII "." on the way to a lookup. Without this
+#: an ideographic full stop spells example.com to a resolver and something else
+#: entirely to a string comparison.
+#: Written as escapes, not glyphs: these are invisibly close to "." in a source
+#: file, which is the whole reason they work as a bypass.
+UNICODE_FULL_STOPS = str.maketrans(
+    {
+        "\u3002": ".",  # IDEOGRAPHIC FULL STOP
+        "\uff0e": ".",  # FULLWIDTH FULL STOP
+        "\uff61": ".",  # HALFWIDTH IDEOGRAPHIC FULL STOP
+    }
+)
+
 
 class UndeliverableRecipientError(Exception):
     """An address no provider should ever be asked to deliver to.
@@ -78,10 +91,12 @@ def undeliverable_reason(to_email: str) -> str | None:
     class of address that is *known* undeliverable; anything else is the
     provider's call to make.
     """
-    # The trailing dot of a fully-qualified name is legal and addresses carrying
-    # one resolve identically, so leaving it on would let `@example.com.` walk
-    # straight past a guard whose whole value is having no way around it.
-    domain = to_email.rpartition("@")[2].strip().lower().rstrip(".")
+    # Two ways a domain can read as reserved without matching one literally, and
+    # a guard whose whole value is having no way around it has to close both.
+    # UTS-46 maps all three Unicode full stops onto ASCII "." before resolution,
+    # so `example。com` reaches example.com; and a trailing dot is a legal
+    # fully-qualified name that resolves identically.
+    domain = to_email.rpartition("@")[2].strip().lower().translate(UNICODE_FULL_STOPS).rstrip(".")
     if not domain:
         return f"{to_email!r} has no domain"
     if domain in RESERVED_DOMAINS or domain.endswith(RESERVED_SUFFIXES):
