@@ -7,8 +7,6 @@ import { TeamPanel } from "@/components/console/TeamPanel";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { Settings, type SettingsData } from "@/components/design/Settings";
 import { SETTINGS_ICON } from "@/components/ui";
-import { useTheme } from "@/components/ThemeProvider";
-import { ACCENT_NAMES, ACCENTS } from "@/lib/theme";
 import { authed, getEventId } from "@/lib/session";
 
 type Event = {
@@ -140,7 +138,6 @@ const ASK_TONE = {
 
 export default function SettingsPage() {
   const { toasts, toast, dismiss } = useConsoleChrome();
-  const theme = useTheme();
   const queryClient = useQueryClient();
   const eventId = typeof window === "undefined" ? null : getEventId();
 
@@ -295,16 +292,10 @@ export default function SettingsPage() {
     upLogo: () => toast("Branding images need a public file route, which is not built yet."),
     upBg: () => toast("Branding images need a public file route, which is not built yet."),
 
-    pubAccents: ACCENT_NAMES.map((name) => ({
-      n: name,
-      c: ACCENTS[name].dot,
-      on: () => theme.setAccent(name),
-      ring:
-        theme.accent === name
-          ? `0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ${ACCENTS[name].dot}`
-          : "inset 0 0 0 1px rgba(0,0,0,.12)",
-    })),
-    pubAccentLine: `Public pages use ${theme.accent}.`,
+    // The five-accent picker retired with spec 0002 — the palette is fixed,
+    // and pretending public pages would restyle was never true anyway.
+    pubAccents: [],
+    pubAccentLine: "This build ships one palette; public pages match it.",
 
     /* Four switches used to sit here, defaulted on, animating on click and
      * toasting that the preference was not stored. Two of the four named

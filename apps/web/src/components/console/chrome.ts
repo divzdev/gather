@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import { useTheme } from "@/components/ThemeProvider";
-import { ACCENT_NAMES, ACCENTS } from "@/lib/theme";
 import { authed, clearToken } from "@/lib/session";
 
 const TOAST_MS = 6000;
@@ -39,12 +38,6 @@ export type ConsoleChrome = {
   readonly youRole: string;
   readonly youOrg: string;
   readonly youInitials: string;
-  readonly accents: readonly {
-    readonly n: string;
-    readonly c: string;
-    readonly on: () => void;
-    readonly ring: string;
-  }[];
 };
 
 export function useConsoleChrome(): {
@@ -105,15 +98,6 @@ export function useConsoleChrome(): {
     themeTitle: `Theme: ${theme.mode}, click to change`,
     togTheme: () =>
       theme.setMode(theme.mode === "system" ? "light" : theme.mode === "light" ? "dark" : "system"),
-    accents: ACCENT_NAMES.map((name) => ({
-      n: name,
-      c: ACCENTS[name].dot,
-      on: () => theme.setAccent(name),
-      ring:
-        theme.accent === name
-          ? `0 0 0 2px var(--cd,#FFFFFF), 0 0 0 4px ${ACCENTS[name].dot}`
-          : "inset 0 0 0 1px rgba(0,0,0,.12)",
-    })),
   };
 
   return { chrome, toasts, toast, dismiss };

@@ -144,18 +144,19 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
       : `${stats.conflicts} to resolve`;
   const overdue = badge(stats.overdueTasks);
 
+  // The ink pill is the active state (spec 0002): chrome carries no hue, so
+  // the pill's fill is the whole signal — it survives collapsing as an
+  // icon-only pill, which is why the old edge bar and dot are gone.
   const item = (name: NavName) =>
     name === active
       ? {
-          bg: "var(--sw,#FFEAE6)",
-          fg: "var(--sg,#E04E4E)",
-          wt: "700",
-          dot: collapsed ? "none" : "inline-block",
-          // Unlike the dot, the bar survives collapsing: it is the only thing
-          // left saying where you are once the labels go.
-          bar: "block",
+          bg: "var(--bt,#141417)",
+          fg: "var(--bf,#FFFFFF)",
+          wt: "650",
+          dot: "none",
+          bar: "none",
         }
-      : { bg: "none", fg: "var(--i2,#3E4E58)", wt: "600", dot: "none", bar: "none" };
+      : { bg: "none", fg: "var(--i2,#3F3F46)", wt: "550", dot: "none", bar: "none" };
 
   const data: ConsoleRailData = {
     youInitials: initials,

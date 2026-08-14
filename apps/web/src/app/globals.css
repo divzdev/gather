@@ -164,6 +164,11 @@ input::placeholder {
   [data-console-rail][data-open="true"] {
     transform: none;
   }
+  /* Desktop floats the rail on the wash (spec 0002); a drawer over content
+   * cannot — the page underneath would read straight through it. */
+  [data-console-rail] aside {
+    background: var(--pp) !important;
+  }
 
   [data-console-menu] {
     display: inline-flex !important;

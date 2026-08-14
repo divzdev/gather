@@ -84,8 +84,9 @@ export function ConsoleHeader() {
         alignItems: "center",
         gap: 14,
         padding: "0 20px",
-        borderBottom: "1px solid var(--ln,#E1E7E9)",
-        background: "var(--cd,#FFFFFF)",
+        // Floats on the wash like the rail (spec 0002) — the controls are
+        // pill-shaped cards, so the bar needs no fill and no hairline.
+        background: "transparent",
         position: "relative",
         zIndex: 30,
       }}
@@ -435,25 +436,8 @@ export function ConsoleHeader() {
               <div
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 10px 10px" }}
               >
-                {chrome.accents.map((accent) => (
-                  <button
-                    type="button"
-                    key={accent.n}
-                    onClick={accent.on}
-                    title={accent.n}
-                    aria-label={accent.n}
-                    style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: "50%",
-                      border: "none",
-                      background: accent.c,
-                      boxShadow: accent.ring,
-                      padding: 0,
-                      flex: "none",
-                    }}
-                  />
-                ))}
+                {/* The accent swatches sat here until spec 0002 fixed the
+                    palette — only the light/dark/system toggle remains. */}
                 <div style={{ flex: 1 }} />
                 <button
                   type="button"

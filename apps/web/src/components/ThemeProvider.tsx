@@ -2,21 +2,12 @@
 
 import { createContext, useCallback, useContext, useSyncExternalStore } from "react";
 
-import {
-  type AccentName,
-  applyTheme,
-  isDark,
-  readStoredTheme,
-  STORAGE_KEYS,
-  type ThemeMode,
-} from "@/lib/theme";
+import { applyTheme, isDark, readStoredTheme, STORAGE_KEYS, type ThemeMode } from "@/lib/theme";
 
 type ThemeContextValue = {
   mode: ThemeMode;
-  accent: AccentName;
   dark: boolean;
   setMode: (mode: ThemeMode) => void;
-  setAccent: (accent: AccentName) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -54,32 +45,26 @@ function subscribe(listener: () => void): () => void {
 }
 
 function getSnapshot(): string {
-  const { mode, accent } = readStoredTheme();
-  return `${mode}|${accent}|${isDark(mode) ? "d" : "l"}`;
+  const { mode } = readStoredTheme();
+  return `${mode}|${isDark(mode) ? "d" : "l"}`;
 }
 
 function getServerSnapshot(): string {
-  return "system|Coral|l";
+  return "system|l";
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const [mode, accent, shade] = snapshot.split("|") as [ThemeMode, AccentName, string];
+  const [mode, shade] = snapshot.split("|") as [ThemeMode, string];
 
   const setMode = useCallback((next: ThemeMode) => {
     window.localStorage.setItem(STORAGE_KEYS.theme, next);
-    applyTheme(next, readStoredTheme().accent);
-    emit();
-  }, []);
-
-  const setAccent = useCallback((next: AccentName) => {
-    window.localStorage.setItem(STORAGE_KEYS.accent, next);
-    applyTheme(readStoredTheme().mode, next);
+    applyTheme(next);
     emit();
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ mode, accent, dark: shade === "d", setMode, setAccent }}>
+    <ThemeContext.Provider value={{ mode, dark: shade === "d", setMode }}>
       {children}
     </ThemeContext.Provider>
   );
