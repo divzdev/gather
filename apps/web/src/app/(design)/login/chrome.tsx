@@ -41,10 +41,10 @@ export function Mark({ size = 26 }: { size?: number }) {
   return (
     <svg viewBox="0 0 24 24" style={{ width: size, height: size, borderRadius: size / 3.7 }}>
       <rect width="24" height="24" rx="6.5" fill="#F1F1F2" />
-      <circle cx="14.7" cy="14.7" r="5.7" fill="#0D0D0F" />
-      <circle cx="6.3" cy="6.3" r="2.3" fill="#0D0D0F" opacity="0.55" />
-      <circle cx="14.4" cy="5.4" r="1.5" fill="#0D0D0F" opacity="0.55" />
-      <circle cx="5.4" cy="14.4" r="1.5" fill="#0D0D0F" opacity="0.55" />
+      <circle cx="14.7" cy="14.7" r="5.7" fill="#34355A" />
+      <circle cx="6.3" cy="6.3" r="2.3" fill="#204631" />
+      <circle cx="14.4" cy="5.4" r="1.5" fill="#463A20" />
+      <circle cx="5.4" cy="14.4" r="1.5" fill="#522735" />
     </svg>
   );
 }
