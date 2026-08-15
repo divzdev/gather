@@ -47,13 +47,6 @@ def init_sentry(component: str, settings: Settings | None = None) -> bool:
     resolved = settings if settings is not None else get_settings()
     if not resolved.sentry_dsn:
         return False
-    # A DSN's absence was the only off-switch, so a DSN sitting in a local .env
-    # quietly turned every development traceback into an incident. Local and
-    # test never report, whatever the environment file says: a reporter is for
-    # the boxes nobody is standing next to, and a developer is standing right
-    # here. Deployed environments are exactly the two below.
-    if resolved.env not in ("staging", "production"):
-        return False
 
     sentry_sdk.init(
         dsn=resolved.sentry_dsn,

@@ -15,12 +15,7 @@ import * as Sentry from "@sentry/nextjs";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
-// A DSN in a local env file must not make `next dev` report — a developer's
-// own traceback is not an incident, and dev noise buries the real ones. The
-// deployed bundle is always a production build, so this gates nothing there.
-const isDev = process.env.NODE_ENV === "development";
-
-if (!isDev && dsn !== undefined && dsn !== "") {
+if (dsn !== undefined && dsn !== "") {
   Sentry.init({
     dsn,
     // NODE_ENV would label the deployed box "production", but it deliberately
