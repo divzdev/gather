@@ -465,8 +465,12 @@ async def test_history_is_bounded_so_a_long_chat_cannot_grow_the_prompt_forever(
     await ask(client, world, "when is the event", history=turns)
 
     sent = fake.seen[0]["user"]
-    assert "question 29" in sent, "the most recent turns are the ones that matter"
-    assert "question 0" not in sent, "an unbounded history would blow the token cap"
+    # Pinned to the boundary, not to "some were dropped": this passed with the
+    # bound four times looser, which is most of the protection gone.
+    kept = assistant.MAX_HISTORY
+    assert f"question {len(turns) - 1}" in sent, "the most recent turn always goes"
+    assert f"question {len(turns) - kept}" in sent, f"the last {kept} turns go"
+    assert f"question {len(turns) - kept - 1}" not in sent, "and nothing older than that"
 
 
 # ──────────────────────────── with no key at all ──────────────────────────────

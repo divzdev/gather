@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenancy import tenancy_disabled, tenant_scope
@@ -33,6 +34,8 @@ from app.models import (
     Message,
     MessageStatus,
     Organization,
+    ReviewerAssignment,
+    ReviewRound,
     Room,
     Session,
     SessionStatus,
@@ -45,6 +48,7 @@ from app.models import (
     TaskKind,
     TaskStatus,
     TaskTemplate,
+    User,
 )
 
 FORM_SCHEMA: dict[str, object] = {"fields": [{"key": "abstract", "type": "textarea"}]}
@@ -171,7 +175,10 @@ async def world(session: AsyncSession) -> AsyncIterator[World]:
         done = TaskTemplate(
             org_id=org.id, event_id=event.id, name="Bio", kind=TaskKind.FORM, is_required=True
         )
-        session.add_all([template, done])
+        upcoming = TaskTemplate(
+            org_id=org.id, event_id=event.id, name="Slides", kind=TaskKind.UPLOAD, is_required=True
+        )
+        session.add_all([template, done, upcoming])
         await session.flush()
         # One outstanding and overdue, one complete. A query that forgets to
         # exclude complete tasks returns two.
@@ -195,6 +202,41 @@ async def world(session: AsyncSession) -> AsyncIterator[World]:
                 status=TaskStatus.COMPLETE,
             )
         )
+        # Outstanding but not yet late, so `overdue_only` has something to
+        # exclude and the filter is observable.
+        session.add(
+            SpeakerTask(
+                org_id=org.id,
+                event_id=event.id,
+                speaker_id=speaker.id,
+                task_template_id=upcoming.id,
+                due_at=datetime.now(UTC) + timedelta(days=10),
+                status=TaskStatus.NOT_STARTED,
+            )
+        )
+
+        # A reviewer with two assignments, one finished — so "who is behind"
+        # has a real number on both sides rather than a zero.
+        reviewer = User(
+            email=f"ravi-{suffix}@example.com",
+            name="Ravi Reviewer",
+            password_hash="x",
+        )
+        session.add(reviewer)
+        round_ = ReviewRound(org_id=org.id, event_id=event.id, name="Round 1", sort_order=1)
+        session.add_all([reviewer, round_])
+        await session.flush()
+        for key, done_at in (("promoted", datetime.now(UTC)), ("orphan", None)):
+            session.add(
+                ReviewerAssignment(
+                    org_id=org.id,
+                    event_id=event.id,
+                    review_round_id=round_.id,
+                    submission_id=made[key],
+                    user_id=reviewer.id,
+                    completed_at=done_at,
+                )
+            )
 
         # Three messages, one of each interesting delivery state.
         for to, state in (
@@ -244,17 +286,29 @@ async def test_an_unknown_query_name_is_refused_rather_than_guessed(
 async def test_tasks_outstanding_omits_completed_work(session: AsyncSession, world: World) -> None:
     result = await catalog.run(session, "tasks_outstanding", {})
 
-    assert result["count"] == 1, "the complete Bio task must not be chased"
-    assert result["rows"][0]["task"] == "Headshot"
+    chased = {row["task"] for row in result["rows"]}
+    assert chased == {"Headshot", "Slides"}, "the complete Bio task must not be chased"
+    assert "Bio" not in chased
+    assert result["rows"][0]["task"] == "Headshot", "soonest due first, so the overdue one leads"
     assert result["rows"][0]["speaker"] == "Priya Raman"
     assert result["rows"][0]["is_overdue"] is True
 
 
 async def test_tasks_outstanding_can_narrow_to_overdue(session: AsyncSession, world: World) -> None:
-    result = await catalog.run(session, "tasks_outstanding", {"overdue_only": True})
+    """The filter has to *change* the answer.
 
-    assert result["count"] == 1
-    assert all(row["is_overdue"] for row in result["rows"])
+    This test used to pass with the filter deleted: the fixture's only
+    outstanding task was already overdue, so both settings returned the same
+    row. `overdue_only` is a model-supplied argument, which makes an untested
+    filter a way for a plan to quietly widen what it sees.
+    """
+    everything = await catalog.run(session, "tasks_outstanding", {})
+    overdue = await catalog.run(session, "tasks_outstanding", {"overdue_only": True})
+
+    assert everything["count"] == 2, "one overdue, one not yet due"
+    assert overdue["count"] == 1
+    assert [row["task"] for row in overdue["rows"]] == ["Headshot"]
+    assert all(row["is_overdue"] for row in overdue["rows"])
 
 
 async def test_accepted_without_session_finds_only_the_unpromoted(
@@ -347,8 +401,23 @@ async def test_review_progress_reports_an_unreviewed_backlog(
 ) -> None:
     result = await catalog.run(session, "review_progress", {})
 
-    assert result["rounds"] == [], "no round has been opened in this world"
-    assert result["unreviewed"] == 3, "every submission is unreviewed"
+    assert [row["name"] for row in result["rounds"]] == ["Round 1"]
+    assert result["rounds"][0]["is_open"] is False, "the round is still a draft"
+    assert result["unreviewed"] == 3, "an assignment is not a score — nothing is reviewed yet"
+
+
+async def test_review_progress_names_who_is_behind(session: AsyncSession, world: World) -> None:
+    """ "How is review going" is usually really "who is behind", so the catalog
+    entry promises a per-reviewer split and this is what holds it to that."""
+    result = await catalog.run(session, "review_progress", {})
+
+    assert "reviewers" in result, "the entry advertises per-reviewer completion"
+    by_name = {row["reviewer"]: row for row in result["reviewers"]}
+    assert by_name["Ravi Reviewer"] == {
+        "reviewer": "Ravi Reviewer",
+        "assigned": 2,
+        "completed": 1,
+    }
 
 
 async def test_files_awaiting_review_is_empty_with_no_uploads(
@@ -371,15 +440,54 @@ async def test_published_vs_draft_diff_reports_never_published(
 async def test_a_query_result_never_exceeds_the_row_cap(
     session: AsyncSession, world: World
 ) -> None:
-    """A plan must not be able to pull the whole submissions table into a prompt.
+    """A plan must not be able to pull the whole task list into a prompt.
 
-    The cap is on the rows *returned*; `count` still reports the true total, so
-    an answer built from a capped result can say "showing 50 of 214" rather than
-    quietly understating the number.
+    This asserted against `submissions_by`, which groups and never truncates —
+    so it passed with the cap deleted. It now drives a query that really does
+    call `_capped`, with more rows than the cap, which is the only shape where
+    the limit is observable.
+
+    `count` still reports the true total, so an answer built from a capped
+    result can say "showing 50 of 60" rather than quietly understating it.
     """
-    result = await catalog.run(session, "submissions_by", {"group_by": "status"})
+    over = catalog.ROW_LIMIT + 10
+    with tenancy_disabled():
+        template = (
+            await session.scalars(
+                select(TaskTemplate).where(
+                    TaskTemplate.name == "Headshot",
+                    TaskTemplate.event_id == world.event.id,
+                )
+            )
+        ).one()
+        # One task each for many speakers, not many tasks for one: a speaker
+        # owes a given deliverable at most once, which the schema enforces.
+        # Sixty people owing a headshot is also the real shape of the problem.
+        for index in range(over - 2):  # the fixture already carries two outstanding
+            extra = Speaker(
+                org_id=world.org_id,
+                email=f"crowd-{index}-{uuid.uuid4().hex[:6]}@example.com",
+                name=f"Speaker {index}",
+            )
+            session.add(extra)
+            await session.flush()
+            session.add(
+                SpeakerTask(
+                    org_id=world.org_id,
+                    event_id=world.event.id,
+                    speaker_id=extra.id,
+                    task_template_id=template.id,
+                    due_at=datetime.now(UTC) - timedelta(days=1),
+                    status=TaskStatus.NOT_STARTED,
+                )
+            )
+        await session.commit()
 
-    assert len(result["rows"]) <= catalog.ROW_LIMIT
+    result = await catalog.run(session, "tasks_outstanding", {})
+
+    assert result["count"] == over, "the true total is still reported"
+    assert len(result["rows"]) == catalog.ROW_LIMIT
+    assert result["truncated"] is True
 
 
 async def test_args_that_do_not_match_the_schema_are_refused(
