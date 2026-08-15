@@ -244,6 +244,18 @@ export default function SettingsPage() {
         dot: active ? "inline-block" : "none",
       };
     }),
+    // The same navigation the sidebar draws, as one control — a phone gets the
+    // dropdown, a desktop the list, and both read `panel`, so they cannot
+    // disagree about which section is open.
+    navValue: panel,
+    onNav: (changed: React.SyntheticEvent) =>
+      setPanel((changed.target as HTMLSelectElement).value as Panel),
+    navGroups: [
+      { label: "Event settings", options: PANELS.map((e) => ({ v: e.key, l: e.label })) },
+      ...(manageableOrgId === null
+        ? []
+        : [{ label: "Organisation", options: ORG_PANELS.map((e) => ({ v: e.key, l: e.label })) }]),
+    ],
     orgPanels:
       manageableOrgId === null
         ? []

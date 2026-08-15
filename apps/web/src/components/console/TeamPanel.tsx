@@ -147,6 +147,7 @@ export function TeamPanel({
             return (
               <div
                 key={member.user_id}
+                data-member-row
                 style={{
                   display: "flex",
                   alignItems: "center",

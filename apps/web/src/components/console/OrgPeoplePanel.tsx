@@ -146,6 +146,7 @@ export function OrgPeoplePanel({ orgId, toast }: { orgId: string; toast: (m: str
             return (
               <div key={member.user_id} style={{ borderBottom: "1px solid var(--ln)" }}>
                 <div
+                  data-member-row
                   style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px" }}
                 >
                   <MemberIdentity name={member.name} email={member.email} isSelf={isSelf} />

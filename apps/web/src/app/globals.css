@@ -542,25 +542,44 @@ input::placeholder {
   }
 
   /* Settings puts a 210px panel of section links beside the form. Of 298px
-     usable that leaves 88px for the thing you came to edit. Stacked, the same
-     way the agenda is: the panel keeps its own vertical list and sits above
-     the form.
+     usable that leaves 88px for the thing you came to edit.
 
-     An earlier attempt turned the panel into a horizontal row of chips, which
-     read better in theory and was much worse in practice — the panel kept its
-     full height from the flex row, so the links ended up scattered down an
-     otherwise empty screen with the form pushed off the bottom. Stacking is
-     duller and actually works. */
+     Two earlier attempts, both kept here because the reasons still bind. A
+     horizontal row of chips read better in theory and was much worse in
+     practice — the panel kept its full height from the flex row, so the links
+     scattered down an empty screen with the form pushed off the bottom. Then
+     the panel was simply stacked above the form, which worked while it held
+     five links. Spec 0004 added an ORGANISATION group, and seven links under
+     two headings is most of a phone screen standing between you and the thing
+     you opened Settings to change.
+
+     So: one dropdown, which is a list that costs one line instead of nine, and
+     is the control a phone already knows how to open full-screen. The vertical
+     list and the dropdown are the same choice rendered twice — exactly one is
+     ever displayed, so nothing can drift between them. */
   [data-screen-label="Settings"] [style*="display: flex; min-height: 0px"] {
     flex-direction: column !important;
     overflow-y: auto !important;
   }
-  [data-screen-label="Settings"] [style*="width: 210px"] {
-    width: 100% !important;
-    height: auto !important;
-    flex: 0 0 auto !important;
-    border-right: none !important;
-    border-bottom: 1px solid var(--ln) !important;
+  [data-screen-label="Settings"] [data-settings-nav="rail"] {
+    display: none !important;
+  }
+  [data-screen-label="Settings"] [data-settings-nav="drop"] {
+    display: block !important;
+    flex: 0 0 auto;
+  }
+
+  /* A membership row is a person and the controls that act on them, side by
+     side. At this width the controls take about half the row and the person
+     gets the rest, so "sbek-reviewer2@example.com" breaks across three lines
+     and the name above it breaks too. Wrapping puts the person on their own
+     line — 44px is the avatar plus its gap — and lets the controls sit
+     underneath at full size, rather than shrinking them to fit. */
+  [data-member-row] {
+    flex-wrap: wrap !important;
+  }
+  [data-member-row] [data-member-name] {
+    flex: 1 1 calc(100% - 44px) !important;
   }
 
   /* Program is the same two-pane shape and was the worst of them — a 208px nav

@@ -81,7 +81,7 @@ export function MemberIdentity({
       >
         {initials(name)}
       </span>
-      <span style={{ flex: 1, minWidth: 0 }}>
+      <span data-member-name style={{ flex: 1, minWidth: 0 }}>
         <span
           style={{ display: "block", font: "600 13px var(--font-plex-sans)", color: "var(--ik)" }}
         >
