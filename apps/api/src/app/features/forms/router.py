@@ -68,6 +68,25 @@ async def _dates_are_not_older_than_the_event(
             )
 
 
+def _window_is_ordered(opens_at: datetime | None, closes_at: datetime | None) -> None:
+    """A form that opens after it closes is never open, and the public page has
+    no way to say so — it refuses every proposal with the call apparently live.
+
+    Separate from the floor check above because the two read different values: a
+    one-sided PATCH has to be ordered against the *stored* row, while the floor
+    applies only to what the request actually sent. Merging them would either
+    skip the ordering on one-sided edits or re-reject a form whose stored window
+    already predates the event, leaving it uneditable.
+    """
+    if opens_at is not None and closes_at is not None and opens_at >= closes_at:
+        raise ApiError(
+            "The form cannot close before it opens.",
+            code="VALIDATION_FAILED",
+            status_code=422,
+            field="closes_at",
+        )
+
+
 @router.get("", response_model=list[FormRead])
 async def list_forms(session: DbSession, _: User = Depends(require_role(*READ))) -> list[FormRead]:
     rows = (await session.execute(select(Form).order_by(Form.created_at))).scalars().all()
@@ -81,6 +100,7 @@ async def create_form(
     await _dates_are_not_older_than_the_event(
         session, opens_at=body.opens_at, closes_at=body.closes_at
     )
+    _window_is_ordered(body.opens_at, body.closes_at)
     form = Form(
         name=body.name,
         kind=body.kind,
@@ -146,6 +166,10 @@ async def update_form(
     for field in ("name", "status", "opens_at", "closes_at"):
         if field in body.model_fields_set:
             setattr(form, field, getattr(body, field))
+
+    # After the merge, so a PATCH carrying only one end is judged against the
+    # other end as stored.
+    _window_is_ordered(form.opens_at, form.closes_at)
 
     await session.flush()
     return _read(form)

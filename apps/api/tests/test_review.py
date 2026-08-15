@@ -187,6 +187,56 @@ async def _criterion(
     return uuid.UUID(response.json()["id"])
 
 
+async def test_a_round_cannot_be_edited_to_close_before_it_opens(
+    client: AsyncClient, world: World
+) -> None:
+    """`RoundCreate` has checked this since it was written. The edit path never
+    did, so the guard was reachable only by getting it wrong the first time —
+    one PATCH afterwards put the round into the state creation refuses.
+    """
+    created = await client.post(
+        f"/v1/events/{world.event.id}/review-rounds",
+        json={
+            "name": "Screening",
+            "opens_at": "2027-05-01T09:00:00Z",
+            "closes_at": "2027-05-08T17:00:00Z",
+        },
+        headers=world.headers,
+    )
+    assert created.status_code == 201
+    round_id = created.json()["id"]
+
+    # One-sided: only the close moves, and it lands before the stored open.
+    response = await client.patch(
+        f"/v1/events/{world.event.id}/review-rounds/{round_id}",
+        json={"closes_at": "2027-04-01T09:00:00Z"},
+        headers=world.headers,
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["code"] == "VALIDATION_FAILED"
+
+
+async def test_a_form_cannot_close_before_it_opens(client: AsyncClient, world: World) -> None:
+    """Neither half of the form window was ordered, on create or on edit — a
+    form could open in June and close in May, which reads to the public page as
+    a call that is never open."""
+    response = await client.post(
+        f"/v1/events/{world.event.id}/forms",
+        json={
+            "name": "Backwards",
+            "kind": "cfp",
+            "schema": {"sections": [], "logic": [], "settings": {}},
+            "opens_at": "2027-06-01T09:00:00Z",
+            "closes_at": "2027-05-01T09:00:00Z",
+        },
+        headers=world.headers,
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["code"] == "VALIDATION_FAILED"
+
+
 async def test_two_independent_rounds_coexist(client: AsyncClient, world: World) -> None:
     await _round(client, world, name="Screening")
     await _round(client, world, name="Final")

@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 
 from app.core import mail
 from app.core.deps import DbSession, bind_tenant, get_verified_user, require_role
-from app.core.errors import NotFoundError
+from app.core.errors import ApiError, NotFoundError
 from app.core.xlsx import spreadsheet
 from app.features.review import service
 from app.features.review.schemas import (
@@ -100,6 +100,24 @@ async def update_round(
     round_ = await service.get_round(session, round_id)
     for key, value in body.model_dump(exclude_unset=True).items():
         setattr(round_, key, value)
+
+    # Checked here rather than on the schema, which never sees the half an edit
+    # is not carrying. `RoundCreate` has ordered this since it was written, so
+    # without it the guard was reachable only by getting the dates wrong the
+    # first time: one PATCH afterwards put the round into the state creation
+    # refuses, and a round that closes before it opens accepts no scores at all.
+    if (
+        round_.opens_at is not None
+        and round_.closes_at is not None
+        and round_.opens_at >= round_.closes_at
+    ):
+        raise ApiError(
+            "A review round has to open before it closes.",
+            code="VALIDATION_FAILED",
+            status_code=422,
+            field="closes_at",
+        )
+
     await session.flush()
     return round_
 
