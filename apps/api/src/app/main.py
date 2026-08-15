@@ -16,6 +16,7 @@ from app.core.db import engine
 from app.core.errors import ApiError, api_error_handler, validation_error_handler
 from app.core.idempotency import IdempotencyMiddleware
 from app.core.observability import init_sentry
+from app.features.ai.org_settings import router as org_ai_key_router
 from app.features.ai.router import router as ai_router
 from app.features.auth.router import router as auth_router
 from app.features.crm.router import router as crm_router
@@ -170,6 +171,7 @@ def create_app() -> FastAPI:
     app.include_router(review_admin_router)
     app.include_router(reviewer_router)
     app.include_router(ai_router)
+    app.include_router(org_ai_key_router)
     app.include_router(integrations_router)
     app.include_router(pages_router)
     app.include_router(publishing_router)

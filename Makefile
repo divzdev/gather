@@ -104,7 +104,13 @@ e2e.up: ## Start the E2E API and web on their own database
 	cd $(API) && DATABASE_URL=$(E2E_DB_URL) uv run python -m app.seed
 	@# The venv's uvicorn rather than `uv run uvicorn`: the wrapper forks, so the
 	@# pid recorded here would be the parent of the process actually serving.
+	@# Model credentials are cleared on purpose: the E2E stack asserts the
+	@# zero-credential story (stub answers, labelled), and a developer's .env
+	@# with a real ANTHROPIC_API_KEY or OLLAMA_BASE_URL would silently swap the
+	@# model under the suite — and bill them per run. Env beats dotenv, so
+	@# empty here wins over whatever .env says.
 	@cd $(API) && DATABASE_URL=$(E2E_DB_URL) RATE_LIMIT_PREFIX=$(E2E_PREFIX) \
+	  ANTHROPIC_API_KEY= OLLAMA_BASE_URL= \
 	  nohup .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port $(E2E_API_PORT) \
 	  > /tmp/gather-e2e-api.log 2>&1 & echo $$! > /tmp/gather-e2e-api.pid
 	@API_ORIGIN=http://127.0.0.1:$(E2E_API_PORT) NEXT_DIST_DIR=.next-e2e \

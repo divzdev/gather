@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useHotkeys } from "@/lib/hotkeys";
 
 import { useConsoleChrome } from "@/components/console/chrome";
+import { useMe } from "@/components/console/useMe";
 import { Review, type ReviewData } from "@/components/design/Review";
 import { authed, getEventId } from "@/lib/session";
 
@@ -57,8 +58,6 @@ function firstSpeakerName(subject: Subject | undefined): string | null {
   return typeof name === "string" ? name : null;
 }
 
-
-
 function answer(subject: Subject | undefined, key: string): string {
   const value = subject?.answers[key];
   return typeof value === "string" ? value : "";
@@ -101,6 +100,10 @@ export default function ReviewPage() {
   const queue = data?.queue ?? [];
   const criteria = [...(data?.criteria ?? [])].sort((a, b) => a.sort_order - b.sort_order);
   const current = queue[Math.min(index, Math.max(0, queue.length - 1))];
+
+  // Only the role is wanted: it decides whether the stub note can usefully
+  // point at Settings.
+  const { isManager } = useMe();
 
   const { data: subject } = useQuery({
     queryKey: ["review-subject", eventId, round?.id, current?.submission_id],
@@ -147,7 +150,13 @@ export default function ReviewPage() {
       return typeof detail === "string" ? detail : "The model could not answer that.";
     }
     if (proposal?.output.is_stub === true) {
-      return "No model is configured, so these are placeholder values rather than a reading of the proposal. Set ANTHROPIC_API_KEY to get real suggestions.";
+      // The reviewer can't fix a missing key, so the advice goes to the people
+      // who can: an owner/admin reading this is one Settings visit away from
+      // real suggestions (spec 0003). Env-var advice was wrong on the hosted
+      // install, where the box deliberately carries no key.
+      return isManager
+        ? "Sample suggestion — no model ran. Add your organisation's model API key under Settings → Integrations for real ones."
+        : "Sample suggestion — no model ran. These are placeholder values, not a reading of the proposal.";
     }
     if (proposal === null) {
       return "Suggested scores against this round's rubric, with a reason for each. They fill the form; they never save on your behalf.";

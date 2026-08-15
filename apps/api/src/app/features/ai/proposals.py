@@ -24,7 +24,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.errors import ApiError, NotFoundError
-from app.models import AiProposal, AiProposalKind, AiProposalStatus
+from app.core.tenancy import current_tenant, tenancy_disabled
+from app.models import AiProposal, AiProposalKind, AiProposalStatus, Organization
 
 #: Models are told to reply with bare JSON and mostly do, but a fenced block is
 #: the most common deviation and is not worth failing a proposal over.
@@ -36,26 +37,51 @@ def _now() -> datetime:
 
 
 async def assert_within_daily_cap(session: AsyncSession, *, event_id: uuid.UUID) -> None:
-    """Refuse once an event has spent its allowance for the day.
+    """Refuse once the *organization* has spent its allowance for the day.
 
     The per-user rate limit stops one person hammering the button. This stops
     twenty people each hammering it politely, which is the shape the public demo
     box is actually exposed to: `demo_logins_allowed` hands a staff session to
-    anyone who asks, and a real API key sits behind it.
+    anyone who asks.
+
+    The count is org-wide, not per event (spec 0003): the daily proposal cap is
+    a ceiling on a bill, the bill is per org, and one number that silently
+    multiplies by the number of events is not a ceiling. The org's own cap wins
+    when set; NULL falls back to the server default. Zero differs by owner —
+    an org's 0 is a decision ("no spend") and turns AI off; the server
+    default's <=0 has always meant uncapped and still does.
     """
-    cap = get_settings().ai_daily_proposal_cap
+    org_id = current_tenant().org_id
+    with tenancy_disabled():
+        org_cap: int | None = await session.scalar(
+            select(Organization.ai_daily_proposal_cap).where(Organization.id == org_id)
+        )
+    if org_cap == 0:
+        raise ApiError(
+            "AI suggestions are turned off for this organisation — its daily "
+            "cap is set to zero. An owner or admin can change that in Settings.",
+            code="AI_DISABLED_FOR_ORG",
+            status_code=429,
+        )
+    cap = org_cap if org_cap is not None else get_settings().ai_daily_proposal_cap
     if cap <= 0:
         return
     since = _now().replace(hour=0, minute=0, second=0, microsecond=0)
-    used = await session.scalar(
-        select(func.count(AiProposal.id)).where(
-            AiProposal.event_id == event_id, AiProposal.created_at >= since
+    # Counted across every event the org runs, which the automatic tenancy
+    # filter would forbid from inside one event's scope — hence the explicit,
+    # greppable escape with its own org predicate (architecture.md: bulk/cross-
+    # event reads carry their tenant filter by hand).
+    with tenancy_disabled():
+        used = await session.scalar(
+            select(func.count(AiProposal.id)).where(
+                AiProposal.org_id == org_id, AiProposal.created_at >= since
+            )
         )
-    )
     if (used or 0) >= cap:
         raise ApiError(
-            f"This event has used its {cap} AI suggestions for today. "
-            "The limit resets at midnight UTC.",
+            f"This organisation has used its {cap} AI suggestions for today. "
+            "The limit resets at midnight UTC; an owner or admin can raise the "
+            "cap in Settings.",
             code="AI_DAILY_CAP_REACHED",
             status_code=429,
         )

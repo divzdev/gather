@@ -1,12 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 
 import { openCommandPalette } from "@/components/console/CommandPalette";
 import { SideDrawer } from "@/components/console/SideDrawer";
 import { useConsoleChrome } from "@/components/console/chrome";
+import { useMe } from "@/components/console/useMe";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Submissions, type SubmissionsData } from "@/components/design/Submissions";
 import type { Note, Outcome } from "@/components/console/SubmissionPanels";
@@ -154,11 +156,7 @@ export default function SubmissionsPage() {
    * setting. It was local state here and a stored value there that nothing
    * read, so flipping this reverted on reload and the profile control never did
    * anything at all. */
-  const { data: me } = useQuery({
-    queryKey: ["me"],
-    queryFn: () => authed<{ density_pref: string }>("/auth/me"),
-    staleTime: 5 * 60_000,
-  });
+  const { me, isManager } = useMe();
   const dense = densityOf(me?.density_pref) === "compact";
   const saveDensity = useMutation({
     mutationFn: (next: Density) =>
@@ -966,8 +964,21 @@ export default function SubmissionsPage() {
                     margin: 0,
                   }}
                 >
-                  No model is configured, so this is a placeholder answer rather than a reading of
-                  the submissions. Set ANTHROPIC_API_KEY to get a real one.
+                  Sample answer — no model ran.{" "}
+                  {isManager ? (
+                    <>
+                      Add your organisation&rsquo;s model API key in{" "}
+                      <Link
+                        href="/admin/settings"
+                        style={{ color: "var(--sg,#E04E4E)", textDecoration: "underline" }}
+                      >
+                        Settings
+                      </Link>{" "}
+                      for a real reading of the submissions.
+                    </>
+                  ) : (
+                    "These pairs are placeholders, not a reading of the submissions."
+                  )}
                 </p>
               ) : null}
               <p

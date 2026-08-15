@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 
+import { AiKeyPanel } from "@/components/console/AiKeyPanel";
+import { useMe } from "@/components/console/useMe";
 import { TeamPanel } from "@/components/console/TeamPanel";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { Settings, type SettingsData } from "@/components/design/Settings";
@@ -10,6 +12,7 @@ import { SETTINGS_ICON } from "@/components/ui";
 import { authed, getEventId } from "@/lib/session";
 
 type Event = {
+  org_id: string;
   id: string;
   name: string;
   slug: string;
@@ -150,6 +153,11 @@ export default function SettingsPage() {
     queryFn: () => authed<Event>(`/events/${eventId}`),
   });
 
+  // The org key card is org-scoped and owner/admin-only: the API 403s everyone
+  // else, so anyone else simply doesn't get the card drawn.
+  const { isManager: canManageKey } = useMe();
+  const orgId = event?.org_id ?? null;
+
   // Seeded once per event, not on every refetch: a save refetches, and
   // re-seeding from the response would wipe whatever is half-typed in another
   // field. Adjusted during render rather than in an effect so the first paint
@@ -226,6 +234,10 @@ export default function SettingsPage() {
     pTeam: panel === "team",
     teamPanel:
       panel !== "team" || eventId === null ? null : <TeamPanel eventId={eventId} toast={toast} />,
+    aiPanel:
+      panel !== "integrations" || orgId === null || !canManageKey ? null : (
+        <AiKeyPanel orgId={orgId} toast={toast} />
+      ),
     pBrand: panel === "brand",
     pEmail: panel === "email",
     pInteg: panel === "integrations",

@@ -25,9 +25,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.crypto import unseal
 from app.core.errors import ApiError, NotFoundError
+from app.core.tenancy import current_tenant, tenancy_disabled
 from app.features.ai import prompts, proposals, queries
-from app.features.ai.gateway import LLMAdapter, select_adapter
+from app.features.ai.gateway import LLMAdapter, OrgAiConfig, select_adapter
 from app.features.ai.schemas import DuplicateAnswer, ScoreAnswer
 from app.features.review import service as review_service
 from app.models import (
@@ -35,6 +37,7 @@ from app.models import (
     AiProposalKind,
     AiProposalStatus,
     CriterionKind,
+    Organization,
     Review,
     RubricCriterion,
     Speaker,
@@ -154,6 +157,32 @@ def validate_scores(answer: ScoreAnswer, criteria: list[RubricCriterion]) -> lis
     return kept
 
 
+async def _org_ai(session: AsyncSession) -> OrgAiConfig | None:
+    """The org's model configuration, its key unsealed for exactly one request.
+
+    Feature code still never *sees* the key — it goes straight into
+    `select_adapter`, the one door to a model. Resolved per request rather than
+    cached so removing the key in Settings takes effect immediately.
+    """
+    org_id = current_tenant().org_id
+    with tenancy_disabled():
+        row = (
+            await session.execute(
+                select(
+                    Organization.ai_key_encrypted,
+                    Organization.ai_provider,
+                    Organization.ai_model,
+                ).where(Organization.id == org_id)
+            )
+        ).first()
+    if row is None:
+        return None
+    key = unseal(row.ai_key_encrypted)
+    if key is None:
+        return None
+    return OrgAiConfig(provider=row.ai_provider or "anthropic", api_key=key, model=row.ai_model)
+
+
 async def score_submission(
     session: AsyncSession,
     *,
@@ -176,7 +205,7 @@ async def score_submission(
         user_id=user_id,
     )
 
-    llm = adapter or select_adapter()
+    llm = adapter or select_adapter(org=await _org_ai(session))
     try:
         completion = await llm.complete(
             system=system, user=user_message, max_tokens=get_settings().ai_max_tokens
@@ -254,7 +283,7 @@ async def find_duplicates(
         }
     )
 
-    llm = adapter or select_adapter()
+    llm = adapter or select_adapter(org=await _org_ai(session))
     try:
         completion = await llm.complete(
             system=prompts.load(prompts.DUPLICATES),
