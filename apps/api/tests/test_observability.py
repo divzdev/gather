@@ -38,6 +38,18 @@ def test_no_dsn_does_not_initialise_the_sdk(recorded_init: list[dict[str, Any]])
     assert recorded_init == []
 
 
+@pytest.mark.parametrize("env", ["local", "test"])
+def test_a_dsn_within_reach_of_local_dev_still_reports_nothing(
+    env: str, recorded_init: list[dict[str, Any]]
+) -> None:
+    """A DSN in a local .env must not turn a developer's traceback into an
+    incident. The off-switch is the environment, not only the credential."""
+    started = init_sentry("api", Settings(sentry_dsn="https://k@example.invalid/1", env=env))
+
+    assert started is False
+    assert recorded_init == []
+
+
 def test_a_dsn_starts_reporting_tagged_with_its_environment(
     recorded_init: list[dict[str, Any]],
 ) -> None:
@@ -51,7 +63,7 @@ def test_a_dsn_starts_reporting_tagged_with_its_environment(
 def test_personal_data_is_never_sent(recorded_init: list[dict[str, Any]]) -> None:
     """The app stores speaker names, addresses and session tokens. None of it
     belongs in a third-party service to debug a stack trace."""
-    init_sentry("api", Settings(sentry_dsn="https://k@example.invalid/1"))
+    init_sentry("api", Settings(sentry_dsn="https://k@example.invalid/1", env="staging"))
 
     assert recorded_init[0]["send_default_pii"] is False
 
@@ -59,7 +71,7 @@ def test_personal_data_is_never_sent(recorded_init: list[dict[str, Any]]) -> Non
 def test_credential_headers_are_redacted_before_an_event_leaves(
     recorded_init: list[dict[str, Any]],
 ) -> None:
-    init_sentry("api", Settings(sentry_dsn="https://k@example.invalid/1"))
+    init_sentry("api", Settings(sentry_dsn="https://k@example.invalid/1", env="staging"))
     before_send = recorded_init[0]["before_send"]
 
     event = before_send(
