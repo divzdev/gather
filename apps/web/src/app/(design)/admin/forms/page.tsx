@@ -169,7 +169,7 @@ export default function FormsPage() {
     mutationFn: (row: FormRow) =>
       authed<FormRow>(`/events/${eventId}/forms/${row.id}`, {
         method: "PATCH",
-        body: { name: row.name, schema: row.schema, closes_at: row.closes_at },
+        body: { name: row.name, kind: row.kind, schema: row.schema, closes_at: row.closes_at },
       }),
     onSuccess: (row) => {
       void queryClient.invalidateQueries({ queryKey: ["forms", eventId] });
@@ -194,6 +194,7 @@ export default function FormsPage() {
         slug: string;
         timezone: string;
         ends_on: string;
+        created_at: string;
         submission_limit_per_speaker: number | null;
       }>(`/events/${eventId}`),
   });
@@ -222,17 +223,32 @@ export default function FormsPage() {
     // `ends_on` is a calendar date; the deadline may sit anywhere on that day.
     const max = eventRow === undefined ? "" : `${eventRow.ends_on}T23:59`;
 
+    /* The picker's floor is when the event was created, not `now`.
+     *
+     * `now` was both too strict and too loose. Too strict, because a deadline
+     * already in the past is a real thing to record — a call that has closed —
+     * and the greyed-out picker made it unreachable while the app still allowed
+     * it. Too loose, because `min` never stopped anything typed or pasted: a
+     * mistyped year reached the state, showed a red line, and saved anyway.
+     *
+     * So the bound is now the same rule the API enforces, and the two messages
+     * below are ranked to match: before the event existed is an error, already
+     * passed is a warning about something legal. */
+    const floor = eventRow === undefined ? openedAt : eventRow.created_at.slice(0, 16);
+
     const chosen = edit?.closes_at ?? null;
     let problem: string | null = null;
     if (chosen !== null) {
       const when = new Date(chosen);
-      if (when < new Date(openedAt)) {
-        problem = "That deadline has already passed, so the call would close as soon as it opens.";
+      if (eventRow !== undefined && when < new Date(eventRow.created_at)) {
+        problem = `That is before this event existed, so it cannot be right — check the year. The event was created ${DAY.format(new Date(eventRow.created_at))}.`;
       } else if (max !== "" && when > new Date(`${eventRow?.ends_on}T23:59:59`)) {
         problem = `The call cannot close after the event ends on ${eventRow?.ends_on}.`;
+      } else if (when < new Date(openedAt)) {
+        problem = "That deadline has already passed, so the call would close as soon as it opens.";
       }
     }
-    return { min: openedAt, max, problem };
+    return { min: floor, max, problem };
   }, [edit?.closes_at, eventRow, openedAt]);
 
   const duplicate = useMutation({
@@ -369,7 +385,11 @@ export default function FormsPage() {
   const inBuilder = openId !== null && draft !== null;
   const stored = (forms ?? []).find((row) => row.id === openId) ?? null;
   const shape = (row: FormRow | null) =>
-    row === null ? "" : JSON.stringify([row.name, row.schema, row.closes_at]);
+    // `kind` belongs here: leaving it out meant switching Call for papers to
+    // Speaker task did not count as a change, so the builder let you walk away
+    // from that edit without the unsaved-changes prompt — and it was dropped
+    // from the save body anyway, which is how the choice looked decorative.
+    row === null ? "" : JSON.stringify([row.name, row.kind, row.schema, row.closes_at]);
   const unsaved = inBuilder && stored !== null && shape(draft) !== shape(stored);
   /** Every way out of the builder goes through here. */
   const leave = (go: () => void) => (unsaved ? setLeaving(() => go) : go());

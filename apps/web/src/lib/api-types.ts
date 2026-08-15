@@ -2278,6 +2278,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/events/{event_id}/ai/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask
+         * @description Answer a question about this event, as Server-Sent Events.
+         *
+         *     The answer is streamed because the alternative is a four-second dead
+         *     spinner. Failures after the stream opens arrive as an `error` event rather
+         *     than a status code — by then the response has already begun.
+         */
+        post: operations["ask_v1_events__event_id__ai_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{org_id}/ai-key": {
         parameters: {
             query?: never;
@@ -3086,7 +3110,7 @@ export interface components {
          * AiProposalKind
          * @enum {string}
          */
-        AiProposalKind: "schedule" | "duplicates" | "normalize" | "score" | "assign_reviewers";
+        AiProposalKind: "schedule" | "duplicates" | "normalize" | "score" | "assign_reviewers" | "answer";
         /**
          * AiProposalStatus
          * @enum {string}
@@ -3095,6 +3119,13 @@ export interface components {
         /** ApprovalRequest */
         ApprovalRequest: {
             content_status: components["schemas"]["ContentStatus"];
+        };
+        /** AskRequest */
+        AskRequest: {
+            /** Question */
+            question: string;
+            /** History */
+            history?: components["schemas"]["Turn"][];
         };
         /** AssignRequest */
         AssignRequest: {
@@ -3782,6 +3813,11 @@ export interface components {
              * Format: date
              */
             ends_on: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
             /** Location */
             location: string | null;
             /** Description */
@@ -4129,6 +4165,7 @@ export interface components {
         FormUpdate: {
             /** Name */
             name?: string | null;
+            kind?: components["schemas"]["FormKind"] | null;
             schema?: components["schemas"]["FormSchema"] | null;
             status?: components["schemas"]["FormStatus"] | null;
             /** Opens At */
@@ -4322,7 +4359,6 @@ export interface components {
             role: components["schemas"]["Role"];
             /**
              * Scope
-             * @default event
              * @enum {string}
              */
             scope: "org" | "event";
@@ -5862,6 +5898,16 @@ export interface components {
             is_public?: boolean | null;
             /** Sort Order */
             sort_order?: number | null;
+        };
+        /** Turn */
+        Turn: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Content */
+            content: string;
         };
         /** UserResponse */
         UserResponse: {
@@ -10764,6 +10810,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProposalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_v1_events__event_id__ai_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

@@ -25,6 +25,10 @@ class FormCreate(Strict):
 
 class FormUpdate(Strict):
     name: str | None = Field(default=None, min_length=1, max_length=200)
+    #: Editable until the form locks. The builder's first step offers the choice
+    #: and says it holds "until the first submission arrives" — without this the
+    #: picker was decorative, because the PATCH refused the field outright.
+    kind: FormKind | None = None
     schema_: FormSchema | None = Field(default=None, alias="schema")
     status: FormStatus | None = None
     opens_at: datetime | None = None

@@ -917,6 +917,96 @@ async def test_a_draft_form_does_not_replace_the_live_call_for_papers(
     assert public.json()["schema"]["sections"] != []
 
 
+@pytest.mark.parametrize("field", ["closes_at", "opens_at"])
+async def test_a_form_deadline_cannot_predate_the_event(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form], field: str
+) -> None:
+    """A call closing before the conference is normal — it has to. A call
+    closing in 2005 is a typo in a datetime field nobody notices, and the form
+    then reports itself permanently shut with no explanation on the public page.
+
+    The floor is when the event was created, not now: backdating a deadline to
+    last week is a legitimate record of a call that has already closed, and
+    refusing that would block the honest case to catch the typo.
+    """
+    headers, event, form = cfp
+
+    response = await client.patch(
+        f"/v1/events/{event.id}/forms/{form.id}",
+        headers=headers,
+        json={field: "2005-10-27T21:28:00Z"},
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["code"] == "VALIDATION_FAILED"
+
+
+async def test_a_form_deadline_after_the_event_was_created_is_allowed(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """The other side of the floor: a deadline already in the past is a warning
+    on screen, never a refusal, so an organiser can record a closed call."""
+    headers, event, form = cfp
+
+    response = await client.patch(
+        f"/v1/events/{event.id}/forms/{form.id}",
+        headers=headers,
+        json={"closes_at": "2027-05-01T12:00:00Z"},
+    )
+
+    assert response.status_code == 200, response.text
+
+
+async def test_a_forms_kind_can_be_changed_until_it_locks(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """Step one of the builder promises "you can change this until the first
+    submission arrives", and offers Call for papers / Speaker task as a choice.
+
+    The PATCH did not accept `kind` at all, so the choice was decorative: the
+    picker highlighted locally, the save dropped it, and reopening the form
+    showed the kind it was created with.
+    """
+    headers, event, form = cfp
+
+    response = await client.patch(
+        f"/v1/events/{event.id}/forms/{form.id}", headers=headers, json={"kind": "task"}
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["kind"] == "task"
+
+    reopened = await client.get(f"/v1/events/{event.id}/forms/{form.id}", headers=headers)
+    assert reopened.json()["kind"] == "task"
+
+
+async def test_a_forms_kind_is_frozen_once_a_submission_arrives(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """The other half of the same promise. Turning a call for papers into a task
+    form under 200 collected proposals reclassifies every one of them."""
+    headers, event, form = cfp
+    submitted = await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": "Locks the form",
+            "answers": GOOD,
+            "speaker_email": "locker@example.com",
+            "speaker_name": "Lock Speaker",
+        },
+    )
+    assert submitted.status_code == 201
+
+    response = await client.patch(
+        f"/v1/events/{event.id}/forms/{form.id}", headers=headers, json={"kind": "task"}
+    )
+
+    assert response.status_code == 409
+    reopened = await client.get(f"/v1/events/{event.id}/forms/{form.id}", headers=headers)
+    assert reopened.json()["kind"] == "cfp"
+
+
 async def test_an_internal_note_is_attributed_and_never_public(
     client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
 ) -> None:

@@ -44,6 +44,10 @@ class EventSummary(BaseModel):
 
 
 class EventDetail(EventSummary):
+    #: The floor for every date field the console offers. A deadline before the
+    #: event existed is a mistyped year, and the picker can only grey those out
+    #: if it knows when that was.
+    created_at: datetime
     location: str | None
     description: str | None
     cfp_opens_at: datetime | None
