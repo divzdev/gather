@@ -142,9 +142,13 @@ export function ConsoleHeader() {
           display: "flex",
           alignItems: "center",
           gap: 11,
-          flex: 1,
-          minWidth: 0,
-          maxWidth: 560,
+          // Fixed, not flexed. The rail collapses itself on the section-nav
+          // routes (Rail.tsx SECTION_NAV_ROUTES) and hands back 192px, which two
+          // flexed siblings would split — search grew 96px on three routes out of
+          // fifteen and the header changed shape as you navigated. The spacer
+          // below takes the whole refund instead, so this stays one width.
+          flex: "none",
+          width: 320,
           height: 40,
           padding: "0 16px",
           borderRadius: 11,
