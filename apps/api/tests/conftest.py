@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from datetime import UTC, date, datetime
 
 #: Set before anything imports app config, which caches settings on first read.
@@ -126,6 +126,50 @@ async def client(engine: object) -> AsyncGenerator[AsyncClient, None]:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as c:
             yield c
+
+
+@pytest.fixture
+async def caller_from(
+    engine: object,
+) -> AsyncGenerator[Callable[[str], Awaitable[AsyncClient]], None]:
+    """Build request clients that appear to come from a chosen address.
+
+    The `client` fixture hard-codes one source address, so "two different callers
+    get two separate buckets" — the whole point of an IP-keyed rate limit — is not
+    expressible through it. Everything else matches `client`.
+    """
+    from contextlib import AsyncExitStack
+
+    from httpx import ASGITransport
+
+    from app.core import db as db_module
+    from app.main import create_app
+
+    factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)  # type: ignore[arg-type]
+
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        async with factory() as s:
+            try:
+                yield s
+            except Exception:
+                await s.rollback()
+                raise
+            else:
+                await s.commit()
+
+    app = create_app()
+    app.dependency_overrides[db_module.get_db] = override_get_db
+
+    async with AsyncExitStack() as stack:
+        await stack.enter_async_context(app.router.lifespan_context(app))
+
+        async def build(ip: str) -> AsyncClient:
+            transport = ASGITransport(app=app, client=(ip, 40000))
+            return await stack.enter_async_context(
+                AsyncClient(transport=transport, base_url="http://test")
+            )
+
+        yield build
 
 
 @pytest.fixture(autouse=True)

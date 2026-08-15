@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import date, timedelta
 
 from httpx import AsyncClient
@@ -134,6 +135,30 @@ async def test_login_is_rate_limited(client: AsyncClient, staff_user: User) -> N
 
     assert statuses[:10] == [401] * 10
     assert statuses[10:] == [429, 429]
+
+
+async def test_login_limits_are_per_caller_not_shared(
+    caller_from: Callable[[str], Awaitable[AsyncClient]], staff_user: User
+) -> None:
+    """One caller exhausting the login window must not lock out everybody else.
+
+    This is the property the deployment kept breaking rather than the keying: the
+    limit is keyed on the caller's address, so if the app is handed the reverse
+    proxy's address instead of the real one, every visitor on the internet shares
+    a single bucket and five of them can close registration for the rest. The API
+    is only ever as correct here as the address it is given.
+    """
+    attacker = await caller_from("203.0.113.9")
+    bystander = await caller_from("198.51.100.4")
+    credentials = {"email": staff_user.email, "password": "wrong"}
+
+    burned = [
+        (await attacker.post("/v1/auth/login", json=credentials)).status_code for _ in range(12)
+    ]
+    assert burned[10:] == [429, 429], "the attacker should be cut off after 10"
+
+    # The bystander has spent nothing, so they get a real answer, not a 429.
+    assert (await bystander.post("/v1/auth/login", json=credentials)).status_code == 401
 
 
 async def test_magic_link_returns_204_for_any_address(client: AsyncClient) -> None:
