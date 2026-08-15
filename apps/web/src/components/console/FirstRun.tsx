@@ -57,15 +57,22 @@ export function FirstRun() {
         authed<unknown>(`/events/${eventId}/rooms`),
         authed<unknown>(`/events/${eventId}/tracks`),
         authed<unknown>(`/events/${eventId}/session-formats`),
-        authed<unknown>(`/events/${eventId}/forms`),
+        authed<{ kind: string; status: string }[]>(`/events/${eventId}/forms`),
         authed<unknown>(`/events/${eventId}/submissions?per_page=1`),
       ]);
+      // Statuses, not a count. "Is there a call for papers" and "is it open"
+      // are different questions and the count could only answer neither.
+      const cfp = (Array.isArray(forms) ? forms : []).filter((row) => row.kind === "cfp");
       return {
         days: count(days),
         rooms: count(rooms),
         tracks: count(tracks),
         formats: count(formats),
-        forms: count(forms),
+        cfpForms: cfp.length,
+        // What the public route serves: a CFP form that is no longer a draft.
+        // A draft is not published, so an event with only drafts is collecting
+        // nothing however finished the form looks in the builder.
+        openCall: cfp.some((row) => row.status === "open"),
         submissions: count(submissions),
       };
     },
@@ -90,13 +97,21 @@ export function FirstRun() {
       title: "Build the call for papers",
       why: "Choose the questions speakers answer. Fields stay editable until the first proposal arrives.",
       href: "/admin/forms",
-      done: data.forms > 0,
+      // A call for papers specifically. Any form used to tick this, so building
+      // a speaker task form marked the CFP step done and sent you on to
+      // "open the call" with no call to open.
+      done: data.cfpForms > 0,
     },
     {
-      title: "Open the call",
-      why: "Publishes the public form and sets the deadline. The server clock decides when it closes, not the browser's.",
+      title: "Open the call for papers",
+      // Said "Publishes the public form and sets the deadline. The server clock
+      // decides when it closes, not the browser's." — which describes how the
+      // deadline is enforced to someone who has not yet worked out that a
+      // finished form is still invisible. This says what state you are in, what
+      // changes, and which control does it.
+      why: "Your form is still a draft, so your public page has nothing to fill in. Press Open on its row to put it live and start collecting proposals.",
       href: "/admin/forms",
-      done: false,
+      done: data.openCall,
     },
   ];
 
