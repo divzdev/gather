@@ -27,6 +27,7 @@ from app.features.files.router import staff_router as file_comments_router
 from app.features.forms.router import router as forms_router
 from app.features.integrations.router import router as integrations_router
 from app.features.messaging.router import router as messaging_router
+from app.features.organizations.router import router as organizations_router
 from app.features.pages.router import router as pages_router
 from app.features.portal.router import router as portal_router
 from app.features.program.router import ROUTERS as PROGRAM_ROUTERS
@@ -158,6 +159,7 @@ def create_app() -> FastAPI:
         app.include_router(program_router)
     app.include_router(crm_router)
     app.include_router(events_router)
+    app.include_router(organizations_router)
     app.include_router(event_members_router)
     app.include_router(file_comments_router)
     app.include_router(file_comments_portal_router)

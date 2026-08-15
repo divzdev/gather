@@ -16,7 +16,6 @@ from sqlalchemy import select
 
 from app.core.deps import CurrentUser, DbSession, bind_tenant, get_verified_user, require_role
 from app.core.errors import ApiError, ConflictError, RoleRequiredError
-from app.core.security import generate_token, hash_password
 from app.core.tenancy import tenancy_disabled
 from app.features.auth import service as auth_service
 from app.features.events.router import MemberRead
@@ -80,22 +79,12 @@ async def add_member(
     role = body.grantable_role()
     event = await _event_or_403(session, event_id)
 
-    with tenancy_disabled():
-        user = await session.scalar(select(User).where(User.email == body.email))
-        if user is None:
-            user = User(
-                email=body.email,
-                name=body.name,
-                # NOT NULL, and no password is ever set: the hash of a value
-                # nobody has seen, so password sign-in fails closed and the
-                # magic link is the only way in. Same pattern as GitHub accounts.
-                password_hash=hash_password(generate_token()),
-            )
-            session.add(user)
-            await session.flush()
-        elif not user.is_active:
-            raise ConflictError(f"The account for {body.email} has been deactivated.")
+    # Minting a passwordless staff account is one rule with two callers — this
+    # and Organisation → People — so it lives in the auth service rather than in
+    # two copies that drift.
+    user = await auth_service.find_or_create_invitee(session, email=body.email, name=body.name)
 
+    with tenancy_disabled():
         existing = await session.scalar(
             select(EventMember).where(
                 EventMember.event_id == event_id, EventMember.user_id == user.id
@@ -120,7 +109,9 @@ async def add_member(
     await auth_service.issue_invite_link(
         session, user=user, event_name=event.name, role=role.value, invited_by=actor.name
     )
-    return MemberRead(user_id=user.id, name=user.name, email=user.email, role=role)
+    # Always "event": this route wrote an `EventMember` row, which is the
+    # override tier by definition.
+    return MemberRead(user_id=user.id, name=user.name, email=user.email, role=role, scope="event")
 
 
 @router.patch(
@@ -171,7 +162,9 @@ async def change_member_role(
         else:
             membership.role = body.role
         await session.flush()
-    return MemberRead(user_id=user.id, name=user.name, email=user.email, role=body.role)
+    return MemberRead(
+        user_id=user.id, name=user.name, email=user.email, role=body.role, scope="event"
+    )
 
 
 @router.delete(
@@ -207,9 +200,13 @@ async def remove_member(
         )
         if org_role is None:
             raise ApiError("They are not on this event.", code="NOT_FOUND", status_code=404)
+        # Points somewhere now rather than dead-ending: since spec 0004 there is
+        # a screen that owns this decision, and the console hides the control on
+        # these rows, so anyone meeting this message arrived by another route.
         raise ConflictError(
-            "They belong to the whole organisation, not just this event, "
-            "so they cannot be removed from one event alone."
+            "They belong to the whole organisation, not just this event, so they "
+            "cannot be removed from one event alone. Remove them in "
+            "Settings → Organisation → People, which takes them off every event."
         )
 
 

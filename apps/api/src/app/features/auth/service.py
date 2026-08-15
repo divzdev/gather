@@ -11,7 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import mail
 from app.core.config import get_settings
-from app.core.errors import AuthenticationError, EmailTakenError, MagicLinkExpiredError
+from app.core.errors import (
+    AuthenticationError,
+    ConflictError,
+    EmailTakenError,
+    MagicLinkExpiredError,
+)
 from app.core.security import (
     create_access_token,
     generate_token,
@@ -250,6 +255,30 @@ async def revoke(session: AsyncSession, *, refresh_token: str) -> None:
     )
     if record is not None and record.revoked_at is None:
         record.revoked_at = _now()
+
+
+async def find_or_create_invitee(session: AsyncSession, *, email: str, name: str) -> User:
+    """The account an invite is about, created if this is their first one.
+
+    A staff account someone else created never has a password: the column is NOT
+    NULL and holds the hash of a value nobody has seen, so password sign-in fails
+    closed and the emailed link is the only door. Same pattern as GitHub accounts.
+
+    Shared by both membership tiers — Settings → Team writes an `EventMember`
+    afterwards, Organisation → People an `OrgMember` — because *how a staff
+    account is minted* is one rule, and the tiers differ only in the row they
+    write next. Never filtered by tenant: the person may already exist under
+    another organisation, and refusing to see them would mint a duplicate.
+    """
+    user = await session.scalar(select(User).where(User.email == email))
+    if user is None:
+        user = User(email=email, name=name, password_hash=hash_password(generate_token()))
+        session.add(user)
+        await session.flush()
+        return user
+    if not user.is_active:
+        raise ConflictError(f"The account for {email} has been deactivated.")
+    return user
 
 
 async def issue_invite_link(

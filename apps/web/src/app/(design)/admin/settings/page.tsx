@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 
 import { AiKeyPanel } from "@/components/console/AiKeyPanel";
+import { OrganizationPanel } from "@/components/console/OrganizationPanel";
+import { OrgPeoplePanel } from "@/components/console/OrgPeoplePanel";
 import { useMe } from "@/components/console/useMe";
 import { TeamPanel } from "@/components/console/TeamPanel";
 import { useConsoleChrome } from "@/components/console/chrome";
@@ -26,7 +28,10 @@ type Event = {
   cfp_closes_at: string | null;
 };
 
-type Panel = "event" | "team" | "brand" | "email" | "integrations";
+/** The two tiers are two groups in the sidebar, and they stay two: an event
+ *  panel never edits the organisation, and an organisation panel never edits an
+ *  event (spec 0004). */
+type Panel = "event" | "team" | "brand" | "email" | "integrations" | "org" | "people";
 
 const PANELS: { key: Panel; label: string }[] = [
   { key: "event", label: "Event" },
@@ -34,6 +39,11 @@ const PANELS: { key: Panel; label: string }[] = [
   { key: "brand", label: "Brand" },
   { key: "email", label: "Email" },
   { key: "integrations", label: "Integrations" },
+];
+
+const ORG_PANELS: { key: Panel; label: string }[] = [
+  { key: "org", label: "Organisation" },
+  { key: "people", label: "People" },
 ];
 
 type Draft = {
@@ -153,10 +163,14 @@ export default function SettingsPage() {
     queryFn: () => authed<Event>(`/events/${eventId}`),
   });
 
-  // The org key card is org-scoped and owner/admin-only: the API 403s everyone
-  // else, so anyone else simply doesn't get the card drawn.
+  // The org key card and the whole ORGANISATION group are org-scoped and
+  // owner/admin-only: the API 403s everyone else, so anyone else simply doesn't
+  // get them drawn.
   const { isManager: canManageKey } = useMe();
   const orgId = event?.org_id ?? null;
+  //: The organisation this screen may edit, or null. One name that narrows,
+  //: rather than repeating `orgId === null || !canManageKey` at each use.
+  const manageableOrgId = canManageKey ? orgId : null;
 
   // Seeded once per event, not on every refetch: a save refetches, and
   // re-seeding from the response would wipe whatever is half-typed in another
@@ -230,10 +244,38 @@ export default function SettingsPage() {
         dot: active ? "inline-block" : "none",
       };
     }),
+    orgPanels:
+      manageableOrgId === null
+        ? []
+        : ORG_PANELS.map((entry) => {
+            const active = panel === entry.key;
+            return {
+              n: entry.label,
+              on: () => setPanel(entry.key),
+              bg: active ? "var(--sk,#EFEFF2)" : "none",
+              fg: active ? "var(--ik,#141417)" : "var(--i2,#3F3F46)",
+              wt: active ? "600" : "500",
+            };
+          }),
+    orgPanel:
+      panel !== "org" || manageableOrgId === null ? null : (
+        <OrganizationPanel orgId={manageableOrgId} toast={toast} />
+      ),
+    peoplePanel:
+      panel !== "people" || manageableOrgId === null ? null : (
+        <OrgPeoplePanel orgId={manageableOrgId} toast={toast} />
+      ),
+
     pEvent: panel === "event",
     pTeam: panel === "team",
     teamPanel:
-      panel !== "team" || eventId === null ? null : <TeamPanel eventId={eventId} toast={toast} />,
+      panel !== "team" || eventId === null ? null : (
+        <TeamPanel
+          eventId={eventId}
+          toast={toast}
+          onManageOrg={manageableOrgId === null ? undefined : () => setPanel("people")}
+        />
+      ),
     aiPanel:
       panel !== "integrations" || orgId === null || !canManageKey ? null : (
         <AiKeyPanel orgId={orgId} toast={toast} />

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
@@ -149,6 +150,13 @@ class MemberRead(BaseModel):
     name: str
     email: str
     role: Role
+    #: Membership scope (CONTEXT.md): "org" is an OrgMember row — a baseline
+    #: role on every event including ones not created yet — and "event" is an
+    #: EventMember row overriding it here. The list has always contained both;
+    #: until now it never said which. Required rather than defaulted: every
+    #: construction site knows which row it just read or wrote, and a default
+    #: would let a future one be silently wrong.
+    scope: Literal["org", "event"]
 
 
 @router.get(
@@ -195,12 +203,24 @@ async def list_members(event_id: uuid.UUID, session: DbSession) -> list[MemberRe
         )
 
     by_user = {
-        user.id: MemberRead(user_id=user.id, name=user.name, email=user.email, role=member.role)
+        user.id: MemberRead(
+            user_id=user.id,
+            name=user.name,
+            email=user.email,
+            role=member.role,
+            scope="org",
+        )
         for member, user in org_rows
     }
+    # An event row overrides the org row for both the role and the scope: the
+    # person works here on these terms and nowhere else on them.
     for member, user in event_rows:
         by_user[user.id] = MemberRead(
-            user_id=user.id, name=user.name, email=user.email, role=member.role
+            user_id=user.id,
+            name=user.name,
+            email=user.email,
+            role=member.role,
+            scope="event",
         )
     return sorted(by_user.values(), key=lambda member: member.name)
 
