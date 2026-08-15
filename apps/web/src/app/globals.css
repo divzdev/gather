@@ -203,6 +203,20 @@ input::placeholder {
     display: none !important;
   }
 
+  /* Ask collapses the same way, for the same reason. Shipped without this it
+     kept its 79px label while search beside it was a 38px icon — two controls
+     doing the same job at two sizes, and 41px the row could not spare. */
+  [data-console-ask] {
+    flex: 0 0 auto !important;
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+  }
+  [data-ask-label] {
+    display: none !important;
+  }
+
   /* Both the capsule and the span holding it. Releasing only the button did
      nothing: its wrapper is `flex: none`, so the row still asked for the full
      236px and pushed the avatar 12px off the screen. A flex item cannot shrink
@@ -212,6 +226,11 @@ input::placeholder {
     width: auto !important;
     min-width: 0 !important;
     flex: 1 1 auto !important;
+    /* Releasing the width is not enough on its own: the button's base size is
+       its content, so a long event name still grew past the slot and painted
+       over the search and Ask buttons rather than clipping. The name span
+       already ellipsises — it just needed a ceiling to ellipsise against. */
+    max-width: 100% !important;
   }
 
   /* The bell and the avatar were drawn at 32 and 28, which is a comfortable
