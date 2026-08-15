@@ -70,7 +70,7 @@ round by opening devtools.
 
 ---
 
-## Five decisions that explain the code
+## Six decisions that explain the code
 
 <details open>
 <summary><b>Deciding is not sending</b> — the most important rule in the product</summary>
@@ -117,6 +117,18 @@ fields stay addable, but deleting one becomes "hide from new submissions" so exi
 survive.
 </details>
 
+<details>
+<summary><b>AI proposes, a human accepts</b></summary>
+
+A suggestion is a row in a table and nothing else. Accepting one is a separate authenticated
+request that calls the same service method the console calls, recorded under the accepting
+person's id, so a score with no human behind it is not representable in the schema. The agenda's
+scheduling assistant is a deterministic first-fit packer rather than a model: it reads the
+constraints you type and shows you which ones it understood, so you can drop the ones it got
+wrong. With no `ANTHROPIC_API_KEY` a stub answers, so zero-credential local dev still exercises
+the whole path.
+</details>
+
 Times are stored as UTC `timestamptz` and rendered in the event's timezone. Migrations are
 forward-only, and CI proves each one applies and round-trips.
 
@@ -161,23 +173,6 @@ tears all of it down. Browser tests never touch your development data.
 
 `make types` is not optional politeness. Hand-writing a type that describes a response is how a
 client starts lying about the server.
-
----
-
-## Not built
-
-Listed because a feature list that only lists wins is a sales page, not a README.
-
-- **A console screen for the Accelevents push.** The API flow — configure, test connection,
-  dry-run, execute — is implemented and tested. No UI reaches it; Settings says so plainly.
-- **Saved views** and **custom submission statuses** — schema only.
-- The agenda's scheduling assistant is a deterministic first-fit packer, not a model. The AI that
-  does exist follows one rule: **AI proposes, a human accepts**, and accepting calls the same
-  service method the UI does. With no `ANTHROPIC_API_KEY` a stub answers, so zero-credential local
-  dev keeps working.
-
-**Never will be:** registration, ticketing, attendee records, badging, sponsors, travel, billing,
-SSO, SMS, webhooks, internationalisation, analytics dashboards.
 
 ---
 

@@ -963,7 +963,7 @@ export default function AgendaPage() {
             view,
             days,
             rooms,
-            tracks: (data?.tracks ?? []).map((entry, index) => ({
+            tracks: (data?.tracks ?? []).map((entry) => ({
               id: entry.id,
               name: entry.name,
               hue: hueByIndex(entry.hue_index),
