@@ -198,6 +198,12 @@ class AiProposalKind(StrEnum):
     NORMALIZE = "normalize"
     SCORE = "score"
     ASSIGN_REVIEWERS = "assign_reviewers"
+    #: The event assistant (spec 0005). The odd one out: nothing is accepted or
+    #: discarded, so a row of this kind goes `streaming` → `ready` and is never
+    #: resolved. It is here rather than in a table of its own so that answers
+    #: count against the org-wide daily proposal cap, which is what keeps that
+    #: cap "one number, one ceiling on the bill".
+    ANSWER = "answer"
 
 
 class AiProposalStatus(StrEnum):

@@ -15,6 +15,12 @@ DIRECTORY = Path(__file__).parent
 #: Bump by adding a file, never by editing one that has run.
 SCORE = "score.v1"
 DUPLICATES = "duplicates.v1"
+#: The event assistant's two calls (spec 0005): choose the queries, then write
+#: prose about what they returned. Two files because they are two different
+#: jobs asked of the model, and the planner's rules have nothing to say about
+#: prose style.
+ASK_PLAN = "ask_plan.v1"
+ASK_PROSE = "ask_prose.v1"
 
 
 @lru_cache(maxsize=8)
