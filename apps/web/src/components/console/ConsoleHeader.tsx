@@ -17,6 +17,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { openAssistant } from "@/components/console/AssistantDrawer";
 import { openCommandPalette } from "@/components/console/CommandPalette";
 import { EventSwitcher } from "@/components/console/EventSwitcher";
 import { toggleMobileNav } from "@/components/console/mobileNav";
@@ -186,6 +187,45 @@ export function ConsoleHeader() {
         >
           ⌘K
         </span>
+      </button>
+
+      {/* Beside search on purpose: the two things you reach for when you do not
+       *  know where something is. Labelled "Ask" rather than anything cleverer —
+       *  a feature nobody can name is a feature nobody finds. */}
+      <button
+        type="button"
+        className="gh-row"
+        onClick={() => openAssistant()}
+        aria-label="Ask about this event"
+        title="Ask about this event (⌘/)"
+        data-console-ask
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flex: "none",
+          height: 40,
+          padding: "0 16px",
+          borderRadius: 11,
+          background: "var(--cd,#FFFFFF)",
+          border: "1px solid var(--ln,#E3E3E7)",
+          color: "var(--i2,#3F3F46)",
+          font: "500 13px var(--font-plex-sans), sans-serif",
+        }}
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M2 2.2h8v5.4H5.4L3 9.6V7.6H2z" />
+        </svg>
+        <span data-ask-label>Ask</span>
       </button>
 
       <div style={{ flex: 1, minWidth: 0 }} />

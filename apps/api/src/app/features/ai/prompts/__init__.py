@@ -20,7 +20,7 @@ DUPLICATES = "duplicates.v1"
 #: jobs asked of the model, and the planner's rules have nothing to say about
 #: prose style.
 ASK_PLAN = "ask_plan.v1"
-ASK_PROSE = "ask_prose.v1"
+ASK_PROSE = "ask_prose.v2"
 
 
 @lru_cache(maxsize=8)

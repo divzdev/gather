@@ -14,9 +14,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { openAssistant } from "@/components/console/AssistantDrawer";
 import { authed, getEventId } from "@/lib/session";
 
-type Item = { label: string; hint: string; href: string };
+/** A row either navigates or acts — never neither, never both. The assistant
+ *  is the only acting row; everything else is a destination. */
+type Item = { label: string; hint: string } & (
+  | { href: string; run?: never }
+  | { run: () => void; href?: never }
+);
 
 /** The header's "Search or jump to… ⌘K" button lives inside a generated screen
  *  component, three levels away from the palette's state. A window event is the
@@ -112,13 +118,22 @@ export function CommandPalette() {
   const screens = SCREENS.filter((item) =>
     term === "" ? true : item.label.toLowerCase().includes(term.toLowerCase()),
   );
-  const results = [...screens, ...(found ?? [])].slice(0, 12);
+  /* The assistant is always the last row, never crowded out by results —
+     someone who typed a question is exactly who needs it, and it is the only
+     row that answers rather than navigates. */
+  const ask: Item = {
+    label: term === "" ? "Ask about this event…" : `Ask: ${term}`,
+    hint: "Assistant",
+    run: () => openAssistant(term),
+  };
+  const results = [...[...screens, ...(found ?? [])].slice(0, 11), ask];
   const active = Math.min(cursor, Math.max(0, results.length - 1));
 
   const go = (item: Item | undefined) => {
     if (item === undefined) return;
     setOpen(false);
-    router.push(item.href as never);
+    if (item.run !== undefined) item.run();
+    else router.push(item.href as never);
   };
 
   return (

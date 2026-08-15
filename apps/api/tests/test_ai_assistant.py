@@ -484,3 +484,62 @@ async def test_with_no_model_configured_the_numbers_are_still_real(
     assert payload(events, "queries")["names"] == ["submissions_by"]
     prose = "".join(str(data.get("text", "")) for name, data in events if name == "token")
     assert "no model" in prose.lower(), "it must never pass itself off as reasoning"
+
+
+async def test_a_plan_naming_the_same_query_twice_runs_it_once(
+    client: AsyncClient, world: World, scripted
+) -> None:
+    """Observed with a real llama3.1:8b, which asked for `submissions_by` three
+    times. Running it three times costs three queries and renders "Looked at
+    submission counts · submission counts · submission counts"."""
+    scripted(
+        plan(
+            ("submissions_by", {"group_by": "status"}),
+            ("submissions_by", {"group_by": "status"}),
+            ("submissions_by", {"group_by": "status"}),
+        ),
+        "One accepted talk.",
+    )
+
+    response = await ask(client, world, "how many submissions")
+
+    assert payload(sse(response.text), "queries")["names"] == ["submissions_by"]
+
+
+async def test_the_same_query_with_different_arguments_is_not_deduplicated(
+    client: AsyncClient, world: World, scripted
+) -> None:
+    """Two days of the schedule is a legitimate plan, not a repeat."""
+    scripted(
+        plan(
+            ("sessions_in_window", {"day": "2027-05-12"}),
+            ("sessions_in_window", {"day": "2027-05-13"}),
+        ),
+        "Nothing either day.",
+    )
+
+    response = await ask(client, world, "what is on across the event")
+
+    assert payload(sse(response.text), "queries")["names"] == [
+        "sessions_in_window",
+        "sessions_in_window",
+    ]
+
+
+async def test_prose_that_is_not_prose_is_a_failure_not_an_answer(
+    client: AsyncClient, session: AsyncSession, world: World, scripted
+) -> None:
+    """A small model can carry JSON mode over from the planning call and reply
+    `{}`. Printing that as the answer is worse than admitting it failed."""
+    scripted(plan(("submissions_by", {"group_by": "status"})), "{ \n\n}")
+
+    response = await ask(client, world, "how many submissions")
+
+    events = sse(response.text)
+    assert names(events)[-1] == "error"
+    assert "".join(str(data.get("text", "")) for name, data in events if name == "token") != "{"
+    with tenancy_disabled():
+        row = (
+            await session.scalars(select(AiProposal).where(AiProposal.event_id == world.event.id))
+        ).one()
+    assert row.status == AiProposalStatus.FAILED

@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -66,6 +66,18 @@ async def assert_within_daily_cap(session: AsyncSession, *, event_id: uuid.UUID)
     cap = org_cap if org_cap is not None else get_settings().ai_daily_proposal_cap
     if cap <= 0:
         return
+
+    # Counting and inserting are two statements, and between them another
+    # request can count the same number and insert too — two people on the
+    # button at once, or one person double-clicking, and the org spends past its
+    # ceiling. A transaction-scoped advisory lock keyed on the org serialises
+    # just that window: it is released on commit or rollback, it blocks only
+    # other AI proposals in the *same* org, and it costs one round trip.
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext('ai_daily_cap'), hashtext(:org))"),
+        {"org": str(org_id)},
+    )
+
     since = _now().replace(hour=0, minute=0, second=0, microsecond=0)
     # Counted across every event the org runs, which the automatic tenancy
     # filter would forbid from inside one event's scope — hence the explicit,
