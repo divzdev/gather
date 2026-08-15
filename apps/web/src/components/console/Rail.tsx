@@ -31,13 +31,29 @@ const RAIL_KEY = "gather.rail";
  *  or approving a session from a hallway has to work. */
 const NARROW_QUERY = "(max-width: 900px)";
 
+/** Routes that mount a second nav column of their own, beside the rail.
+ *
+ *  Two navs plus content is 464px of chrome before the first word — a third of
+ *  a 1440 laptop spent on wayfinding, most of it duplicated, because the
+ *  section nav already says where you are. So the rail starts collapsed here
+ *  and hands the width back.
+ *
+ *  A list rather than a prop on `<Rail>` because Settings mounts its rail
+ *  inside `components/design/Settings.tsx`, which is generated — a hand-added
+ *  prop there is exactly what regeneration deletes. */
+const SECTION_NAV_ROUTES = ["/admin/program", "/admin/settings"];
+
 /** Collapsed state lives in localStorage, so it is read through an external
  *  store rather than an effect: the server renders expanded and the client
  *  corrects on hydration without a second render pass.
  *
- *  Narrow screens keep their own key: with one shared flag, expanding on a
- *  desktop would write "0" and a later phone visit would inherit a rail it
- *  has no room for. Absent key = the width decides. */
+ *  Three keys, not one. Narrow screens and section-nav screens each keep their
+ *  own: with a single shared flag, expanding on a desktop dashboard would
+ *  write "0" and a later phone visit — or a later trip to Settings — would
+ *  inherit a rail that context has no room for. Absent key = the context
+ *  decides; a present key is the choice this person made *in that context*,
+ *  which is why the toggle still works on every screen and is never undone by
+ *  navigating. */
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void): () => void {
@@ -95,7 +111,13 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     () => window.matchMedia(NARROW_QUERY).matches,
     () => false,
   );
-  const railKey = narrow ? `${RAIL_KEY}.narrow` : RAIL_KEY;
+  const pathname = usePathname();
+  const sectionNav = SECTION_NAV_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+  // Narrow outranks section: a phone has no room for the rail whatever else the
+  // screen is showing, and its own key already carries that.
+  const railKey = narrow ? `${RAIL_KEY}.narrow` : sectionNav ? `${RAIL_KEY}.section` : RAIL_KEY;
   const stored = useSyncExternalStore(
     subscribe,
     () => window.localStorage.getItem(railKey),
@@ -110,10 +132,9 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
    *  desktop user makes to buy back screen width they can see the value of;
    *  someone who has just tapped a menu open has asked to read it, and there is
    *  no width to save because the drawer is floating over the page anyway. */
-  const collapsed = drawerOpen ? false : stored === null ? narrow : stored === "1";
+  const collapsed = drawerOpen ? false : stored === null ? narrow || sectionNav : stored === "1";
   // Navigating closes it. Without this the drawer stays over the page you just
   // asked for, which reads as the tap not having worked.
-  const pathname = usePathname();
   useEffect(() => setMobileNav(false), [pathname]);
   const [logoHover, setLogoHover] = useState(false);
   const { stats } = useProgramStats();

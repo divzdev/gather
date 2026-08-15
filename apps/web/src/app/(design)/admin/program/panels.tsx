@@ -297,6 +297,20 @@ const DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
+const WINDOW_DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** An `YYYY-MM-DD` from the API, in words. Formatted in UTC because that string
+ *  parses to UTC midnight — reading it back in a western zone would name the
+ *  day before, and a window hint that is off by one is worse than none. */
+function dayLabel(iso: string): string {
+  return WINDOW_DATE.format(new Date(`${iso}T00:00:00Z`));
+}
+
 /** What the row calls itself. The remove control has to name the same thing the
  *  row shows, or a screen reader announces a button for something else.
  *
@@ -426,6 +440,17 @@ function RowDrawer({
   const [draft, setDraft] = useState<Record<string, string>>(() => draftOf(panel, editing));
   const [problem, setProblem] = useState("");
 
+  /** The event's own dates, which bound every date field in this drawer. The
+   *  API refuses a day outside them; without this the picker still offers all
+   *  of history and the organiser learns the rule by being told no. Same query
+   *  key as Settings and the form builder, so it is one request, not three. */
+  const { data: event } = useQuery({
+    queryKey: ["event", eventId],
+    enabled: eventId !== null,
+    queryFn: () => authed<{ starts_on: string; ends_on: string }>(`/events/${eventId}`),
+    staleTime: 5 * 60_000,
+  });
+
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       authed(
@@ -488,82 +513,95 @@ function RowDrawer({
         // columns, so a form with no pairs looks exactly as it did.
         style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}
       >
-        {panel.fields.map((field) => (
-          <div
-            key={field.key}
-            style={{
-              display: "grid",
-              gap: 6,
-              gridColumn: field.half === true ? "auto" : "1 / -1",
-              // Pack to the top. Two half-width fields share a row, and if one
-              // carries a hint its cell is taller — stretching would push the
-              // shorter cell's input down and misalign the pair.
-              alignContent: "start",
-            }}
-          >
-            <label
-              htmlFor={`new-${panel.key}-${field.key}`}
-              style={{ font: "500 12px var(--font-plex-sans)", color: "var(--i2)" }}
+        {panel.fields.map((field) => {
+          // A greyed-out calendar with no sentence under it reads as broken
+          // rather than as a rule, so the window is stated in words too.
+          const hint =
+            field.type === "date" && event !== undefined
+              ? `Any date the event runs — ${dayLabel(event.starts_on)} to ${dayLabel(event.ends_on)}.`
+              : field.hint;
+          return (
+            <div
+              key={field.key}
+              style={{
+                display: "grid",
+                gap: 6,
+                gridColumn: field.half === true ? "auto" : "1 / -1",
+                // Pack to the top. Two half-width fields share a row, and if one
+                // carries a hint its cell is taller — stretching would push the
+                // shorter cell's input down and misalign the pair.
+                alignContent: "start",
+              }}
             >
-              {field.label}
-            </label>
-
-            {field.kind === "hue" ? (
-              <div
-                id={`new-${panel.key}-${field.key}`}
-                role="radiogroup"
-                aria-label={field.label}
-                style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+              <label
+                htmlFor={`new-${panel.key}-${field.key}`}
+                style={{ font: "500 12px var(--font-plex-sans)", color: "var(--i2)" }}
               >
-                {HUES.map((hue, index) => {
-                  const value = String(index + 1);
-                  const chosen = (draft[field.key] ?? "1") === value;
-                  return (
-                    <button
-                      key={hue}
-                      type="button"
-                      role="radio"
-                      aria-checked={chosen}
-                      aria-label={`Colour ${value}`}
-                      onClick={() => set(field.key, value)}
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 9,
-                        border: "none",
-                        background: hue,
-                        boxShadow: chosen
-                          ? "0 0 0 2px var(--cd), 0 0 0 4px var(--sg)"
-                          : "inset 0 0 0 1px rgba(0,0,0,.14)",
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            ) : (
-              <input
-                id={`new-${panel.key}-${field.key}`}
-                type={field.type ?? "text"}
-                value={draft[field.key] ?? ""}
-                placeholder={field.placeholder}
-                onChange={(event) => set(field.key, event.target.value)}
-                style={inputStyle}
-              />
-            )}
+                {field.label}
+              </label>
 
-            {field.hint === undefined ? null : (
-              <p
-                style={{
-                  font: "400 11.5px/1.5 var(--font-plex-sans)",
-                  color: "var(--i4)",
-                  margin: 0,
-                }}
-              >
-                {field.hint}
-              </p>
-            )}
-          </div>
-        ))}
+              {field.kind === "hue" ? (
+                <div
+                  id={`new-${panel.key}-${field.key}`}
+                  role="radiogroup"
+                  aria-label={field.label}
+                  style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+                >
+                  {HUES.map((hue, index) => {
+                    const value = String(index + 1);
+                    const chosen = (draft[field.key] ?? "1") === value;
+                    return (
+                      <button
+                        key={hue}
+                        type="button"
+                        role="radio"
+                        aria-checked={chosen}
+                        aria-label={`Colour ${value}`}
+                        onClick={() => set(field.key, value)}
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 9,
+                          border: "none",
+                          background: hue,
+                          boxShadow: chosen
+                            ? "0 0 0 2px var(--cd), 0 0 0 4px var(--sg)"
+                            : "inset 0 0 0 1px rgba(0,0,0,.14)",
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <input
+                  id={`new-${panel.key}-${field.key}`}
+                  type={field.type ?? "text"}
+                  value={draft[field.key] ?? ""}
+                  placeholder={field.placeholder}
+                  // Greys out every date the conference does not run on, so the
+                  // rule is visible in the picker rather than delivered as a 422
+                  // after the organiser has filled the rest of the drawer in.
+                  min={field.type === "date" ? event?.starts_on : undefined}
+                  max={field.type === "date" ? event?.ends_on : undefined}
+                  onChange={(changed) => set(field.key, changed.target.value)}
+                  style={inputStyle}
+                />
+              )}
+
+              {hint === undefined ? null : (
+                <p
+                  style={{
+                    font: "400 11.5px/1.5 var(--font-plex-sans)",
+                    color: "var(--i4)",
+                    margin: 0,
+                  }}
+                >
+                  {hint}
+                </p>
+              )}
+            </div>
+          );
+        })}
 
         {cascade === null ? null : (
           <p

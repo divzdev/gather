@@ -178,6 +178,77 @@ async def test_day_rejects_an_end_before_its_start(
     assert response.json()["error"]["code"] == "VALIDATION_FAILED"
 
 
+# The conference runs 2027-05-10 → 2027-05-22 (the `two_orgs` fixture). A day is
+# a date the conference runs on, so the window is the whole rule: a date outside
+# it draws an agenda tab for a day nobody is there, and a date in the past is
+# only the loudest instance of that.
+@pytest.mark.parametrize(
+    ("day", "why"),
+    [
+        ("2027-05-09", "the day before it opens"),
+        ("2027-05-23", "the day after it closes"),
+        ("2019-01-01", "years in the past"),
+        ("2099-01-01", "far in the future"),
+    ],
+)
+async def test_a_day_outside_the_event_window_is_refused(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event], day: str, why: str
+) -> None:
+    headers, event = coordinator
+    response = await client.post(
+        f"/v1/events/{event.id}/days",
+        json={"day_date": day, "starts_at_local": "09:00", "ends_at_local": "18:00"},
+        headers=headers,
+    )
+
+    assert response.status_code == 422, f"{day} ({why}) was accepted"
+    body = response.json()["error"]
+    assert body["code"] == "VALIDATION_FAILED"
+    # The message has to name the window, or the organiser is told "no" and left
+    # guessing which dates are allowed.
+    assert "2027-05-10" in body["message"] and "2027-05-22" in body["message"]
+
+
+@pytest.mark.parametrize("day", ["2027-05-10", "2027-05-16", "2027-05-22"])
+async def test_the_first_and_last_day_of_the_event_are_valid(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event], day: str
+) -> None:
+    """The window is inclusive at both ends — a one-day conference has one legal
+    date, and an off-by-one here makes the opening day unaddable."""
+    headers, event = coordinator
+    response = await client.post(
+        f"/v1/events/{event.id}/days",
+        json={"day_date": day, "starts_at_local": "09:00", "ends_at_local": "18:00"},
+        headers=headers,
+    )
+
+    assert response.status_code == 201, response.text
+
+
+async def test_a_day_cannot_be_edited_out_of_the_event_window(
+    client: AsyncClient, coordinator: tuple[dict[str, str], Event]
+) -> None:
+    """The create check is worth nothing on its own: the edit drawer is the same
+    date field, and moving a day drags every session placed on it along."""
+    headers, event = coordinator
+    day_id = (
+        await client.post(
+            f"/v1/events/{event.id}/days",
+            json={"day_date": "2027-05-12", "starts_at_local": "09:00", "ends_at_local": "18:00"},
+            headers=headers,
+        )
+    ).json()["id"]
+
+    response = await client.patch(
+        f"/v1/events/{event.id}/days/{day_id}",
+        json={"day_date": "2026-01-01"},
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_FAILED"
+
+
 async def test_unknown_fields_are_rejected(
     client: AsyncClient, coordinator: tuple[dict[str, str], Event]
 ) -> None:

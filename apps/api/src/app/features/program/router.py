@@ -19,10 +19,43 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crud import event_resource_router
 from app.core.errors import ApiError
+from app.core.tenancy import current_tenant, tenancy_disabled
 from app.features.program import schemas
-from app.models import EventDay, Room, ScheduleBlock, Session, SessionFormat, Track
+from app.models import Event, EventDay, Room, ScheduleBlock, Session, SessionFormat, Track
 
 TRACK_HUES = 8
+
+
+async def _day_within_the_event(session: AsyncSession, day: Any) -> None:
+    """A day of the conference has to be a date the conference runs.
+
+    The window is the whole rule, and it is stricter than "not in the past" —
+    which is the version everyone reaches for first. A day in 2099 is exactly as
+    wrong as a day in 2019: both draw an agenda tab for a date nobody is in the
+    building, and only one of them looks obviously wrong. Checking against the
+    event's own dates catches both, and needs no clock.
+
+    Deliberately *not* a schema validator: the schema never sees the event, and
+    fetching it there would put a query inside parsing. This runs on create and
+    on edit, because the edit drawer is the same date field and moving a day
+    drags every session placed on it along with it.
+    """
+    tenant = current_tenant()
+    with tenancy_disabled():
+        event = await session.get(Event, tenant.event_id)
+    if event is None:  # pragma: no cover - bind_tenant proved it exists
+        return
+    if event.starts_on <= day.day_date <= event.ends_on:
+        return
+    raise ApiError(
+        f"{day.day_date:%-d %b %Y} is outside the event. "
+        f"{event.name} runs {event.starts_on:%-d %b %Y} to {event.ends_on:%-d %b %Y} "
+        f"({event.starts_on.isoformat()} to {event.ends_on.isoformat()}) — "
+        "pick a date inside that, or move the event's dates in Settings first.",
+        code="VALIDATION_FAILED",
+        status_code=422,
+        field="day_date",
+    )
 
 
 async def _assign_hue(session: AsyncSession, track: Any) -> None:
@@ -173,6 +206,8 @@ async def _shift_sessions_with_the_day(
     Editing 12 May to 14 May without this leaves every talk sitting two days in
     the past, still marked scheduled, invisible on the tab it belongs to.
     """
+    await _day_within_the_event(session, day)
+
     # A one-sided time edit cannot be checked by the schema, which never sees
     # the half it is not carrying. Here the row is merged and both are known.
     if day.starts_at_local >= day.ends_at_local:
@@ -253,6 +288,7 @@ event_days_router = event_resource_router(
     in_use=_day_in_use,
     extras=_day_extras,
     duplicate="That date is already an event day. Edit the existing one instead.",
+    on_create=_day_within_the_event,
     on_update=_shift_sessions_with_the_day,
     read_schema=schemas.EventDayRead,
     create_schema=schemas.EventDayCreate,

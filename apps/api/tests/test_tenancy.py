@@ -28,7 +28,7 @@ async def test_select_returns_only_the_active_org(
     with tenant_scope(org_a.id):
         events = (await session.execute(select(Event))).scalars().all()
 
-    assert [e.name for e in events] == ["Alpha 2026"]
+    assert [e.name for e in events] == ["Alpha May 2027"]
 
 
 async def test_switching_tenant_switches_results(
@@ -45,9 +45,9 @@ async def test_switching_tenant_switches_results(
     with tenant_scope(org_a.id):
         third = (await session.execute(select(Event))).scalars().all()
 
-    assert [e.name for e in first] == ["Alpha 2026"]
+    assert [e.name for e in first] == ["Alpha May 2027"]
     assert [e.name for e in second] == ["Beta 2026"]
-    assert [e.name for e in third] == ["Alpha 2026"]
+    assert [e.name for e in third] == ["Alpha May 2027"]
 
 
 async def test_other_tenants_row_is_invisible_by_id(
@@ -160,7 +160,7 @@ async def test_bulk_update_with_a_tenant_predicate_is_allowed_and_scoped(
         ).all()
 
     locations = dict(rows)
-    assert locations["Alpha 2026"] == "Hall A"
+    assert locations["Alpha May 2027"] == "Hall A"
     assert locations["Beta 2026"] is None
 
 
@@ -175,7 +175,7 @@ async def test_tenancy_disabled_sees_every_org(
             .all()
         )
 
-    assert {e.name for e in events} == {"Alpha 2026", "Beta 2026"}
+    assert {e.name for e in events} == {"Alpha May 2027", "Beta 2026"}
 
 
 async def test_unknown_tenant_sees_nothing(

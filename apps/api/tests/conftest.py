@@ -228,13 +228,21 @@ async def two_orgs(session: AsyncSession) -> tuple[Organization, Organization]:
 
         session.add_all(
             [
+                # A wide window on purpose. Event days are now bounded by it, and
+                # the program tests place days across a fortnight — a three-day
+                # fixture would make them fail for a reason that has nothing to
+                # do with what they are testing. May 2027 matches the dates the
+                # rest of the suite already builds its own events around.
+                # Named for its month as well as its year: `test_tenancy` builds
+                # a second org_a event called "Alpha 2027" to prove event-level
+                # scoping, and a fixture sharing that slug collides with it.
                 Event(
                     org_id=org_a.id,
-                    name="Alpha 2026",
-                    slug="alpha-2026",
+                    name="Alpha May 2027",
+                    slug="alpha-may-2027",
                     timezone="America/Los_Angeles",
-                    starts_on=date(2026, 9, 1),
-                    ends_on=date(2026, 9, 3),
+                    starts_on=date(2027, 5, 10),
+                    ends_on=date(2027, 5, 22),
                     status=EventStatus.CFP_OPEN,
                 ),
                 Event(
