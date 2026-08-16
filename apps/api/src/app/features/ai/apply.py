@@ -23,39 +23,24 @@ from __future__ import annotations
 
 import uuid
 from copy import deepcopy
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import crud
 from app.core.errors import ApiError
 from app.features.ai import write_catalog
+from app.features.ai.schemas import AppliedAction
 from app.models import AiProposal, AiProposalKind, AiProposalStatus
 
 __all__ = ["Applied", "apply"]
 
 
-@dataclass(frozen=True, slots=True)
-class Applied:
-    """What became of one action. `id` and `label` name the row for the screen;
-    `error` carries the sentence the setup screen would have shown."""
-
-    index: int
-    status: str
-    id: uuid.UUID | None = None
-    label: str | None = None
-    error: str | None = None
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "index": self.index,
-            "status": self.status,
-            "id": None if self.id is None else str(self.id),
-            "label": self.label,
-            "error": self.error,
-        }
+#: One action's outcome. The API schema is the return type — there is no second
+#: shape to keep in step.
+Applied = AppliedAction
 
 
 def _actions(proposal: AiProposal) -> list[dict[str, Any]]:
@@ -151,6 +136,15 @@ async def apply(
             code="AI_NOT_APPLICABLE",
             status_code=422,
         )
+    if proposal.status is AiProposalStatus.DISCARDED:
+        # Discarding is what "no, not that" means. Checking only `kind` left a
+        # thrown-away suggestion fully appliable, which is the opposite of what
+        # pressing Discard promises.
+        raise ApiError(
+            "That suggestion was discarded.",
+            code="AI_DISCARDED",
+            status_code=409,
+        )
 
     actions = _actions(proposal)
     unknown = [index for index in indexes if not 0 <= index < len(actions)]
@@ -160,6 +154,18 @@ async def apply(
             code="AI_NO_SUCH_ACTION",
             status_code=422,
         )
+
+    # Two presses of the same button land as two requests, and the idempotency
+    # check below is read-then-write. Without this both read `proposed` and both
+    # try to create; the second gets the duplicate-name error rather than the
+    # "already done" it should. Transaction-scoped, released on commit, and
+    # keyed on this proposal, so it blocks nothing else.
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext('ai_apply'), hashtext(:proposal))"),
+        {"proposal": str(proposal.id)},
+    )
+    await session.refresh(proposal)
+    actions = _actions(proposal)
 
     results: list[Applied] = []
     for index in indexes:

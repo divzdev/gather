@@ -28,11 +28,11 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select
+from sqlalchemy import Text, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crud import ResourceSpec
-from app.features.ai.catalog import _arg_spec
+from app.features.ai.catalog import arg_spec
 from app.features.program.resources import EVENT_DAY, ROOM, SESSION_FORMAT, TRACK
 
 __all__ = [
@@ -125,7 +125,7 @@ def describe() -> list[dict[str, Any]]:
         entry: dict[str, Any] = {
             "name": action.name,
             "purpose": action.purpose,
-            "values": _arg_spec(action.schema),
+            "values": arg_spec(action.schema),
         }
         if action.verb == "update":
             entry["target"] = "string — the existing row, named the way the organiser named it"
@@ -214,8 +214,29 @@ async def resolve(session: AsyncSession, spec: ResourceSpec, wanted: str) -> Res
     between the candidates and a human is asked if it cannot.
 
     Runs inside the request's tenancy, so the rows considered are the caller's.
+
+    **The exact match is its own query, over every row.** It used to be a Python
+    filter over the same 25 rows fetched for the candidate list, which meant the
+    26th room — alphabetically — could not be edited by typing its exact name.
+    The candidate list is a prompt-sized sample and is allowed to be truncated;
+    matching is not.
     """
     column = getattr(spec.model, spec.label_column)
+
+    needle = wanted.strip()
+    matches = list(
+        (
+            await session.execute(
+                # Compared as text so a date column answers to "2027-05-12", and
+                # case-folded in the database so the whole table is searched
+                # rather than the page of it we happen to be showing.
+                select(spec.model).where(func.lower(cast(column, Text)) == needle.casefold())
+            )
+        )
+        .scalars()
+        .all()
+    )
+
     rows = list(
         (await session.execute(select(spec.model).order_by(column).limit(MAX_CANDIDATES)))
         .scalars()
@@ -226,13 +247,15 @@ async def resolve(session: AsyncSession, spec: ResourceSpec, wanted: str) -> Res
         for row in rows
     ]
 
-    needle = wanted.strip().casefold()
-    exact = [candidate for candidate in candidates if candidate.label.casefold() == needle]
     # Exactly one, not "the first": two rows a case-fold apart is a real
     # ambiguity and belongs on the ladder, not silently resolved to whichever
     # sorted first.
-    if len(exact) == 1:
-        return Resolution(target=exact[0], candidates=candidates)
+    if len(matches) == 1:
+        row = matches[0]
+        return Resolution(
+            target=Candidate(id=row.id, label=_label(spec, row)),  # type: ignore[attr-defined]
+            candidates=candidates,
+        )
     return Resolution(target=None, candidates=candidates)
 
 

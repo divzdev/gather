@@ -44,7 +44,16 @@ from app.features.ai.catalog_queries import (
     tasks_outstanding,
 )
 
-__all__ = ["CATALOG", "ROW_LIMIT", "BadArgsError", "Entry", "UnknownQueryError", "describe", "run"]
+__all__ = [
+    "CATALOG",
+    "ROW_LIMIT",
+    "BadArgsError",
+    "Entry",
+    "UnknownQueryError",
+    "arg_spec",
+    "describe",
+    "run",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,8 +169,11 @@ CATALOG: dict[str, Entry] = {
 }
 
 
-def _arg_spec(args: type[BaseModel]) -> dict[str, str]:
+def arg_spec(args: type[BaseModel]) -> dict[str, str]:
     """One line per argument: its type, its allowed values, its default.
+
+    Public because the write catalog builds its own prompt block the same way
+    (spec 0008) — two real usages, so it stops being one module's private helper.
 
     A full JSON Schema per entry cost about 1,200 prompt tokens across the
     twelve — most of it `title` and `anyOf` boilerplate a model does not need to
@@ -210,7 +222,7 @@ def describe() -> list[dict[str, Any]]:
     advertise a query that is not there, or miss one that is.
     """
     return [
-        {"name": entry.name, "purpose": entry.description, "args": _arg_spec(entry.args)}
+        {"name": entry.name, "purpose": entry.description, "args": arg_spec(entry.args)}
         for entry in CATALOG.values()
     ]
 

@@ -3250,6 +3250,30 @@ export interface components {
             /** Ai Disabled */
             ai_disabled: boolean;
         };
+        /**
+         * AppliedAction
+         * @description What became of one proposed change.
+         *
+         *     A model rather than a loose dict so the generated client type describes it —
+         *     `list[dict[str, object]]` generated `{[key: string]: unknown}[]`, which sent
+         *     the frontend off to hand-write the shape, exactly what api-types.ts exists to
+         *     prevent.
+         */
+        AppliedAction: {
+            /** Index */
+            index: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "applied" | "failed";
+            /** Id */
+            id?: string | null;
+            /** Label */
+            label?: string | null;
+            /** Error */
+            error?: string | null;
+        };
         /** ApplyRequest */
         ApplyRequest: {
             /** Indexes */
@@ -3258,9 +3282,7 @@ export interface components {
         /** ApplyResult */
         ApplyResult: {
             /** Results */
-            results: {
-                [key: string]: unknown;
-            }[];
+            results: components["schemas"]["AppliedAction"][];
         };
         /** ApprovalRequest */
         ApprovalRequest: {

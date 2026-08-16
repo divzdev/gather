@@ -115,6 +115,32 @@ class AiStatus(BaseModel):
     ai_disabled: bool
 
 
+class AppliedAction(BaseModel):
+    """What became of one proposed change.
+
+    A model rather than a loose dict so the generated client type describes it —
+    `list[dict[str, object]]` generated `{[key: string]: unknown}[]`, which sent
+    the frontend off to hand-write the shape, exactly what api-types.ts exists to
+    prevent.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    index: int
+    status: Literal["applied", "failed"]
+    #: The row that now exists. Null when the action failed.
+    id: uuid.UUID | None = None
+    label: str | None = None
+    #: The sentence the setup screen would have shown.
+    error: str | None = None
+
+
+class ApplyResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    results: list[AppliedAction]
+
+
 class ProposalRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

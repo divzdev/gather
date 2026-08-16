@@ -371,3 +371,14 @@ async def test_the_resolution_call_is_not_repeated_at_apply_time(
     await _apply(client, world, proposal_id, [0])
 
     assert len(fake.seen) == 2, "applying spoke to no model"
+
+
+async def _cards(client: AsyncClient, world: World, proposal_id: str) -> list[dict[str, Any]]:
+    """The proposal's cards as stored, for tests that care about how many were
+    drawn rather than what the stream said."""
+    response = await client.get(
+        f"/v1/events/{world.event.id}/ai/proposals/{proposal_id}", headers=world.admin
+    )
+    assert response.status_code == 200, response.text
+    actions: list[dict[str, Any]] = response.json()["output"]["actions"]
+    return actions

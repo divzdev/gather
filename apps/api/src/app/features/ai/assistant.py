@@ -23,7 +23,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
@@ -38,7 +38,7 @@ from app.features.ai import catalog, prompts, proposals, write_catalog
 from app.features.ai.adapters.base import Completion, LLMAdapter
 from app.features.ai.gateway import OrgAiConfig, describe_choice, select_adapter
 from app.features.ai.service import org_ai
-from app.models import AiProposalKind, AiProposalStatus
+from app.models import AiProposalKind, AiProposalStatus, Event
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +68,12 @@ PLAN_MAX_TOKENS = 1500
 #: guard rather than a budget. Kept well clear of PLAN_MAX_TOKENS on purpose:
 #: this call exists to be cheaper than interrupting somebody.
 RESOLVE_MAX_TOKENS = 200
+
+#: How many cards one question may draw. Deliberately the same number
+#: `ApplyRequest.indexes` accepts: a plan that drew 30 cards produced an
+#: "Apply all 30" the route then rejected outright, and the drawer marked every
+#: card failed. A cap the screen can exceed is not a cap.
+MAX_ACTIONS = 25
 
 
 class Turn(BaseModel):
@@ -196,17 +202,44 @@ def _describe_values(values: BaseModel) -> dict[str, Any]:
     return described
 
 
+@dataclass(slots=True)
+class _Proposed:
+    """What one plan turned into: cards to press, and questions for the ones that
+    could not be worked out.
+
+    Both together, never one or the other. An unresolvable edit used to abandon
+    the whole reply, throwing away creates that were already built beside it —
+    "add Studio and make the big room bigger" answered nothing at all.
+    """
+
+    cards: list[dict[str, Any]] = field(default_factory=list)
+    questions: list[str] = field(default_factory=list)
+
+
 async def _plan_actions(
     ledger: _Ledger, llm: LLMAdapter, plan: Plan
-) -> AsyncIterator[tuple[str, dict[str, Any]] | list[dict[str, Any]]]:
+) -> AsyncIterator[tuple[str, dict[str, Any]] | _Proposed]:
     """Turn the model's actions into cards, asking a model — then a human — when
     a target does not resolve.
 
-    Yields SSE events as it goes and finishes by yielding the list of cards, so
-    the caller can stream `resolving` without this needing to know about SSE.
+    Yields SSE events as it goes and finishes by yielding the result, so the
+    caller can stream `resolving` without this needing to know about SSE.
+
+    **No database session is open across the model call**, which the two short
+    `_scoped` blocks below exist to guarantee. The first cut wrapped the whole
+    loop body in one session and called `_ask_which` inside it: an asyncpg
+    connection and an idle-in-transaction Postgres session pinned for the length
+    of a model round trip, against the rule this module's own docstring cites.
+    It also meant a `yield` from inside the block, so a caller that stopped
+    reading abandoned the generator mid-session and left the tenant ContextVar
+    token unreset.
     """
-    cards: list[dict[str, Any]] = []
-    for index, planned in enumerate(plan.actions):
+    found_so_far = _Proposed()
+    for planned in plan.actions:
+        if len(found_so_far.cards) >= MAX_ACTIONS:
+            # Bounded to what `ApplyRequest` will accept, so a greedy plan can
+            # never draw a card that "Apply all" would then be refused for.
+            break
         try:
             parsed = write_catalog.parse(
                 planned.name, {"target": planned.target, "values": planned.values}
@@ -217,22 +250,99 @@ async def _plan_actions(
             continue
 
         if parsed.action.verb == "create":
-            cards.append(_card(index, parsed))
+            found_so_far.cards.append(_card(len(found_so_far.cards), ledger, parsed))
             continue
 
-        assert parsed.target is not None  # `parse` refuses an update without one
+        if parsed.target is None:  # pragma: no cover - `parse` refuses one
+            continue
+
         async with _scoped(ledger.event_id, ledger.org_id) as session:
             found = await write_catalog.resolve(session, parsed.action.spec, parsed.target)
-            if found.target is None and found.candidates:
-                yield "resolving", {"target": parsed.target}
-                found = await _ask_which(llm, parsed, found)
-            if found.target is None:
-                yield "clarify", {"question": _which(parsed, found)}
-                return
+
+        if found.target is None and found.candidates:
+            yield "resolving", {"target": parsed.target}
+            found = await _ask_which(llm, parsed, found)
+
+        if found.target is None:
+            found_so_far.questions.append(_which(parsed, found))
+            continue
+
+        async with _scoped(ledger.event_id, ledger.org_id) as session:
             row = await crud.get_resource(session, parsed.action.spec, found.target.id)
             before = crud.previous_values(row, parsed.values)
-        cards.append(_card(index, parsed, target=found.target.label, before=before))
-    yield cards
+        found_so_far.cards.append(
+            _card(
+                len(found_so_far.cards),
+                ledger,
+                parsed,
+                target=found.target.label,
+                before=before,
+            )
+        )
+    yield found_so_far
+
+
+async def _propose(
+    ledger: _Ledger,
+    llm: LLMAdapter,
+    plan: Plan,
+    planning: Completion,
+    question: str,
+    started: float,
+) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+    """The write half of an answer: cards to press, or a reason there are none.
+
+    Its own function rather than a branch inside `_answer`, which was 135 lines
+    and four levels deep by the time this was inline.
+    """
+    proposed = _Proposed()
+    async for step in _plan_actions(ledger, llm, plan):
+        if isinstance(step, _Proposed):
+            proposed = step
+        else:
+            yield step
+
+    if not proposed.cards:
+        # Nothing survived. An empty card is worse than a sentence — it looks
+        # like something to press — so this ends in words. The questions come
+        # first when there are any: "which room did you mean" is a better reply
+        # than "none of that is something I can change".
+        reason = (
+            " ".join(proposed.questions)
+            if proposed.questions
+            else "None of that is something I can change here."
+        )
+        kind = "clarify" if proposed.questions else "refusal"
+        key = "question" if proposed.questions else "message"
+        yield await _aside(ledger, planning, kind=kind, key=key, text=reason, started=started)
+        return
+
+    await _close(
+        ledger,
+        output={
+            "actions": proposed.cards,
+            "questions": proposed.questions,
+            "is_stub": planning.is_stub,
+        },
+        reasoning=question,
+        completion=planning,
+        kind=AiProposalKind.PROGRAM_CHANGE,
+    )
+    yield (
+        "proposal",
+        {
+            "proposal_id": str(ledger.proposal_id),
+            "actions": proposed.cards,
+            # Cards *and* questions: an unresolvable edit beside two good creates
+            # used to throw all three away.
+            "questions": proposed.questions,
+            "is_stub": planning.is_stub,
+            "model": planning.model,
+            "usage": planning.usage,
+            "usage_covers": "plan",
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+        },
+    )
 
 
 async def _ask_which(
@@ -276,13 +386,21 @@ def _which(parsed: write_catalog.Parsed, found: write_catalog.Resolution) -> str
 
 def _card(
     index: int,
+    ledger: _Ledger,
     parsed: write_catalog.Parsed,
     *,
     target: str | None = None,
     before: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
+        # The position in the *surviving* list, which is what the apply route
+        # indexes. It used to be the position in the model's plan, so one dropped
+        # action shifted every card after it and pressing Create on "Alpha"
+        # created "Beta" — the worst failure this feature could have, and
+        # invisible from the screen.
         "index": index,
+        # Story 2: a card read ten minutes later still says where the row lands.
+        "event": ledger.event_name,
         "name": parsed.action.name,
         "verb": parsed.action.verb,
         "resource": parsed.action.spec.singular,
@@ -342,6 +460,9 @@ class _Ledger:
     event_id: uuid.UUID
     org_id: uuid.UUID
     proposal_id: uuid.UUID
+    #: Read once when the row is opened, so every card can name where it lands
+    #: without another query per action.
+    event_name: str = ""
 
 
 @asynccontextmanager
@@ -378,7 +499,8 @@ async def _open(
             user_id=user_id,
         )
         org = await org_ai(session)
-        return _Ledger(event_id, org_id, proposal.id), org
+        event = await session.get(Event, event_id)
+        return _Ledger(event_id, org_id, proposal.id, event.name if event else ""), org
 
 
 async def _close(
@@ -559,49 +681,8 @@ async def _answer(
     # shown something to approve; running queries underneath that would make half
     # the reply about a different question.
     if plan.actions:
-        cards: list[dict[str, Any]] = []
-        async for step in _plan_actions(ledger, llm, plan):
-            if isinstance(step, list):
-                cards = step
-            else:
-                if step[0] == "clarify":
-                    yield await _aside(
-                        ledger,
-                        planning,
-                        kind="clarify",
-                        key="question",
-                        text=str(step[1]["question"]),
-                        started=started,
-                    )
-                    return
-                yield step
-        if not cards:
-            # Every action was dropped. An empty card is worse than a sentence:
-            # it looks like something to press.
-            reason = "None of that is something I can change here."
-            yield await _aside(
-                ledger, planning, kind="refusal", key="message", text=reason, started=started
-            )
-            return
-        await _close(
-            ledger,
-            output={"actions": cards, "is_stub": planning.is_stub},
-            reasoning=request.question,
-            completion=planning,
-            kind=AiProposalKind.PROGRAM_CHANGE,
-        )
-        yield (
-            "proposal",
-            {
-                "proposal_id": str(ledger.proposal_id),
-                "actions": cards,
-                "is_stub": planning.is_stub,
-                "model": planning.model,
-                "usage": planning.usage,
-                "usage_covers": "plan",
-                "elapsed_ms": round((time.monotonic() - started) * 1000),
-            },
-        )
+        async for event in _propose(ledger, llm, plan, planning, request.question, started):
+            yield event
         return
 
     ran, results = await _run_plan(ledger.event_id, ledger.org_id, plan)

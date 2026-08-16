@@ -17,10 +17,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 
+import { Changes } from "@/components/console/ProposedChanges";
 import { SideDrawer } from "@/components/console/SideDrawer";
 import {
   applyProposal,
   askStream,
+  discardProposal,
   fetchAiStatus,
   type AiStatus,
   type AskEvent,
@@ -71,6 +73,12 @@ type Exchange = {
    *  alongside one — a question either asks something or asks for a change. */
   proposalId: string | null;
   actions: ProposedAction[];
+  /** Thrown away. The cards stay in the transcript so the conversation still
+   *  reads, but nothing about them is pressable. */
+  discarded: boolean;
+  /** Edits it could not place. Shown under the cards, so two good creates are
+   *  not thrown away by one ambiguous sibling. */
+  questions: string[];
   /** The row the assistant is working out which of, shown during the second
    *  call so a two-call write does not look like a stall. */
   resolving: string | null;
@@ -154,6 +162,10 @@ export function AssistantDrawer() {
    *  visits never open it. */
   const [status, setStatus] = useState<AiStatus | null>(null);
   const queryClient = useQueryClient();
+  /** Cards with an apply in flight, keyed `exchangeId:index`. The one control in
+   *  this feature that writes a row must not look idle while it does
+   *  (design-standards: every view has a loading state). */
+  const [applying, setApplying] = useState<Set<string>>(new Set());
   const eventId = typeof window === "undefined" ? null : getEventId();
   const scroller = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
@@ -232,6 +244,8 @@ export function AssistantDrawer() {
           aside: null,
           proposalId: null,
           actions: [],
+          discarded: false,
+          questions: [],
           resolving: null,
           error: null,
           streaming: true,
@@ -271,6 +285,7 @@ export function AssistantDrawer() {
               patch({
                 proposalId: event.proposalId,
                 actions: event.actions,
+                questions: event.questions,
                 resolving: null,
                 isStub: event.isStub,
                 ...event.run,
@@ -327,9 +342,10 @@ export function AssistantDrawer() {
    *  cannot see on the page behind the drawer is indistinguishable from one that
    *  did not happen (story 23). */
   const applyChanges = useCallback(
-    async (exchangeId: string, proposalId: string, applying: ProposedAction[]) => {
+    async (exchangeId: string, proposalId: string, chosen: ProposedAction[]) => {
       if (eventId === null) return;
-      const indexes = applying.map((action) => action.index);
+      const indexes = chosen.map((action) => action.index);
+      setApplying((current) => new Set([...current, ...indexes.map((i) => `${exchangeId}:${i}`)]));
       const mark = (change: (action: ProposedAction) => ProposedAction) =>
         setExchanges((current) =>
           current.map((exchange) =>
@@ -357,7 +373,7 @@ export function AssistantDrawer() {
           results.filter((result) => result.status === "applied").map((result) => result.index),
         );
         const touched = new Set(
-          applying
+          chosen
             .filter((action) => applied.has(action.index))
             .map((action) => action.collection)
             .filter(Boolean),
@@ -376,9 +392,27 @@ export function AssistantDrawer() {
           error: error instanceof Error ? error.message : "That change could not be made.",
         }));
       }
+      setApplying((current) => {
+        const next = new Set(current);
+        for (const index of indexes) next.delete(`${exchangeId}:${index}`);
+        return next;
+      });
       refreshStatus();
     },
     [eventId, queryClient, refreshStatus],
+  );
+
+  const discard = useCallback(
+    async (exchangeId: string, proposalId: string) => {
+      if (eventId === null) return;
+      await discardProposal(eventId, proposalId).catch(() => undefined);
+      setExchanges((current) =>
+        current.map((exchange) =>
+          exchange.id === exchangeId ? { ...exchange, discarded: true } : exchange,
+        ),
+      );
+    },
+    [eventId],
   );
 
   const last = exchanges[exchanges.length - 1];
@@ -403,10 +437,16 @@ export function AssistantDrawer() {
               key={exchange.id}
               exchange={exchange}
               onRetry={() => void send(exchange.question)}
-              onApply={(applying) =>
+              onApply={(chosen) =>
                 exchange.proposalId === null
                   ? undefined
-                  : void applyChanges(exchange.id, exchange.proposalId, applying)
+                  : void applyChanges(exchange.id, exchange.proposalId, chosen)
+              }
+              isPending={(action) => applying.has(`${exchange.id}:${action.index}`)}
+              onDiscard={() =>
+                exchange.proposalId === null
+                  ? undefined
+                  : void discard(exchange.id, exchange.proposalId)
               }
             />
           ))}
@@ -562,193 +602,18 @@ function Empty({ onPick }: { onPick: (text: string) => void }) {
   );
 }
 
-/** Values as a person reads them, not as JSON. `capacity: 60` is a field name
- *  leaking; "capacity 60" is a sentence. */
-function readable(key: string, value: unknown): string {
-  const label = key.replace(/_/g, " ").replace(/ local$/, "");
-  if (value === null || value === undefined || value === "") return `${label} cleared`;
-  if (typeof value === "boolean") return value ? label : `not ${label}`;
-  return `${label} ${String(value)}`;
-}
-
-/** The changes on offer, and the only way to make them.
- *
- *  Deliberately verbose about what each one will do: this is the last thing read
- *  before a row exists, and the whole safety argument of the feature is that a
- *  wrong proposal is caught here, by a person, reading. A card that said
- *  "Create room" and nothing else would be a button with no label.
- */
-function Changes({
-  actions,
-  onApply,
-}: {
-  actions: ProposedAction[];
-  onApply: (applying: ProposedAction[]) => void;
-}) {
-  const pending = actions.filter((action) => action.status === "proposed");
-  return (
-    <div
-      data-assistant-changes
-      style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}
-    >
-      {actions.map((action) => (
-        <Change key={action.index} action={action} onApply={() => onApply([action])} />
-      ))}
-      {pending.length > 1 ? (
-        <button
-          type="button"
-          onClick={() => onApply(pending)}
-          style={{
-            alignSelf: "flex-start",
-            height: 36,
-            padding: "0 16px",
-            borderRadius: 999,
-            border: "1px solid var(--ln,#e3e3e7)",
-            background: "var(--cd,#fff)",
-            color: "var(--ik,#141417)",
-            font: "500 12.5px var(--font-plex-sans),sans-serif",
-            cursor: "pointer",
-          }}
-        >
-          Apply all {pending.length}
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function Change({ action, onApply }: { action: ProposedAction; onApply: () => void }) {
-  const applied = action.status === "applied";
-  const failed = action.status === "failed";
-  const changes = Object.entries(action.values);
-
-  return (
-    <div
-      data-assistant-change
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        padding: 16,
-        borderRadius: 12,
-        border: `1px solid ${failed ? "var(--cnl,#f4c8d2)" : applied ? "var(--okl,#c3e3d3)" : "var(--ln,#e3e3e7)"}`,
-        background: failed
-          ? "var(--cnw,#fbeaee)"
-          : applied
-            ? "var(--okw,#e4f3ec)"
-            : "var(--cd,#fff)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-        <span
-          style={{
-            font: "600 13px var(--font-plex-sans),sans-serif",
-            color: "var(--ik,#141417)",
-          }}
-        >
-          {applied
-            ? `${action.verb === "create" ? "Created" : "Changed"} ${action.resource}`
-            : `${action.verb === "create" ? "Create" : "Change"} ${action.resource}`}
-        </span>
-        {action.target !== null ? (
-          <span
-            style={{
-              font: "500 12.5px var(--font-plex-mono),monospace",
-              color: "var(--i2,#3f3f46)",
-            }}
-          >
-            {action.target}
-          </span>
-        ) : null}
-      </div>
-
-      {/* What will actually be set. For an edit, with what it holds now, because
-          approving `capacity 80` without seeing `60` is approving a sentence. */}
-      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
-        {changes.map(([key, value]) => {
-          const was = action.before[key];
-          const moved = action.verb === "update" && was !== undefined;
-          return (
-            <li
-              key={key}
-              style={{
-                font: "400 12.5px/1.5 var(--font-plex-sans),sans-serif",
-                color: "var(--i2,#3f3f46)",
-              }}
-            >
-              {moved ? (
-                <>
-                  {key.replace(/_/g, " ")}{" "}
-                  <span style={{ color: "var(--i4,#5e5e66)" }}>
-                    {was === null || was === "" ? "unset" : String(was)}
-                  </span>{" "}
-                  → <strong style={{ fontWeight: 600 }}>{String(value ?? "unset")}</strong>
-                </>
-              ) : (
-                readable(key, value)
-              )}
-            </li>
-          );
-        })}
-      </ul>
-
-      {failed && action.error ? (
-        <p
-          style={{
-            margin: 0,
-            font: "400 12.5px/1.5 var(--font-plex-sans),sans-serif",
-            color: "var(--cn,#b3243f)",
-          }}
-        >
-          {action.error}
-        </p>
-      ) : null}
-
-      {applied ? (
-        <span
-          style={{
-            alignSelf: "flex-start",
-            padding: "4px 10px",
-            borderRadius: 999,
-            background: "var(--cd,#fff)",
-            border: "1px solid var(--okl,#c3e3d3)",
-            color: "var(--ok,#177a53)",
-            font: "500 11px var(--font-plex-sans),sans-serif",
-          }}
-        >
-          {action.label ? `Done · ${action.label}` : "Done"}
-        </span>
-      ) : (
-        <button
-          type="button"
-          onClick={onApply}
-          style={{
-            alignSelf: "flex-start",
-            height: 36,
-            padding: "0 18px",
-            borderRadius: 999,
-            border: "none",
-            background: "var(--bt,#141417)",
-            color: "var(--bf,#fff)",
-            font: "600 12.5px var(--font-plex-sans),sans-serif",
-            cursor: "pointer",
-          }}
-        >
-          {failed ? "Try again" : action.verb === "create" ? "Create" : "Apply"}
-        </button>
-      )}
-    </div>
-  );
-}
-
 function Answer({
   exchange,
   onRetry,
   onApply,
+  onDiscard,
+  isPending,
 }: {
   exchange: Exchange;
   onRetry: () => void;
-  onApply: (applying: ProposedAction[]) => void;
+  onApply: (chosen: ProposedAction[]) => void;
+  onDiscard: () => void;
+  isPending: (action: ProposedAction) => boolean;
 }) {
   const looked = exchange.queries.map((name) => QUERY_LABELS[name] ?? name);
   return (
@@ -826,8 +691,26 @@ function Answer({
             </span>
           ) : null}
           {exchange.actions.length > 0 ? (
-            <Changes actions={exchange.actions} onApply={onApply} />
+            <Changes
+              actions={exchange.actions}
+              onApply={onApply}
+              onDiscard={onDiscard}
+              discarded={exchange.discarded}
+              isPending={isPending}
+            />
           ) : null}
+          {exchange.questions.map((question) => (
+            <p
+              key={question}
+              style={{
+                margin: 0,
+                font: "400 13px/1.6 var(--font-plex-sans),sans-serif",
+                color: "var(--i2,#3f3f46)",
+              }}
+            >
+              {question}
+            </p>
+          ))}
           {exchange.answer !== "" ? (
             <p
               style={{

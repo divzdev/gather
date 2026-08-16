@@ -12,14 +12,16 @@ question. It never becomes a guess.
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crud import create_resource
 from app.core.tenancy import tenant_scope
 from app.features.ai import write_catalog
-from app.features.program.resources import ROOM, TRACK
-from app.features.program.schemas import RoomCreate, TrackCreate
+from app.features.program.resources import EVENT_DAY, ROOM, TRACK
+from app.features.program.schemas import EventDayCreate, RoomCreate
 from test_ai_assistant import World, world  # noqa: F401
 
 # ─────────────────────────── the contract with the model ───────────────────────────
@@ -190,10 +192,25 @@ async def test_a_track_named_the_same_as_a_room_is_not_a_match(
     assert found.target is None
 
 
-async def test_a_day_is_resolved_by_its_date(session: AsyncSession, world: World) -> None:
+async def test_a_day_is_resolved_by_its_date_not_its_label(
+    session: AsyncSession, world: World
+) -> None:
     """`label_column` is `day_date` for days: nobody refers to a conference day
-    by its optional label."""
-    with tenant_scope(org_id=world.org_id, event_id=world.event.id):
-        await create_resource(session, TRACK, TrackCreate(name="Platform"))
+    by its optional label.
 
-    assert write_catalog.ACTIONS["update_event_day"].spec.label_column == "day_date"
+    The first version of this created a *Track*, never called `resolve`, and
+    asserted a constant copied out of `resources.py` — it would have passed with
+    the whole resolver deleted. Caught in review; rewritten to resolve a real day.
+    """
+    with tenant_scope(org_id=world.org_id, event_id=world.event.id):
+        await create_resource(
+            session, EVENT_DAY, EventDayCreate(day_date=date(2027, 5, 12), label="Opening day")
+        )
+        await session.flush()
+
+        by_date = await write_catalog.resolve(session, EVENT_DAY, "2027-05-12")
+        by_label = await write_catalog.resolve(session, EVENT_DAY, "Opening day")
+
+    assert by_date.target is not None
+    assert by_date.target.label == "2027-05-12"
+    assert by_label.target is None, "a day answers to its date, not its label"

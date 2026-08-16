@@ -31,6 +31,9 @@ export type ProposedAction = {
   resource: string;
   /** The setup screens' query key, so applying can refresh them. */
   collection: string;
+  /** Which event the row lands in — a card read ten minutes later is still
+   *  unambiguous. */
+  event: string;
   /** The existing row this edits, resolved to its real name. Null on a create. */
   target: string | null;
   /** What those fields hold today, for the `60 → 80` arrow. */
@@ -50,6 +53,9 @@ export type AskEvent =
       kind: "proposal";
       proposalId: string;
       actions: ProposedAction[];
+      /** Edits whose target could not be worked out. Shown beside the cards
+       *  rather than instead of them. */
+      questions: string[];
       isStub: boolean;
       run: RunStats;
     }
@@ -110,6 +116,7 @@ function proposedActions(value: unknown): ProposedAction[] {
         verb,
         resource: String(item.resource ?? ""),
         collection: String(item.collection ?? ""),
+        event: String(item.event ?? ""),
         target: typeof item.target === "string" ? item.target : null,
         before: asRecord(item.before),
         values: asRecord(item.values),
@@ -128,16 +135,10 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-/** What became of one action. Deliberately not a `ProposedAction`: what comes
- *  back names the row that now exists, or the reason none does — it is an
- *  outcome, not a description of an intent. */
-export type AppliedResult = {
-  index: number;
-  status: "applied" | "failed";
-  id: string | null;
-  label: string | null;
-  error: string | null;
-};
+/** What became of one action — generated, never hand-written. This started life
+ *  as a local type because the route returned `list[dict[str, object]]`; the
+ *  route now returns a real model, so the shape comes from the schema. */
+export type AppliedResult = components["schemas"]["AppliedAction"];
 
 /** Apply the changes an organiser pressed. One result per index, in the order
  *  asked — a failure is per action, never for the batch. */
@@ -146,24 +147,18 @@ export async function applyProposal(
   proposalId: string,
   indexes: number[],
 ): Promise<AppliedResult[]> {
-  const body = await authed<{ results: unknown }>(
+  const body = await authed<components["schemas"]["ApplyResult"]>(
     `/events/${eventId}/ai/proposals/${proposalId}/apply`,
     { method: "POST", body: { indexes } },
   );
-  if (!Array.isArray(body.results)) return [];
-  return body.results.flatMap((raw): AppliedResult[] => {
-    const item = asRecord(raw);
-    if (typeof item.index !== "number") return [];
-    return [
-      {
-        index: item.index,
-        status: item.status === "applied" ? "applied" : "failed",
-        id: typeof item.id === "string" ? item.id : null,
-        label: typeof item.label === "string" ? item.label : null,
-        error: typeof item.error === "string" ? item.error : null,
-      },
-    ];
-  });
+  return body.results;
+}
+
+/** Throw a suggestion away. The proposal is resolved `discarded` server-side and
+ *  stops being appliable, so a discarded card cannot be pressed from a stale tab.
+ */
+export async function discardProposal(eventId: string, proposalId: string): Promise<void> {
+  await authed(`/events/${eventId}/ai/proposals/${proposalId}/discard`, { method: "POST" });
 }
 
 /** Coerce an unknown field into a string list, dropping anything that is not a
@@ -198,6 +193,7 @@ function decode(name: string, data: Record<string, unknown>): AskEvent | null {
         kind: "proposal",
         proposalId: String(data.proposal_id ?? ""),
         actions: proposedActions(data.actions),
+        questions: stringList(data.questions),
         isStub: Boolean(data.is_stub),
         run: runStats(data),
       };

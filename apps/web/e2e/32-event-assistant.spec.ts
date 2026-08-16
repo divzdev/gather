@@ -40,13 +40,13 @@ const STUB_SSE = [
 const PROPOSAL_SSE = [
   "event: planning\ndata: {}",
   'event: model\ndata: {"name": "muse-spark-1.2-contributor", "provider": "Meta Muse Spark", "is_stub": false}',
-  'event: proposal\ndata: {"proposal_id": "01a00000-0000-7000-8000-00000000000a", "is_stub": false, "model": "muse-spark-1.2-contributor", "usage": {"input_tokens": 900, "output_tokens": 100}, "elapsed_ms": 4000, "actions": [{"index": 0, "name": "create_room", "verb": "create", "resource": "room", "collection": "rooms", "target": null, "before": {}, "values": {"name": "Big One", "capacity": 60}, "status": "proposed"}]}',
+  'event: proposal\ndata: {"proposal_id": "01a00000-0000-7000-8000-00000000000a", "is_stub": false, "model": "muse-spark-1.2-contributor", "usage": {"input_tokens": 900, "output_tokens": 100}, "elapsed_ms": 4000, "actions": [{"index": 0, "name": "create_room", "verb": "create", "resource": "room", "collection": "rooms", "event": "DevFlow Conf 2027", "target": null, "before": {}, "values": {"name": "Big One", "capacity": 60}, "status": "proposed"}]}',
 ].join("\n\n");
 
 /** Two creates, so Apply-all has something to be about. */
 const BATCH_SSE = [
   "event: planning\ndata: {}",
-  'event: proposal\ndata: {"proposal_id": "01a00000-0000-7000-8000-00000000000b", "is_stub": false, "actions": [{"index": 0, "name": "create_room", "verb": "create", "resource": "room", "collection": "rooms", "target": null, "before": {}, "values": {"name": "Big One"}, "status": "proposed"}, {"index": 1, "name": "create_room", "verb": "create", "resource": "room", "collection": "rooms", "target": null, "before": {}, "values": {"name": "Studio"}, "status": "proposed"}]}',
+  'event: proposal\ndata: {"proposal_id": "01a00000-0000-7000-8000-00000000000b", "is_stub": false, "actions": [{"index": 0, "name": "create_room", "verb": "create", "resource": "room", "collection": "rooms", "event": "DevFlow Conf 2027", "target": null, "before": {}, "values": {"name": "Big One"}, "status": "proposed"}, {"index": 1, "name": "create_room", "verb": "create", "resource": "room", "collection": "rooms", "event": "DevFlow Conf 2027", "target": null, "before": {}, "values": {"name": "Studio"}, "status": "proposed"}]}',
 ].join("\n\n");
 
 /** An edit whose target the assistant had to work out. The resolved name on the
@@ -54,7 +54,7 @@ const BATCH_SSE = [
 const RESOLVED_SSE = [
   "event: planning\ndata: {}",
   'event: resolving\ndata: {"target": "the big room"}',
-  'event: proposal\ndata: {"proposal_id": "01a00000-0000-7000-8000-00000000000c", "is_stub": false, "actions": [{"index": 0, "name": "update_room", "verb": "update", "resource": "room", "collection": "rooms", "target": "Big One", "before": {"capacity": 60}, "values": {"capacity": 80}, "status": "proposed"}]}',
+  'event: proposal\ndata: {"proposal_id": "01a00000-0000-7000-8000-00000000000c", "is_stub": false, "actions": [{"index": 0, "name": "update_room", "verb": "update", "resource": "room", "collection": "rooms", "event": "DevFlow Conf 2027", "target": "Big One", "before": {"capacity": 60}, "values": {"capacity": 80}, "status": "proposed"}]}',
 ].join("\n\n");
 
 async function serveApply(
@@ -232,6 +232,35 @@ test.describe("event assistant", () => {
     expect(applied).toBe(true);
   });
 
+  test("applying refetches the screen the new row belongs on", async ({ page }) => {
+    // Story 23 — "the applied row appears without a reload" — which every other
+    // test here stubs away. The row itself is not what is asserted: the drawer
+    // does not own the rooms list and cannot re-render it, so what has to be
+    // true is that it *invalidates* it. Counting the GET is the observable
+    // version of that, and it fails if the invalidation is dropped.
+    let listed = 0;
+    await page.route("**/v1/events/*/rooms**", async (route) => {
+      listed += 1;
+      await route.fallback();
+    });
+    await serve(page, PROPOSAL_SSE);
+    await serveApply(page, [{ index: 0, status: "applied", id: "01a0", label: "Big One" }]);
+
+    await page.goto("/admin/program/rooms");
+    await settle(page);
+    await expect.poll(() => listed).toBeGreaterThan(0);
+    const before = listed;
+
+    await page.locator("[data-console-ask]").click();
+    const drawer = page.getByRole("dialog");
+    await drawer.getByLabel("Your question").fill("add a room called Big One");
+    await drawer.getByRole("button", { name: "Ask" }).click();
+    await drawer.getByRole("button", { name: "Create" }).click();
+    await expect(drawer.getByText("Done · Big One")).toBeVisible();
+
+    await expect.poll(() => listed, { timeout: 5_000 }).toBeGreaterThan(before);
+  });
+
   test("an edit shows what the field holds now, not just what it will hold", async ({ page }) => {
     await serve(page, RESOLVED_SSE);
 
@@ -262,11 +291,11 @@ test.describe("event assistant", () => {
     await drawer.getByRole("button", { name: "Ask" }).click();
 
     await expect(drawer.locator("[data-assistant-change]")).toHaveCount(2);
-    await drawer.getByRole("button", { name: "Apply all 2" }).click();
+    await drawer.getByRole("button", { name: "Create all 2" }).click();
 
     await expect(drawer.getByText("Done · Big One")).toBeVisible();
     await expect(drawer.getByText("Done · Studio")).toBeVisible();
-    await expect(drawer.getByRole("button", { name: "Apply all 2" })).toHaveCount(0);
+    await expect(drawer.getByRole("button", { name: "Create all 2" })).toHaveCount(0);
   });
 
   test("a change that fails says why and leaves its siblings alone", async ({ page }) => {
@@ -284,7 +313,7 @@ test.describe("event assistant", () => {
     const drawer = page.getByRole("dialog");
     await drawer.getByLabel("Your question").fill("add rooms Big One and Studio");
     await drawer.getByRole("button", { name: "Ask" }).click();
-    await drawer.getByRole("button", { name: "Apply all 2" }).click();
+    await drawer.getByRole("button", { name: "Create all 2" }).click();
 
     await expect(drawer.getByText("Done · Big One")).toBeVisible();
     await expect(drawer.getByText("This event already has a room with that name.")).toBeVisible();

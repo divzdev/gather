@@ -32,7 +32,13 @@ from app.core.tenancy import current_tenant, tenancy_disabled
 from app.features.ai import apply as apply_service
 from app.features.ai import assistant, proposals, service
 from app.features.ai.gateway import describe_choice
-from app.features.ai.schemas import AcceptScoreRequest, AiStatus, ProposalRead, ScoreRequest
+from app.features.ai.schemas import (
+    AcceptScoreRequest,
+    AiStatus,
+    ApplyResult,
+    ProposalRead,
+    ScoreRequest,
+)
 from app.features.ai.service import org_ai
 from app.models import AiProposalStatus, Event, Role, User
 
@@ -191,12 +197,6 @@ class ApplyRequest(BaseModel):
         return indexes
 
 
-class ApplyResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    results: list[dict[str, object]]
-
-
 @router.post("/proposals/{proposal_id}/apply", response_model=ApplyResult)
 async def apply_proposal(
     proposal_id: uuid.UUID,
@@ -213,8 +213,9 @@ async def apply_proposal(
     again at press time could produce something else.
     """
     proposal = await proposals.get(session, proposal_id)
-    results = await apply_service.apply(session, proposal=proposal, indexes=body.indexes)
-    return ApplyResult(results=[result.as_dict() for result in results])
+    return ApplyResult(
+        results=await apply_service.apply(session, proposal=proposal, indexes=body.indexes)
+    )
 
 
 @router.post("/proposals/{proposal_id}/discard", response_model=ProposalRead)
