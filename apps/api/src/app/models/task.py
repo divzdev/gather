@@ -30,6 +30,15 @@ class TaskTemplate(Base, PrimaryKey, Timestamps, EventScoped):
     accepted_file_types: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     max_file_mb: Mapped[int | None] = mapped_column(Integer, nullable=True)
     requires_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    #: This task's upload *is* the speaker's profile photo, so delivering it
+    #: writes `Speaker.headshot_file_id` — the field the public speaker card, the
+    #: gallery and the embed all read.
+    #:
+    #: A declared flag rather than a guess. Matching on the template's name
+    #: breaks the moment somebody renames it, and matching on "the file is an
+    #: image" would make "a photo of your rig" overwrite a speaker's face on the
+    #: public programme.
+    sets_profile_photo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 

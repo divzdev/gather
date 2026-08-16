@@ -21,9 +21,11 @@ from sqlalchemy import func, select
 from app.core import storage
 from app.core.deps import DbSession, bind_tenant, get_verified_user, require_role
 from app.core.errors import ConflictError, NotFoundError
+from app.features.forms.schema import FormSchema
 from app.features.tasks import service
 from app.models import (
     File,
+    Form,
     Role,
     SpeakerTask,
     TaskFile,
@@ -56,6 +58,12 @@ class TemplateRead(BaseModel):
     applies_to: dict[str, Any]
     accepted_file_types: dict[str, Any]
     max_file_mb: int | None
+    #: The form a `form` task asks. Null for every other kind.
+    form_id: uuid.UUID | None
+    #: Whether a delivery waits for an organiser or completes on arrival.
+    requires_review: bool
+    #: Whether delivering this task sets the speaker's profile photo.
+    sets_profile_photo: bool
     sort_order: int
     assigned_count: int = 0
 
@@ -72,6 +80,14 @@ class TemplateCreate(BaseModel):
     applies_to: dict[str, Any] = Field(default_factory=lambda: {"scope": "all"})
     accepted_file_types: dict[str, Any] = Field(default_factory=dict)
     max_file_mb: int | None = Field(default=None, ge=1, le=200)
+    form_id: uuid.UUID | None = None
+    #: Defaults to False — a task completes on arrival unless the organiser says
+    #: a human has to look. The opposite default would make every questionnaire
+    #: answer sit in a review queue nobody asked for.
+    requires_review: bool = False
+    #: Off unless asked for. An organiser collecting a photo of someone's rig
+    #: must not silently replace their face on the public programme.
+    sets_profile_photo: bool = False
     sort_order: int = 0
 
 
@@ -86,6 +102,9 @@ class TemplateUpdate(BaseModel):
     applies_to: dict[str, Any] | None = None
     accepted_file_types: dict[str, Any] | None = None
     max_file_mb: int | None = Field(default=None, ge=1, le=200)
+    form_id: uuid.UUID | None = None
+    requires_review: bool | None = None
+    sets_profile_photo: bool | None = None
     sort_order: int | None = None
 
 
@@ -105,6 +124,22 @@ class TaskRow(BaseModel):
     completed_at: datetime | None
     last_nudged_at: datetime | None
     file_count: int
+
+
+class TaskRowDetail(TaskRow):
+    """One task, opened in the panel. A superset of the row, never used in a list.
+
+    The answers and the schema travel together because an organiser has to read
+    "Which OS will you present from? — macOS", not `{"av_needs": "macOS"}`. The
+    labels live in the schema, so shipping the answers without it would leave
+    the panel resolving question text it was never given.
+    """
+
+    form_response: dict[str, Any] | None = None
+    #: Trailing underscore: a bare `schema` shadows a BaseModel attribute.
+    schema_: FormSchema | None = Field(default=None, alias="schema")
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class TaskUpdate(BaseModel):
@@ -251,6 +286,39 @@ async def task_summary(session: DbSession, _: User = Depends(require_role(*READ)
         _row(task, template, speaker, file_count=len(files.get(task.id, [])), now=now)
         for task, template, speaker in rows
     ]
+
+
+@router.get("/speaker-tasks/{task_id}", response_model=TaskRowDetail)
+async def read_speaker_task(
+    task_id: uuid.UUID,
+    session: DbSession,
+    _: User = Depends(require_role(*READ)),
+) -> TaskRowDetail:
+    """One speaker's task, with what they actually said (spec 0007).
+
+    `form_response` was written by the portal and read by nobody — not on a
+    screen, not in an export. The answers existed and no organiser could reach
+    them, which made a form task a write-only hole in the chase flow.
+    """
+    task = await session.get(SpeakerTask, task_id)
+    if task is None:
+        raise NotFoundError(f"No speaker task with id {task_id}.")
+
+    rows = await service.load_rows(session, speaker_id=task.speaker_id)
+    files = await service.file_ids_by_task(session, [task.id])
+    found = next((row for row in rows if row[0].id == task.id), None)
+    if found is None:  # pragma: no cover - it was loaded a moment ago
+        raise NotFoundError(f"No speaker task with id {task_id}.")
+
+    base = _row(*found, file_count=len(files.get(task.id, [])), now=datetime.now(UTC))
+    template = found[1]
+    schema: FormSchema | None = None
+    if template.kind is TaskKind.FORM and template.form_id is not None:
+        form = await session.scalar(select(Form).where(Form.id == template.form_id))
+        if form is not None:
+            schema = FormSchema.model_validate(form.schema)
+
+    return TaskRowDetail(**base.model_dump(), form_response=task.form_response, schema_=schema)
 
 
 @router.patch("/speaker-tasks/{task_id}", response_model=TaskRow)

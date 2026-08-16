@@ -586,11 +586,23 @@ async def _place(session: AsyncSession, event: Event, talks: list[Session]) -> N
     await session.flush()
 
 
+#: name, kind, days before the event, accepted file types, requires_review,
+#: sets_profile_photo.
+#:
+#: The last column is load-bearing, not decoration (spec 0007). `requires_review`
+#: now decides whether a delivery completes on arrival or waits for an organiser,
+#: so seeding it False everywhere would auto-complete every headshot and deck the
+#: moment a speaker uploaded. "Waiting on you" would empty, the organiser Tasks
+#: screen would have nothing to chase, and the deliverable-chasing flow — the
+#: reason that screen exists — would be invisible to anyone evaluating the demo.
+#:
+#: An artefact a human has to look at is reviewed. A questionnaire answer is not:
+#: nobody accepts "I need HDMI".
 TEMPLATES = [
-    ("Headshot", TaskKind.UPLOAD, 21, {"extensions": ["jpg", "jpeg", "png"]}),
-    ("Slide deck", TaskKind.UPLOAD, 7, {"extensions": ["pdf", "key", "pptx"]}),
-    ("Confirm your travel dates", TaskKind.ACKNOWLEDGE, 14, {}),
-    ("Tell us about your setup", TaskKind.FORM, 10, {}),
+    ("Headshot", TaskKind.UPLOAD, 21, {"extensions": ["jpg", "jpeg", "png"]}, True, True),
+    ("Slide deck", TaskKind.UPLOAD, 7, {"extensions": ["pdf", "key", "pptx"]}, True, False),
+    ("Confirm your travel dates", TaskKind.ACKNOWLEDGE, 14, {}, False, False),
+    ("Tell us about your setup", TaskKind.FORM, 10, {}, False, False),
 ]
 
 #: The same JSON-schema engine that drives the CFP, pointed at a task. Seeded so
@@ -700,7 +712,9 @@ async def _tasks(session: AsyncSession, event: Event, rng: random.Random) -> Non
 
     now = datetime.now(UTC)
     task_form = await _task_form(session, event)
-    for order, (name, kind, days_before, accepted) in enumerate(wanted, start=len(existing)):
+    for order, (name, kind, days_before, accepted, reviewed, is_photo) in enumerate(
+        wanted, start=len(existing)
+    ):
         template = TaskTemplate(
             org_id=event.org_id,
             event_id=event.id,
@@ -711,6 +725,8 @@ async def _tasks(session: AsyncSession, event: Event, rng: random.Random) -> Non
             due_rule={"type": "relative", "days_before_event": days_before},
             applies_to={"scope": "all"},
             accepted_file_types=accepted,
+            requires_review=reviewed,
+            sets_profile_photo=is_photo,
             sort_order=order,
         )
         session.add(template)

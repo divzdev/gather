@@ -26,6 +26,8 @@ from app.core.errors import ApiError, NotFoundError
 from app.core.tenancy import current_tenant, tenancy_disabled, tenant_scope
 from app.features.auth import service as auth_service
 from app.features.files import service as files
+from app.features.forms.schema import FormSchema
+from app.features.forms.validation import validate_answers
 from app.features.publishing import ics
 from app.features.tasks import service as tasks
 from app.models import (
@@ -75,12 +77,33 @@ class TaskRead(BaseModel):
     kind: TaskKind
     is_required: bool
     external_url: str | None
+    #: Whether a human checks this before it counts. The speaker sees it as the
+    #: difference between "with the team" and "done", and it decides whether a
+    #: delivered task is still theirs to change.
+    requires_review: bool
     accepted_file_types: dict[str, Any]
     max_file_mb: int | None
     due_at: datetime | None
     status: TaskStatus
     form_response: dict[str, Any] | None
     files: list[FileRead] = Field(default_factory=list)
+
+
+class TaskDetail(TaskRead):
+    """One task, opened. A superset of the list shape, never used in a list.
+
+    The extra field is the whole reason the detail route exists — see
+    `read_one_task` for why the schema does not ride on `/portal/home`.
+    """
+
+    #: The questions to draw. Null for every kind that is not `form`.
+    #:
+    #: Trailing underscore because a bare `schema` shadows a BaseModel attribute
+    #: and Pydantic warns. The alias is what goes over the wire, matching how
+    #: `FormCreate` already handles the same collision.
+    schema_: FormSchema | None = Field(default=None, alias="schema")
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class SessionRead(BaseModel):
@@ -310,6 +333,7 @@ async def _tasks_for(session: DbSession, speaker_id: uuid.UUID) -> list[TaskRead
             kind=template.kind,
             is_required=template.is_required,
             external_url=template.external_url,
+            requires_review=template.requires_review,
             accepted_file_types=template.accepted_file_types,
             max_file_mb=template.max_file_mb,
             due_at=task.due_at,
@@ -398,7 +422,43 @@ async def home(session: DbSession, speaker: PortalSpeaker) -> Home:
     )
 
 
-@router.get("/tasks/{task_id}", response_model=TaskRead)
+@router.get("/tasks/{task_id}", response_model=TaskDetail)
+async def read_one_task(
+    task_id: uuid.UUID, session: DbSession, speaker: PortalSpeaker
+) -> TaskDetail:
+    """One task, with the schema a `form` task needs in order to be drawn.
+
+    The schema lives here rather than on `/portal/home` deliberately: home is one
+    round trip for the whole screen, and hauling a schema per form task would
+    grow it for a list nobody is filling in yet. The speaker fetches the form
+    when they open it.
+    """
+    _, template = await _own_task(session, task_id, speaker.speaker_id)
+    base = await read_task(task_id, session, speaker)
+
+    schema: FormSchema | None = None
+    if template.kind is TaskKind.FORM:
+        form = (
+            None
+            if template.form_id is None
+            else await session.scalar(select(Form).where(Form.id == template.form_id))
+        )
+        if form is None:
+            # `TaskTemplate.form_id` is ON DELETE SET NULL, so a deleted Form
+            # leaves the task pointing at nothing. That is broken, not empty —
+            # drawing a blank form would invite an empty answer against a form
+            # that no longer exists, and mark a required task done on it.
+            raise ApiError(
+                "This form is no longer available. Let the organiser know — "
+                "they will need to set the task up again.",
+                code="FORM_MISSING",
+                status_code=409,
+            )
+        schema = FormSchema.model_validate(form.schema)
+
+    return TaskDetail(**base.model_dump(), schema_=schema)
+
+
 async def read_task(task_id: uuid.UUID, session: DbSession, speaker: PortalSpeaker) -> TaskRead:
     await _own_task(session, task_id, speaker.speaker_id)
     mine = await _tasks_for(session, speaker.speaker_id)
@@ -406,6 +466,96 @@ async def read_task(task_id: uuid.UUID, session: DbSession, speaker: PortalSpeak
     if found is None:  # pragma: no cover - it was loaded a moment ago
         raise NotFoundError(f"No task with id {task_id}.")
     return found
+
+
+async def _checked_answers(
+    session: DbSession, template: TaskTemplate, answers: dict[str, Any], *, partial: bool
+) -> dict[str, Any]:
+    """Answers, validated against the form's own schema before they are stored.
+
+    `form_response` used to take whatever JSON arrived. Reusing the CFP's
+    evaluator rather than writing a second one is the point — two validators for
+    one schema engine is how the two forms start disagreeing about what a
+    required field means.
+
+    `partial=True` for autosave, so saving mid-way is never an error; full on
+    send. That split already exists for CFP drafts; this is the same seam.
+    """
+    form = (
+        None
+        if template.form_id is None
+        else await session.scalar(select(Form).where(Form.id == template.form_id))
+    )
+    if form is None:
+        raise ApiError(
+            "This form is no longer available. Let the organiser know — "
+            "they will need to set the task up again.",
+            code="FORM_MISSING",
+            status_code=409,
+        )
+    schema = FormSchema.model_validate(form.schema)
+    errors = validate_answers(schema, dict(answers), partial=partial)
+    if errors:
+        raise ApiError(
+            "Some answers are not valid.",
+            code="VALIDATION_FAILED",
+            status_code=422,
+            field=errors[0].field,
+            details={"errors": [{"field": e.field, "message": e.message} for e in errors]},
+        )
+    return dict(answers)
+
+
+@router.patch("/tasks/{task_id}", response_model=TaskRead)
+async def save_task_draft(
+    task_id: uuid.UUID, body: TaskSubmit, session: DbSession, speaker: PortalSpeaker
+) -> TaskRead:
+    """Autosave. Writes the answer and deliberately leaves the status alone.
+
+    Separate verb from send because they are different acts: PATCH is "keep what
+    I have typed", PUT is "I am finished". Status is what distinguishes a draft
+    from a delivery in `form_response`, so autosave moving it would report work
+    as delivered that the speaker never sent — and, on a `requires_review` task,
+    would put a half-typed answer in front of an organiser.
+    """
+    task, template = await _own_task(session, task_id, speaker.speaker_id)
+    if template.kind is not TaskKind.FORM:
+        raise ApiError(
+            "Only a form task has answers to save.",
+            code="VALIDATION_FAILED",
+            status_code=422,
+            field="form_response",
+        )
+    if body.form_response is None:
+        raise ApiError(
+            "This task needs a filled-in form.",
+            code="VALIDATION_FAILED",
+            status_code=422,
+            field="form_response",
+        )
+
+    task.form_response = await _checked_answers(session, template, body.form_response, partial=True)
+    await session.flush()
+    return await read_task(task_id, session, speaker)
+
+
+def _land(task: SpeakerTask, template: TaskTemplate) -> None:
+    """Where a delivery lands, for every kind that produces one (spec 0007).
+
+    `requires_review` is the whole rule and it was dead code: written by the
+    organiser, stored, never read, and every delivery landed `submitted`
+    regardless. So a speaker answering "macOS" waited for a human to accept
+    that fact, and a headshot got exactly the same treatment as a questionnaire.
+
+    One function rather than a branch in each caller, because the form path and
+    the upload path drifting apart is precisely the bug this replaces.
+    """
+    if template.requires_review:
+        task.status = TaskStatus.SUBMITTED
+        task.completed_at = None
+        return
+    task.status = TaskStatus.COMPLETE
+    task.completed_at = datetime.now(UTC)
 
 
 @router.put("/tasks/{task_id}", response_model=TaskRead)
@@ -438,10 +588,12 @@ async def submit_task(
                 status_code=422,
                 field="form_response",
             )
-        task.form_response = body.form_response
-        task.status = TaskStatus.SUBMITTED
+        task.form_response = await _checked_answers(
+            session, template, body.form_response, partial=False
+        )
+        _land(task, template)
     else:
-        task.status = TaskStatus.SUBMITTED
+        _land(task, template)
 
     await session.flush()
     return await read_task(task_id, session, speaker)
@@ -493,7 +645,17 @@ async def upload_to_task(
         uploaded_by_speaker_id=speaker.speaker_id,
     )
     session.add(TaskFile(speaker_task_id=task.id, file_id=record.id))
-    task.status = TaskStatus.SUBMITTED
+
+    # The deliverable the organiser chased *is* the profile photo, when the
+    # template says so. Without this the Headshot task was decorative: the
+    # speaker uploaded, the task went green, and the public speaker card, the
+    # gallery and the embed all went on reading a `headshot_file_id` that only
+    # the separate profile endpoint ever wrote.
+    if template.sets_profile_photo:
+        person = await _speaker(session, speaker.speaker_id)
+        person.headshot_file_id = record.id
+
+    _land(task, template)
     await session.flush()
     return await read_task(task_id, session, speaker)
 

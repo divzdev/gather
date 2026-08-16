@@ -5,6 +5,8 @@
  *  phone between other things. */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore } from "react";
 
 import { Portal, type PortalData } from "@/components/design/Portal";
@@ -12,6 +14,8 @@ import { Portal, type PortalData } from "@/components/design/Portal";
 import { ConferenceSwitcher } from "./conferences";
 import { ParticipationBand, type Participation as ParticipationState } from "./participation";
 import { PortalComments, useFeedbackCount } from "./comments";
+import { SpeakerIdentity, SpeakerPortrait } from "./hero";
+import { TaskFilePreview } from "./thumb";
 import { useTheme } from "@/components/ThemeProvider";
 import { API_BASE_URL, ApiError } from "@/lib/api";
 import { getSpeakerToken, getToken, portal, portalBlobUrl, portalDownload } from "@/lib/session";
@@ -33,6 +37,7 @@ type Task = {
   kind: "upload" | "form" | "acknowledge" | "external_link";
   is_required: boolean;
   external_url: string | null;
+  requires_review: boolean;
   accepted_file_types: Record<string, unknown>;
   max_file_mb: number | null;
   due_at: string | null;
@@ -100,7 +105,7 @@ type PortalPage = {
 
 /** The profile form, held locally so typing never round-trips. */
 type Draft = {
-  sal: string;
+  name: string;
   pro: string;
   title: string;
   co: string;
@@ -168,6 +173,24 @@ const SUBMISSION_LOOK: Record<string, { label: string; fg: string; bg: string; b
     bar: "var(--ls,#C8D2D5)",
   },
 };
+
+/** Is a delivered task still the speaker's to change?
+ *
+ *  A delivered task had no way back at all: once it left "Waiting on you" the
+ *  row was a line of text, so somebody who uploaded the wrong photograph could
+ *  see that it was wrong and do nothing about it.
+ *
+ *  Acceptance is the thing that locks it, not delivery. `submitted` is sitting
+ *  in front of an organiser who has not acted yet, so it is still theirs.
+ *  `complete` on a task with no review was never approved by anyone — nobody
+ *  looked, so there is no decision to invalidate. Only an accepted deliverable
+ *  freezes, because the acceptance was of that exact file.
+ */
+function changeable(task: Task): boolean {
+  if (task.kind === "acknowledge" || task.kind === "external_link") return false;
+  if (task.status === "submitted") return true;
+  return task.status === "complete" && !task.requires_review;
+}
 
 const CTA: Record<Task["kind"], string> = {
   upload: "Upload",
@@ -333,6 +356,7 @@ function PortalMessage({ children }: { children: React.ReactNode }) {
 
 export default function PortalPage() {
   const theme = useTheme();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const upload = useRef<HTMLInputElement>(null);
   const headshot = useRef<HTMLInputElement>(null);
@@ -403,6 +427,7 @@ export default function PortalPage() {
       portal("/profile", {
         method: "PATCH",
         body: {
+          name: fields.name,
           pronouns: fields.pro,
           job_title: fields.title,
           company: fields.co,
@@ -537,7 +562,7 @@ export default function PortalPage() {
   // Seeding state from the query would need an effect, and an effect that writes
   // state on arrival re-renders the whole screen for nothing.
   const fields: Draft = draft ?? {
-    sal: "None",
+    name: home?.speaker.name ?? "",
     pro: home?.speaker.pronouns ?? "",
     title: home?.speaker.job_title ?? "",
     co: home?.speaker.company ?? "",
@@ -546,17 +571,37 @@ export default function PortalPage() {
     li: home?.speaker.links.linkedin ?? "",
   };
 
-  const startUpload = (task: Task) => {
-    if (task.kind === "acknowledge") {
-      acknowledge.mutate(task.id);
-      return;
+  /** What a task's own button does. Every kind is named; nothing falls through.
+   *
+   *  It used to: `acknowledge` and `external_link` returned early and everything
+   *  else reached the file input — which caught `form` too. So a task labelled
+   *  "Fill in" opened a file chooser and asked a speaker to pick a file for
+   *  "which OS will you present from?". They could not answer it, and it was
+   *  required, so the organiser chased something the portal made impossible.
+   *
+   *  A `switch` over the union rather than a chain of guards, so adding a kind
+   *  is a compile error here instead of a silent trip to the file picker.
+   */
+  const startTask = (task: Task) => {
+    switch (task.kind) {
+      case "acknowledge":
+        acknowledge.mutate(task.id);
+        return;
+      case "external_link":
+        if (task.external_url !== null) window.open(task.external_url, "_blank", "noopener");
+        return;
+      case "form":
+        // `typedRoutes` checks this against `.next/types/routes.d.ts`, which is
+        // a build artifact and is stale in this tree — it predates the route.
+        // The cast goes away the next time the dev server or a build rewrites
+        // the map; it is not papering over a route that does not exist.
+        router.push(`/portal/tasks/${task.id}` as Route);
+        return;
+      case "upload":
+        target.current = task.id;
+        upload.current?.click();
+        return;
     }
-    if (task.kind === "external_link" && task.external_url !== null) {
-      window.open(task.external_url, "_blank", "noopener");
-      return;
-    }
-    target.current = task.id;
-    upload.current?.click();
   };
 
   const dueOf = (task: Task): { text: string; fg: string } => {
@@ -641,6 +686,14 @@ export default function PortalPage() {
     tProfile: tab === "profile",
 
     heroEyebrow: talk === null ? "YOU ARE ON THE PROGRAMME" : "YOU ARE ON THE PROGRAMME",
+    /* The speaker's own face, at a size you can judge a photograph at. It was
+     * nowhere on this screen: initials in the corner, and the actual file only
+     * ever named in a checklist row. */
+    heroPortrait: home === undefined ? null : <SpeakerPortrait speaker={home.speaker} />,
+    heroIdentity:
+      home === undefined ? null : (
+        <SpeakerIdentity speaker={home.speaker} onEdit={() => setTab("profile")} />
+      ),
     /* Was "Good evening, ." on every first paint — the greeting rendered before
      * the name arrived, with the comma and full stop already in place. */
     greet: (() => {
@@ -674,21 +727,52 @@ export default function PortalPage() {
       return {
         n: task.name,
         sub:
-          task.files.length > 0
-            ? `${task.files[0]?.filename ?? "file"} · version ${task.files[0]?.version ?? 1}`
-            : (task.description ?? (task.is_required ? "Required" : "Optional")),
+          task.files[0] !== undefined ? (
+            <TaskFilePreview file={task.files[0]} />
+          ) : (
+            (task.description ?? (task.is_required ? "Required" : "Optional"))
+          ),
         due: due.text,
         dueFg: due.fg,
         bar: task.status === "overdue" ? "var(--cn,#B3243F)" : "var(--pd,#92590A)",
         cta: task.files.length > 0 ? "Replace" : CTA[task.kind],
-        onGo: () => startUpload(task),
+        onGo: () => startTask(task),
       };
     }),
     doneN: done.length,
     totalN: progress.total,
     doneTasks: done.map((task) => ({
       n: task.name,
-      at: task.files[0]?.filename ?? "done",
+      // A finished task is where the speaker checks what the organiser is
+      // holding, so the picture belongs here too — this row is the whole reason
+      // "Headshot · statusline-combined.png" was possible to miss.
+      at: task.files[0] !== undefined ? <TaskFilePreview file={task.files[0]} /> : "done",
+      /* A delivered task had no way back. Once it left "Waiting on you" the row
+       * became a line of text, so a speaker who uploaded the wrong photograph
+       * could see it was wrong and do nothing about it.
+       *
+       * Editable until somebody accepts it. `submitted` is still the speaker's
+       * — it is sitting in front of an organiser who has not acted. `complete`
+       * on a task that needs no review was never approved by anyone, so it stays
+       * the speaker's too. Only an accepted deliverable locks, because that
+       * acceptance was of *this* file. */
+      act: changeable(task) ? (
+        <button
+          onClick={() => startTask(task)}
+          style={{
+            height: 30,
+            padding: "0 12px",
+            borderRadius: 999,
+            border: "1px solid var(--ls,#C8D2D5)",
+            background: "var(--cd,#FFFFFF)",
+            font: "500 11.5px var(--font-plex-sans)",
+            color: "var(--ik,#16232B)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {task.kind === "form" ? "Change" : "Replace"}
+        </button>
+      ) : null,
     })),
 
     guide: () => say("The speaker guide arrives with your confirmation email."),
@@ -820,7 +904,7 @@ export default function PortalPage() {
     noSubs: (submissions?.length ?? 0) === 0,
 
     pf: fields,
-    onSal: () => undefined,
+    onName: (event) => setDraft({ ...fields, name: (event.target as HTMLInputElement).value }),
     onPro: (event) => setDraft({ ...fields, pro: (event.target as HTMLInputElement).value }),
     onTitle: (event) => setDraft({ ...fields, title: (event.target as HTMLInputElement).value }),
     onCo: (event) => setDraft({ ...fields, co: (event.target as HTMLInputElement).value }),
