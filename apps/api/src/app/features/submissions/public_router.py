@@ -127,10 +127,19 @@ async def save_draft(
 async def submit(
     body: SubmitRequest, request: Request, event: PublicEvent, session: DbSession
 ) -> SubmittedResponse:
+    # Two ceilings, because they are answering different questions. The address
+    # is who is submitting; the IP is only where from, and keying the tight limit
+    # to it made colleagues throttle each other.
     await rate_limit.enforce(
         request.app.state.redis,
         rate_limit.PUBLIC_SUBMISSION,
         bucket="submit",
+        identifier=str(body.speaker_email).strip().lower(),
+    )
+    await rate_limit.enforce(
+        request.app.state.redis,
+        rate_limit.PUBLIC_SUBMISSION_PER_IP,
+        bucket="submit-ip",
         identifier=_client_ip(request),
     )
     form = await _cfp_form(session, event)
