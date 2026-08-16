@@ -474,6 +474,70 @@ async def test_the_embed_serves_a_script_anyone_can_run(client: AsyncClient, wor
     assert "gather-schedule" in response.text
 
 
+async def test_a_public_error_is_readable_cross_origin(client: AsyncClient, world: World) -> None:
+    """The half of the CORS fix that was missed.
+
+    `allow_any_origin` sets the header on a *successful* return by mutating the
+    injected Response. Raising throws that object away and the exception handler
+    builds a fresh one, so every error under /v1/public went out bare — and a
+    response with no `Access-Control-Allow-Origin` is not merely unreadable, it
+    rejects the whole fetch. The widget never saw the 404 at all, which is why
+    it could only ever say "could not be loaded" no matter what went wrong.
+
+    Asserted on an error, because the success path has been right for a while
+    and is not where this breaks.
+    """
+    missing = await client.get(
+        "/v1/public/events/no-such-event-anywhere/schedule",
+        headers={"Origin": "https://someones-conference-site.example"},
+    )
+
+    assert missing.status_code == 404
+    assert missing.headers.get("access-control-allow-origin") == "*"
+    # Still the useful sentence, now that a browser is allowed to read it.
+    assert "error" in missing.json()
+
+    # And the same on the event that exists but has published nothing, which is
+    # the case an organiser actually hits.
+    unpublished = await client.get(
+        f"/v1/public/events/{world.event.slug}/schedule",
+        headers={"Origin": "https://someones-conference-site.example"},
+    )
+
+    assert unpublished.status_code == 404
+    assert unpublished.headers.get("access-control-allow-origin") == "*"
+    assert "not published" in unpublished.json()["error"]["message"]
+
+
+async def test_the_embed_shows_the_reason_a_schedule_is_missing(
+    client: AsyncClient, world: World
+) -> None:
+    """An unpublished event is the most likely thing to go wrong with an embed,
+    and it is the one the widget explained worst.
+
+    The API answers "This event has not published a schedule yet", which names
+    the fix. The widget read the body without checking the status, tripped into
+    its catch, and rendered "The schedule could not be loaded." — which reads
+    like a broken URL and sends the organiser hunting the wrong problem.
+    """
+    # Deliberately not published: the state every event starts in.
+    source = await client.get(f"/v1/public/events/{world.event.slug}/schedule")
+    assert source.status_code == 404
+    assert "not published" in source.json()["error"]["message"]
+
+    script = (
+        await client.get(f"/v1/public/events/{world.event.slug}/embed.js?widget=schedule")
+    ).text
+
+    # The status decides, and the server's sentence is what gets rendered.
+    assert "response.ok" in script
+    assert "result.data.error.message" in script
+    # Still a fallback for a body that carries no reason — a 502 from a proxy
+    # has no `error.message`, and an empty box would be worse than a generic
+    # line.
+    assert "The schedule could not be loaded." in script
+
+
 async def test_the_embed_never_writes_untrusted_text_as_markup(
     client: AsyncClient, world: World
 ) -> None:

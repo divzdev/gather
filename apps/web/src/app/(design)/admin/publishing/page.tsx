@@ -225,10 +225,40 @@ export default function PublishingPage() {
         <PublishedVersions eventId={eventId} onDone={toast} />
       </>
     ),
-    codeText: code,
+    /* The snippet is correct on an unpublished event, and useless: embeds read
+     * the published snapshot, so it renders "This event has not published a
+     * schedule yet" on whatever site it is pasted into. Saying so here is the
+     * only place it can be said before that happens — the person copying is
+     * about to leave for their own CMS.
+     *
+     * Inside the code box on purpose, next to the thing it is about. `copyCode`
+     * writes the `code` string rather than this node, so the clipboard still
+     * gets a clean snippet with no warning pasted into it. */
+    codeText: notPublished ? (
+      <>
+        <span
+          style={{
+            display: "block",
+            color: "var(--pdl)",
+            marginBottom: 10,
+            font: "500 11.5px/17px var(--font-plex-sans)",
+          }}
+        >
+          Nothing is published yet, so this widget will render “This event has not published a
+          schedule yet”. Publish first, then paste.
+        </span>
+        {code}
+      </>
+    ) : (
+      code
+    ),
     copyCode: () => {
       void navigator.clipboard?.writeText(code);
-      toast("Snippet copied. It updates the moment you publish, with no cache to wait out.");
+      toast(
+        notPublished
+          ? "Snippet copied — but nothing is published yet, so it will render empty until you publish."
+          : "Snippet copied. It updates the moment you publish, with no cache to wait out.",
+      );
     },
 
     toasts: toasts.map((entry) => ({

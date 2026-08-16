@@ -527,8 +527,33 @@ _SCRIPT = r"""(function(){
   paint();
 
   fetch(DATA.endpoint, { credentials: 'omit' })
-    .then(function (response) { return response.json(); })
-    .then(function (data) { payload = data; paint(); })
+    .then(function (response) {
+      // Read as text and parse by hand: `response.json()` throws on an empty or
+      // non-JSON body, which sent a plain 502 down the same path as a real
+      // answer and lost the status on the way.
+      return response.text().then(function (text) {
+        var parsed = null;
+        try { parsed = JSON.parse(text); } catch (e) { parsed = null; }
+        return { ok: response.ok, data: parsed };
+      });
+    })
+    .then(function (result) {
+      if (!result.ok) {
+        /* The API says why, and this used to throw it away. An unpublished
+         * event answers "This event has not published a schedule yet" — a
+         * sentence whose fix is obvious — and the widget replaced it with a
+         * generic failure that reads like a broken URL or a dead network, so
+         * the one person who could fix it went looking in the wrong place.
+         *
+         * Safe to render: `el` writes textContent, never markup. */
+        var said = result.data && result.data.error && result.data.error.message;
+        body.textContent = '';
+        empty(said || 'The schedule could not be loaded.');
+        return;
+      }
+      payload = result.data;
+      paint();
+    })
     .catch(function () {
       body.textContent = '';
       empty('The schedule could not be loaded.');

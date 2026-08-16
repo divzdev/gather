@@ -125,12 +125,41 @@ class RecipientCountMismatchError(ApiError):
     code = "RECIPIENT_COUNT_MISMATCH"
 
 
-async def api_error_handler(_: Request, exc: Exception) -> JSONResponse:
+#: Routes declared anonymous and readable from anyone's site. `allow_any_origin`
+#: sets the header on the way out of a successful request; this is the prefix
+#: the error path has to recognise to do the same.
+PUBLIC_PREFIX = "/v1/public/"
+
+
+def _cors_headers_for(request: Request) -> dict[str, str]:
+    """Errors under /v1/public need the same open CORS as their successes.
+
+    `allow_any_origin` works by mutating the injected `Response`, which only
+    exists when a route *returns*. Raising discards it and the handler builds a
+    fresh response, so every public error went out with no
+    `Access-Control-Allow-Origin` at all.
+
+    A missing header does not merely hide the body — the browser rejects the
+    whole fetch, so a cross-origin widget could not distinguish "not published
+    yet" from a dead network and reported every failure identically. The
+    response is anonymous either way; withholding the header protected nothing
+    and cost the only useful diagnostic an embedder gets.
+    """
+    if not request.url.path.startswith(PUBLIC_PREFIX):
+        return {}
+    return {"Access-Control-Allow-Origin": "*", "Vary": "Origin"}
+
+
+async def api_error_handler(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, ApiError)
-    return JSONResponse(status_code=exc.status_code, content=exc.to_body())
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.to_body(),
+        headers=_cors_headers_for(request),
+    )
 
 
-async def validation_error_handler(_: Request, exc: Exception) -> JSONResponse:
+async def validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """422 with per-field detail, in the same envelope as everything else."""
     assert isinstance(exc, RequestValidationError)
     errors = [
@@ -150,4 +179,7 @@ async def validation_error_handler(_: Request, exc: Exception) -> JSONResponse:
                 "details": {"errors": errors},
             }
         },
+        # A public route rejecting a malformed query is as cross-origin as one
+        # answering it — the CFP form posts here from the event's own site.
+        headers=_cors_headers_for(request),
     )
