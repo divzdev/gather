@@ -157,7 +157,7 @@ def validate_scores(answer: ScoreAnswer, criteria: list[RubricCriterion]) -> lis
     return kept
 
 
-async def _org_ai(session: AsyncSession) -> OrgAiConfig | None:
+async def org_ai(session: AsyncSession) -> OrgAiConfig | None:
     """The org's model configuration, its key unsealed for exactly one request.
 
     Feature code still never *sees* the key — it goes straight into
@@ -215,7 +215,7 @@ async def score_submission(
         user_id=user_id,
     )
 
-    llm = adapter or select_adapter(org=await _org_ai(session))
+    llm = adapter or select_adapter(org=await org_ai(session))
     try:
         completion = await llm.complete(
             system=system, user=user_message, max_tokens=get_settings().ai_max_tokens
@@ -293,7 +293,7 @@ async def find_duplicates(
         }
     )
 
-    llm = adapter or select_adapter(org=await _org_ai(session))
+    llm = adapter or select_adapter(org=await org_ai(session))
     try:
         completion = await llm.complete(
             system=prompts.load(prompts.DUPLICATES),

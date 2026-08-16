@@ -32,7 +32,7 @@ class OpenAICompatAdapter:
     def __init__(self, *, base_url: str, api_key: str, model: str) -> None:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
-        self._model = model
+        self.model = model
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -46,7 +46,7 @@ class OpenAICompatAdapter:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": user})
         return {
-            "model": self._model,
+            "model": self.model,
             "max_tokens": max_tokens,
             "messages": messages,
             "stream": stream,
@@ -71,7 +71,7 @@ class OpenAICompatAdapter:
         usage = payload.get("usage", {})
         return Completion(
             text=str(message.get("content") or ""),
-            model=str(payload.get("model", self._model)),
+            model=str(payload.get("model", self.model)),
             usage={
                 "input_tokens": int(usage.get("prompt_tokens", 0)),
                 "output_tokens": int(usage.get("completion_tokens", 0)),

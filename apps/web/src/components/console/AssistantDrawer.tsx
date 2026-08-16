@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SideDrawer } from "@/components/console/SideDrawer";
-import { askStream, type AskEvent, type Turn } from "@/lib/ask";
+import { askStream, fetchAiStatus, type AiStatus, type AskEvent, type Turn } from "@/lib/ask";
 import { getEventId } from "@/lib/session";
 
 export const ASSISTANT_EVENT = "gather:assistant";
@@ -68,6 +68,58 @@ type Exchange = {
   elapsedMs: number | null;
 };
 
+/** The one line under the composer: who is answering, what the day has cost,
+ *  and — once something has run — what the last question cost.
+ *
+ *  Present before a question is asked, which is the whole point. The first cut
+ *  of this only appeared on a successful answer, so "is this even using the key
+ *  I pasted?" was answerable by spending a question to find out.
+ *
+ *  `title` carries the unabbreviated version: at 11px in a 560px drawer the
+ *  line has to be terse, and terse loses the units. */
+function describeRun(
+  status: AiStatus | null,
+  last: Exchange | undefined,
+): { text: string; detail: string } | null {
+  if (status === null) return null;
+
+  // With nothing configured the provider label already says so, and repeating
+  // "no model configured" as the model name reads like a bug. What is worth
+  // saying twice is that the answers are not real.
+  const model = status.is_stub ? "answers are samples" : status.model;
+  const spend =
+    status.daily_cap === null
+      ? `${status.used_today} today`
+      : `${status.used_today}/${status.daily_cap} today`;
+  const cost =
+    last?.inputTokens != null && last.outputTokens != null
+      ? `${(last.inputTokens + last.outputTokens).toLocaleString()} tok`
+      : null;
+  const took = last?.elapsedMs != null ? `${(last.elapsedMs / 1000).toFixed(1)}s` : null;
+
+  // The model that just answered outranks the configured one: a key changed in
+  // another tab makes them differ, and the honest line names the one that ran.
+  const ran = last?.model ?? null;
+  const naming = ran !== null && ran !== status.model && !status.is_stub ? ran : model;
+
+  return {
+    text: [status.provider_label, naming, spend, cost, took].filter(Boolean).join(" · "),
+    detail: [
+      `Provider: ${status.provider_label}`,
+      `Model: ${naming}`,
+      status.daily_cap === null
+        ? `${status.used_today} AI requests today, no daily cap set`
+        : `${status.used_today} of ${status.daily_cap} AI requests used today (whole organisation, resets midnight UTC)`,
+      cost === null
+        ? null
+        : `Last question: ${cost} on the planning call — the streamed answer reports no usage`,
+      took === null ? null : `Last question took ${took}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  };
+}
+
 const SUGGESTIONS = [
   "Who still owes me a headshot?",
   "Which accepted talks have no session yet?",
@@ -80,6 +132,10 @@ export function AssistantDrawer() {
   const [question, setQuestion] = useState("");
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [busy, setBusy] = useState(false);
+  /** Which model is configured, and what today has cost. Fetched on open rather
+   *  than on mount — the drawer is mounted on every console screen and most
+   *  visits never open it. */
+  const [status, setStatus] = useState<AiStatus | null>(null);
   const eventId = typeof window === "undefined" ? null : getEventId();
   const scroller = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
@@ -112,6 +168,19 @@ export function AssistantDrawer() {
     if (open) field.current?.focus();
     else inflight.current?.abort();
   }, [open]);
+
+  /** Read once per open, and again after each answer so the day's count moves
+   *  as it is spent. A failure is swallowed on purpose: not knowing which model
+   *  is configured is a reason to hide one line, never to block the question the
+   *  drawer was opened to ask. */
+  const refreshStatus = useCallback(() => {
+    if (eventId === null) return;
+    fetchAiStatus(eventId).then(setStatus, () => setStatus(null));
+  }, [eventId]);
+
+  useEffect(() => {
+    if (open) refreshStatus();
+  }, [open, refreshStatus]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -215,28 +284,16 @@ export function AssistantDrawer() {
         patch({ streaming: false });
         setBusy(false);
         inflight.current = null;
+        // The question just spent one of the day's allowance, whether it was
+        // answered, refused or abandoned — every path writes a proposal row.
+        refreshStatus();
       }
     },
-    [busy, eventId, exchanges],
+    [busy, eventId, exchanges, refreshStatus],
   );
 
-  /** The last answer's provenance, as one line: which model, what the planning
-   *  call cost, how long the whole thing took. Tokens are the plan's only —
-   *  the streamed prose reports none — so the line says so rather than
-   *  presenting half the cost as the total. */
   const last = exchanges[exchanges.length - 1];
-  const lastRun =
-    last === undefined || last.model === null
-      ? null
-      : [
-          last.model,
-          last.inputTokens !== null && last.outputTokens !== null
-            ? `${last.inputTokens.toLocaleString()}→${last.outputTokens.toLocaleString()} tok (plan)`
-            : null,
-          last.elapsedMs !== null ? `${(last.elapsedMs / 1000).toFixed(1)}s` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ");
+  const provenance = describeRun(status, last);
 
   return (
     <SideDrawer
@@ -293,6 +350,48 @@ export function AssistantDrawer() {
               font: "400 13.5px/1.55 var(--font-plex-sans),sans-serif",
             }}
           />
+          {provenance === null ? null : (
+            <span
+              data-assistant-provenance
+              title={provenance.detail}
+              style={{
+                display: "flex",
+                // Not centred, and not `nowrap`: one line is what this is *for*,
+                // and it fits until a question has run — after which provider,
+                // model, the day's spend and the last question's cost run two
+                // characters past a 560px drawer, and far more on a phone.
+                // Ellipsis hid the elapsed time behind a tooltip no touch device
+                // can open, so it wraps instead. Nothing here is optional enough
+                // to hide.
+                alignItems: "flex-start",
+                gap: 7,
+                minWidth: 0,
+                // No letter-spacing, unlike the other mono captions: tracking is
+                // what tips the common case onto a second line.
+                font: "400 11px/1.5 var(--font-plex-mono),monospace",
+                color: "var(--i4,#5e5e66)",
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 6,
+                  height: 6,
+                  marginTop: 5,
+                  borderRadius: 999,
+                  flexShrink: 0,
+                  // A real model configured reads as live; the stub reads as a
+                  // placeholder, because that is what it is.
+                  background: status?.is_stub
+                    ? "var(--pd,#92590a)"
+                    : busy
+                      ? "var(--sg,#5254b0)"
+                      : "var(--ok,#177a53)",
+                }}
+              />
+              <span>{provenance.text}</span>
+            </span>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span
               style={{
@@ -304,9 +403,8 @@ export function AssistantDrawer() {
                 font: "400 11.5px var(--font-plex-mono),monospace",
                 color: "var(--i4,#5e5e66)",
               }}
-              title={lastRun ?? undefined}
             >
-              {lastRun ?? "⏎ asks · ⇧⏎ new line"}
+              ⏎ asks · ⇧⏎ new line
             </span>
             <button
               type="submit"

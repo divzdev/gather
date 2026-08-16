@@ -8,11 +8,21 @@
  */
 
 import { API_BASE_URL } from "@/lib/api";
-import { getToken } from "@/lib/session";
+import { authed, getToken } from "@/lib/session";
+import type { components } from "@/lib/api-types";
+
+/** What is answering, and what today has cost. Read before a question is asked
+ *  — "which model is this running on?" should not require spending a question
+ *  to find out. */
+export type AiStatus = components["schemas"]["AiStatus"];
+
+export function fetchAiStatus(eventId: string): Promise<AiStatus> {
+  return authed<AiStatus>(`/events/${eventId}/ai/status`);
+}
 
 export type AskEvent =
   | { kind: "planning" }
-  | { kind: "model"; name: string }
+  | { kind: "model"; name: string; provider: string; isStub: boolean }
   | { kind: "queries"; names: string[] }
   | { kind: "token"; text: string }
   | { kind: "clarify"; question: string; isStub: boolean; run: RunStats }
@@ -57,7 +67,9 @@ function runStats(data: Record<string, unknown>): RunStats {
  *  string. These arrive from the network, so a cast would be a lie the renderer
  *  pays for — `names.join()` on a number crashes the drawer. */
 function stringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 /** Turn one `event:`/`data:` block into the union above.
@@ -70,7 +82,12 @@ function decode(name: string, data: Record<string, unknown>): AskEvent | null {
     case "planning":
       return { kind: "planning" };
     case "model":
-      return { kind: "model", name: String(data.name ?? "") };
+      return {
+        kind: "model",
+        name: String(data.name ?? ""),
+        provider: String(data.provider ?? ""),
+        isStub: Boolean(data.is_stub),
+      };
     case "queries":
       return { kind: "queries", names: stringList(data.names) };
     case "token":

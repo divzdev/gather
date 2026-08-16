@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -36,6 +37,59 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+@dataclass(frozen=True, slots=True)
+class DailyUsage:
+    """How much of today's allowance an organisation has spent.
+
+    `cap` of None means uncapped, which is a different fact from a cap of zero
+    (AI turned off) and has to render differently — "12 today" rather than
+    "12/0 today".
+    """
+
+    used: int
+    cap: int | None
+    disabled: bool
+
+
+async def _cap_for(session: AsyncSession, org_id: uuid.UUID) -> int | None:
+    """The org's ceiling: its own when set, the server default otherwise, and
+    None when neither caps anything."""
+    with tenancy_disabled():
+        org_cap: int | None = await session.scalar(
+            select(Organization.ai_daily_proposal_cap).where(Organization.id == org_id)
+        )
+    cap = org_cap if org_cap is not None else get_settings().ai_daily_proposal_cap
+    if org_cap == 0:
+        return 0
+    return None if cap <= 0 else cap
+
+
+async def _used_today(session: AsyncSession, org_id: uuid.UUID) -> int:
+    since = _now().replace(hour=0, minute=0, second=0, microsecond=0)
+    # Counted across every event the org runs, which the automatic tenancy
+    # filter would forbid from inside one event's scope — hence the explicit,
+    # greppable escape with its own org predicate (architecture.md: bulk/cross-
+    # event reads carry their tenant filter by hand).
+    with tenancy_disabled():
+        used = await session.scalar(
+            select(func.count(AiProposal.id)).where(
+                AiProposal.org_id == org_id, AiProposal.created_at >= since
+            )
+        )
+    return used or 0
+
+
+async def usage_today(session: AsyncSession, *, org_id: uuid.UUID) -> DailyUsage:
+    """The same two numbers the cap is enforced on, for reporting.
+
+    Shares `_cap_for` and `_used_today` with `assert_within_daily_cap` rather
+    than counting its own way: a screen that says 12/200 while the request is
+    refused at 9 is worse than no screen.
+    """
+    cap = await _cap_for(session, org_id)
+    return DailyUsage(used=await _used_today(session, org_id), cap=cap, disabled=cap == 0)
+
+
 async def assert_within_daily_cap(session: AsyncSession, *, event_id: uuid.UUID) -> None:
     """Refuse once the *organization* has spent its allowance for the day.
 
@@ -52,19 +106,15 @@ async def assert_within_daily_cap(session: AsyncSession, *, event_id: uuid.UUID)
     default's <=0 has always meant uncapped and still does.
     """
     org_id = current_tenant().org_id
-    with tenancy_disabled():
-        org_cap: int | None = await session.scalar(
-            select(Organization.ai_daily_proposal_cap).where(Organization.id == org_id)
-        )
-    if org_cap == 0:
+    cap = await _cap_for(session, org_id)
+    if cap == 0:
         raise ApiError(
             "AI suggestions are turned off for this organisation — its daily "
             "cap is set to zero. An owner or admin can change that in Settings.",
             code="AI_DISABLED_FOR_ORG",
             status_code=429,
         )
-    cap = org_cap if org_cap is not None else get_settings().ai_daily_proposal_cap
-    if cap <= 0:
+    if cap is None:
         return
 
     # Counting and inserting are two statements, and between them another
@@ -78,18 +128,7 @@ async def assert_within_daily_cap(session: AsyncSession, *, event_id: uuid.UUID)
         {"org": str(org_id)},
     )
 
-    since = _now().replace(hour=0, minute=0, second=0, microsecond=0)
-    # Counted across every event the org runs, which the automatic tenancy
-    # filter would forbid from inside one event's scope — hence the explicit,
-    # greppable escape with its own org predicate (architecture.md: bulk/cross-
-    # event reads carry their tenant filter by hand).
-    with tenancy_disabled():
-        used = await session.scalar(
-            select(func.count(AiProposal.id)).where(
-                AiProposal.org_id == org_id, AiProposal.created_at >= since
-            )
-        )
-    if (used or 0) >= cap:
+    if await _used_today(session, org_id) >= cap:
         raise ApiError(
             f"This organisation has used its {cap} AI suggestions for today. "
             "The limit resets at midnight UTC; an owner or admin can raise the "

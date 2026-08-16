@@ -39,7 +39,14 @@ class Completion:
 class LLMAdapter(Protocol):
     """The only shape feature code ever sees. Nothing imports a provider SDK."""
 
+    #: The wire protocol — "anthropic", "openai-compat", "ollama", "stub".
     name: str
+
+    #: Which model this adapter will ask, before it has been asked anything.
+    #: Public because the screen has to name it *during* the wait: `Completion`
+    #: carries the model too, but only once an answer has come back, and "which
+    #: model is this slow request on" is a question asked before then.
+    model: str
 
     async def complete(self, *, system: str, user: str, max_tokens: int) -> Completion:
         """Answer in one round trip."""

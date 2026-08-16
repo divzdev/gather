@@ -40,11 +40,11 @@ class OllamaAdapter:
 
     def __init__(self, *, base_url: str, model: str) -> None:
         self._base_url = base_url.rstrip("/")
-        self._model = model
+        self.model = model
 
     def _body(self, *, system: str, user: str, max_tokens: int, stream: bool) -> dict[str, Any]:
         return {
-            "model": self._model,
+            "model": self.model,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
@@ -59,8 +59,8 @@ class OllamaAdapter:
     def _fail(self, status: int, body: str) -> ApiError:
         if status == 404:
             return ApiError(
-                f"Ollama has no model named {self._model!r}. "
-                f"Run `ollama pull {self._model}` or set AI_MODEL_DEFAULT to one you have.",
+                f"Ollama has no model named {self.model!r}. "
+                f"Run `ollama pull {self.model}` or set AI_MODEL_DEFAULT to one you have.",
                 code="AI_MODEL_MISSING",
             )
         return ApiError(f"The local model server refused the request ({status}): {body[:300]}")
@@ -87,7 +87,7 @@ class OllamaAdapter:
         payload = response.json()
         return Completion(
             text=payload.get("message", {}).get("content", ""),
-            model=f"ollama:{payload.get('model', self._model)}",
+            model=f"ollama:{payload.get('model', self.model)}",
             # Ollama reports counts under different names than the hosted API.
             # Normalised here so a proposal row means the same thing whichever
             # adapter produced it.

@@ -36,8 +36,8 @@ from app.core.errors import ApiError
 from app.core.tenancy import tenant_scope
 from app.features.ai import catalog, prompts, proposals
 from app.features.ai.adapters.base import Completion, LLMAdapter
-from app.features.ai.gateway import OrgAiConfig, select_adapter
-from app.features.ai.service import _org_ai
+from app.features.ai.gateway import OrgAiConfig, describe_choice, select_adapter
+from app.features.ai.service import org_ai
 from app.models import AiProposalKind, AiProposalStatus
 
 logger = logging.getLogger(__name__)
@@ -228,7 +228,7 @@ async def _open(
             prompt_version=prompts.ASK_PLAN,
             user_id=user_id,
         )
-        org = await _org_ai(session)
+        org = await org_ai(session)
         return _Ledger(event_id, org_id, proposal.id), org
 
 
@@ -335,7 +335,13 @@ async def answer(
         return
 
     llm = adapter or select_adapter(org=org)
-    yield "model", {"name": getattr(llm, "name", "unknown")}
+    # Named before either call goes out, so the line under the composer is
+    # filled in *during* the wait — "is this thing still on the local llama?"
+    # is a question asked at second three, not after the answer lands. The model
+    # comes off the adapter rather than the org config so an injected adapter
+    # cannot be misreported; the provider label has no adapter to come from.
+    choice = describe_choice(org=org)
+    yield "model", {"name": llm.model, "provider": choice.label, "is_stub": choice.is_stub}
     try:
         async for event in _answer(ledger, llm, request, today, settings.ai_max_tokens, started):
             yield event

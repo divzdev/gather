@@ -49,6 +49,7 @@ FORM_SCHEMA: dict[str, object] = {"fields": [{"key": "abstract", "type": "textar
 
 class Scripted:
     name = "scripted"
+    model = "scripted-1"
 
     def __init__(self, *replies: str, raise_on: int | None = None) -> None:
         self.replies = list(replies)
@@ -62,7 +63,7 @@ class Scripted:
         return self.replies.pop(0) if self.replies else "{}"
 
     async def complete(self, *, system: str, user: str, max_tokens: int) -> Completion:
-        return Completion(text=self._next(), model="scripted-1", usage={"input_tokens": 7})
+        return Completion(text=self._next(), model=self.model, usage={"input_tokens": 7})
 
     async def stream(self, *, system: str, user: str, max_tokens: int) -> AsyncIterator[str]:
         text = self._next()
@@ -422,13 +423,14 @@ class Stalling:
     client disconnect takes under ASGI, which `aclose()` does not reproduce."""
 
     name = "stalling"
+    model = "stalling-1"
 
     def __init__(self, plan_reply: str) -> None:
         self.plan_reply = plan_reply
         self.first_token = asyncio.Event()
 
     async def complete(self, *, system: str, user: str, max_tokens: int) -> Completion:
-        return Completion(text=self.plan_reply, model="stalling-1", usage={"input_tokens": 7})
+        return Completion(text=self.plan_reply, model=self.model, usage={"input_tokens": 7})
 
     async def stream(self, *, system: str, user: str, max_tokens: int) -> AsyncIterator[str]:
         yield "the "

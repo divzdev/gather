@@ -75,7 +75,7 @@ def test_every_openai_protocol_preset_builds_the_compat_adapter(
         assert isinstance(adapter, OpenAICompatAdapter), name
         assert adapter._base_url == (preset.base_url or "").rstrip("/")
         assert adapter._api_key == ORG_KEY
-        assert adapter._model == "some-model"
+        assert adapter.model == "some-model"
 
 
 def test_a_configured_org_key_outranks_a_local_model(

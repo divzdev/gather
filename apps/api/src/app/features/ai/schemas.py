@@ -91,6 +91,30 @@ class AcceptScoreRequest(BaseModel):
 # ─────────────────────────── what the API returns ───────────────────────────
 
 
+class AiStatus(BaseModel):
+    """What is answering, and how much of today's allowance is left.
+
+    Read by the assistant drawer before a question is asked, because "which
+    model is this running on?" was previously answerable only by asking a
+    question and reading the line under the answer — or by opening the database.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str
+    provider_label: str
+    model: str
+    #: "org" — this organisation's own configuration; "server" — the deployment's
+    #: key; "none" — nothing configured, so answers are samples.
+    source: Literal["org", "server", "none"]
+    is_stub: bool
+    used_today: int
+    #: None means uncapped. Zero means an owner turned AI off, which is why this
+    #: is not folded into one number.
+    daily_cap: int | None
+    ai_disabled: bool
+
+
 class ProposalRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

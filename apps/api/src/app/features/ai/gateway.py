@@ -21,6 +21,7 @@ where their own server is. It takes a URL and restricts it instead — see
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from app.core.config import get_settings
 from app.features.ai.adapters.anthropic import AnthropicAdapter
@@ -30,7 +31,16 @@ from app.features.ai.adapters.openai_compat import OpenAICompatAdapter
 from app.features.ai.adapters.stub import StubAdapter
 from app.features.ai.local_url import resolve_local_base_url
 
-__all__ = ["PROVIDERS", "Completion", "LLMAdapter", "OrgAiConfig", "Provider", "select_adapter"]
+__all__ = [
+    "PROVIDERS",
+    "AiChoice",
+    "Completion",
+    "LLMAdapter",
+    "OrgAiConfig",
+    "Provider",
+    "describe_choice",
+    "select_adapter",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +106,73 @@ class OrgAiConfig:
     base_url: str | None = None
 
 
+#: Where the choice came from. Named rather than boolean because the screen
+#: says different things for each: an org's own configuration is a fact the
+#: reader chose, the server's key is one they inherited, and the stub is not a
+#: model at all.
+Source = Literal["org", "server", "none"]
+
+
+@dataclass(frozen=True, slots=True)
+class AiChoice:
+    """Which model will answer, on whose say-so — with no key in it.
+
+    Exists because "what is running my questions?" turned out to be
+    unanswerable from any screen, and the answer had to be read out of the
+    database. It is derived from the same `_source` the adapter is built from,
+    so the two cannot disagree; a second function reimplementing the precedence
+    would eventually drift, and drifting is precisely the bug this reports on.
+    """
+
+    provider: str
+    label: str
+    model: str
+    source: Source
+    is_stub: bool
+
+
+def _source(org: OrgAiConfig | None) -> Source:
+    """The precedence, stated once. Both `select_adapter` and `describe_choice`
+    read it, so what the screen says and what runs are the same decision."""
+    if org is not None:
+        return "org"
+    if get_settings().ai_enabled:
+        return "server"
+    return "none"
+
+
+def describe_choice(*, org: OrgAiConfig | None = None) -> AiChoice:
+    """Name the model that would answer right now, without calling anything."""
+    settings = get_settings()
+    source = _source(org)
+    if source == "org":
+        assert org is not None  # `_source` returned "org" for exactly this reason
+        preset = PROVIDERS[org.provider]
+        return AiChoice(
+            provider=org.provider,
+            label=preset.label,
+            model=org.model or settings.ai_model_default,
+            source="org",
+            is_stub=False,
+        )
+    if source == "server":
+        return AiChoice(
+            provider="anthropic",
+            label=PROVIDERS["anthropic"].label,
+            model=settings.ai_model_default,
+            source="server",
+            is_stub=False,
+        )
+    return AiChoice(
+        provider="stub",
+        label="No model configured",
+        # Matches what `StubAdapter` records, so the screen and the row agree.
+        model=f"stub:{settings.ai_model_default}",
+        source="none",
+        is_stub=True,
+    )
+
+
 def adapter_for(config: OrgAiConfig) -> LLMAdapter:
     """The adapter an org's configuration names. Raises KeyError on a provider
     the preset table does not know — which the settings surface refuses to
@@ -138,8 +215,10 @@ def select_adapter(*, org: OrgAiConfig | None = None) -> LLMAdapter:
     clone, not an error.
     """
     settings = get_settings()
-    if org is not None:
+    source = _source(org)
+    if source == "org":
+        assert org is not None
         return adapter_for(org)
-    if settings.ai_enabled:
+    if source == "server":
         return AnthropicAdapter(api_key=settings.anthropic_api_key, model=settings.ai_model_default)
     return StubAdapter(model=settings.ai_model_default)

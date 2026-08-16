@@ -45,6 +45,41 @@ async function serve(page: import("@playwright/test").Page, body: string): Promi
   });
 }
 
+type Status = {
+  provider: string;
+  provider_label: string;
+  model: string;
+  source: string;
+  is_stub: boolean;
+  used_today: number;
+  /** Null is uncapped, which the line has to render differently from zero. */
+  daily_cap: number | null;
+  ai_disabled: boolean;
+};
+
+/** What the drawer reads on open to fill in the line under the composer. Canned
+ *  for the same reason the stream is: a developer with a key configured would
+ *  otherwise get their own provider's name in the assertion. */
+const STATUS: Status = {
+  provider: "meta",
+  provider_label: "Meta Muse Spark",
+  model: "muse-spark-1.2-contributor",
+  source: "org",
+  is_stub: false,
+  used_today: 4,
+  daily_cap: 30,
+  ai_disabled: false,
+};
+
+async function serveStatus(
+  page: import("@playwright/test").Page,
+  overrides: Partial<Status> = {},
+): Promise<void> {
+  await page.route("**/ai/status*", async (route) => {
+    await route.fulfill({ status: 200, json: { ...STATUS, ...overrides } });
+  });
+}
+
 /** The event switcher loads its name asynchronously and the header is a flex
  *  row, so clicking before it settles races a layout that is still moving —
  *  which is exactly how this spec failed twice before the wait went in. Same
@@ -57,10 +92,34 @@ async function settle(page: import("@playwright/test").Page): Promise<void> {
 
 test.describe("event assistant", () => {
   test.beforeEach(async ({ page }) => {
+    await serveStatus(page);
     await page.goto("/login");
     await page.getByRole("button", { name: /^Organizer$/i }).click();
     await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 });
     await settle(page);
+  });
+
+  test("says which model is answering before a question is asked", async ({ page }) => {
+    // The reported bug, twice over: the line existed only after a successful
+    // answer, so the person wondering whether their key was in use had to spend
+    // a question to find out — and the answer they got back was the wire
+    // protocol, not the model.
+    await page.locator("[data-console-ask]").click();
+    const drawer = page.getByRole("dialog");
+
+    await expect(drawer.locator("[data-assistant-provenance]")).toHaveText(
+      "Meta Muse Spark · muse-spark-1.2-contributor · 4/30 today",
+    );
+  });
+
+  test("an uncapped organisation is not shown a ceiling of zero", async ({ page }) => {
+    await serveStatus(page, { daily_cap: null });
+
+    await page.locator("[data-console-ask]").click();
+
+    await expect(page.getByRole("dialog").locator("[data-assistant-provenance]")).toHaveText(
+      "Meta Muse Spark · muse-spark-1.2-contributor · 4 today",
+    );
   });
 
   test("asks from the header and renders the answer with what it looked at", async ({ page }) => {
@@ -105,10 +164,11 @@ test.describe("event assistant", () => {
     await drawer.getByRole("button", { name: "Ask" }).click();
 
     await expect(drawer.getByText(/cannot be answered by any query/)).toBeVisible();
-    // The line under the composer: which model, what the plan cost, how long.
-    await expect(
-      drawer.getByText("muse-spark-1.2-contributor · 1,285→319 tok (plan) · 9.0s"),
-    ).toBeVisible();
+    // The line under the composer, now carrying the run: provider, model, the
+    // day's spend — which the refusal just moved — and what this one cost.
+    await expect(drawer.locator("[data-assistant-provenance]")).toHaveText(
+      "Meta Muse Spark · muse-spark-1.2-contributor · 4/30 today · 1,604 tok · 9.0s",
+    );
   });
 
   test("the palette hands a typed question to the assistant", async ({ page }) => {

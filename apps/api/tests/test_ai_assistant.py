@@ -57,6 +57,10 @@ class Scripted:
     """
 
     name = "scripted"
+    #: The adapter names its model before it is asked anything, and the answer
+    #: it eventually returns reports the same one. A fake that let those two
+    #: differ would hide the bug this attribute exists for.
+    model = "scripted-1"
 
     def __init__(self, *replies: str) -> None:
         self.replies = list(replies)
@@ -68,7 +72,7 @@ class Scripted:
 
     async def complete(self, *, system: str, user: str, max_tokens: int) -> Completion:
         return Completion(
-            text=self._next(system, user), model="scripted-1", usage={"input_tokens": 7}
+            text=self._next(system, user), model=self.model, usage={"input_tokens": 7}
         )
 
     async def stream(self, *, system: str, user: str, max_tokens: int) -> AsyncIterator[str]:
@@ -568,7 +572,11 @@ async def test_every_terminal_event_says_which_model_answered(
     response = await ask(client, world, "what is the weather")
 
     events = sse(response.text)
-    assert payload(events, "model")["name"], "the adapter is named before it is used"
+    # The model, not the wire protocol. The first cut of this yielded
+    # `adapter.name` — "openai-compat" — which answers a question nobody asked
+    # and reads on screen as a bug.
+    assert payload(events, "model")["name"] == "scripted-1"
+    assert payload(events, "model")["provider"], "and who it belongs to"
     refusal = payload(events, "refusal")
     assert refusal["model"] == "scripted-1"
     assert refusal["usage"] == {"input_tokens": 7}

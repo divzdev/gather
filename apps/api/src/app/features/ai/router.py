@@ -27,9 +27,11 @@ from app.core.deps import (
     resolve_role,
 )
 from app.core.errors import ApiError, RoleRequiredError
-from app.core.tenancy import tenancy_disabled
+from app.core.tenancy import current_tenant, tenancy_disabled
 from app.features.ai import assistant, proposals, service
-from app.features.ai.schemas import AcceptScoreRequest, ProposalRead, ScoreRequest
+from app.features.ai.gateway import describe_choice
+from app.features.ai.schemas import AcceptScoreRequest, AiStatus, ProposalRead, ScoreRequest
+from app.features.ai.service import org_ai
 from app.models import AiProposalStatus, Event, Role, User
 
 router = APIRouter(
@@ -56,6 +58,35 @@ STAFF = (Role.OWNER, Role.ADMIN, Role.COORDINATOR)
 def _redis(request: Request) -> Redis:
     redis: Redis = request.app.state.redis
     return redis
+
+
+@router.get("/status", response_model=AiStatus)
+async def ai_status(
+    session: DbSession,
+    _: User = Depends(require_role(*STAFF)),
+) -> AiStatus:
+    """Which model answers questions here, and what today has cost so far.
+
+    Staff-only for the same reason the assistant is: it names the organisation's
+    provider and its spend, neither of which is a reviewer's business.
+
+    Cheap on purpose — two small queries and no model call — because the drawer
+    fetches it on open and again after every answer, and a status line that
+    costs a request to the provider would be its own bill.
+    """
+    org_id = current_tenant().org_id
+    choice = describe_choice(org=await org_ai(session))
+    usage = await proposals.usage_today(session, org_id=org_id)
+    return AiStatus(
+        provider=choice.provider,
+        provider_label=choice.label,
+        model=choice.model,
+        source=choice.source,
+        is_stub=choice.is_stub,
+        used_today=usage.used,
+        daily_cap=usage.cap,
+        ai_disabled=usage.disabled,
+    )
 
 
 @router.post("/review-rounds/{round_id}/score", response_model=ProposalRead, status_code=201)

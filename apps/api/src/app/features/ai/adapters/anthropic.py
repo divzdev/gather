@@ -34,7 +34,7 @@ class AnthropicAdapter:
 
     def __init__(self, *, api_key: str, model: str) -> None:
         self._api_key = api_key
-        self._model = model
+        self.model = model
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -45,7 +45,7 @@ class AnthropicAdapter:
 
     def _body(self, *, system: str, user: str, max_tokens: int, stream: bool) -> dict[str, Any]:
         return {
-            "model": self._model,
+            "model": self.model,
             "max_tokens": max_tokens,
             "system": system,
             "messages": [{"role": "user", "content": user}],
@@ -74,7 +74,7 @@ class AnthropicAdapter:
         usage = payload.get("usage", {})
         return Completion(
             text=text,
-            model=str(payload.get("model", self._model)),
+            model=str(payload.get("model", self.model)),
             usage={
                 "input_tokens": int(usage.get("input_tokens", 0)),
                 "output_tokens": int(usage.get("output_tokens", 0)),

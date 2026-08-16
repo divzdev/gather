@@ -169,9 +169,10 @@ class StubAdapter:
     name = "stub"
 
     def __init__(self, *, model: str) -> None:
-        #: Recorded on the proposal so a row from a keyless environment is
-        #: identifiable long after the fact.
-        self._model = f"stub:{model}"
+        #: Prefixed so a row from a keyless environment is identifiable long
+        #: after the fact, and so a screen naming the model cannot pass this off
+        #: as one that ran.
+        self.model = f"stub:{model}"
 
     def _answer(self, user: str) -> str:
         rng = _seeded(user)
@@ -194,7 +195,7 @@ class StubAdapter:
         return json.dumps(body)
 
     async def complete(self, *, system: str, user: str, max_tokens: int) -> Completion:
-        return Completion(text=self._answer(user), model=self._model, usage={}, is_stub=True)
+        return Completion(text=self._answer(user), model=self.model, usage={}, is_stub=True)
 
     async def stream(self, *, system: str, user: str, max_tokens: int) -> AsyncIterator[str]:
         """Chunked so the streaming path is exercised without a key.

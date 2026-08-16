@@ -1250,7 +1250,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Read Speaker Task
+         * @description One speaker's task, with what they actually said (spec 0007).
+         *
+         *     `form_response` was written by the portal and read by nobody — not on a
+         *     screen, not in an export. The answers existed and no organiser could reach
+         *     them, which made a form task a write-only hole in the chase flow.
+         */
+        get: operations["read_speaker_task_v1_events__event_id__speaker_tasks__task_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1350,8 +1358,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read Task */
-        get: operations["read_task_v1_portal_tasks__task_id__get"];
+        /**
+         * Read One Task
+         * @description One task, with the schema a `form` task needs in order to be drawn.
+         *
+         *     The schema lives here rather than on `/portal/home` deliberately: home is one
+         *     round trip for the whole screen, and hauling a schema per form task would
+         *     grow it for a list nobody is filling in yet. The speaker fetches the form
+         *     when they open it.
+         */
+        get: operations["read_one_task_v1_portal_tasks__task_id__get"];
         /**
          * Submit Task
          * @description A form answer or an acknowledgement.
@@ -1365,7 +1381,17 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Save Task Draft
+         * @description Autosave. Writes the answer and deliberately leaves the status alone.
+         *
+         *     Separate verb from send because they are different acts: PATCH is "keep what
+         *     I have typed", PUT is "I am finished". Status is what distinguishes a draft
+         *     from a delivery in `form_response`, so autosave moving it would report work
+         *     as delivered that the speaker never sent — and, on a `requires_review` task,
+         *     would put a half-typed answer in front of an organiser.
+         */
+        patch: operations["save_task_draft_v1_portal_tasks__task_id__patch"];
         trace?: never;
     };
     "/v1/portal/tasks/{task_id}/files": {
@@ -2162,6 +2188,33 @@ export interface paths {
         };
         /** My Reviews */
         get: operations["my_reviews_v1_events__event_id__review_my_reviews_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/ai/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ai Status
+         * @description Which model answers questions here, and what today has cost so far.
+         *
+         *     Staff-only for the same reason the assistant is: it names the organisation's
+         *     provider and its spend, neither of which is a reviewer's business.
+         *
+         *     Cheap on purpose — two small queries and no model call — because the drawer
+         *     fetches it on open and again after every answer, and a status line that
+         *     costs a request to the provider would be its own bill.
+         */
+        get: operations["ai_status_v1_events__event_id__ai_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3142,6 +3195,35 @@ export interface components {
          * @enum {string}
          */
         AiProposalStatus: "streaming" | "ready" | "partially_accepted" | "accepted" | "discarded" | "failed";
+        /**
+         * AiStatus
+         * @description What is answering, and how much of today's allowance is left.
+         *
+         *     Read by the assistant drawer before a question is asked, because "which
+         *     model is this running on?" was previously answerable only by asking a
+         *     question and reading the line under the answer — or by opening the database.
+         */
+        AiStatus: {
+            /** Provider */
+            provider: string;
+            /** Provider Label */
+            provider_label: string;
+            /** Model */
+            model: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "org" | "server" | "none";
+            /** Is Stub */
+            is_stub: boolean;
+            /** Used Today */
+            used_today: number;
+            /** Daily Cap */
+            daily_cap: number | null;
+            /** Ai Disabled */
+            ai_disabled: boolean;
+        };
         /** ApprovalRequest */
         ApprovalRequest: {
             content_status: components["schemas"]["ContentStatus"];
@@ -5677,6 +5759,45 @@ export interface components {
             expires_in: number;
         };
         /**
+         * TaskDetail
+         * @description One task, opened. A superset of the list shape, never used in a list.
+         *
+         *     The extra field is the whole reason the detail route exists — see
+         *     `read_one_task` for why the schema does not ride on `/portal/home`.
+         */
+        TaskDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            kind: components["schemas"]["TaskKind"];
+            /** Is Required */
+            is_required: boolean;
+            /** External Url */
+            external_url: string | null;
+            /** Accepted File Types */
+            accepted_file_types: {
+                [key: string]: unknown;
+            };
+            /** Max File Mb */
+            max_file_mb: number | null;
+            /** Due At */
+            due_at: string | null;
+            status: components["schemas"]["TaskStatus"];
+            /** Form Response */
+            form_response: {
+                [key: string]: unknown;
+            } | null;
+            /** Files */
+            files?: components["schemas"]["FileRead"][];
+            schema?: components["schemas"]["FormSchema"] | null;
+        };
+        /**
          * TaskKind
          * @enum {string}
          */
@@ -5750,6 +5871,55 @@ export interface components {
             file_count: number;
         };
         /**
+         * TaskRowDetail
+         * @description One task, opened in the panel. A superset of the row, never used in a list.
+         *
+         *     The answers and the schema travel together because an organiser has to read
+         *     "Which OS will you present from? — macOS", not `{"av_needs": "macOS"}`. The
+         *     labels live in the schema, so shipping the answers without it would leave
+         *     the panel resolving question text it was never given.
+         */
+        TaskRowDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Speaker Id
+             * Format: uuid
+             */
+            speaker_id: string;
+            /** Speaker Name */
+            speaker_name: string;
+            /** Speaker Email */
+            speaker_email: string;
+            /**
+             * Task Template Id
+             * Format: uuid
+             */
+            task_template_id: string;
+            /** Task Name */
+            task_name: string;
+            kind: components["schemas"]["TaskKind"];
+            /** Is Required */
+            is_required: boolean;
+            /** Due At */
+            due_at: string | null;
+            status: components["schemas"]["TaskStatus"];
+            /** Completed At */
+            completed_at: string | null;
+            /** Last Nudged At */
+            last_nudged_at: string | null;
+            /** File Count */
+            file_count: number;
+            /** Form Response */
+            form_response?: {
+                [key: string]: unknown;
+            } | null;
+            schema?: components["schemas"]["FormSchema"] | null;
+        };
+        /**
          * TaskStatus
          * @description `overdue` is derived — swept nightly and recomputed on read — never a
          *     transition a caller performs.
@@ -5800,6 +5970,13 @@ export interface components {
             };
             /** Max File Mb */
             max_file_mb?: number | null;
+            /** Form Id */
+            form_id?: string | null;
+            /**
+             * Requires Review
+             * @default false
+             */
+            requires_review: boolean;
             /**
              * Sort Order
              * @default 0
@@ -5836,6 +6013,10 @@ export interface components {
             };
             /** Max File Mb */
             max_file_mb: number | null;
+            /** Form Id */
+            form_id: string | null;
+            /** Requires Review */
+            requires_review: boolean;
             /** Sort Order */
             sort_order: number;
             /**
@@ -5868,6 +6049,10 @@ export interface components {
             } | null;
             /** Max File Mb */
             max_file_mb?: number | null;
+            /** Form Id */
+            form_id?: string | null;
+            /** Requires Review */
+            requires_review?: boolean | null;
             /** Sort Order */
             sort_order?: number | null;
         };
@@ -9084,6 +9269,38 @@ export interface operations {
             };
         };
     };
+    read_speaker_task_v1_events__event_id__speaker_tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRowDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_task_v1_events__event_id__speaker_tasks__task_id__patch: {
         parameters: {
             query?: never;
@@ -9238,7 +9455,7 @@ export interface operations {
             };
         };
     };
-    read_task_v1_portal_tasks__task_id__get: {
+    read_one_task_v1_portal_tasks__task_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -9248,6 +9465,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_task_v1_portal_tasks__task_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskSubmit"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -9269,7 +9521,7 @@ export interface operations {
             };
         };
     };
-    submit_task_v1_portal_tasks__task_id__put: {
+    save_task_draft_v1_portal_tasks__task_id__patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -10690,6 +10942,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ai_status_v1_events__event_id__ai_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiStatus"];
                 };
             };
             /** @description Validation Error */
