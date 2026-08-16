@@ -20,7 +20,7 @@ make setup && make dev     # a running, seeded conference. no API keys, no accou
      nobody clicks it. The film is hosted off-repo so a 50MB file never rides along in
      every clone. -->
 
-[![Watch Gather — a conference programme, start to finish](.github/media/film-poster.jpg)](https://youtu.be/a7MB6f6Xtfs)
+[![Watch Gather — a conference programme, start to finish](.github/media/film-poster-play.jpg)](https://youtu.be/a7MB6f6Xtfs)
 
 **▶ [Watch the film on YouTube](https://youtu.be/a7MB6f6Xtfs)** · the whole programme, end to end
 
