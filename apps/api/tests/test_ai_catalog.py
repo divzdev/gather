@@ -165,6 +165,23 @@ async def world(session: AsyncSession) -> AsyncIterator[World]:
             )
         )
 
+        # Created but never placed — "3 still to schedule" on the Sessions
+        # screen. An inner join to Room/EventDay drops these entirely, which is
+        # how "how many sessions do we have" answered zero against three.
+        session.add(
+            Session(
+                org_id=org.id,
+                event_id=event.id,
+                # No submission: the invited keynote nobody applied for, which
+                # the agenda can create outright.
+                submission_id=None,
+                title="Talk unplaced",
+                slug=f"talk-unplaced-{suffix}",
+                duration_minutes=30,
+                status=SessionStatus.UNSCHEDULED,
+            )
+        )
+
         template = TaskTemplate(
             org_id=org.id,
             event_id=event.id,
@@ -377,6 +394,26 @@ async def test_sessions_in_window_finds_the_placed_session(
     assert result["count"] == 1
     assert result["rows"][0]["title"] == "Talk promoted"
     assert result["rows"][0]["room"] == "Hall A"
+
+
+async def test_asking_about_sessions_counts_the_unplaced_ones_too(
+    session: AsyncSession, world: World
+) -> None:
+    """ "How many sessions do we have" must answer with the number on the
+    Sessions screen.
+
+    Reported from a real event: three sessions in the library, none placed, and
+    the assistant said zero — because the query inner-joined Room and EventDay,
+    which a session that has not been dragged onto the grid does not have.
+    """
+    result = await catalog.run(session, "sessions_in_window", {})
+
+    titles = {row["title"] for row in result["rows"]}
+    assert titles == {"Talk promoted", "Talk unplaced"}
+    assert result["count"] == 2
+    unplaced = next(row for row in result["rows"] if row["title"] == "Talk unplaced")
+    assert unplaced["is_placed"] is False
+    assert unplaced["room"] is None
 
 
 async def test_sessions_in_window_on_an_empty_day_says_so(

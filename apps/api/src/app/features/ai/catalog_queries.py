@@ -141,11 +141,16 @@ class SessionsInWindowArgs(BaseModel):
 
 
 async def sessions_in_window(session: AsyncSession, args: SessionsInWindowArgs) -> dict[str, Any]:
+    # Outer joins, because a session that has not been dragged onto the grid has
+    # neither a room nor a day, and inner joins silently dropped every one of
+    # them — "how many sessions do we have" answered zero against three.
+    # Filtering by day or room still narrows to placed ones, which is what
+    # those arguments mean.
     statement = (
         select(Session, Room.name, EventDay.day_date)
-        .join(Room, Room.id == Session.room_id)
-        .join(EventDay, EventDay.id == Session.event_day_id)
-        .order_by(Session.starts_at.asc())
+        .outerjoin(Room, Room.id == Session.room_id)
+        .outerjoin(EventDay, EventDay.id == Session.event_day_id)
+        .order_by(Session.starts_at.asc().nullslast(), Session.title.asc())
     )
     if args.day is not None:
         statement = statement.where(EventDay.day_date == args.day)
@@ -156,10 +161,13 @@ async def sessions_in_window(session: AsyncSession, args: SessionsInWindowArgs) 
         {
             "title": found.title,
             "room": room_name,
-            "day": day_date.isoformat(),
+            "day": day_date.isoformat() if day_date is not None else None,
             "starts_at": found.starts_at.isoformat() if found.starts_at else None,
             "duration_minutes": found.duration_minutes,
             "status": found.status.value,
+            #: Explicit, so an answer can say "three sessions, none scheduled"
+            #: rather than having to infer it from a null room.
+            "is_placed": found.room_id is not None and found.event_day_id is not None,
         }
         for found, room_name, day_date in (await session.execute(statement)).all()
     ]

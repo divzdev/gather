@@ -16,7 +16,17 @@ export type AskEvent =
   | { kind: "token"; text: string }
   | { kind: "clarify"; question: string; isStub: boolean }
   | { kind: "refusal"; message: string; isStub: boolean }
-  | { kind: "done"; proposalId: string; queries: string[]; isStub: boolean }
+  | {
+      kind: "done";
+      proposalId: string;
+      queries: string[];
+      isStub: boolean;
+      model: string | null;
+      /** Planning call only — the streamed prose reports no usage. */
+      inputTokens: number | null;
+      outputTokens: number | null;
+      elapsedMs: number | null;
+    }
   | { kind: "error"; message: string };
 
 export type Turn = { role: "user" | "assistant"; content: string };
@@ -53,13 +63,20 @@ function decode(name: string, data: Record<string, unknown>): AskEvent | null {
         message: String(data.message ?? ""),
         isStub: Boolean(data.is_stub),
       };
-    case "done":
+    case "done": {
+      const usage = (data.usage ?? {}) as Record<string, unknown>;
+      const count = (value: unknown) => (typeof value === "number" ? value : null);
       return {
         kind: "done",
         proposalId: String(data.proposal_id ?? ""),
         queries: stringList(data.queries),
         isStub: Boolean(data.is_stub),
+        model: typeof data.model === "string" ? data.model : null,
+        inputTokens: count(usage.input_tokens),
+        outputTokens: count(usage.output_tokens),
+        elapsedMs: count(data.elapsed_ms),
       };
+    }
     case "error":
       return { kind: "error", message: String(data.message ?? "Something went wrong.") };
     default:

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -51,6 +52,17 @@ MAX_QUERIES = 3
 #: exchanges, which is what a follow-up ever reaches back to; without a bound,
 #: a long session grows the prompt until it hits the token cap.
 MAX_HISTORY = 6
+
+#: A ceiling on the planning call, not a diet. Set to 400 first — on the theory
+#: that a plan naming three queries is thirty tokens — and it broke: real plans
+#: from muse-spark ran 639 to 860 tokens, so the JSON was truncated mid-object
+#: and every question came back "the model returned an empty answer".
+#:
+#: The lesson is that a cap cannot make a model terse, only cut it off. Latency
+#: comes from the input side (the catalog block, trimmed) and from the two calls
+#: being sequential. This is now only a runaway guard, well clear of anything
+#: observed.
+PLAN_MAX_TOKENS = 1500
 
 
 class Turn(BaseModel):
@@ -296,6 +308,7 @@ async def answer(
     """
     settings = get_settings()
     today = datetime.now(UTC).date()
+    started = time.monotonic()
     yield "planning", {}
 
     try:
@@ -308,7 +321,7 @@ async def answer(
 
     llm = adapter or select_adapter(org=org)
     try:
-        async for event in _answer(ledger, llm, request, today, settings.ai_max_tokens):
+        async for event in _answer(ledger, llm, request, today, settings.ai_max_tokens, started):
             yield event
     except ApiError as error:
         await _abandon(ledger, error.message)
@@ -330,6 +343,7 @@ async def _answer(
     request: AskRequest,
     today: date,
     max_tokens: int,
+    started: float,
 ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
     """The answer itself, once the row is open. Split out so `answer()` can wrap
     every path in one place and guarantee the row is resolved."""
@@ -337,7 +351,7 @@ async def _answer(
         planning = await llm.complete(
             system=prompts.load(prompts.ASK_PLAN),
             user=_plan_request(request.history, request.question, today),
-            max_tokens=max_tokens,
+            max_tokens=min(PLAN_MAX_TOKENS, max_tokens),
         )
         plan = proposals.parse(planning.text, Plan)
     except ApiError as error:
@@ -389,5 +403,19 @@ async def _answer(
     )
     yield (
         "done",
-        {"proposal_id": str(ledger.proposal_id), "queries": ran, "is_stub": planning.is_stub},
+        {
+            "proposal_id": str(ledger.proposal_id),
+            "queries": ran,
+            "is_stub": planning.is_stub,
+            # Named so the person can see which model answered, and what it
+            # cost — "very slow, is it still using the local one?" is not a
+            # question anybody should have to read a database to answer.
+            "model": planning.model,
+            "usage": planning.usage,
+            # Planning only: `stream()` yields bare strings and reports no
+            # usage, so the prose call's tokens are not available here. The
+            # screen says "plan" rather than implying this is the whole cost.
+            "usage_covers": "plan",
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+        },
     )

@@ -75,9 +75,11 @@ CATALOG: dict[str, Entry] = {
         ),
         Entry(
             "sessions_in_window",
-            "Scheduled sessions, optionally narrowed to one day or one room. Use for "
-            "'what's on in Hall A', 'what's happening Wednesday'. Only returns sessions "
-            "that have been placed on the grid.",
+            "Every session in this event, placed or not, each with an is_placed "
+            "flag, a room and a day. Use for 'how many sessions do we have', "
+            "'what still needs scheduling', 'what's on in Hall A', 'what's "
+            "happening Wednesday'. Passing day or room narrows to placed "
+            "sessions; passing neither returns them all.",
             SessionsInWindowArgs,
             sessions_in_window,
         ),
@@ -158,6 +160,49 @@ CATALOG: dict[str, Entry] = {
 }
 
 
+def _arg_spec(args: type[BaseModel]) -> dict[str, str]:
+    """One line per argument: its type, its allowed values, its default.
+
+    A full JSON Schema per entry cost about 1,200 prompt tokens across the
+    twelve — most of it `title` and `anyOf` boilerplate a model does not need to
+    call the query correctly. This carries the same information in a third of
+    the space, and the prompt is sent on every single question.
+    """
+    schema = args.model_json_schema()
+    defs = schema.get("$defs", {})
+    spec: dict[str, str] = {}
+    for name, field in (schema.get("properties") or {}).items():
+        parts: list[str] = []
+        options = field.get("enum") or _enum_of(field, defs)
+        if options:
+            parts.append("one of " + "|".join(str(option) for option in options))
+        else:
+            parts.append(_type_of(field))
+        if "default" in field and field["default"] is not None:
+            parts.append(f"default {field['default']}")
+        elif "default" in field:
+            parts.append("optional")
+        spec[name] = ", ".join(parts)
+    return spec
+
+
+def _enum_of(field: dict[str, Any], defs: dict[str, Any]) -> list[Any] | None:
+    for option in field.get("anyOf", []):
+        if "enum" in option:
+            return list(option["enum"])
+        ref = option.get("$ref", "").rsplit("/", 1)[-1]
+        if ref and "enum" in defs.get(ref, {}):
+            return list(defs[ref]["enum"])
+    return None
+
+
+def _type_of(field: dict[str, Any]) -> str:
+    if "type" in field:
+        return str(field["type"])
+    kinds = [option["type"] for option in field.get("anyOf", []) if option.get("type") != "null"]
+    return kinds[0] if kinds else "string"
+
+
 def describe() -> list[dict[str, Any]]:
     """The catalog as the planner prompt sees it: name, purpose, argument shape.
 
@@ -165,11 +210,7 @@ def describe() -> list[dict[str, Any]]:
     advertise a query that is not there, or miss one that is.
     """
     return [
-        {
-            "name": entry.name,
-            "description": entry.description,
-            "args": entry.args.model_json_schema(),
-        }
+        {"name": entry.name, "purpose": entry.description, "args": _arg_spec(entry.args)}
         for entry in CATALOG.values()
     ]
 

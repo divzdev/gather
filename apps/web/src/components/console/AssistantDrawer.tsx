@@ -59,6 +59,13 @@ type Exchange = {
   aside: "clarify" | "refusal" | null;
   error: string | null;
   streaming: boolean;
+  /** What answered, what it cost and how long it took. Shown under the
+   *  composer, because "is this even using the key I configured?" should be
+   *  answerable from the screen rather than from the database. */
+  model: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  elapsedMs: number | null;
 };
 
 const SUGGESTIONS = [
@@ -138,6 +145,10 @@ export function AssistantDrawer() {
           aside: null,
           error: null,
           streaming: true,
+          model: null,
+          inputTokens: null,
+          outputTokens: null,
+          elapsedMs: null,
         },
       ]);
 
@@ -168,7 +179,15 @@ export function AssistantDrawer() {
               patch({ answer: event.question, aside: "clarify", isStub: event.isStub });
             else if (event.kind === "refusal")
               patch({ answer: event.message, aside: "refusal", isStub: event.isStub });
-            else if (event.kind === "done") patch({ queries: event.queries, isStub: event.isStub });
+            else if (event.kind === "done")
+              patch({
+                queries: event.queries,
+                isStub: event.isStub,
+                model: event.model,
+                inputTokens: event.inputTokens,
+                outputTokens: event.outputTokens,
+                elapsedMs: event.elapsedMs,
+              });
             else if (event.kind === "error") patch({ error: event.message });
           },
           controller.signal,
@@ -186,6 +205,24 @@ export function AssistantDrawer() {
     },
     [busy, eventId, exchanges],
   );
+
+  /** The last answer's provenance, as one line: which model, what the planning
+   *  call cost, how long the whole thing took. Tokens are the plan's only —
+   *  the streamed prose reports none — so the line says so rather than
+   *  presenting half the cost as the total. */
+  const last = exchanges[exchanges.length - 1];
+  const lastRun =
+    last === undefined || last.model === null
+      ? null
+      : [
+          last.model,
+          last.inputTokens !== null && last.outputTokens !== null
+            ? `${last.inputTokens.toLocaleString()}→${last.outputTokens.toLocaleString()} tok (plan)`
+            : null,
+          last.elapsedMs !== null ? `${(last.elapsedMs / 1000).toFixed(1)}s` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
   return (
     <SideDrawer
@@ -246,11 +283,16 @@ export function AssistantDrawer() {
             <span
               style={{
                 flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
                 font: "400 11.5px var(--font-plex-mono),monospace",
                 color: "var(--i4,#5e5e66)",
               }}
+              title={lastRun ?? undefined}
             >
-              ⏎ asks · ⇧⏎ new line
+              {lastRun ?? "⏎ asks · ⇧⏎ new line"}
             </span>
             <button
               type="submit"
