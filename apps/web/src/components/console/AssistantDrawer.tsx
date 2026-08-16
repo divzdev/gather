@@ -15,8 +15,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import { SideDrawer } from "@/components/console/SideDrawer";
-import { askStream, fetchAiStatus, type AiStatus, type AskEvent, type Turn } from "@/lib/ask";
+import {
+  applyProposal,
+  askStream,
+  fetchAiStatus,
+  type AiStatus,
+  type AskEvent,
+  type ProposedAction,
+  type Turn,
+} from "@/lib/ask";
 import { getEventId } from "@/lib/session";
 
 export const ASSISTANT_EVENT = "gather:assistant";
@@ -57,6 +67,13 @@ type Exchange = {
   /** Set when the assistant asked back or declined, so those render as the
    *  assistant speaking rather than as a failed answer. */
   aside: "clarify" | "refusal" | null;
+  /** Changes offered but not made. Present instead of an answer, never
+   *  alongside one — a question either asks something or asks for a change. */
+  proposalId: string | null;
+  actions: ProposedAction[];
+  /** The row the assistant is working out which of, shown during the second
+   *  call so a two-call write does not look like a stall. */
+  resolving: string | null;
   error: string | null;
   streaming: boolean;
   /** What answered, what it cost and how long it took. Shown under the
@@ -136,6 +153,7 @@ export function AssistantDrawer() {
    *  than on mount — the drawer is mounted on every console screen and most
    *  visits never open it. */
   const [status, setStatus] = useState<AiStatus | null>(null);
+  const queryClient = useQueryClient();
   const eventId = typeof window === "undefined" ? null : getEventId();
   const scroller = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
@@ -212,6 +230,9 @@ export function AssistantDrawer() {
           queries: [],
           isStub: false,
           aside: null,
+          proposalId: null,
+          actions: [],
+          resolving: null,
           error: null,
           streaming: true,
           model: null,
@@ -245,6 +266,15 @@ export function AssistantDrawer() {
             // in during the wait rather than only after an answer lands — and
             // on refusals, which never reach `done` at all.
             if (event.kind === "model") patch({ model: event.name });
+            else if (event.kind === "resolving") patch({ resolving: event.target });
+            else if (event.kind === "proposal")
+              patch({
+                proposalId: event.proposalId,
+                actions: event.actions,
+                resolving: null,
+                isStub: event.isStub,
+                ...event.run,
+              });
             else if (event.kind === "queries") patch({ queries: event.names });
             else if (event.kind === "token")
               patch((previous) => ({ answer: previous.answer + event.text }));
@@ -292,6 +322,65 @@ export function AssistantDrawer() {
     [busy, eventId, exchanges, refreshStatus],
   );
 
+  /** Press Create. Applies the named changes, folds the outcome back into the
+   *  cards, and refreshes whatever screen the new row belongs on — a change you
+   *  cannot see on the page behind the drawer is indistinguishable from one that
+   *  did not happen (story 23). */
+  const applyChanges = useCallback(
+    async (exchangeId: string, proposalId: string, applying: ProposedAction[]) => {
+      if (eventId === null) return;
+      const indexes = applying.map((action) => action.index);
+      const mark = (change: (action: ProposedAction) => ProposedAction) =>
+        setExchanges((current) =>
+          current.map((exchange) =>
+            exchange.id === exchangeId
+              ? {
+                  ...exchange,
+                  actions: exchange.actions.map((action) =>
+                    indexes.includes(action.index) ? change(action) : action,
+                  ),
+                }
+              : exchange,
+          ),
+        );
+
+      try {
+        const results = await applyProposal(eventId, proposalId, indexes);
+        const byIndex = new Map(results.map((result) => [result.index, result]));
+        mark((action) => {
+          const result = byIndex.get(action.index);
+          return result === undefined
+            ? action
+            : { ...action, status: result.status, label: result.label, error: result.error };
+        });
+        const applied = new Set(
+          results.filter((result) => result.status === "applied").map((result) => result.index),
+        );
+        const touched = new Set(
+          applying
+            .filter((action) => applied.has(action.index))
+            .map((action) => action.collection)
+            .filter(Boolean),
+        );
+        for (const collection of touched) {
+          void queryClient.invalidateQueries({ queryKey: [collection, eventId] });
+        }
+        if (touched.size > 0) {
+          void queryClient.invalidateQueries({ queryKey: ["program-counts", eventId] });
+          void queryClient.invalidateQueries({ queryKey: ["agenda", eventId] });
+        }
+      } catch (error) {
+        mark((action) => ({
+          ...action,
+          status: "failed",
+          error: error instanceof Error ? error.message : "That change could not be made.",
+        }));
+      }
+      refreshStatus();
+    },
+    [eventId, queryClient, refreshStatus],
+  );
+
   const last = exchanges[exchanges.length - 1];
   const provenance = describeRun(status, last);
 
@@ -314,6 +403,11 @@ export function AssistantDrawer() {
               key={exchange.id}
               exchange={exchange}
               onRetry={() => void send(exchange.question)}
+              onApply={(applying) =>
+                exchange.proposalId === null
+                  ? undefined
+                  : void applyChanges(exchange.id, exchange.proposalId, applying)
+              }
             />
           ))}
         </div>
@@ -468,7 +562,194 @@ function Empty({ onPick }: { onPick: (text: string) => void }) {
   );
 }
 
-function Answer({ exchange, onRetry }: { exchange: Exchange; onRetry: () => void }) {
+/** Values as a person reads them, not as JSON. `capacity: 60` is a field name
+ *  leaking; "capacity 60" is a sentence. */
+function readable(key: string, value: unknown): string {
+  const label = key.replace(/_/g, " ").replace(/ local$/, "");
+  if (value === null || value === undefined || value === "") return `${label} cleared`;
+  if (typeof value === "boolean") return value ? label : `not ${label}`;
+  return `${label} ${String(value)}`;
+}
+
+/** The changes on offer, and the only way to make them.
+ *
+ *  Deliberately verbose about what each one will do: this is the last thing read
+ *  before a row exists, and the whole safety argument of the feature is that a
+ *  wrong proposal is caught here, by a person, reading. A card that said
+ *  "Create room" and nothing else would be a button with no label.
+ */
+function Changes({
+  actions,
+  onApply,
+}: {
+  actions: ProposedAction[];
+  onApply: (applying: ProposedAction[]) => void;
+}) {
+  const pending = actions.filter((action) => action.status === "proposed");
+  return (
+    <div
+      data-assistant-changes
+      style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}
+    >
+      {actions.map((action) => (
+        <Change key={action.index} action={action} onApply={() => onApply([action])} />
+      ))}
+      {pending.length > 1 ? (
+        <button
+          type="button"
+          onClick={() => onApply(pending)}
+          style={{
+            alignSelf: "flex-start",
+            height: 36,
+            padding: "0 16px",
+            borderRadius: 999,
+            border: "1px solid var(--ln,#e3e3e7)",
+            background: "var(--cd,#fff)",
+            color: "var(--ik,#141417)",
+            font: "500 12.5px var(--font-plex-sans),sans-serif",
+            cursor: "pointer",
+          }}
+        >
+          Apply all {pending.length}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function Change({ action, onApply }: { action: ProposedAction; onApply: () => void }) {
+  const applied = action.status === "applied";
+  const failed = action.status === "failed";
+  const changes = Object.entries(action.values);
+
+  return (
+    <div
+      data-assistant-change
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        padding: 16,
+        borderRadius: 12,
+        border: `1px solid ${failed ? "var(--cnl,#f4c8d2)" : applied ? "var(--okl,#c3e3d3)" : "var(--ln,#e3e3e7)"}`,
+        background: failed
+          ? "var(--cnw,#fbeaee)"
+          : applied
+            ? "var(--okw,#e4f3ec)"
+            : "var(--cd,#fff)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+        <span
+          style={{
+            font: "600 13px var(--font-plex-sans),sans-serif",
+            color: "var(--ik,#141417)",
+          }}
+        >
+          {applied
+            ? `${action.verb === "create" ? "Created" : "Changed"} ${action.resource}`
+            : `${action.verb === "create" ? "Create" : "Change"} ${action.resource}`}
+        </span>
+        {action.target !== null ? (
+          <span
+            style={{
+              font: "500 12.5px var(--font-plex-mono),monospace",
+              color: "var(--i2,#3f3f46)",
+            }}
+          >
+            {action.target}
+          </span>
+        ) : null}
+      </div>
+
+      {/* What will actually be set. For an edit, with what it holds now, because
+          approving `capacity 80` without seeing `60` is approving a sentence. */}
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
+        {changes.map(([key, value]) => {
+          const was = action.before[key];
+          const moved = action.verb === "update" && was !== undefined;
+          return (
+            <li
+              key={key}
+              style={{
+                font: "400 12.5px/1.5 var(--font-plex-sans),sans-serif",
+                color: "var(--i2,#3f3f46)",
+              }}
+            >
+              {moved ? (
+                <>
+                  {key.replace(/_/g, " ")}{" "}
+                  <span style={{ color: "var(--i4,#5e5e66)" }}>
+                    {was === null || was === "" ? "unset" : String(was)}
+                  </span>{" "}
+                  → <strong style={{ fontWeight: 600 }}>{String(value ?? "unset")}</strong>
+                </>
+              ) : (
+                readable(key, value)
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      {failed && action.error ? (
+        <p
+          style={{
+            margin: 0,
+            font: "400 12.5px/1.5 var(--font-plex-sans),sans-serif",
+            color: "var(--cn,#b3243f)",
+          }}
+        >
+          {action.error}
+        </p>
+      ) : null}
+
+      {applied ? (
+        <span
+          style={{
+            alignSelf: "flex-start",
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "var(--cd,#fff)",
+            border: "1px solid var(--okl,#c3e3d3)",
+            color: "var(--ok,#177a53)",
+            font: "500 11px var(--font-plex-sans),sans-serif",
+          }}
+        >
+          {action.label ? `Done · ${action.label}` : "Done"}
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={onApply}
+          style={{
+            alignSelf: "flex-start",
+            height: 36,
+            padding: "0 18px",
+            borderRadius: 999,
+            border: "none",
+            background: "var(--bt,#141417)",
+            color: "var(--bf,#fff)",
+            font: "600 12.5px var(--font-plex-sans),sans-serif",
+            cursor: "pointer",
+          }}
+        >
+          {failed ? "Try again" : action.verb === "create" ? "Create" : "Apply"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Answer({
+  exchange,
+  onRetry,
+  onApply,
+}: {
+  exchange: Exchange;
+  onRetry: () => void;
+  onApply: (applying: ProposedAction[]) => void;
+}) {
   const looked = exchange.queries.map((name) => QUERY_LABELS[name] ?? name);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -537,8 +818,15 @@ function Answer({ exchange, onRetry }: { exchange: Exchange; onRetry: () => void
                 color: "var(--i4,#5e5e66)",
               }}
             >
-              {exchange.queries.length === 0 ? "Working out what to look at…" : "Reading the rows…"}
+              {exchange.resolving !== null
+                ? `Working out which one “${exchange.resolving}” is…`
+                : exchange.queries.length === 0
+                  ? "Working out what to look at…"
+                  : "Reading the rows…"}
             </span>
+          ) : null}
+          {exchange.actions.length > 0 ? (
+            <Changes actions={exchange.actions} onApply={onApply} />
           ) : null}
           {exchange.answer !== "" ? (
             <p

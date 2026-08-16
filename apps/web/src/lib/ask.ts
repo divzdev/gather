@@ -20,9 +20,39 @@ export function fetchAiStatus(eventId: string): Promise<AiStatus> {
   return authed<AiStatus>(`/events/${eventId}/ai/status`);
 }
 
+/** One change the assistant is offering to make. Inert until applied: this is a
+ *  description of a row, not a row. */
+export type ProposedAction = {
+  index: number;
+  /** Catalog action name, e.g. `create_room`. */
+  name: string;
+  verb: "create" | "update";
+  /** "room", "track" — how the card names it. */
+  resource: string;
+  /** The setup screens' query key, so applying can refresh them. */
+  collection: string;
+  /** The existing row this edits, resolved to its real name. Null on a create. */
+  target: string | null;
+  /** What those fields hold today, for the `60 → 80` arrow. */
+  before: Record<string, unknown>;
+  /** Only the fields that will actually be set. */
+  values: Record<string, unknown>;
+  status: "proposed" | "applied" | "failed";
+  label?: string | null;
+  error?: string | null;
+};
+
 export type AskEvent =
   | { kind: "planning" }
   | { kind: "model"; name: string; provider: string; isStub: boolean }
+  | { kind: "resolving"; target: string }
+  | {
+      kind: "proposal";
+      proposalId: string;
+      actions: ProposedAction[];
+      isStub: boolean;
+      run: RunStats;
+    }
   | { kind: "queries"; names: string[] }
   | { kind: "token"; text: string }
   | { kind: "clarify"; question: string; isStub: boolean; run: RunStats }
@@ -63,6 +93,79 @@ function runStats(data: Record<string, unknown>): RunStats {
   };
 }
 
+/** Cards arrive off the network, so they are narrowed rather than cast. A card
+ *  that fails to parse is dropped: half a card is a button whose label does not
+ *  describe what it will do. */
+function proposedActions(value: unknown): ProposedAction[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((raw): ProposedAction[] => {
+    if (typeof raw !== "object" || raw === null) return [];
+    const item = raw as Record<string, unknown>;
+    const verb = item.verb === "update" ? "update" : item.verb === "create" ? "create" : null;
+    if (verb === null || typeof item.name !== "string") return [];
+    return [
+      {
+        index: typeof item.index === "number" ? item.index : 0,
+        name: item.name,
+        verb,
+        resource: String(item.resource ?? ""),
+        collection: String(item.collection ?? ""),
+        target: typeof item.target === "string" ? item.target : null,
+        before: asRecord(item.before),
+        values: asRecord(item.values),
+        status:
+          item.status === "applied" ? "applied" : item.status === "failed" ? "failed" : "proposed",
+        label: typeof item.label === "string" ? item.label : null,
+        error: typeof item.error === "string" ? item.error : null,
+      },
+    ];
+  });
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+/** What became of one action. Deliberately not a `ProposedAction`: what comes
+ *  back names the row that now exists, or the reason none does — it is an
+ *  outcome, not a description of an intent. */
+export type AppliedResult = {
+  index: number;
+  status: "applied" | "failed";
+  id: string | null;
+  label: string | null;
+  error: string | null;
+};
+
+/** Apply the changes an organiser pressed. One result per index, in the order
+ *  asked — a failure is per action, never for the batch. */
+export async function applyProposal(
+  eventId: string,
+  proposalId: string,
+  indexes: number[],
+): Promise<AppliedResult[]> {
+  const body = await authed<{ results: unknown }>(
+    `/events/${eventId}/ai/proposals/${proposalId}/apply`,
+    { method: "POST", body: { indexes } },
+  );
+  if (!Array.isArray(body.results)) return [];
+  return body.results.flatMap((raw): AppliedResult[] => {
+    const item = asRecord(raw);
+    if (typeof item.index !== "number") return [];
+    return [
+      {
+        index: item.index,
+        status: item.status === "applied" ? "applied" : "failed",
+        id: typeof item.id === "string" ? item.id : null,
+        label: typeof item.label === "string" ? item.label : null,
+        error: typeof item.error === "string" ? item.error : null,
+      },
+    ];
+  });
+}
+
 /** Coerce an unknown field into a string list, dropping anything that is not a
  *  string. These arrive from the network, so a cast would be a lie the renderer
  *  pays for — `names.join()` on a number crashes the drawer. */
@@ -87,6 +190,16 @@ function decode(name: string, data: Record<string, unknown>): AskEvent | null {
         name: String(data.name ?? ""),
         provider: String(data.provider ?? ""),
         isStub: Boolean(data.is_stub),
+      };
+    case "resolving":
+      return { kind: "resolving", target: String(data.target ?? "") };
+    case "proposal":
+      return {
+        kind: "proposal",
+        proposalId: String(data.proposal_id ?? ""),
+        actions: proposedActions(data.actions),
+        isStub: Boolean(data.is_stub),
+        run: runStats(data),
       };
     case "queries":
       return { kind: "queries", names: stringList(data.names) };

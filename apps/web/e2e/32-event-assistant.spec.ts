@@ -35,6 +35,37 @@ const STUB_SSE = [
   'event: done\ndata: {"proposal_id": "01a00000-0000-7000-8000-000000000001", "queries": ["submissions_by"], "is_stub": true}',
 ].join("\n\n");
 
+/** A proposed change. The card is the last thing read before a row exists, so
+ *  what it says is the whole safety argument — asserted, not assumed. */
+const PROPOSAL_SSE = [
+  "event: planning\ndata: {}",
+  'event: model\ndata: {"name": "muse-spark-1.2-contributor", "provider": "Meta Muse Spark", "is_stub": false}',
+  'event: proposal\ndata: {"proposal_id": "01a00000-0000-7000-8000-00000000000a", "is_stub": false, "model": "muse-spark-1.2-contributor", "usage": {"input_tokens": 900, "output_tokens": 100}, "elapsed_ms": 4000, "actions": [{"index": 0, "name": "create_room", "verb": "create", "resource": "room", "collection": "rooms", "target": null, "before": {}, "values": {"name": "Big One", "capacity": 60}, "status": "proposed"}]}',
+].join("\n\n");
+
+/** Two creates, so Apply-all has something to be about. */
+const BATCH_SSE = [
+  "event: planning\ndata: {}",
+  'event: proposal\ndata: {"proposal_id": "01a00000-0000-7000-8000-00000000000b", "is_stub": false, "actions": [{"index": 0, "name": "create_room", "verb": "create", "resource": "room", "collection": "rooms", "target": null, "before": {}, "values": {"name": "Big One"}, "status": "proposed"}, {"index": 1, "name": "create_room", "verb": "create", "resource": "room", "collection": "rooms", "target": null, "before": {}, "values": {"name": "Studio"}, "status": "proposed"}]}',
+].join("\n\n");
+
+/** An edit whose target the assistant had to work out. The resolved name on the
+ *  card is what makes a wrong resolution catchable by reading (story 22). */
+const RESOLVED_SSE = [
+  "event: planning\ndata: {}",
+  'event: resolving\ndata: {"target": "the big room"}',
+  'event: proposal\ndata: {"proposal_id": "01a00000-0000-7000-8000-00000000000c", "is_stub": false, "actions": [{"index": 0, "name": "update_room", "verb": "update", "resource": "room", "collection": "rooms", "target": "Big One", "before": {"capacity": 60}, "values": {"capacity": 80}, "status": "proposed"}]}',
+].join("\n\n");
+
+async function serveApply(
+  page: import("@playwright/test").Page,
+  results: Record<string, unknown>[],
+): Promise<void> {
+  await page.route("**/ai/proposals/*/apply", async (route) => {
+    await route.fulfill({ status: 200, json: { results } });
+  });
+}
+
 async function serve(page: import("@playwright/test").Page, body: string): Promise<void> {
   await page.route("**/ai/ask", async (route) => {
     await route.fulfill({
@@ -169,6 +200,96 @@ test.describe("event assistant", () => {
     await expect(drawer.locator("[data-assistant-provenance]")).toHaveText(
       "Meta Muse Spark · muse-spark-1.2-contributor · 4/30 today · 1,604 tok · 9.0s",
     );
+  });
+
+  test("a proposed change is a card, and nothing happens until it is pressed", async ({ page }) => {
+    await serve(page, PROPOSAL_SSE);
+    let applied = false;
+    await page.route("**/ai/proposals/*/apply", async (route) => {
+      applied = true;
+      await route.fulfill({
+        status: 200,
+        json: { results: [{ index: 0, status: "applied", id: "01a0", label: "Big One" }] },
+      });
+    });
+
+    await page.locator("[data-console-ask]").click();
+    const drawer = page.getByRole("dialog");
+    await drawer.getByLabel("Your question").fill("add a room called Big One with capacity 60");
+    await drawer.getByRole("button", { name: "Ask" }).click();
+
+    // The card says what it will do, in words, before anything is pressed.
+    const card = drawer.locator("[data-assistant-change]");
+    await expect(card).toContainText("Create room");
+    await expect(card).toContainText("name Big One");
+    await expect(card).toContainText("capacity 60");
+    expect(applied, "reading a card must not write a row").toBe(false);
+
+    await card.getByRole("button", { name: "Create" }).click();
+
+    await expect(card).toContainText("Done · Big One");
+    await expect(card.getByRole("button", { name: "Create" })).toHaveCount(0);
+    expect(applied).toBe(true);
+  });
+
+  test("an edit shows what the field holds now, not just what it will hold", async ({ page }) => {
+    await serve(page, RESOLVED_SSE);
+
+    await page.locator("[data-console-ask]").click();
+    const drawer = page.getByRole("dialog");
+    await drawer.getByLabel("Your question").fill("make the big room hold 80");
+    await drawer.getByRole("button", { name: "Ask" }).click();
+
+    const card = drawer.locator("[data-assistant-change]");
+    // Story 22: the row it resolved to is named, so a wrong pick is caught by
+    // reading rather than by discovering it later.
+    await expect(card).toContainText("Change room");
+    await expect(card).toContainText("Big One");
+    await expect(card).toContainText("60");
+    await expect(card).toContainText("80");
+  });
+
+  test("three changes can be applied together or one at a time", async ({ page }) => {
+    await serve(page, BATCH_SSE);
+    await serveApply(page, [
+      { index: 0, status: "applied", id: "01a0", label: "Big One" },
+      { index: 1, status: "applied", id: "01a1", label: "Studio" },
+    ]);
+
+    await page.locator("[data-console-ask]").click();
+    const drawer = page.getByRole("dialog");
+    await drawer.getByLabel("Your question").fill("add rooms Big One and Studio");
+    await drawer.getByRole("button", { name: "Ask" }).click();
+
+    await expect(drawer.locator("[data-assistant-change]")).toHaveCount(2);
+    await drawer.getByRole("button", { name: "Apply all 2" }).click();
+
+    await expect(drawer.getByText("Done · Big One")).toBeVisible();
+    await expect(drawer.getByText("Done · Studio")).toBeVisible();
+    await expect(drawer.getByRole("button", { name: "Apply all 2" })).toHaveCount(0);
+  });
+
+  test("a change that fails says why and leaves its siblings alone", async ({ page }) => {
+    await serve(page, BATCH_SSE);
+    await serveApply(page, [
+      { index: 0, status: "applied", id: "01a0", label: "Big One" },
+      {
+        index: 1,
+        status: "failed",
+        error: "This event already has a room with that name.",
+      },
+    ]);
+
+    await page.locator("[data-console-ask]").click();
+    const drawer = page.getByRole("dialog");
+    await drawer.getByLabel("Your question").fill("add rooms Big One and Studio");
+    await drawer.getByRole("button", { name: "Ask" }).click();
+    await drawer.getByRole("button", { name: "Apply all 2" }).click();
+
+    await expect(drawer.getByText("Done · Big One")).toBeVisible();
+    await expect(drawer.getByText("This event already has a room with that name.")).toBeVisible();
+    // Story 6: the failure keeps its own button, and only its own.
+    await expect(drawer.getByRole("button", { name: "Try again" })).toHaveCount(1);
   });
 
   test("the palette hands a typed question to the assistant", async ({ page }) => {

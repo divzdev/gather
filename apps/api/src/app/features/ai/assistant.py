@@ -30,11 +30,11 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import db
+from app.core import crud, db
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.tenancy import tenant_scope
-from app.features.ai import catalog, prompts, proposals
+from app.features.ai import catalog, prompts, proposals, write_catalog
 from app.features.ai.adapters.base import Completion, LLMAdapter
 from app.features.ai.gateway import OrgAiConfig, describe_choice, select_adapter
 from app.features.ai.service import org_ai
@@ -64,6 +64,11 @@ MAX_HISTORY = 6
 #: observed.
 PLAN_MAX_TOKENS = 1500
 
+#: The resolution call answers with one name or `null`, so this is a runaway
+#: guard rather than a budget. Kept well clear of PLAN_MAX_TOKENS on purpose:
+#: this call exists to be cheaper than interrupting somebody.
+RESOLVE_MAX_TOKENS = 200
+
 
 class Turn(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -85,10 +90,27 @@ class PlannedQuery(BaseModel):
     args: dict[str, Any] = Field(default_factory=dict)
 
 
+class PlannedAction(BaseModel):
+    """One proposed change, as the model wrote it. Same latitude as
+    `PlannedQuery`: decoration is tolerated, meaning is validated later."""
+
+    name: str
+    #: The existing row in the organiser's own words. Absent on a create.
+    target: str | None = None
+    values: dict[str, Any] = Field(default_factory=dict)
+
+
 class Plan(BaseModel):
     queries: list[PlannedQuery] = Field(default_factory=list)
+    actions: list[PlannedAction] = Field(default_factory=list)
     clarify: str | None = None
     refusal: str | None = None
+
+
+class Match(BaseModel):
+    """The resolution call's whole vocabulary: one name, or nothing."""
+
+    match: str | None = None
 
 
 def _transcript(history: list[Turn], question: str, today: date) -> str:
@@ -103,8 +125,23 @@ def _transcript(history: list[Turn], question: str, today: date) -> str:
 
 
 def _plan_request(history: list[Turn], question: str, today: date) -> str:
-    catalogue = json.dumps(catalog.describe(), indent=1)
-    return f"Catalog of available queries:\n{catalogue}\n\n{_transcript(history, question, today)}"
+    queries = json.dumps(catalog.describe(), indent=1)
+    actions = json.dumps(write_catalog.describe(), indent=1)
+    return (
+        f"Catalog of available queries:\n{queries}\n\n"
+        f"Catalog of proposable actions:\n{actions}\n\n"
+        f"{_transcript(history, question, today)}"
+    )
+
+
+def _resolve_request(wanted: str, noun: str, offered: list[str]) -> str:
+    """Everything the resolution call gets: the words, the noun, the names.
+
+    No ids, no other columns, no history — history is where a stray primary key
+    would most easily arrive, and choosing between names needs none of it.
+    """
+    listed = "\n".join(f"- {name}" for name in offered)
+    return f'They said: "{wanted}"\n\nThe {noun}s that exist:\n{listed}'
 
 
 def _prose_request(
@@ -146,6 +183,118 @@ async def _run_plan(
             ran.append(planned.name)
             results.append({"query": planned.name, "result": rows})
     return ran, results
+
+
+def _describe_values(values: BaseModel) -> dict[str, Any]:
+    """Only the fields that were actually given.
+
+    The card shows what will be set, so a create described by name alone shows a
+    name and nothing else — not a screenful of defaults nobody asked for
+    (story 11).
+    """
+    described: dict[str, Any] = json.loads(values.model_dump_json(exclude_unset=True))
+    return described
+
+
+async def _plan_actions(
+    ledger: _Ledger, llm: LLMAdapter, plan: Plan
+) -> AsyncIterator[tuple[str, dict[str, Any]] | list[dict[str, Any]]]:
+    """Turn the model's actions into cards, asking a model — then a human — when
+    a target does not resolve.
+
+    Yields SSE events as it goes and finishes by yielding the list of cards, so
+    the caller can stream `resolving` without this needing to know about SSE.
+    """
+    cards: list[dict[str, Any]] = []
+    for index, planned in enumerate(plan.actions):
+        try:
+            parsed = write_catalog.parse(
+                planned.name, {"target": planned.target, "values": planned.values}
+            )
+        except (write_catalog.UnknownActionError, write_catalog.BadArgsError):
+            # An invented action, or values the resource would refuse. Dropped
+            # exactly as an unknown read query is: the rest of the plan stands.
+            continue
+
+        if parsed.action.verb == "create":
+            cards.append(_card(index, parsed))
+            continue
+
+        assert parsed.target is not None  # `parse` refuses an update without one
+        async with _scoped(ledger.event_id, ledger.org_id) as session:
+            found = await write_catalog.resolve(session, parsed.action.spec, parsed.target)
+            if found.target is None and found.candidates:
+                yield "resolving", {"target": parsed.target}
+                found = await _ask_which(llm, parsed, found)
+            if found.target is None:
+                yield "clarify", {"question": _which(parsed, found)}
+                return
+            row = await crud.get_resource(session, parsed.action.spec, found.target.id)
+            before = crud.previous_values(row, parsed.values)
+        cards.append(_card(index, parsed, target=found.target.label, before=before))
+    yield cards
+
+
+async def _ask_which(
+    llm: LLMAdapter, parsed: write_catalog.Parsed, found: write_catalog.Resolution
+) -> write_catalog.Resolution:
+    """One small call: their words, the names that exist, one name or nothing back.
+
+    A name that is not on the list counts as nothing. A model that answers
+    "Main Hall" when no Main Hall exists has not chosen — it has invented — and
+    the nearest-looking row is not a safe consolation.
+    """
+    offered = write_catalog.offer(found.candidates)
+    try:
+        reply = await llm.complete(
+            system=prompts.load(prompts.ASK_RESOLVE),
+            user=_resolve_request(parsed.target or "", parsed.action.spec.singular, offered),
+            max_tokens=RESOLVE_MAX_TOKENS,
+        )
+        chosen = proposals.parse(reply.text, Match).match
+    except ApiError:
+        # A failed resolution is not a failed question: fall through to asking
+        # the human, which is where this was heading anyway.
+        return found
+    for candidate in found.candidates:
+        if chosen is not None and candidate.label == chosen:
+            return write_catalog.Resolution(target=candidate, candidates=found.candidates)
+    return found
+
+
+def _which(parsed: write_catalog.Parsed, found: write_catalog.Resolution) -> str:
+    """The question asked when nothing resolved. Names what exists, because the
+    organiser's next message is going to be one of those names."""
+    noun = parsed.action.spec.singular
+    offered = write_catalog.offer(found.candidates)
+    if not offered:
+        return (
+            f"This event has no {noun}s yet, so there is nothing named {parsed.target!r} to change."
+        )
+    return f"Which {noun} did you mean — {', '.join(offered)}?"
+
+
+def _card(
+    index: int,
+    parsed: write_catalog.Parsed,
+    *,
+    target: str | None = None,
+    before: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "index": index,
+        "name": parsed.action.name,
+        "verb": parsed.action.verb,
+        "resource": parsed.action.spec.singular,
+        # The setup screens key their queries on exactly this string, so a card
+        # carries what the drawer needs to refresh them and the frontend needs
+        # no table mapping "room" to "rooms" — one more place to drift.
+        "collection": parsed.action.spec.plural,
+        "target": target,
+        "before": json.loads(json.dumps(before or {}, default=str)),
+        "values": _describe_values(parsed.values),
+        "status": "proposed",
+    }
 
 
 def _is_readable(prose: str) -> bool:
@@ -233,7 +382,12 @@ async def _open(
 
 
 async def _close(
-    ledger: _Ledger, *, output: dict[str, Any], reasoning: str, completion: Completion
+    ledger: _Ledger,
+    *,
+    output: dict[str, Any],
+    reasoning: str,
+    completion: Completion,
+    kind: AiProposalKind | None = None,
 ) -> None:
     """Resolve the row as answered.
 
@@ -244,6 +398,12 @@ async def _close(
     """
     async with _scoped(ledger.event_id, ledger.org_id) as session:
         proposal = await proposals.get(session, ledger.proposal_id)
+        if kind is not None:
+            # The row is opened before the model is called, when nothing yet
+            # knows whether this is a question or a change. It is stamped here,
+            # where the plan has been read — the alternative is two rows or a
+            # guess, and the cap counts rows.
+            proposal.kind = kind
         await proposals.record(
             session,
             proposal,
@@ -392,6 +552,55 @@ async def _answer(
     if plan.refusal:
         yield await _aside(
             ledger, planning, kind="refusal", key="message", text=plan.refusal, started=started
+        )
+        return
+
+    # Actions first, and exclusively (story 36). The organiser is about to be
+    # shown something to approve; running queries underneath that would make half
+    # the reply about a different question.
+    if plan.actions:
+        cards: list[dict[str, Any]] = []
+        async for step in _plan_actions(ledger, llm, plan):
+            if isinstance(step, list):
+                cards = step
+            else:
+                if step[0] == "clarify":
+                    yield await _aside(
+                        ledger,
+                        planning,
+                        kind="clarify",
+                        key="question",
+                        text=str(step[1]["question"]),
+                        started=started,
+                    )
+                    return
+                yield step
+        if not cards:
+            # Every action was dropped. An empty card is worse than a sentence:
+            # it looks like something to press.
+            reason = "None of that is something I can change here."
+            yield await _aside(
+                ledger, planning, kind="refusal", key="message", text=reason, started=started
+            )
+            return
+        await _close(
+            ledger,
+            output={"actions": cards, "is_stub": planning.is_stub},
+            reasoning=request.question,
+            completion=planning,
+            kind=AiProposalKind.PROGRAM_CHANGE,
+        )
+        yield (
+            "proposal",
+            {
+                "proposal_id": str(ledger.proposal_id),
+                "actions": cards,
+                "is_stub": planning.is_stub,
+                "model": planning.model,
+                "usage": planning.usage,
+                "usage_covers": "plan",
+                "elapsed_ms": round((time.monotonic() - started) * 1000),
+            },
         )
         return
 

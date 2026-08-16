@@ -14,6 +14,7 @@ from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from redis.asyncio import Redis
 
 from app.core import db, rate_limit
@@ -28,6 +29,7 @@ from app.core.deps import (
 )
 from app.core.errors import ApiError, RoleRequiredError
 from app.core.tenancy import current_tenant, tenancy_disabled
+from app.features.ai import apply as apply_service
 from app.features.ai import assistant, proposals, service
 from app.features.ai.gateway import describe_choice
 from app.features.ai.schemas import AcceptScoreRequest, AiStatus, ProposalRead, ScoreRequest
@@ -168,6 +170,51 @@ async def accept_proposal(
         comment=body.comment,
     )
     return {"review_id": str(review.id), "status": review.status.value}
+
+
+class ApplyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    #: Which of the proposal's changes to make. A list rather than "all" so the
+    #: screen can offer both individual buttons and an Apply all, and so a retry
+    #: names exactly what it is retrying.
+    indexes: list[int] = Field(min_length=1, max_length=25)
+
+    @field_validator("indexes")
+    @classmethod
+    def _distinct(cls, indexes: list[int]) -> list[int]:
+        # A repeated index would apply twice on a route whose whole promise is
+        # that it does not. Refused rather than deduplicated, because a client
+        # sending [0, 0] has a bug worth hearing about.
+        if len(set(indexes)) != len(indexes):
+            raise ValueError("indexes must not repeat")
+        return indexes
+
+
+class ApplyResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    results: list[dict[str, object]]
+
+
+@router.post("/proposals/{proposal_id}/apply", response_model=ApplyResult)
+async def apply_proposal(
+    proposal_id: uuid.UUID,
+    body: ApplyRequest,
+    session: DbSession,
+    _: User = Depends(require_role(*STAFF)),
+) -> ApplyResult:
+    """Make the changes an organiser approved.
+
+    Staff rather than any-reviewer: this is the same permission the setup screens
+    require, and the assistant grants nobody a reach they did not already have.
+
+    No model is called here. The card was approved on what it said, and asking
+    again at press time could produce something else.
+    """
+    proposal = await proposals.get(session, proposal_id)
+    results = await apply_service.apply(session, proposal=proposal, indexes=body.indexes)
+    return ApplyResult(results=[result.as_dict() for result in results])
 
 
 @router.post("/proposals/{proposal_id}/discard", response_model=ProposalRead)

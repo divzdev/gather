@@ -19,8 +19,15 @@ DUPLICATES = "duplicates.v1"
 #: prose about what they returned. Two files because they are two different
 #: jobs asked of the model, and the planner's rules have nothing to say about
 #: prose style.
-ASK_PLAN = "ask_plan.v1"
+#: v2 adds the write catalog (spec 0008): the planner may now return *actions*
+#: as well as queries, and the rules about never inventing a value and never
+#: deleting live here rather than in code.
+ASK_PLAN = "ask_plan.v2"
 ASK_PROSE = "ask_prose.v2"
+#: The second call on the ambiguous path only: the organiser's own words plus the
+#: names that exist, in, one name or nothing out. Small on purpose — it is spent
+#: to avoid interrupting somebody, so it must cost less than interrupting them.
+ASK_RESOLVE = "ask_resolve.v1"
 
 
 @lru_cache(maxsize=8)

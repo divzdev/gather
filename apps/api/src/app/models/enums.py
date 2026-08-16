@@ -204,6 +204,11 @@ class AiProposalKind(StrEnum):
     #: count against the org-wide daily proposal cap, which is what keeps that
     #: cap "one number, one ceiling on the bill".
     ANSWER = "answer"
+    #: A proposed change to program setup — a room, a track, a format, a day
+    #: (spec 0008). Unlike `answer` it *is* resolved, because unlike an answer
+    #: there is something to accept: one row per question, carrying one or more
+    #: actions, each applied or discarded on its own.
+    PROGRAM_CHANGE = "program_change"
 
 
 class AiProposalStatus(StrEnum):

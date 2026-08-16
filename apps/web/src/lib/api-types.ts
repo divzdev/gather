@@ -287,6 +287,43 @@ export interface paths {
         patch: operations["update_me_v1_auth_me_patch"];
         trace?: never;
     };
+    "/v1/events/{event_id}/rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Items */
+        get: operations["list_items_v1_events__event_id__rooms_get"];
+        put?: never;
+        /** Create Item */
+        post: operations["create_item_v1_events__event_id__rooms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/rooms/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Item */
+        get: operations["read_item_v1_events__event_id__rooms__item_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Item */
+        delete: operations["delete_item_v1_events__event_id__rooms__item_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Item */
+        patch: operations["update_item_v1_events__event_id__rooms__item_id__patch"];
+        trace?: never;
+    };
     "/v1/events/{event_id}/tracks": {
         parameters: {
             query?: never;
@@ -359,43 +396,6 @@ export interface paths {
         head?: never;
         /** Update Item */
         patch: operations["update_item_v1_events__event_id__session_formats__item_id__patch"];
-        trace?: never;
-    };
-    "/v1/events/{event_id}/rooms": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Items */
-        get: operations["list_items_v1_events__event_id__rooms_get"];
-        put?: never;
-        /** Create Item */
-        post: operations["create_item_v1_events__event_id__rooms_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/events/{event_id}/rooms/{item_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read Item */
-        get: operations["read_item_v1_events__event_id__rooms__item_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Item */
-        delete: operations["delete_item_v1_events__event_id__rooms__item_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Item */
-        patch: operations["update_item_v1_events__event_id__rooms__item_id__patch"];
         trace?: never;
     };
     "/v1/events/{event_id}/days": {
@@ -2314,6 +2314,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/events/{event_id}/ai/proposals/{proposal_id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Proposal
+         * @description Make the changes an organiser approved.
+         *
+         *     Staff rather than any-reviewer: this is the same permission the setup screens
+         *     require, and the assistant grants nobody a reach they did not already have.
+         *
+         *     No model is called here. The card was approved on what it said, and asking
+         *     again at press time could produce something else.
+         */
+        post: operations["apply_proposal_v1_events__event_id__ai_proposals__proposal_id__apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/events/{event_id}/ai/proposals/{proposal_id}/discard": {
         parameters: {
             query?: never;
@@ -3189,7 +3215,7 @@ export interface components {
          * AiProposalKind
          * @enum {string}
          */
-        AiProposalKind: "schedule" | "duplicates" | "normalize" | "score" | "assign_reviewers" | "answer";
+        AiProposalKind: "schedule" | "duplicates" | "normalize" | "score" | "assign_reviewers" | "answer" | "program_change";
         /**
          * AiProposalStatus
          * @enum {string}
@@ -3223,6 +3249,18 @@ export interface components {
             daily_cap: number | null;
             /** Ai Disabled */
             ai_disabled: boolean;
+        };
+        /** ApplyRequest */
+        ApplyRequest: {
+            /** Indexes */
+            indexes: number[];
+        };
+        /** ApplyResult */
+        ApplyResult: {
+            /** Results */
+            results: {
+                [key: string]: unknown;
+            }[];
         };
         /** ApprovalRequest */
         ApprovalRequest: {
@@ -5780,6 +5818,8 @@ export interface components {
             is_required: boolean;
             /** External Url */
             external_url: string | null;
+            /** Requires Review */
+            requires_review: boolean;
             /** Accepted File Types */
             accepted_file_types: {
                 [key: string]: unknown;
@@ -5818,6 +5858,8 @@ export interface components {
             is_required: boolean;
             /** External Url */
             external_url: string | null;
+            /** Requires Review */
+            requires_review: boolean;
             /** Accepted File Types */
             accepted_file_types: {
                 [key: string]: unknown;
@@ -5978,6 +6020,11 @@ export interface components {
              */
             requires_review: boolean;
             /**
+             * Sets Profile Photo
+             * @default false
+             */
+            sets_profile_photo: boolean;
+            /**
              * Sort Order
              * @default 0
              */
@@ -6017,6 +6064,8 @@ export interface components {
             form_id: string | null;
             /** Requires Review */
             requires_review: boolean;
+            /** Sets Profile Photo */
+            sets_profile_photo: boolean;
             /** Sort Order */
             sort_order: number;
             /**
@@ -6053,6 +6102,8 @@ export interface components {
             form_id?: string | null;
             /** Requires Review */
             requires_review?: boolean | null;
+            /** Sets Profile Photo */
+            sets_profile_photo?: boolean | null;
             /** Sort Order */
             sort_order?: number | null;
         };
@@ -6847,6 +6898,170 @@ export interface operations {
             };
         };
     };
+    list_items_v1_events__event_id__rooms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_item_v1_events__event_id__rooms_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoomCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_item_v1_events__event_id__rooms__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_item_v1_events__event_id__rooms__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_item_v1_events__event_id__rooms__item_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoomUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_items_v1_events__event_id__tracks_get: {
         parameters: {
             query?: never;
@@ -7162,170 +7377,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionFormatRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_items_v1_events__event_id__rooms_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                event_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoomRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_item_v1_events__event_id__rooms_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                event_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RoomCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoomRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    read_item_v1_events__event_id__rooms__item_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                item_id: string;
-                event_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoomRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_item_v1_events__event_id__rooms__item_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                item_id: string;
-                event_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_item_v1_events__event_id__rooms__item_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                item_id: string;
-                event_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RoomUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoomRead"];
                 };
             };
             /** @description Validation Error */
@@ -11110,6 +11161,42 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_proposal_v1_events__event_id__ai_proposals__proposal_id__apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplyResult"];
                 };
             };
             /** @description Validation Error */
