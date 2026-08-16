@@ -74,6 +74,27 @@ export function AiKeyPanel({ orgId, toast }: { orgId: string; toast: (m: string)
     queryFn: () => authed<KeyStatus>(`/orgs/${orgId}/ai-key`),
   });
 
+  /** Show what is saved, not what the form defaults to.
+   *
+   *  The controls used to open on "Anthropic" and an empty model whatever the
+   *  org actually had configured, so a saved Meta key read as no key at all and
+   *  the only contradiction of that was the chip in the header. Re-deriving on
+   *  every render would fight the operator mid-edit, so the stored triple is
+   *  synced once per change of the saved values — switching the provider
+   *  without saving keeps the choice, and saving adopts what was saved. */
+  const savedStamp = status?.configured
+    ? `${status.provider ?? ""}|${status.model ?? ""}|${status.base_url ?? ""}`
+    : null;
+  const [syncedFrom, setSyncedFrom] = useState<string | null>(null);
+  if (savedStamp !== syncedFrom) {
+    setSyncedFrom(savedStamp);
+    if (savedStamp !== null && status) {
+      setProvider(status.provider ?? "anthropic");
+      setModelDraft(status.model ?? "");
+      setBaseUrl(status.base_url ?? "");
+    }
+  }
+
   const chosen = status?.providers.find((option) => option.id === provider);
   const isLocal = chosen?.needs_key === false;
 
