@@ -279,7 +279,13 @@ async def _never_strand(ledger: _Ledger) -> None:
 
 
 async def _aside(
-    ledger: _Ledger, planning: Completion, *, kind: str, key: str, text: str
+    ledger: _Ledger,
+    planning: Completion,
+    *,
+    kind: str,
+    key: str,
+    text: str,
+    started: float,
 ) -> tuple[str, dict[str, Any]]:
     """Asking back, or declining. Both resolve the row and end the stream, and
     neither costs the second model call."""
@@ -289,7 +295,16 @@ async def _aside(
         reasoning=text,
         completion=planning,
     )
-    return kind, {key: text, "is_stub": planning.is_stub}
+    # Same provenance as `done`. A refusal is still a model answering, and
+    # "which model told me it could not do that" is the same question.
+    return kind, {
+        key: text,
+        "is_stub": planning.is_stub,
+        "model": planning.model,
+        "usage": planning.usage,
+        "usage_covers": "plan",
+        "elapsed_ms": round((time.monotonic() - started) * 1000),
+    }
 
 
 async def answer(
@@ -320,6 +335,7 @@ async def answer(
         return
 
     llm = adapter or select_adapter(org=org)
+    yield "model", {"name": getattr(llm, "name", "unknown")}
     try:
         async for event in _answer(ledger, llm, request, today, settings.ai_max_tokens, started):
             yield event
@@ -360,13 +376,17 @@ async def _answer(
         return
 
     if plan.clarify:
-        yield await _aside(ledger, planning, kind="clarify", key="question", text=plan.clarify)
+        yield await _aside(
+            ledger, planning, kind="clarify", key="question", text=plan.clarify, started=started
+        )
         return
     # Not `and not plan.queries`: a model that declines *and* names queries has
     # still declined, and running them anyway spends a second call writing prose
     # about rows it already said were beside the point.
     if plan.refusal:
-        yield await _aside(ledger, planning, kind="refusal", key="message", text=plan.refusal)
+        yield await _aside(
+            ledger, planning, kind="refusal", key="message", text=plan.refusal, started=started
+        )
         return
 
     ran, results = await _run_plan(ledger.event_id, ledger.org_id, plan)

@@ -19,6 +19,15 @@ const SSE = [
   'event: done\ndata: {"proposal_id": "01a00000-0000-7000-8000-000000000000", "queries": ["tasks_outstanding"], "is_stub": false}',
 ].join("\n\n");
 
+/** A refusal, which is the path that never reached `done` — so before this was
+ *  carried on every terminal event, asking something off-catalogue left the
+ *  screen with nothing to say about what had answered. */
+const REFUSAL_SSE = [
+  "event: planning\ndata: {}",
+  'event: model\ndata: {"name": "openai"}',
+  'event: refusal\ndata: {"message": "This question cannot be answered by any query in the catalog.", "is_stub": false, "model": "muse-spark-1.2-contributor", "usage": {"input_tokens": 1285, "output_tokens": 319}, "elapsed_ms": 9000}',
+].join("\n\n");
+
 const STUB_SSE = [
   "event: planning\ndata: {}",
   'event: queries\ndata: {"names": ["submissions_by"]}',
@@ -85,6 +94,21 @@ test.describe("event assistant", () => {
     await drawer.getByRole("button", { name: "Ask" }).click();
 
     await expect(drawer.getByText(/Sample answer — no model ran/)).toBeVisible();
+  });
+
+  test("a refusal still says which model refused, and what it cost", async ({ page }) => {
+    await serve(page, REFUSAL_SSE);
+
+    await page.locator("[data-console-ask]").click();
+    const drawer = page.getByRole("dialog");
+    await drawer.getByLabel("Your question").fill("are you connected?");
+    await drawer.getByRole("button", { name: "Ask" }).click();
+
+    await expect(drawer.getByText(/cannot be answered by any query/)).toBeVisible();
+    // The line under the composer: which model, what the plan cost, how long.
+    await expect(
+      drawer.getByText("muse-spark-1.2-contributor · 1,285→319 tok (plan) · 9.0s"),
+    ).toBeVisible();
   });
 
   test("the palette hands a typed question to the assistant", async ({ page }) => {

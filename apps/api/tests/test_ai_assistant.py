@@ -267,7 +267,10 @@ async def test_an_admin_gets_an_answer(client: AsyncClient, world: World, script
 
     assert response.status_code == 200
     events = sse(response.text)
-    assert names(events) == ["planning", "queries", "token", "done"]
+    # `model` is second on every path: the adapter is named as soon as it is
+    # resolved, so the screen can say what is answering during the wait rather
+    # than only once the answer lands.
+    assert names(events) == ["planning", "model", "queries", "token", "done"]
     assert payload(events, "token")["text"] == "One accepted talk so far."
 
 
@@ -346,7 +349,7 @@ async def test_an_ambiguous_question_asks_back_without_a_second_call(
     response = await ask(client, world, "what is on in Hall A")
 
     events = sse(response.text)
-    assert names(events) == ["planning", "clarify"]
+    assert names(events) == ["planning", "model", "clarify"]
     assert payload(events, "clarify")["question"] == "Which day did you mean?"
     assert len(fake.seen) == 1, "asking back must not cost a second model call"
 
@@ -363,7 +366,7 @@ async def test_a_question_outside_the_catalog_is_refused_in_words(
     response = await ask(client, world, "what is the weather in Lisbon")
 
     events = sse(response.text)
-    assert names(events) == ["planning", "refusal"]
+    assert names(events) == ["planning", "model", "refusal"]
     assert "this event" in str(payload(events, "refusal")["message"])
 
 
@@ -547,3 +550,26 @@ async def test_prose_that_is_not_prose_is_a_failure_not_an_answer(
             await session.scalars(select(AiProposal).where(AiProposal.event_id == world.event.id))
         ).one()
     assert row.status == AiProposalStatus.FAILED
+
+
+async def test_every_terminal_event_says_which_model_answered(
+    client: AsyncClient, world: World, scripted
+) -> None:
+    """Reported: "still not showing what model is being used".
+
+    It was only on `done`. Both of the paths the reporter actually hit — a
+    refusal and a clarification — end without one, so the screen never learned
+    what had answered. A refusal is still a model speaking.
+    """
+    scripted(
+        json.dumps({"queries": [], "clarify": None, "refusal": "Not something I can look up."})
+    )
+
+    response = await ask(client, world, "what is the weather")
+
+    events = sse(response.text)
+    assert payload(events, "model")["name"], "the adapter is named before it is used"
+    refusal = payload(events, "refusal")
+    assert refusal["model"] == "scripted-1"
+    assert refusal["usage"] == {"input_tokens": 7}
+    assert isinstance(refusal["elapsed_ms"], int)

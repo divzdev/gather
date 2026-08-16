@@ -12,10 +12,11 @@ import { getToken } from "@/lib/session";
 
 export type AskEvent =
   | { kind: "planning" }
+  | { kind: "model"; name: string }
   | { kind: "queries"; names: string[] }
   | { kind: "token"; text: string }
-  | { kind: "clarify"; question: string; isStub: boolean }
-  | { kind: "refusal"; message: string; isStub: boolean }
+  | { kind: "clarify"; question: string; isStub: boolean; run: RunStats }
+  | { kind: "refusal"; message: string; isStub: boolean; run: RunStats }
   | {
       kind: "done";
       proposalId: string;
@@ -30,6 +31,27 @@ export type AskEvent =
   | { kind: "error"; message: string };
 
 export type Turn = { role: "user" | "assistant"; content: string };
+
+/** Which model answered, what the planning call cost, how long it all took.
+ *  Carried by every terminal event — an answer, a clarification and a refusal
+ *  are all a model speaking, and "which one" is the same question each time. */
+export type RunStats = {
+  model: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  elapsedMs: number | null;
+};
+
+function runStats(data: Record<string, unknown>): RunStats {
+  const usage = (data.usage ?? {}) as Record<string, unknown>;
+  const count = (value: unknown) => (typeof value === "number" ? value : null);
+  return {
+    model: typeof data.model === "string" ? data.model : null,
+    inputTokens: count(usage.input_tokens),
+    outputTokens: count(usage.output_tokens),
+    elapsedMs: count(data.elapsed_ms),
+  };
+}
 
 /** Coerce an unknown field into a string list, dropping anything that is not a
  *  string. These arrive from the network, so a cast would be a lie the renderer
@@ -47,6 +69,8 @@ function decode(name: string, data: Record<string, unknown>): AskEvent | null {
   switch (name) {
     case "planning":
       return { kind: "planning" };
+    case "model":
+      return { kind: "model", name: String(data.name ?? "") };
     case "queries":
       return { kind: "queries", names: stringList(data.names) };
     case "token":
@@ -56,27 +80,23 @@ function decode(name: string, data: Record<string, unknown>): AskEvent | null {
         kind: "clarify",
         question: String(data.question ?? ""),
         isStub: Boolean(data.is_stub),
+        run: runStats(data),
       };
     case "refusal":
       return {
         kind: "refusal",
         message: String(data.message ?? ""),
         isStub: Boolean(data.is_stub),
+        run: runStats(data),
       };
-    case "done": {
-      const usage = (data.usage ?? {}) as Record<string, unknown>;
-      const count = (value: unknown) => (typeof value === "number" ? value : null);
+    case "done":
       return {
         kind: "done",
         proposalId: String(data.proposal_id ?? ""),
         queries: stringList(data.queries),
         isStub: Boolean(data.is_stub),
-        model: typeof data.model === "string" ? data.model : null,
-        inputTokens: count(usage.input_tokens),
-        outputTokens: count(usage.output_tokens),
-        elapsedMs: count(data.elapsed_ms),
+        ...runStats(data),
       };
-    }
     case "error":
       return { kind: "error", message: String(data.message ?? "Something went wrong.") };
     default:

@@ -172,13 +172,27 @@ export function AssistantDrawer() {
           eventId,
           { question: trimmed, history },
           (event: AskEvent) => {
-            if (event.kind === "queries") patch({ queries: event.names });
+            // Named the moment the adapter is resolved, so the line is filled
+            // in during the wait rather than only after an answer lands — and
+            // on refusals, which never reach `done` at all.
+            if (event.kind === "model") patch({ model: event.name });
+            else if (event.kind === "queries") patch({ queries: event.names });
             else if (event.kind === "token")
               patch((previous) => ({ answer: previous.answer + event.text }));
             else if (event.kind === "clarify")
-              patch({ answer: event.question, aside: "clarify", isStub: event.isStub });
+              patch({
+                answer: event.question,
+                aside: "clarify",
+                isStub: event.isStub,
+                ...event.run,
+              });
             else if (event.kind === "refusal")
-              patch({ answer: event.message, aside: "refusal", isStub: event.isStub });
+              patch({
+                answer: event.message,
+                aside: "refusal",
+                isStub: event.isStub,
+                ...event.run,
+              });
             else if (event.kind === "done")
               patch({
                 queries: event.queries,
