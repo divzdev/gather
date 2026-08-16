@@ -321,6 +321,49 @@ test.describe("event assistant", () => {
     await expect(drawer.getByRole("button", { name: "Try again" })).toHaveCount(1);
   });
 
+  test("discarding stops the cards being pressable", async ({ page }) => {
+    await serve(page, PROPOSAL_SSE);
+    let discarded = false;
+    await page.route("**/ai/proposals/*/discard", async (route) => {
+      discarded = true;
+      await route.fulfill({ status: 200, json: {} });
+    });
+
+    await page.locator("[data-console-ask]").click();
+    const drawer = page.getByRole("dialog");
+    await drawer.getByLabel("Your question").fill("add a room called Big One");
+    await drawer.getByRole("button", { name: "Ask" }).click();
+    await drawer.getByRole("button", { name: /^Discard/ }).click();
+
+    await expect(drawer.getByText("Discarded — nothing was changed.")).toBeVisible();
+    await expect(drawer.getByRole("button", { name: "Create" })).toHaveCount(0);
+    expect(discarded).toBe(true);
+  });
+
+  test("a discard that fails leaves the changes pressable and says so", async ({ page }) => {
+    // Both review axes found this independently: the handler swallowed the
+    // failure and marked the card discarded anyway, so the screen claimed
+    // nothing had changed while the proposal stayed fully appliable.
+    await serve(page, PROPOSAL_SSE);
+    await page.route("**/ai/proposals/*/discard", async (route) => {
+      await route.fulfill({
+        status: 500,
+        json: { error: { code: "BOOM", message: "The server could not do that." } },
+      });
+    });
+
+    await page.locator("[data-console-ask]").click();
+    const drawer = page.getByRole("dialog");
+    await drawer.getByLabel("Your question").fill("add a room called Big One");
+    await drawer.getByRole("button", { name: "Ask" }).click();
+    await drawer.getByRole("button", { name: /^Discard/ }).click();
+
+    await expect(drawer.getByText(/have not been discarded/)).toBeVisible();
+    await expect(drawer.getByText("Discarded — nothing was changed.")).toHaveCount(0);
+    // The claim that matters: it is still pressable, because it is still real.
+    await expect(drawer.getByRole("button", { name: "Create" })).toBeVisible();
+  });
+
   test("the palette hands a typed question to the assistant", async ({ page }) => {
     await serve(page, SSE);
 

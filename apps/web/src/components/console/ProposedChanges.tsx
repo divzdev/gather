@@ -33,12 +33,16 @@ export function Changes({
   onApply,
   onDiscard,
   discarded,
+  discarding,
+  discardError,
   isPending,
 }: {
   actions: ProposedAction[];
   onApply: (chosen: ProposedAction[]) => void;
   onDiscard: () => void;
   discarded: boolean;
+  discarding: boolean;
+  discardError: string | null;
   isPending: (action: ProposedAction) => boolean;
 }) {
   const unapplied = actions.filter((action) => action.status === "proposed");
@@ -92,6 +96,7 @@ export function Changes({
         <button
           type="button"
           onClick={onDiscard}
+          disabled={discarding}
           style={{
             alignSelf: "flex-start",
             height: 36,
@@ -104,8 +109,19 @@ export function Changes({
             cursor: "pointer",
           }}
         >
-          Discard {unapplied.length > 1 ? "these" : "this"}
+          {discarding ? "Discarding…" : `Discard ${unapplied.length > 1 ? "these" : "this"}`}
         </button>
+      ) : null}
+      {discardError !== null ? (
+        <p
+          style={{
+            margin: 0,
+            font: "400 12.5px/1.5 var(--font-plex-sans),sans-serif",
+            color: "var(--cn,#b3243f)",
+          }}
+        >
+          {discardError} These changes have not been discarded — they can still be applied.
+        </p>
       ) : null}
     </div>
   );

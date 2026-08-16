@@ -14,6 +14,7 @@ becomes the resource's own sentence, and unset fields keep their defaults.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 import pytest
@@ -23,27 +24,64 @@ from app.core.crud import create_resource, previous_values, update_resource
 from app.core.errors import ApiError, ConflictError
 from app.core.tenancy import tenant_scope
 from app.features.program.resources import EVENT_DAY, ROOM, TRACK
-from app.features.program.schemas import EventDayCreate, RoomCreate, RoomUpdate, TrackCreate
+from app.features.program.schemas import (
+    EventDayCreate,
+    RoomCreate,
+    RoomUpdate,
+    Strict,
+    TrackCreate,
+)
 from app.models import Room
 from test_ai_assistant import World, world  # noqa: F401
 
 
-async def test_a_created_row_takes_the_schemas_defaults_not_invented_values(
+class _SortsHigh(Strict):
+    """A create schema whose default deliberately differs from the column's.
+
+    Every real resource happens to give its schema and its column the same
+    default, so no test over `RoomCreate` can tell `exclude_unset` from its
+    absence — the first version of the test below asserted three fields and
+    passed with the flag deleted. Review caught it. This schema exists so the
+    writer's contract is tested rather than a coincidence.
+    """
+
+    name: str
+    sort_order: int = 99
+
+
+async def test_a_created_row_takes_the_columns_default_not_the_schemas(
     session: AsyncSession, world: World
 ) -> None:
-    """A room described only by name is not given a capacity from nowhere.
+    """A field nobody supplied is left to the database.
 
     Story 10. The failure this guards is specific to the AI path — a model
     filling in every field of a schema it was shown — but the rule belongs to
     the writer, because the writer is what both callers reach.
     """
+    spec = replace(ROOM, create_schema=_SortsHigh)
+
     with tenant_scope(org_id=world.org_id, event_id=world.event.id):
-        room = await create_resource(session, ROOM, RoomCreate(name="Big One"))
+        room = await create_resource(session, spec, _SortsHigh(name="Big One"))
+        await session.flush()
 
     assert isinstance(room, Room)
     assert room.name == "Big One"
-    assert room.capacity is None
-    assert room.is_active is True
+    # 0 is the column's default; 99 is the schema's, and would mean the writer
+    # sent a value the caller never asked for.
+    assert room.sort_order == 0
+
+
+async def test_a_field_that_was_supplied_is_kept_even_when_it_equals_the_default(
+    session: AsyncSession, world: World
+) -> None:
+    """The other half: `exclude_unset` must not drop a value somebody chose."""
+    spec = replace(ROOM, create_schema=_SortsHigh)
+
+    with tenant_scope(org_id=world.org_id, event_id=world.event.id):
+        room = await create_resource(session, spec, _SortsHigh(name="Studio", sort_order=99))
+        await session.flush()
+
+    assert room.sort_order == 99
 
 
 async def test_a_duplicate_name_raises_the_resources_own_sentence(

@@ -40,7 +40,7 @@ from app.features.ai.schemas import (
     ScoreRequest,
 )
 from app.features.ai.service import org_ai
-from app.models import AiProposalStatus, Event, Role, User
+from app.models import AiProposalKind, AiProposalStatus, Event, Role, User
 
 router = APIRouter(
     prefix="/v1/events/{event_id}/ai",
@@ -221,10 +221,28 @@ async def apply_proposal(
 @router.post("/proposals/{proposal_id}/discard", response_model=ProposalRead)
 async def discard_proposal(
     proposal_id: uuid.UUID,
+    event_id: uuid.UUID,
     session: DbSession,
+    user: CurrentUser,
     _: User = Depends(require_role(*ANY_REVIEWER)),
 ) -> ProposalRead:
+    """Throw a suggestion away.
+
+    Any reviewer, because a reviewer creates score suggestions and must be able
+    to bin their own. **Except a program change**: a reviewer is refused the
+    assistant entirely, so they have no business discarding an organiser's
+    pending room — the roles are checked per kind rather than per route because
+    one route serves both.
+    """
     proposal = await proposals.get(session, proposal_id)
+    if (
+        proposal.kind is AiProposalKind.PROGRAM_CHANGE
+        and (await resolve_role(session, user.id, event_id)) not in STAFF
+    ):
+        raise RoleRequiredError(
+            "Program changes are discarded by organisers.",
+            details={"required": sorted(r.value for r in STAFF)},
+        )
     if proposal.status is AiProposalStatus.ACCEPTED:
         raise ApiError("That suggestion has already been accepted.", code="AI_ALREADY_ACCEPTED")
     return ProposalRead.model_validate(

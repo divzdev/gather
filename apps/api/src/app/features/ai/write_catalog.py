@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import Text, cast, func, select
+from sqlalchemy import Text, cast, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crud import ResourceSpec
@@ -207,11 +207,12 @@ def _label(spec: ResourceSpec, row: Any) -> str:
 async def resolve(session: AsyncSession, spec: ResourceSpec, wanted: str) -> Resolution:
     """Find the one row this string means, or report what there was to choose from.
 
-    Matching is exact on the resource's label column, case- and space-insensitive
-    — and deliberately no cleverer than that. Substring matching looks helpful
-    until "Studio" silently wins an edit aimed at "Studio B". Anything less than
-    an exact match is handed upward, where a model gets one chance to choose
-    between the candidates and a human is asked if it cannot.
+    Matching is exact on the resource's label column, ignoring case and
+    surrounding whitespace — and deliberately no cleverer than that. Substring
+    matching looks helpful until "Studio" silently wins an edit aimed at
+    "Studio B". Anything less than an exact match is handed upward, where a model
+    gets one chance to choose between the candidates and a human is asked if it
+    cannot.
 
     Runs inside the request's tenancy, so the rows considered are the caller's.
 
@@ -220,6 +221,14 @@ async def resolve(session: AsyncSession, spec: ResourceSpec, wanted: str) -> Res
     26th room — alphabetically — could not be edited by typing its exact name.
     The candidate list is a prompt-sized sample and is allowed to be truncated;
     matching is not.
+
+    **Both sides are folded by the same implementation.** The first version of
+    that query compared Postgres `lower()` against Python `str.casefold()`, which
+    are not the same function: `casefold("Straße")` is `"strasse"` and
+    `lower('Straße')` is `'straße'`. A card would be drawn (the ladder matches on
+    labels in Python) and then fail to apply, blaming a rename that never
+    happened. Folding the needle in the database too costs nothing and removes
+    the whole class.
     """
     column = getattr(spec.model, spec.label_column)
 
@@ -227,10 +236,11 @@ async def resolve(session: AsyncSession, spec: ResourceSpec, wanted: str) -> Res
     matches = list(
         (
             await session.execute(
-                # Compared as text so a date column answers to "2027-05-12", and
-                # case-folded in the database so the whole table is searched
-                # rather than the page of it we happen to be showing.
-                select(spec.model).where(func.lower(cast(column, Text)) == needle.casefold())
+                # Cast to text so a date column answers to "2027-05-12", and
+                # `lower()` on *both* sides so one folding implementation decides.
+                select(spec.model).where(
+                    func.lower(cast(column, Text)) == func.lower(cast(literal(needle), Text))
+                )
             )
         )
         .scalars()

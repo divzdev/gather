@@ -73,9 +73,12 @@ type Exchange = {
    *  alongside one — a question either asks something or asks for a change. */
   proposalId: string | null;
   actions: ProposedAction[];
-  /** Thrown away. The cards stay in the transcript so the conversation still
-   *  reads, but nothing about them is pressable. */
+  /** Thrown away, **server-confirmed**. The cards stay in the transcript so the
+   *  conversation still reads, but nothing about them is pressable. */
   discarded: boolean;
+  discarding: boolean;
+  /** Why the discard did not happen. The cards stay live when this is set. */
+  discardError: string | null;
   /** Edits it could not place. Shown under the cards, so two good creates are
    *  not thrown away by one ambiguous sibling. */
   questions: string[];
@@ -245,6 +248,8 @@ export function AssistantDrawer() {
           proposalId: null,
           actions: [],
           discarded: false,
+          discarding: false,
+          discardError: null,
           questions: [],
           resolving: null,
           error: null,
@@ -402,15 +407,34 @@ export function AssistantDrawer() {
     [eventId, queryClient, refreshStatus],
   );
 
+  /** Throw a suggestion away.
+   *
+   *  The card is marked discarded **only if the server agreed**. The first cut
+   *  swallowed the failure and marked it anyway, so a failed POST drew
+   *  "Discarded — nothing was changed" over a proposal that was still fully
+   *  appliable — a screen lying about a write, which is the one thing this
+   *  feature cannot do. Both review axes found it independently.
+   */
   const discard = useCallback(
     async (exchangeId: string, proposalId: string) => {
       if (eventId === null) return;
-      await discardProposal(eventId, proposalId).catch(() => undefined);
-      setExchanges((current) =>
-        current.map((exchange) =>
-          exchange.id === exchangeId ? { ...exchange, discarded: true } : exchange,
-        ),
-      );
+      const patch = (change: Partial<Exchange>) =>
+        setExchanges((current) =>
+          current.map((exchange) =>
+            exchange.id === exchangeId ? { ...exchange, ...change } : exchange,
+          ),
+        );
+      patch({ discarding: true });
+      try {
+        await discardProposal(eventId, proposalId);
+        patch({ discarded: true, discarding: false, discardError: null });
+      } catch (error) {
+        patch({
+          discarding: false,
+          discardError:
+            error instanceof Error ? error.message : "That suggestion could not be discarded.",
+        });
+      }
     },
     [eventId],
   );
@@ -696,6 +720,8 @@ function Answer({
               onApply={onApply}
               onDiscard={onDiscard}
               discarded={exchange.discarded}
+              discarding={exchange.discarding}
+              discardError={exchange.discardError}
               isPending={isPending}
             />
           ) : null}

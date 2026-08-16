@@ -130,6 +130,23 @@ async def apply(
     session: AsyncSession, *, proposal: AiProposal, indexes: list[int]
 ) -> list[Applied]:
     """Apply the named actions of one proposal. The only caller is the route."""
+    # The lock comes first, and every decision below is made on state read after
+    # it. Two presses of the same button land as two requests, and the
+    # idempotency check is read-then-write: without this both read `proposed`
+    # and both try to create, so the second gets a duplicate-name error rather
+    # than the "already done" it should.
+    #
+    # The ordering matters for more than idempotency. Checking `status` *before*
+    # the lock meant a Discard that committed while this request was parked here
+    # went unseen, and rows were written for a proposal the organiser had thrown
+    # away — the read happened before the fact it needed. Transaction-scoped,
+    # released on commit, keyed on this proposal, so it blocks nothing else.
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext('ai_apply'), hashtext(:proposal))"),
+        {"proposal": str(proposal.id)},
+    )
+    await session.refresh(proposal)
+
     if proposal.kind is not AiProposalKind.PROGRAM_CHANGE:
         raise ApiError(
             "That suggestion is not a program change.",
@@ -154,18 +171,6 @@ async def apply(
             code="AI_NO_SUCH_ACTION",
             status_code=422,
         )
-
-    # Two presses of the same button land as two requests, and the idempotency
-    # check below is read-then-write. Without this both read `proposed` and both
-    # try to create; the second gets the duplicate-name error rather than the
-    # "already done" it should. Transaction-scoped, released on commit, and
-    # keyed on this proposal, so it blocks nothing else.
-    await session.execute(
-        text("SELECT pg_advisory_xact_lock(hashtext('ai_apply'), hashtext(:proposal))"),
-        {"proposal": str(proposal.id)},
-    )
-    await session.refresh(proposal)
-    actions = _actions(proposal)
 
     results: list[Applied] = []
     for index in indexes:
@@ -195,7 +200,10 @@ async def apply(
     # that are necessary.
     proposal.output = {**proposal.output, "actions": actions}
     proposal.status = _resolution(actions)
-    if proposal.status is AiProposalStatus.ACCEPTED:
+    if proposal.status is AiProposalStatus.ACCEPTED and proposal.resolved_at is None:
+        # Only the first time. `_resolution` recomputes over every action, so an
+        # idempotent second press used to move the acceptance timestamp — the row
+        # would claim it was accepted at whenever somebody last double-clicked.
         proposal.resolved_at = datetime.now(UTC)
     await session.flush()
     return results

@@ -171,7 +171,18 @@ def event_resource_router(spec: ResourceSpec) -> APIRouter:
         _: User = Depends(require_role(*READ_ROLES)),
     ) -> Any:
         column = getattr(model, spec.order_by, None) or model.id  # type: ignore[attr-defined]
-        rows = (await session.execute(select(model).order_by(column))).scalars().all()
+        # `id` second, always. Every one of these resources sorts on a field an
+        # organiser can leave at its default — three tracks all at `sort_order:
+        # 0` is the normal case — and a tie with no tiebreak lets Postgres
+        # return whatever physical order it likes. That surfaced as a list
+        # arriving [1, 3, 2] once unrelated work changed the row layout, which
+        # reads on screen as the app shuffling itself. UUIDv7 is time-ordered,
+        # so this is "the order they were added".
+        rows = (
+            (await session.execute(select(model).order_by(column, model.id)))  # type: ignore[attr-defined]
+            .scalars()
+            .all()
+        )
         return await _read(session, list(rows))
 
     @router.post("", response_model=read_schema, status_code=status.HTTP_201_CREATED)

@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crud import create_resource
 from app.core.tenancy import tenancy_disabled, tenant_scope
-from app.features.ai import assistant
+from app.features.ai import propose
 from app.features.program.resources import EVENT_DAY, ROOM
 from app.features.program.schemas import EventDayCreate, RoomCreate
 from app.models import AiProposal, EventDay, Room
@@ -220,7 +220,7 @@ async def test_every_card_drawn_can_be_applied(
     proposal_id = await _propose(client, world, "add thirty rooms")
 
     cards = await _cards(client, world, proposal_id)
-    assert len(cards) == assistant.MAX_ACTIONS
+    assert len(cards) == propose.MAX_ACTIONS
 
     response = await _apply(client, world, proposal_id, [card["index"] for card in cards])
 
