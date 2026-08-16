@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AiKeyPanel } from "@/components/console/AiKeyPanel";
 import { OrganizationPanel } from "@/components/console/OrganizationPanel";
@@ -205,15 +205,42 @@ export default function SettingsPage() {
 
   /** The design has no save button, so fields commit themselves — but only once
    *  the typing stops. Saving per keystroke would PATCH on every character and
-   *  persist half-written dates. */
+   *  persist half-written dates.
+   *
+   *  Two things that debounce has to get right, and did not:
+   *
+   *  It has to *accumulate*. One timer served every field and each new edit
+   *  replaced the last one's payload, so setting a name and then a slug inside
+   *  the delay saved the slug and silently dropped the name.
+   *
+   *  It has to *flush*. Nothing cancelled or fired the timer on the way out, so
+   *  typing a date and leaving within 700ms discarded the edit — no request, no
+   *  error, and the field showing the value you had just typed until something
+   *  refetched. The CFP deadline is set on this screen, so the write being lost
+   *  is the call staying open. */
   const pending = useRef<number | null>(null);
+  const queued = useRef<Record<string, unknown>>({});
+  const flush = useCallback(() => {
+    if (pending.current !== null) window.clearTimeout(pending.current);
+    pending.current = null;
+    const changes = queued.current;
+    queued.current = {};
+    if (Object.keys(changes).length > 0) save.mutate(changes);
+  }, [save]);
+
   const commit = useCallback(
     (changes: Record<string, unknown>) => {
+      queued.current = { ...queued.current, ...changes };
       if (pending.current !== null) window.clearTimeout(pending.current);
-      pending.current = window.setTimeout(() => save.mutate(changes), COMMIT_DELAY_MS);
+      pending.current = window.setTimeout(flush, COMMIT_DELAY_MS);
     },
-    [save],
+    [flush],
   );
+
+  /** Leaving the screen is a commit, not a cancel. `flush` is stable across
+   *  renders only through `save`, so this is keyed to it rather than run once —
+   *  a stale closure here would send the edit to the previous event. */
+  useEffect(() => flush, [flush]);
 
   const field =
     <K extends keyof Draft>(key: K, onCommit: (value: string) => Record<string, unknown> | null) =>
