@@ -18,7 +18,7 @@ export type Me = {
   density_pref: string;
 };
 
-export function useMe(): { me: Me | undefined; isManager: boolean } {
+export function useMe(): { me: Me | undefined; isManager: boolean; isReviewer: boolean } {
   const { data: me } = useQuery({
     queryKey: ["me"],
     queryFn: () => authed<Me>("/auth/me"),
@@ -26,5 +26,15 @@ export function useMe(): { me: Me | undefined; isManager: boolean } {
   });
   // "Manager" = the roles allowed to touch billing-adjacent settings; the API
   // enforces it regardless, this only decides what is worth drawing.
-  return { me, isManager: me?.role === "owner" || me?.role === "admin" };
+  return {
+    me,
+    isManager: me?.role === "owner" || me?.role === "admin",
+    // A reviewer works from a reduced console: the scoring queue and nothing
+    // else. Authorization already held — RequireStaff bounces them off /admin
+    // and every route states its own role — but the *navigation* said
+    // otherwise, offering a dozen destinations that each bounce straight back
+    // to /review. Same reasoning as the "New event" link in EventSwitcher: a
+    // control that cannot work is worse than its absence.
+    isReviewer: me?.role === "reviewer",
+  };
 }

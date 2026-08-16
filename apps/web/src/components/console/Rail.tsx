@@ -11,7 +11,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { ConsoleRail, type ConsoleRailData } from "@/components/design/ConsoleRail";
-import { useQuery } from "@tanstack/react-query";
 
 import { CommandPalette } from "@/components/console/CommandPalette";
 import {
@@ -21,7 +20,7 @@ import {
   subscribeMobileNav,
 } from "@/components/console/mobileNav";
 import { useProgramStats } from "@/components/console/stats";
-import { authed } from "@/lib/session";
+import { useMe } from "@/components/console/useMe";
 
 const RAIL_KEY = "gather.rail";
 
@@ -92,13 +91,21 @@ type NavName =
   | "Publishing"
   | "Settings";
 
+/** The nav a reviewer must not be shown, hidden here rather than in
+ *  `ConsoleRail` because that file is generated from the prototype and says so:
+ *  a hand-added prop there is what regeneration deletes. Every item carries an
+ *  inline `display`, so the rule has to outrank it.
+ *
+ *  All of it goes, not all-but-Review: the reviewer console is one screen, they
+ *  are already on it, and the rail's own Review link points at `/admin/review`,
+ *  which would bounce them through a redirect back to where they started. What
+ *  is left — the mark and who you are signed in as — is the whole of what the
+ *  rail owes them. */
+const REDUCED_NAV_CSS = `[data-console-rail][data-reduced="true"] nav > * { display: none !important; }`;
+
 export function Rail({ active, style }: { active: NavName; style?: React.CSSProperties }) {
   // Same query key as the console chrome, so this is one request, not two.
-  const { data: me } = useQuery({
-    queryKey: ["me"],
-    queryFn: () => authed<{ name: string; role: string; org_name: string | null }>("/auth/me"),
-    staleTime: 5 * 60_000,
-  });
+  const { me, isReviewer } = useMe();
   const initials = (me?.name ?? "")
     .split(" ")
     .filter(Boolean)
@@ -231,8 +238,17 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
     },
   };
 
+  /** `me` arrives a request late, and the reviewer console does not wait for it
+   *  before painting — so keying only on the role would show the organiser's
+   *  nav for a frame, which is the exact thing RequireStaff renders null to
+   *  avoid. On `/review` the nav therefore stays hidden until the role is known
+   *  and says otherwise; everywhere else an unknown role means "not yet", not
+   *  "reviewer", so the rail does not flicker empty on every cold load. */
+  const reduced = me === undefined ? pathname.startsWith("/review") : isReviewer;
+
   return (
     <>
+      <style>{REDUCED_NAV_CSS}</style>
       {/* Dismisses the drawer, and blocks the page behind it from being poked
        *  through. Only rendered while open, so it costs nothing on a desktop. */}
       {drawerOpen ? (
@@ -246,6 +262,7 @@ export function Rail({ active, style }: { active: NavName; style?: React.CSSProp
       <div
         data-console-rail
         data-open={drawerOpen ? "true" : "false"}
+        data-reduced={reduced ? "true" : "false"}
         style={{ ...style, position: "relative" }}
       >
         <ConsoleRail d={data} />

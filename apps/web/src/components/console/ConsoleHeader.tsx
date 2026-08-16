@@ -23,6 +23,7 @@ import { EventSwitcher } from "@/components/console/EventSwitcher";
 import { toggleMobileNav } from "@/components/console/mobileNav";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { useProgramStats } from "@/components/console/stats";
+import { useMe } from "@/components/console/useMe";
 
 const HOVER_CSS = `.gh-row:hover{background:var(--sk,#EDF1F2)}
 .gh-danger:hover{background:var(--cnw,#FBE8E6)}
@@ -45,6 +46,7 @@ function useEscape(onEscape: () => void, active: boolean): void {
 export function ConsoleHeader() {
   const { chrome } = useConsoleChrome();
   const { stats } = useProgramStats();
+  const { isReviewer } = useMe();
   const [bell, setBell] = useState(false);
 
   const closeBell = () => setBell(false);
@@ -130,107 +132,122 @@ export function ConsoleHeader() {
 
       <EventSwitcher />
 
-      {/* On a phone this becomes the icon alone — see `[data-console-search]` in
-       *  globals.css. A search field squeezed to a sliver is worse than a search
-       *  button, because it still looks like somewhere you could type. */}
-      <button
-        type="button"
-        className="gh-search"
-        data-console-search
-        onClick={() => openCommandPalette()}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 11,
-          // Fixed, not flexed. The rail collapses itself on the section-nav
-          // routes (Rail.tsx SECTION_NAV_ROUTES) and hands back 192px, which two
-          // flexed siblings would split — search grew 96px on three routes out of
-          // fifteen and the header changed shape as you navigated. The spacer
-          // below takes the whole refund instead, so this stays one width.
-          flex: "none",
-          width: 320,
-          height: 40,
-          padding: "0 16px",
-          borderRadius: 11,
-          background: "var(--sk,#EDF1F2)",
-          border: "1px solid var(--ln,#E1E7E9)",
-          font: "400 13.5px var(--font-plex-sans), sans-serif",
-          color: "var(--i3,#6B7B84)",
-          textAlign: "left",
-          transition: "border-color .12s",
-        }}
-      >
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 12 12"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          style={{ flex: "none" }}
-          aria-hidden="true"
-        >
-          <circle cx="5" cy="5" r="3.6" />
-          <path d="M8 8l2.6 2.6" />
-        </svg>
-        <span
-          data-search-label
-          style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-        >
-          Search or jump to…
-        </span>
-        <span
-          data-search-key
-          style={{
-            font: "500 10px var(--font-plex-mono), monospace",
-            border: "1px solid var(--ls,#C8D2D5)",
-            borderRadius: 4,
-            padding: "1px 5px",
-            flex: "none",
-          }}
-        >
-          ⌘K
-        </span>
-      </button>
+      {/* Both of these are an organiser's, and both are hidden together for a
+       *  reviewer: the palette is thirteen screens they cannot open plus a
+       *  search across submissions and speakers, and the assistant refuses them
+       *  server-side because a question box over submissions walks straight
+       *  around blind review. Leaving either drawn would be the same defect the
+       *  rail had, only smaller — a control that cannot work. */}
+      {isReviewer ? null : (
+        <>
+          {/* On a phone this becomes the icon alone — see `[data-console-search]` in
+           *  globals.css. A search field squeezed to a sliver is worse than a search
+           *  button, because it still looks like somewhere you could type. */}
+          <button
+            type="button"
+            className="gh-search"
+            data-console-search
+            onClick={() => openCommandPalette()}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 11,
+              // Fixed, not flexed. The rail collapses itself on the section-nav
+              // routes (Rail.tsx SECTION_NAV_ROUTES) and hands back 192px, which two
+              // flexed siblings would split — search grew 96px on three routes out of
+              // fifteen and the header changed shape as you navigated. The spacer
+              // below takes the whole refund instead, so this stays one width.
+              flex: "none",
+              width: 320,
+              height: 40,
+              padding: "0 16px",
+              borderRadius: 11,
+              background: "var(--sk,#EDF1F2)",
+              border: "1px solid var(--ln,#E1E7E9)",
+              font: "400 13.5px var(--font-plex-sans), sans-serif",
+              color: "var(--i3,#6B7B84)",
+              textAlign: "left",
+              transition: "border-color .12s",
+            }}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              style={{ flex: "none" }}
+              aria-hidden="true"
+            >
+              <circle cx="5" cy="5" r="3.6" />
+              <path d="M8 8l2.6 2.6" />
+            </svg>
+            <span
+              data-search-label
+              style={{
+                flex: 1,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              Search or jump to…
+            </span>
+            <span
+              data-search-key
+              style={{
+                font: "500 10px var(--font-plex-mono), monospace",
+                border: "1px solid var(--ls,#C8D2D5)",
+                borderRadius: 4,
+                padding: "1px 5px",
+                flex: "none",
+              }}
+            >
+              ⌘K
+            </span>
+          </button>
 
-      {/* Beside search on purpose: the two things you reach for when you do not
-       *  know where something is. Labelled "Ask" rather than anything cleverer —
-       *  a feature nobody can name is a feature nobody finds. */}
-      <button
-        type="button"
-        className="gh-row"
-        onClick={() => openAssistant()}
-        aria-label="Ask about this event"
-        title="Ask about this event (⌘/)"
-        data-console-ask
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          flex: "none",
-          height: 40,
-          padding: "0 16px",
-          borderRadius: 11,
-          background: "var(--cd,#FFFFFF)",
-          border: "1px solid var(--ln,#E3E3E7)",
-          color: "var(--i2,#3F3F46)",
-          font: "500 13px var(--font-plex-sans), sans-serif",
-        }}
-      >
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 12 12"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-          aria-hidden="true"
-        >
-          <path d="M2 2.2h8v5.4H5.4L3 9.6V7.6H2z" />
-        </svg>
-        <span data-ask-label>Ask</span>
-      </button>
+          {/* Beside search on purpose: the two things you reach for when you do not
+           *  know where something is. Labelled "Ask" rather than anything cleverer —
+           *  a feature nobody can name is a feature nobody finds. */}
+          <button
+            type="button"
+            className="gh-row"
+            onClick={() => openAssistant()}
+            aria-label="Ask about this event"
+            title="Ask about this event (⌘/)"
+            data-console-ask
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flex: "none",
+              height: 40,
+              padding: "0 16px",
+              borderRadius: 11,
+              background: "var(--cd,#FFFFFF)",
+              border: "1px solid var(--ln,#E3E3E7)",
+              color: "var(--i2,#3F3F46)",
+              font: "500 13px var(--font-plex-sans), sans-serif",
+            }}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M2 2.2h8v5.4H5.4L3 9.6V7.6H2z" />
+            </svg>
+            <span data-ask-label>Ask</span>
+          </button>
+        </>
+      )}
 
       <div style={{ flex: 1, minWidth: 0 }} />
 
@@ -508,45 +525,56 @@ export function ConsoleHeader() {
 
               <div style={{ height: 1, background: "var(--ln,#E1E7E9)", margin: "4px 6px" }} />
 
-              <button
-                type="button"
-                className="gh-row"
-                onClick={chrome.profileGo}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 9,
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 7,
-                  border: "none",
-                  background: "none",
-                  font: "400 12.5px var(--font-plex-sans), sans-serif",
-                  color: "var(--ik,#16232B)",
-                  textAlign: "left",
-                }}
-              >
-                Your profile
-              </button>
-              <Link
-                className="gh-row"
-                href="/admin/settings"
-                onClick={chrome.closeUser}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 9,
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: "8px 10px",
-                  borderRadius: 7,
-                  textDecoration: "none",
-                  font: "400 12.5px var(--font-plex-sans), sans-serif",
-                  color: "var(--ik,#16232B)",
-                }}
-              >
-                Event settings
-              </Link>
+              {/* Both go to `/admin`, which a reviewer does not have: Settings is
+                  the event's and was never theirs, and the profile screen is
+                  their own but lives behind the same guard, so it bounces them
+                  back to the queue. Hiding it is honest about today's behaviour
+                  and leaves a reviewer no way to edit their own account — worth
+                  fixing by moving that screen out from under `/admin`, which is
+                  a bigger change than this one. */}
+              {isReviewer ? null : (
+                <button
+                  type="button"
+                  className="gh-row"
+                  onClick={chrome.profileGo}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    width: "100%",
+                    padding: "8px 10px",
+                    borderRadius: 7,
+                    border: "none",
+                    background: "none",
+                    font: "400 12.5px var(--font-plex-sans), sans-serif",
+                    color: "var(--ik,#16232B)",
+                    textAlign: "left",
+                  }}
+                >
+                  Your profile
+                </button>
+              )}
+              {isReviewer ? null : (
+                <Link
+                  className="gh-row"
+                  href="/admin/settings"
+                  onClick={chrome.closeUser}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "8px 10px",
+                    borderRadius: 7,
+                    textDecoration: "none",
+                    font: "400 12.5px var(--font-plex-sans), sans-serif",
+                    color: "var(--ik,#16232B)",
+                  }}
+                >
+                  Event settings
+                </Link>
+              )}
 
               <div style={{ height: 1, background: "var(--ln,#E1E7E9)", margin: "4px 6px" }} />
 

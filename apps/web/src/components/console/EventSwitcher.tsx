@@ -21,10 +21,10 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 
+import { useMe } from "@/components/console/useMe";
 import { authed, getEventId, setEventId } from "@/lib/session";
 
 type EventRow = { id: string; name: string; starts_on: string; ends_on?: string };
-type Me = { name: string; role: string; org_name: string | null };
 
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric" });
 const MONTH = new Intl.DateTimeFormat("en-GB", { month: "short" });
@@ -193,11 +193,7 @@ export function EventSwitcher() {
     staleTime: 5 * 60_000,
   });
   // Same key the rail and console chrome use, so this is one request, not three.
-  const { data: me } = useQuery({
-    queryKey: ["me"],
-    queryFn: () => authed<Me>("/auth/me"),
-    staleTime: 5 * 60_000,
-  });
+  const { me, isReviewer } = useMe();
 
   const list = events ?? [];
   const active = list.find((event) => event.id === current) ?? list[0];
@@ -434,36 +430,43 @@ export function EventSwitcher() {
                     ))
                   )}
                 </div>
-                <Link
-                  href="/admin/events/new"
-                  onClick={close}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 9,
-                    padding: "8px 10px",
-                    marginTop: 2,
-                    borderRadius: 6,
-                    textDecoration: "none",
-                    font: "600 12.5px var(--font-plex-sans), sans-serif",
-                    color: "var(--sg,#E04E4E)",
-                  }}
-                >
-                  <span style={{ width: 7, textAlign: "center" }}>+</span>
-                  New event
-                </Link>
+                {/* Switching events is a reviewer's to do — they can be assigned
+                    in more than one. Creating one is not, and neither is
+                    anything in the column beside it. */}
+                {isReviewer ? null : (
+                  <Link
+                    href="/admin/events/new"
+                    onClick={close}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                      padding: "8px 10px",
+                      marginTop: 2,
+                      borderRadius: 6,
+                      textDecoration: "none",
+                      font: "600 12.5px var(--font-plex-sans), sans-serif",
+                      color: "var(--sg,#E04E4E)",
+                    }}
+                  >
+                    <span style={{ width: 7, textAlign: "center" }}>+</span>
+                    New event
+                  </Link>
+                )}
               </div>
 
-              <div style={{ padding: 6, borderLeft: "1px solid var(--ln,#E1E7E9)" }}>
-                <div style={EYEBROW}>EVENT</div>
-                {EVENT_LINKS.map((link) => (
-                  <MenuLink key={link.href} {...link} onNavigate={close} />
-                ))}
-                <div style={{ ...EYEBROW, paddingTop: 12 }}>ORGANISATION</div>
-                {ORG_LINKS.map((link) => (
-                  <MenuLink key={link.href} {...link} onNavigate={close} />
-                ))}
-              </div>
+              {isReviewer ? null : (
+                <div style={{ padding: 6, borderLeft: "1px solid var(--ln,#E1E7E9)" }}>
+                  <div style={EYEBROW}>EVENT</div>
+                  {EVENT_LINKS.map((link) => (
+                    <MenuLink key={link.href} {...link} onNavigate={close} />
+                  ))}
+                  <div style={{ ...EYEBROW, paddingTop: 12 }}>ORGANISATION</div>
+                  {ORG_LINKS.map((link) => (
+                    <MenuLink key={link.href} {...link} onNavigate={close} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </>

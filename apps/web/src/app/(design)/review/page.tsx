@@ -103,7 +103,7 @@ export default function ReviewPage() {
 
   // Only the role is wanted: it decides whether the stub note can usefully
   // point at Settings.
-  const { isManager } = useMe();
+  const { isManager, isReviewer } = useMe();
 
   const { data: subject } = useQuery({
     queryKey: ["review-subject", eventId, round?.id, current?.submission_id],
@@ -435,5 +435,26 @@ export default function ReviewPage() {
     toasts: toasts.map((entry) => ({ msg: entry.msg, onX: () => dismiss(entry.id) })),
   };
 
-  return <Review d={screen} />;
+  /** This screen belongs to two roles. A manager arrives from the console and
+   *  the two "Overview" links back to `/admin` are how they leave; a reviewer
+   *  has no `/admin`, so for them RequireStaff turns both into a round trip
+   *  that lands where they already were. Hidden here rather than in
+   *  `components/design/Review.tsx`, which is generated and says not to edit
+   *  it — and by selector rather than by prop for the same reason. */
+  return (
+    <div
+      data-review-console
+      data-reduced={isReviewer ? "true" : "false"}
+      // The screen inside is a 100vh grid; a wrapper that took part in layout
+      // would give it a parent to be 100% of and break the height cascade.
+      style={{ display: "contents" }}
+    >
+      {/* The rail's own logo is an `a[href="/admin"]` too — "Gather home" — and
+          the first cut of this rule hid it, leaving a collapse button floating
+          in an empty corner. The rail is excluded by the attribute Rail.tsx
+          sets by hand, rather than by the generated link's title. */}
+      <style>{`[data-review-console][data-reduced="true"] a[href="/admin"]:not([data-console-rail] a) { display: none !important; }`}</style>
+      <Review d={screen} />
+    </div>
+  );
 }

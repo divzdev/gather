@@ -15,13 +15,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { openAssistant } from "@/components/console/AssistantDrawer";
+import { useMe } from "@/components/console/useMe";
 import { authed, getEventId } from "@/lib/session";
 
 /** A row either navigates or acts — never neither, never both. The assistant
  *  is the only acting row; everything else is a destination. */
 type Item = { label: string; hint: string } & (
-  | { href: string; run?: never }
-  | { run: () => void; href?: never }
+  { href: string; run?: never } | { run: () => void; href?: never }
 );
 
 /** The header's "Search or jump to… ⌘K" button lives inside a generated screen
@@ -52,6 +52,7 @@ const SCREENS: Item[] = [
 
 export function CommandPalette() {
   const router = useRouter();
+  const { isReviewer } = useMe();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -84,15 +85,15 @@ export function CommandPalette() {
   const { data: found } = useQuery({
     queryKey: ["palette", eventId, term],
     // Two characters, so the first keystroke does not fire a search.
-    enabled: open && eventId !== null && term.length >= 2,
+    enabled: open && !isReviewer && eventId !== null && term.length >= 2,
     queryFn: async () => {
       const [submissions, speakers] = await Promise.all([
         authed<{ data: { id: string; title: string; code: string }[] }>(
           `/events/${eventId}/submissions?per_page=5&q=${encodeURIComponent(term)}`,
         ).catch(() => ({ data: [] })),
-        authed<{ id: string; name: string; email: string }[]>(
-          `/events/${eventId}/speakers`,
-        ).catch(() => []),
+        authed<{ id: string; name: string; email: string }[]>(`/events/${eventId}/speakers`).catch(
+          () => [],
+        ),
       ]);
       const needle = term.toLowerCase();
       return [
@@ -113,7 +114,12 @@ export function CommandPalette() {
     },
   });
 
-  if (!open) return null;
+  /** Every row in here is an organiser's: thirteen console screens a reviewer
+   *  cannot open, a search across submissions and speakers, and the assistant,
+   *  which refuses reviewers server-side because a question box over
+   *  submissions walks straight around blind review. A palette with nothing
+   *  left in it is not a palette, so ⌘K simply does nothing for them. */
+  if (!open || isReviewer) return null;
 
   const screens = SCREENS.filter((item) =>
     term === "" ? true : item.label.toLowerCase().includes(term.toLowerCase()),
@@ -196,7 +202,10 @@ export function CommandPalette() {
             outline: "none",
           }}
         />
-        <ul role="listbox" style={{ listStyle: "none", margin: 0, padding: 6, maxHeight: 380, overflowY: "auto" }}>
+        <ul
+          role="listbox"
+          style={{ listStyle: "none", margin: 0, padding: 6, maxHeight: 380, overflowY: "auto" }}
+        >
           {results.length === 0 ? (
             <li
               style={{
