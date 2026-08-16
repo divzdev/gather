@@ -43,6 +43,37 @@ test("43. the form opens with no login and sends no credentials", async ({ page 
 // until then the config-level retry absorbs it, and a real regression still
 // fails twice.
 
+/** The form promised "saved as you go" unconditionally, against a 20-second
+ *  timer with no flush on the way out. Someone who typed two fields and left at
+ *  second nineteen lost all of it, having just been told they would not. Both
+ *  halves are pinned: the sentence has to match the state, and leaving has to
+ *  save. */
+test("the CFP does not promise a save it has not made, and saves on the way out", async ({
+  page,
+}) => {
+  await openForm(page);
+
+  const promise = page.getByText(/saving itself|saved as you go/);
+  await expect(promise, "the form made no claim about saving at all").toBeVisible();
+  await expect(
+    promise,
+    "the form promised work was already saved before anything had been",
+  ).toHaveText(/starts saving itself/);
+
+  await page.getByLabel(/Your name/i).fill("Exit Flush");
+  await page.getByLabel(/Email/i).fill("exit.flush@conference.org");
+  await page.getByRole("button", { name: /Continue/i }).click();
+  await page.getByLabel(/Session title/i).fill("Leaving early should not lose this");
+
+  // Well inside AUTOSAVE_MS, so a pass here cannot come from the interval.
+  await expect(page.getByText(/Not saved yet/)).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+
+  await expect(page.getByText(/^Saved /), "leaving the page did not flush the draft").toBeVisible({
+    timeout: 10_000,
+  });
+});
+
 test("44. every field configured on the form is collected somewhere", async ({ page, request }) => {
   // The schema is the source of truth: whatever the organiser configured has to
   // render, not a fixed set the page happens to know about.

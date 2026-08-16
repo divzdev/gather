@@ -76,6 +76,11 @@ export function CfpForm({ slug }: { slug: string }) {
   const [co, setCo] = useState<{ name: string; email: string }[]>([]);
   const [errors, setErrors] = useState<Problem[]>([]);
   const [save, setSave] = useState<Save>({ kind: "idle" });
+  /** Whether the server is actually holding a draft for this person yet.
+   *
+   *  `token.current` is the same fact, but it is a ref, and the promise printed
+   *  under the form is the one thing that must not be a frame out of date. */
+  const [kept, setKept] = useState(false);
   const [resumed, setResumed] = useState<string | null>(null);
   const [done, setDone] = useState<{ code: string; message: string } | null>(null);
   const [toasts, setToasts] = useState<{ id: string; msg: string }[]>([]);
@@ -144,6 +149,7 @@ export function CfpForm({ slug }: { slug: string }) {
           return;
         }
         token.current = stored.token;
+        setKept(true);
         setValues(draft.answers);
         setName(stored.name);
         setEmail(stored.email);
@@ -162,6 +168,7 @@ export function CfpForm({ slug }: { slug: string }) {
           return;
         }
         token.current = stored.token;
+        setKept(true);
         setName(stored.name);
         setEmail(stored.email);
       });
@@ -205,6 +212,7 @@ export function CfpForm({ slug }: { slug: string }) {
     onSuccess: (result) => {
       if (result === null) return;
       token.current = result.draft_token;
+      setKept(true);
       window.localStorage.setItem(
         STORE,
         JSON.stringify({
@@ -233,6 +241,37 @@ export function CfpForm({ slug }: { slug: string }) {
   useEffect(() => {
     const timer = window.setInterval(() => saveDraft.mutate(), AUTOSAVE_MS);
     return () => window.clearInterval(timer);
+  }, [saveDraft]);
+
+  /** Save on the way out, not only on the clock.
+   *
+   *  A twenty-second timer with no exit flush means someone who fills in two
+   *  fields and leaves at second nineteen loses all of it, having just been told
+   *  they would not. `visibilitychange` is the one that actually fires — it is
+   *  the only signal a mobile browser reliably gives before it backgrounds and
+   *  discards a tab, and `beforeunload` is not dispatched at all in that case.
+   *  `pagehide` covers the desktop close and back-navigation.
+   *
+   *  A plain `fetch` rather than `sendBeacon`, deliberately: the first save is
+   *  the one that issues the `draft_token`, and a beacon throws its response
+   *  away, so the browser would hold no pointer to the very draft it just
+   *  created. A fetch started on `hidden` reaches the server in the ordinary
+   *  case, which is the case this is for; the tab that is killed mid-flight was
+   *  already going to lose that keystroke. */
+  useEffect(() => {
+    const flush = () => saveDraft.mutate();
+    // Two handlers, not one: `visibilitychange` also fires on the way *back*,
+    // and `pagehide` can fire while the page still reads as visible, so a
+    // single guarded handler either saves on return or skips the unload.
+    const onHide = () => {
+      if (document.visibilityState === "hidden") saveDraft.mutate();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flush);
+    };
   }, [saveDraft]);
 
   // ---- validation --------------------------------------------------------
@@ -698,8 +737,14 @@ export function CfpForm({ slug }: { slug: string }) {
           margin: 0,
         }}
       >
-        Your work is saved as you go, so you can close this and come back. Nothing is sent until you
-        press submit on the last step.
+        {/* Unconditionally claiming "saved as you go" was untrue twice over: the
+            draft needs an email and a title before there is anything the server
+            will keep, and until the first save there is nothing to come back
+            to. Saying which of the two you are in costs one line and is the
+            difference between a promise and a guess. */}
+        {kept
+          ? "Your work is saved as you go, so you can close this and come back. Nothing is sent until you press submit on the last step."
+          : "Add your email and a title and this page starts saving itself, so you can close it and come back. Nothing is sent until you press submit on the last step."}
       </p>
       {needsTerms && (
         <Consent
