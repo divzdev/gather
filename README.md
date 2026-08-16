@@ -13,14 +13,16 @@ exists.
 make setup && make dev     # a running, seeded conference. no API keys, no accounts.
 ```
 
-<!-- A poster that links out, not a <video> tag: GitHub strips <video> from a README
-     unless the source is one of its own upload URLs, and YouTube embeds do not render
-     here either. The poster is a local asset; the film itself is hosted off-repo, so a
-     50MB file never rides along in every clone. -->
+<!-- A poster that links out, and it cannot be anything else: GitHub's markdown
+     sanitizer strips <iframe>, so no README anywhere embeds a YouTube player, and it
+     strips <video> unless the file was uploaded to GitHub itself. Hence the play badge
+     composited onto the poster — without it the thumbnail reads as a screenshot and
+     nobody clicks it. The film is hosted off-repo so a 50MB file never rides along in
+     every clone. -->
 
-[![Gather — a conference programme, start to finish](.github/media/film-poster.jpg)](https://youtu.be/a7MB6f6Xtfs)
+[![Watch Gather — a conference programme, start to finish](.github/media/film-poster.jpg)](https://youtu.be/a7MB6f6Xtfs)
 
-**▶ [Watch the film](https://youtu.be/a7MB6f6Xtfs)** · the whole programme end to end
+**▶ [Watch the film on YouTube](https://youtu.be/a7MB6f6Xtfs)** · the whole programme, end to end
 
 ---
 
