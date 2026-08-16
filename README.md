@@ -14,13 +14,13 @@ make setup && make dev     # a running, seeded conference. no API keys, no accou
 ```
 
 <!-- A poster that links out, not a <video> tag: GitHub strips <video> from a README
-     unless the source is one of its own upload URLs, and the films are release assets
-     (`media-v1`) rather than commits — a 52MB file in git history rides in every clone. -->
+     unless the source is one of its own upload URLs, and YouTube embeds do not render
+     here either. The poster is a local asset; the film itself is hosted off-repo, so a
+     50MB file never rides along in every clone. -->
 
-[![Gather — a conference programme, start to finish](.github/media/film-poster.jpg)](https://github.com/divzdev/gather/releases/download/media-v1/gather-launch-story.mp4)
+[![Gather — a conference programme, start to finish](.github/media/film-poster.jpg)](https://youtu.be/a7MB6f6Xtfs)
 
-**▶ [Watch the film](https://github.com/divzdev/gather/releases/download/media-v1/gather-launch-story.mp4)** · 1m47s, the whole programme end to end
-· or the **[28-second cut](https://github.com/divzdev/gather/releases/download/media-v1/gather-sizzle.mp4)**
+**▶ [Watch the film](https://youtu.be/a7MB6f6Xtfs)** · the whole programme end to end
 
 ---
 
