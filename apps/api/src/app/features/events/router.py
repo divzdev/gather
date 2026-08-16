@@ -338,6 +338,20 @@ async def _unique_event_slug(session: DbSession, name: str) -> str:
 
 @router.get("", response_model=list[EventSummary])
 async def my_events(user: CurrentUser, session: DbSession) -> list[Event]:
+    """Every event this account can reach, the one they are running first.
+
+    The order is load-bearing, not cosmetic: signing in adopts the first row,
+    and so does the console's recovery path when a stored event id goes stale.
+    Ordering by `starts_on DESC` meant *the event furthest in the future* won,
+    so anyone who created an event dated past the real one silently became the
+    landing page for every later sign-in — an evaluator made a throwaway
+    "Forward Summit 2028" and the seeded demo, 214 proposals and all,
+    disappeared behind an empty first-run dashboard nobody could see past.
+
+    Soonest-unfinished-first is what an organiser means by "my event": the one
+    running now, or the one running next. Finished events fall to the end,
+    where they are only ever the fallback for an account that has no live one.
+    """
     with tenancy_disabled():
         org_ids = (
             (await session.execute(select(OrgMember.org_id).where(OrgMember.user_id == user.id)))
@@ -358,7 +372,12 @@ async def my_events(user: CurrentUser, session: DbSession) -> list[Event]:
                 await session.execute(
                     select(Event)
                     .where(or_(Event.org_id.in_(org_ids), Event.id.in_(event_ids)))
-                    .order_by(Event.starts_on.desc())
+                    .order_by(
+                        # Server clock, matching every other deadline decision
+                        # in the product.
+                        (Event.ends_on < date.today()).asc(),
+                        Event.starts_on.asc(),
+                    )
                 )
             )
             .scalars()
