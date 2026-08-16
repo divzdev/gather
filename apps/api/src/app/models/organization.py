@@ -31,6 +31,10 @@ class Organization(PrimaryKey, Timestamps, Base):
     #: a stored URL would be an SSRF primitive on the shared box.
     ai_provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
     ai_model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    #: Only for `ai_provider = 'ollama'`, where the address is the org's to
+    #: supply. Restricted to private addresses on save and again on use —
+    #: `features/ai/local_url.py` explains why both.
+    ai_base_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
     ai_key_set_by: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )

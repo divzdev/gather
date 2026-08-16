@@ -21,7 +21,7 @@ from typing import Annotated
 
 import anyio
 import httpx
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
@@ -30,7 +30,11 @@ from app.core.crypto import seal
 from app.core.deps import CurrentUser, DbSession, require_org_role
 from app.core.errors import ApiError
 from app.features.ai.gateway import PROVIDERS, OrgAiConfig, adapter_for
+from app.features.ai.local_url import LocalUrlError, resolve_local_base_url
 from app.models import ActivityLog, Organization, Role, User
+
+#: The one preset with no API key and an org-supplied address (spec 0006).
+LOCAL_PROVIDER = "ollama"
 
 router = APIRouter(prefix="/v1/orgs/{org_id}/ai-key", tags=["ai"])
 
@@ -48,6 +52,9 @@ class ProviderOption(BaseModel):
     id: str
     label: str
     model_hint: str
+    #: False for the local provider, which has no key and takes an address
+    #: instead. The panel draws a different form rather than guessing.
+    needs_key: bool = True
 
 
 class OrgKeyStatus(BaseModel):
@@ -60,6 +67,10 @@ class OrgKeyStatus(BaseModel):
     set_by_name: str | None
     set_at: datetime | None
     daily_cap: int | None
+    #: Only set for the local provider; the screen shows it in the status line
+    #: so "which model answered" is answerable without opening the form.
+    base_url: str | None
+    daily_cap_placeholder: int | None = None
     cap_default: int
     #: The preset table, so the screen never hardcodes a provider list.
     providers: list[ProviderOption]
@@ -73,6 +84,8 @@ class OrgKeyUpdate(BaseModel):
     api_key: str | None = Field(default=None, min_length=8, max_length=512)
     provider: str | None = None
     model: str | None = Field(default=None, min_length=1, max_length=120)
+    #: Required for the local provider, meaningless for every other one.
+    base_url: str | None = Field(default=None, max_length=300)
     daily_cap: int | None = Field(default=None, ge=0, le=1_000_000)
 
 
@@ -120,16 +133,24 @@ async def _status(session: DbSession, org: Organization) -> OrgKeyStatus:
     if org.ai_key_set_by is not None:
         set_by_name = await session.scalar(select(User.name).where(User.id == org.ai_key_set_by))
     return OrgKeyStatus(
-        configured=org.ai_key_encrypted is not None,
+        # "Configured" now means a provider was chosen, not that a key exists —
+        # the local provider is fully configured with no key at all.
+        configured=org.ai_provider is not None,
         provider=org.ai_provider,
         model=org.ai_model,
         last4=org.ai_key_last4,
         set_by_name=set_by_name,
         set_at=org.ai_key_set_at,
+        base_url=org.ai_base_url,
         daily_cap=org.ai_daily_proposal_cap,
         cap_default=get_settings().ai_daily_proposal_cap,
         providers=[
-            ProviderOption(id=key, label=preset.label, model_hint=preset.model_hint)
+            ProviderOption(
+                id=key,
+                label=preset.label,
+                model_hint=preset.model_hint,
+                needs_key=preset.protocol != "ollama",
+            )
             for key, preset in PROVIDERS.items()
         ],
     )
@@ -155,12 +176,27 @@ async def set_key(
     # A provider or model without a key is a half-configuration: the key
     # belongs to a provider, so changing one without the other cannot be
     # honoured — refused rather than silently ignored (fail loud, code-style).
-    if body.api_key is None and (body.provider is not None or body.model is not None):
+    # The local provider has no key to paste, so "did they send a key" cannot be
+    # what decides whether this is a reconfiguration. `provider` is.
+    is_local = (body.provider or "") == LOCAL_PROVIDER
+    reconfiguring = body.api_key is not None or is_local
+
+    if not reconfiguring and (body.provider is not None or body.model is not None):
         raise InvalidOrgKeyError(
             "Changing the provider or model requires pasting the key again — "
             "the key is stored against the provider it belongs to."
         )
-    if body.api_key is not None:
+    if is_local:
+        if body.model is None:
+            raise InvalidOrgKeyError(
+                "Choose which model on that server to use — the local providers "
+                "each carry several and there is no sensible default."
+            )
+        try:
+            base_url = resolve_local_base_url(body.base_url or "")
+        except LocalUrlError as error:
+            raise InvalidOrgKeyError(str(error)) from error
+    if reconfiguring:
         provider = _resolve_provider(body)
         # A session never spans an external network call (architecture.md).
         # The auth and role dependencies have already opened this request's
@@ -170,14 +206,24 @@ async def set_key(
         # no trace of having been offered.
         await session.commit()
         await session.close()
-        await verify_config(OrgAiConfig(provider=provider, api_key=body.api_key, model=body.model))
+        await verify_config(
+            OrgAiConfig(
+                provider=provider,
+                api_key=body.api_key or "",
+                model=body.model,
+                base_url=base_url if is_local else None,
+            )
+        )
 
     org = await _org(session, org_id)
-    if body.api_key is not None:
-        org.ai_key_encrypted = seal(body.api_key)
-        org.ai_key_last4 = body.api_key[-4:]
+    if reconfiguring:
+        # A local server has no key, so the sealed column is cleared rather
+        # than left holding the previous provider's credential.
+        org.ai_key_encrypted = seal(body.api_key) if body.api_key is not None else None
+        org.ai_key_last4 = body.api_key[-4:] if body.api_key is not None else None
         org.ai_provider = _resolve_provider(body)
         org.ai_model = body.model
+        org.ai_base_url = base_url if is_local else None
         org.ai_key_set_by = user.id
         org.ai_key_set_at = datetime.now(UTC)
         session.add(
@@ -225,3 +271,57 @@ async def remove_key(
     )
     await session.flush()
     return await _status(session, org)
+
+
+class LocalModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    size_bytes: int | None = None
+
+
+class LocalModels(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    models: list[LocalModel]
+
+
+@router.get("/local-models", response_model=LocalModels)
+async def list_local_models(
+    base_url: Annotated[str, Query(max_length=300)],
+    org_id: Annotated[uuid.UUID, Path()],
+    _: Role = Depends(require_org_role(*MANAGE)),
+) -> LocalModels:
+    """What is actually installed on that server.
+
+    So the model becomes a dropdown of things that exist rather than a text
+    field you find out was wrong on your first question. Same address
+    restriction as saving — this is a server-side fetch of a user-supplied URL,
+    which is the exact shape `local_url` exists to constrain, and being a
+    read-only convenience does not make it less of one.
+    """
+    try:
+        target = resolve_local_base_url(base_url)
+    except LocalUrlError as error:
+        raise InvalidOrgKeyError(str(error)) from error
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=3.0)) as client:
+            # No redirects: a 302 towards a metadata endpoint is the whole attack.
+            response = await client.get(f"{target}/api/tags", follow_redirects=False)
+            response.raise_for_status()
+            payload = response.json()
+    except httpx.HTTPError as error:
+        raise InvalidOrgKeyError(
+            f"Could not reach a model server at {target} — {error.__class__.__name__}. "
+            "Check the address, and that the server is running."
+        ) from error
+
+    found = payload.get("models", []) if isinstance(payload, dict) else []
+    return LocalModels(
+        models=[
+            LocalModel(name=str(entry["name"]), size_bytes=entry.get("size"))
+            for entry in found
+            if isinstance(entry, dict) and entry.get("name")
+        ]
+    )

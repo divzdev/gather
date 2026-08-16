@@ -60,6 +60,10 @@ export function AiKeyPanel({ orgId, toast }: { orgId: string; toast: (m: string)
   const queryClient = useQueryClient();
   const [keyDraft, setKeyDraft] = useState("");
   const [provider, setProvider] = useState("anthropic");
+  /** Where the org's own model server is. Only the local provider has one, and
+   *  only the operator knows it — every other base URL is hardcoded because a
+   *  supplied one is an SSRF primitive. */
+  const [baseUrl, setBaseUrl] = useState("");
   const [modelDraft, setModelDraft] = useState("");
   const [capDraft, setCapDraft] = useState<string | null>(null);
   const [problem, setProblem] = useState("");
@@ -71,6 +75,22 @@ export function AiKeyPanel({ orgId, toast }: { orgId: string; toast: (m: string)
   });
 
   const chosen = status?.providers.find((option) => option.id === provider);
+  const isLocal = chosen?.needs_key === false;
+
+  /** What is actually installed on that server, so the model is a list of real
+   *  things rather than a name you find out was wrong on your first question.
+   *  A failed probe is not fatal: the field stays typeable with the reason
+   *  beside it, because someone who knows their model's name should not be
+   *  blocked by a server that answers slowly. */
+  const local = useQuery({
+    queryKey: ["local-models", orgId, baseUrl],
+    enabled: isLocal && baseUrl.trim().length > 8,
+    retry: false,
+    queryFn: () =>
+      authed<{ models: { name: string; size_bytes: number | null }[] }>(
+        `/orgs/${orgId}/ai-key/local-models?base_url=${encodeURIComponent(baseUrl.trim())}`,
+      ),
+  });
   const providerLabel = (id: string | null) =>
     status?.providers.find((option) => option.id === id)?.label ?? id ?? "";
 
@@ -84,6 +104,7 @@ export function AiKeyPanel({ orgId, toast }: { orgId: string; toast: (m: string)
       api_key?: string;
       provider?: string;
       model?: string;
+      base_url?: string;
       daily_cap?: number;
     }) => authed<KeyStatus>(`/orgs/${orgId}/ai-key`, { method: "PUT", body }),
     onSuccess: (updated, sent) => {
@@ -111,6 +132,12 @@ export function AiKeyPanel({ orgId, toast }: { orgId: string; toast: (m: string)
   });
 
   const saveKey = () => {
+    if (isLocal) {
+      // No key exists to send. The model is required rather than optional: a
+      // local server carries several and there is no sensible default.
+      save.mutate({ provider, model: modelDraft.trim(), base_url: baseUrl.trim() });
+      return;
+    }
     const body: { api_key: string; provider: string; model?: string } = {
       api_key: keyDraft.trim(),
       provider,
@@ -118,6 +145,10 @@ export function AiKeyPanel({ orgId, toast }: { orgId: string; toast: (m: string)
     if (modelDraft.trim() !== "") body.model = modelDraft.trim();
     save.mutate(body);
   };
+
+  const canSave = isLocal
+    ? baseUrl.trim() !== "" && modelDraft.trim() !== ""
+    : keyDraft.trim().length >= 8;
 
   const capValue = capDraft ?? (status?.daily_cap === null ? "" : String(status?.daily_cap ?? ""));
   const commitCap = () => {
@@ -205,15 +236,61 @@ export function AiKeyPanel({ orgId, toast }: { orgId: string; toast: (m: string)
           <label htmlFor="org-ai-model" style={LABEL}>
             Model{provider === "anthropic" ? " (optional)" : ""}
           </label>
-          <input
-            id="org-ai-model"
-            placeholder={chosen?.model_hint ?? ""}
-            value={modelDraft}
-            onChange={(event) => setModelDraft(event.target.value)}
-            style={{ ...INPUT, marginTop: 5 }}
-          />
+          {isLocal && (local.data?.models.length ?? 0) > 0 ? (
+            <select
+              id="org-ai-model"
+              value={modelDraft}
+              onChange={(event) => setModelDraft(event.target.value)}
+              style={{ ...INPUT, marginTop: 5, font: "400 13px var(--font-plex-sans),sans-serif" }}
+            >
+              <option value="">Choose a model…</option>
+              {(local.data?.models ?? []).map((entry) => (
+                <option key={entry.name} value={entry.name}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="org-ai-model"
+              placeholder={chosen?.model_hint ?? ""}
+              value={modelDraft}
+              onChange={(event) => setModelDraft(event.target.value)}
+              style={{ ...INPUT, marginTop: 5 }}
+            />
+          )}
         </div>
       </div>
+
+      {isLocal ? (
+        <div>
+          <label htmlFor="org-ai-base-url" style={LABEL}>
+            Server address
+          </label>
+          <input
+            id="org-ai-base-url"
+            placeholder="http://localhost:11434"
+            value={baseUrl}
+            onChange={(event) => setBaseUrl(event.target.value)}
+            style={{ ...INPUT, marginTop: 5 }}
+          />
+          <p
+            style={{
+              margin: "6px 0 0",
+              font: "400 11.5px/1.5 var(--font-plex-sans),sans-serif",
+              color: "var(--i4,#99A6AD)",
+            }}
+          >
+            {local.isFetching
+              ? "Looking for models on that server…"
+              : local.isError
+                ? (local.error as Error).message
+                : (local.data?.models.length ?? 0) > 0
+                  ? `${local.data?.models.length} model(s) found — pick one above.`
+                  : "Must be a loopback or private address: this server will not fetch a public one. On a hosted install “localhost” means the server’s own machine, not yours."}
+          </p>
+        </div>
+      ) : null}
 
       {(modelDraft.trim() || chosen?.model_hint || "").endsWith("-contributor") ? (
         <p
@@ -234,33 +311,46 @@ export function AiKeyPanel({ orgId, toast }: { orgId: string; toast: (m: string)
       ) : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end" }}>
-        <div>
-          <label htmlFor="org-ai-key" style={LABEL}>
-            {status?.configured === true ? "Replace the key" : "API key"}
-          </label>
-          <input
-            id="org-ai-key"
-            type="password"
-            autoComplete="off"
-            placeholder={provider === "anthropic" ? "sk-ant-…" : "sk-…"}
-            value={keyDraft}
-            onChange={(event) => setKeyDraft(event.target.value)}
-            style={{ ...INPUT, marginTop: 5 }}
-          />
-        </div>
+        {isLocal ? (
+          <p
+            style={{
+              margin: 0,
+              font: "400 12.5px/1.5 var(--font-plex-sans),sans-serif",
+              color: "var(--i2,#3E4E58)",
+            }}
+          >
+            A local server has no API key. Its address is checked before saving, so a wrong port
+            fails here rather than on your first question.
+          </p>
+        ) : (
+          <div>
+            <label htmlFor="org-ai-key" style={LABEL}>
+              {status?.configured === true ? "Replace the key" : "API key"}
+            </label>
+            <input
+              id="org-ai-key"
+              type="password"
+              autoComplete="off"
+              placeholder={provider === "anthropic" ? "sk-ant-…" : "sk-…"}
+              value={keyDraft}
+              onChange={(event) => setKeyDraft(event.target.value)}
+              style={{ ...INPUT, marginTop: 5 }}
+            />
+          </div>
+        )}
         <button
           type="button"
-          disabled={keyDraft.trim().length < 8 || save.isPending}
+          disabled={!canSave || save.isPending}
           onClick={saveKey}
           style={{
             ...BUTTON,
             background: "var(--bt,#141417)",
             color: "var(--bf,#FFFFFF)",
             border: "none",
-            opacity: keyDraft.trim().length < 8 || save.isPending ? 0.55 : 1,
+            opacity: !canSave || save.isPending ? 0.55 : 1,
           }}
         >
-          {save.isPending ? "Checking…" : "Check and save"}
+          {save.isPending ? "Checking…" : isLocal ? "Check and use" : "Check and save"}
         </button>
       </div>
 

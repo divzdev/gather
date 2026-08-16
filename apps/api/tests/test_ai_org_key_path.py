@@ -78,13 +78,48 @@ def test_every_openai_protocol_preset_builds_the_compat_adapter(
         assert adapter._model == "some-model"
 
 
-def test_ollama_still_outranks_every_paid_key(
+def test_a_configured_org_key_outranks_a_local_model(
     no_model_configured: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Reversed 2026-08-16, from a real report.
+
+    Ollama used to be checked first, unconditionally, so an organisation that
+    had pasted a key into Settings still got the local llama — while the panel
+    told them "every AI suggestion in this organisation runs on this key". The
+    cheap default is right for a machine nobody has configured; it is not right
+    against somebody's deliberate act.
+    """
     monkeypatch.setattr(get_settings(), "ollama_base_url", "http://localhost:11434", raising=False)
 
     adapter = gateway.select_adapter(
         org=OrgAiConfig(provider="openai", api_key=ORG_KEY, model="gpt-4o-mini")
+    )
+
+    assert not isinstance(adapter, OllamaAdapter), "the org asked for its own key by hand"
+    assert isinstance(adapter, OpenAICompatAdapter)
+
+
+def test_a_local_model_is_never_selected_by_configuration_alone(
+    no_model_configured: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`OLLAMA_BASE_URL` supplies an address, never a decision (spec 0006).
+
+    An org that has chosen nothing gets the stub, which says it is a stub.
+    Silently answering with a real local model was the whole defect: it looks
+    like the configured provider answering and there is no way to tell.
+    """
+    monkeypatch.setattr(get_settings(), "ollama_base_url", "http://localhost:11434", raising=False)
+
+    assert isinstance(gateway.select_adapter(org=None), StubAdapter)
+
+
+def test_choosing_the_local_model_is_how_you_get_the_local_model(
+    no_model_configured: None,
+) -> None:
+    adapter = gateway.select_adapter(
+        org=OrgAiConfig(
+            provider="ollama", api_key="", model="llama3.1:8b", base_url="http://127.0.0.1:11434"
+        )
     )
 
     assert isinstance(adapter, OllamaAdapter)

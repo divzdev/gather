@@ -8,10 +8,14 @@ configured the stub answers and everything downstream behaves identically.
 Two wire protocols cover every supported provider: the Anthropic Messages API,
 and the OpenAI chat-completions protocol that OpenAI, Google (Gemini's
 compatibility endpoint), xAI, DeepSeek, Moonshot (Kimi), Groq and Together all
-speak at different base URLs. `PROVIDERS` is that map. The base URLs are code,
-not data, on purpose: an org-supplied URL would be an SSRF primitive on the
+speak at different base URLs. `PROVIDERS` is that map. Those base URLs are
+code, not data, on purpose: an org-supplied URL is an SSRF primitive on the
 shared box (cloud metadata endpoints, with response text echoed back through
 our own error surface), so an org picks a preset and never types a URL.
+
+The one exception is the local-model preset, where only the operator knows
+where their own server is. It takes a URL and restricts it instead — see
+`local_url`, which refuses anything that does not resolve to a private address.
 """
 
 from __future__ import annotations
@@ -24,6 +28,7 @@ from app.features.ai.adapters.base import Completion, LLMAdapter
 from app.features.ai.adapters.ollama import OllamaAdapter
 from app.features.ai.adapters.openai_compat import OpenAICompatAdapter
 from app.features.ai.adapters.stub import StubAdapter
+from app.features.ai.local_url import resolve_local_base_url
 
 __all__ = ["PROVIDERS", "Completion", "LLMAdapter", "OrgAiConfig", "Provider", "select_adapter"]
 
@@ -35,7 +40,7 @@ class Provider:
     model, because there is no sane cross-provider fallback)."""
 
     label: str
-    protocol: str  # "anthropic" | "openai"
+    protocol: str  # "anthropic" | "openai" | "ollama"
     base_url: str | None
     model_hint: str
 
@@ -66,6 +71,9 @@ PROVIDERS: dict[str, Provider] = {
     "groq": Provider(
         "Groq (Llama)", "openai", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"
     ),
+    # The only preset whose base URL is not code: nobody but the operator knows
+    # where their own machine is. It is restricted instead — see `local_url`.
+    "ollama": Provider("Local model (Ollama)", "ollama", None, "llama3.1:8b"),
     "together": Provider(
         "Together (Llama & open models)",
         "openai",
@@ -84,6 +92,8 @@ class OrgAiConfig:
     provider: str
     api_key: str
     model: str | None
+    #: Only for the local preset, where the address is the org's to supply.
+    base_url: str | None = None
 
 
 def adapter_for(config: OrgAiConfig) -> LLMAdapter:
@@ -92,6 +102,10 @@ def adapter_for(config: OrgAiConfig) -> LLMAdapter:
     store, so reaching that is a programming error, not user input."""
     preset = PROVIDERS[config.provider]
     model = config.model or get_settings().ai_model_default
+    if preset.protocol == "ollama":
+        # Re-resolved here, not trusted from storage: a name that resolved to a
+        # private address when it was saved can resolve to a public one now.
+        return OllamaAdapter(base_url=resolve_local_base_url(config.base_url or ""), model=model)
     if preset.protocol == "anthropic":
         return AnthropicAdapter(api_key=config.api_key, model=model)
     assert preset.base_url is not None  # every openai-protocol preset carries one
@@ -99,14 +113,24 @@ def adapter_for(config: OrgAiConfig) -> LLMAdapter:
 
 
 def select_adapter(*, org: OrgAiConfig | None = None) -> LLMAdapter:
-    """Local model, then the org's own key, then the server's, then the stub.
+    """What the organisation chose, then the server's key, then the stub.
 
-    A local server outranks every paid key because development runs the same
-    prompt dozens of times and none of those runs are worth money — so the
-    cheap thing is the default whenever it is available. The org's
-    configuration (spec 0003) outranks the server's key because the org asked
-    for it and pays for it: on the hosted install the server key does not
-    exist at all, and for a self-hoster who has one, an org that configured
+    **`OLLAMA_BASE_URL` used to be checked first, unconditionally, and that was
+    wrong** (spec 0006, after a real report). An organisation pasted a paid key
+    into Settings, the panel said "every AI suggestion in this organisation runs
+    on this key", and every suggestion ran on the local llama instead — with
+    nothing on any screen to reveal it.
+
+    The fix is not a different order. It is that **nothing here decides which
+    model answers**. The local model is now the tenth entry in `PROVIDERS`,
+    chosen on the same screen as the other nine, and this function reads that
+    choice rather than second-guessing it. An org that has chosen nothing gets
+    the stub, which is honest about being a stub — the old behaviour was a real
+    model impersonating the configured one.
+
+    The org's configuration (spec 0003) outranks the server's key because the
+    org asked for it and pays for it: on the hosted install the server key does
+    not exist at all, and for a self-hoster who has one, an org that configured
     its own has said whose bill this is.
 
     Falling through to the stub rather than raising is documented on
@@ -114,8 +138,6 @@ def select_adapter(*, org: OrgAiConfig | None = None) -> LLMAdapter:
     clone, not an error.
     """
     settings = get_settings()
-    if settings.ollama_base_url:
-        return OllamaAdapter(base_url=settings.ollama_base_url, model=settings.ollama_model)
     if org is not None:
         return adapter_for(org)
     if settings.ai_enabled:

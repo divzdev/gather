@@ -172,15 +172,25 @@ async def _org_ai(session: AsyncSession) -> OrgAiConfig | None:
                     Organization.ai_key_encrypted,
                     Organization.ai_provider,
                     Organization.ai_model,
+                    Organization.ai_base_url,
                 ).where(Organization.id == org_id)
             )
         ).first()
     if row is None:
         return None
+    # The local provider is configured without a key, so a missing key is only
+    # "unconfigured" for the providers that need one (spec 0006).
     key = unseal(row.ai_key_encrypted)
-    if key is None:
+    if row.ai_provider is None:
         return None
-    return OrgAiConfig(provider=row.ai_provider or "anthropic", api_key=key, model=row.ai_model)
+    if key is None and row.ai_provider != "ollama":
+        return None
+    return OrgAiConfig(
+        provider=row.ai_provider,
+        api_key=key or "",
+        model=row.ai_model,
+        base_url=row.ai_base_url,
+    )
 
 
 async def score_submission(

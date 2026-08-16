@@ -344,3 +344,120 @@ async def test_verify_maps_provider_refusal_and_unreachability_to_422(
     with pytest.raises(org_settings.InvalidOrgKeyError) as unreachable:
         await org_settings.verify_config(config)
     assert "Could not reach" in str(unreachable.value)
+
+
+# ─────────────────── the local model, chosen rather than assumed ───────────────
+
+
+async def test_a_local_model_saves_with_no_key_at_all(
+    client: AsyncClient, session: AsyncSession, key_always_valid: None
+) -> None:
+    """Spec 0006. A local server has no API key, so requiring one would make the
+    provider unselectable — which is how it ended up being an invisible env var
+    in the first place."""
+    headers, org, _user = await _org_with(client, session, Role.OWNER)
+
+    saved = await client.put(
+        f"/v1/orgs/{org.id}/ai-key",
+        json={"provider": "ollama", "model": "llama3.1:8b", "base_url": "http://127.0.0.1:11434"},
+        headers=headers,
+    )
+
+    assert saved.status_code == 200, saved.text
+    body = saved.json()
+    assert body["configured"] is True, "a provider was chosen, which is what configured means now"
+    assert body["provider"] == "ollama"
+    assert body["base_url"] == "http://127.0.0.1:11434"
+    assert body["last4"] is None, "there is no key to show the last four of"
+
+    with tenancy_disabled():
+        await session.refresh(org)
+        assert org.ai_key_encrypted is None
+        assert org.ai_base_url == "http://127.0.0.1:11434"
+
+
+async def test_choosing_a_local_model_clears_a_previous_paid_key(
+    client: AsyncClient, session: AsyncSession, key_always_valid: None
+) -> None:
+    """Otherwise the sealed credential of a provider nobody is using any more
+    sits in the row indefinitely."""
+    headers, org, _user = await _org_with(client, session, Role.OWNER)
+    await client.put(f"/v1/orgs/{org.id}/ai-key", json={"api_key": GOOD_KEY}, headers=headers)
+
+    await client.put(
+        f"/v1/orgs/{org.id}/ai-key",
+        json={"provider": "ollama", "model": "llama3.1:8b", "base_url": "http://127.0.0.1:11434"},
+        headers=headers,
+    )
+
+    with tenancy_disabled():
+        await session.refresh(org)
+        assert org.ai_key_encrypted is None
+        assert org.ai_key_last4 is None
+
+
+async def test_a_public_address_is_refused(
+    client: AsyncClient, session: AsyncSession, key_always_valid: None
+) -> None:
+    """The whole reason the other nine base URLs are hardcoded."""
+    headers, org, _user = await _org_with(client, session, Role.OWNER)
+
+    refused = await client.put(
+        f"/v1/orgs/{org.id}/ai-key",
+        json={
+            "provider": "ollama",
+            "model": "llama3.1:8b",
+            "base_url": "http://169.254.169.254",
+        },
+        headers=headers,
+    )
+
+    assert refused.status_code == 422
+    with tenancy_disabled():
+        await session.refresh(org)
+        assert org.ai_base_url is None
+
+
+async def test_a_local_model_without_a_model_name_is_refused(
+    client: AsyncClient, session: AsyncSession, key_always_valid: None
+) -> None:
+    headers, org, _user = await _org_with(client, session, Role.OWNER)
+
+    refused = await client.put(
+        f"/v1/orgs/{org.id}/ai-key",
+        json={"provider": "ollama", "base_url": "http://127.0.0.1:11434"},
+        headers=headers,
+    )
+
+    assert refused.status_code == 422
+
+
+async def test_model_discovery_refuses_an_address_it_will_not_fetch(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """A read-only convenience is still a server-side fetch of a supplied URL."""
+    headers, org, _user = await _org_with(client, session, Role.OWNER)
+
+    refused = await client.get(
+        f"/v1/orgs/{org.id}/ai-key/local-models?base_url=http://169.254.169.254",
+        headers=headers,
+    )
+
+    assert refused.status_code == 422
+
+
+async def test_model_discovery_says_why_it_could_not_connect(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """ "Nothing installed" and "cannot reach that address" are different facts
+    and the screen has to be able to tell them apart."""
+    headers, org, _user = await _org_with(client, session, Role.OWNER)
+
+    # Port 1 on loopback passes the address check and refuses the connection.
+    answer = await client.get(
+        f"/v1/orgs/{org.id}/ai-key/local-models?base_url=http://127.0.0.1:1",
+        headers=headers,
+    )
+
+    assert answer.status_code == 422
+    assert "could not reach" in answer.text.lower()
