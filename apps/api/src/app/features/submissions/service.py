@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -27,6 +27,7 @@ from app.models import (
     EventMember,
     EventSpeaker,
     Form,
+    FormKind,
     FormStatus,
     MessagePurpose,
     OrgMember,
@@ -481,6 +482,89 @@ async def _confirm_co_speakers(
                 f"closes; you will hear from us again when there is a decision.</p>"
             ),
         )
+
+
+#: How long before the call closes a holder of an unfinished draft hears from us,
+#: as half-open buckets `(after, up_to]`. Buckets rather than thresholds: "within
+#: five days" is true on all five of the last five nights, so a nightly sweep
+#: would send five reminders and a 24-hour floor would not save it. Each bucket
+#: is 24 hours wide and they do not overlap, so a worker running as often as it
+#: likes sends exactly one per bucket. The two match the wording the form
+#: builder has always shown.
+REMINDER_WINDOWS: tuple[tuple[timedelta, timedelta], ...] = (
+    (timedelta(days=4), timedelta(days=5)),
+    (timedelta(0), timedelta(days=1)),
+)
+REMINDER_FLOOR = timedelta(hours=24)
+
+
+async def remind_unfinished_drafts(session: AsyncSession, *, event: Event, now: datetime) -> int:
+    """Email whoever still holds a draft that the call is about to close.
+
+    Returns how many were sent. `now` is a parameter rather than a clock read so
+    a five-day window is testable without waiting five days.
+    """
+    form = await session.scalar(
+        select(Form).where(Form.kind == FormKind.CFP).order_by(Form.created_at.desc())
+    )
+    if form is None:
+        return 0
+    closes = form.closes_at or event.cfp_closes_at
+    if closes is None:
+        return 0
+
+    remaining = closes - now
+    if not any(after < remaining <= up_to for after, up_to in REMINDER_WINDOWS):
+        return 0
+
+    rows = (
+        (
+            await session.execute(
+                select(Submission, Speaker)
+                .join(SubmissionSpeaker, SubmissionSpeaker.submission_id == Submission.id)
+                .join(Speaker, Speaker.id == SubmissionSpeaker.speaker_id)
+                .where(
+                    Submission.status == SubmissionStatus.DRAFT,
+                    SubmissionSpeaker.is_primary.is_(True),
+                )
+            )
+        )
+        .tuples()
+        .all()
+    )
+
+    origin = get_settings().web_origin
+    sent = 0
+    for submission, speaker in rows:
+        if (
+            submission.last_reminded_at is not None
+            and now - submission.last_reminded_at < REMINDER_FLOOR
+        ):
+            continue
+        days = max(1, round(remaining / timedelta(days=1)))
+        plural = "" if days == 1 else "s"
+        await mail.send_now(
+            session,
+            event_id=event.id,
+            to_email=speaker.email,
+            to_speaker_id=speaker.id,
+            purpose=MessagePurpose.TASK_REMINDER,
+            subject=f"{days} day{plural} left to finish your {event.name} proposal",
+            body=(
+                f"<p>Hi {speaker.name},</p>"
+                f"<p><strong>{submission.title or 'Your proposal'}</strong> is still unfinished, "
+                f"and the call for papers closes in {days} day{plural}.</p>"
+                # The token, not the code, is what reopens a draft — so this is
+                # the only link that puts them back in it without an account.
+                f'<p><a href="{origin}/e/{event.slug}/cfp?draft={submission.draft_token}">'
+                f"Pick up where you left off</a></p>"
+            ),
+        )
+        submission.last_reminded_at = now
+        sent += 1
+
+    await session.flush()
+    return sent
 
 
 async def submit(

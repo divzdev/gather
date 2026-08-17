@@ -33,6 +33,8 @@ from app.models import (
     Form,
     FormKind,
     FormStatus,
+    MessagePurpose,
+    MessageTemplate,
     Organization,
     OrgMember,
     Page,
@@ -306,6 +308,62 @@ async def _upsert_staff(session: AsyncSession, org: Organization) -> None:
         )
         if member is None:
             session.add(OrgMember(org_id=org.id, user_id=user.id, role=role))
+    await session.flush()
+
+
+#: Wording an organiser sends more than once, so the Templates screen arrives
+#: demonstrating itself. Every token here is in `templates.MERGE_FIELDS` — a seed
+#: that wrote an unknown one would produce a row the editor refuses to save.
+MESSAGE_TEMPLATES: tuple[tuple[str, MessagePurpose, str, str], ...] = (
+    (
+        "Chase outstanding slides",
+        MessagePurpose.TASK_REMINDER,
+        "{{speaker_first_name}}, we still need your slides",
+        "Hi {{speaker_first_name}},\n\n"
+        "We are still missing the slides for {{session_title}}. "
+        "You can upload them in the speaker portal: {{portal_link}}\n\n"
+        "Thanks,\nThe {{event_name}} programme team",
+    ),
+    (
+        "Welcome to the programme",
+        MessagePurpose.PORTAL_INVITE,
+        "You are on the {{event_name}} programme",
+        "Hi {{speaker_first_name}},\n\n"
+        "You are confirmed for {{session_title}}. Everything we need from you between now "
+        "and the conference lives here: {{portal_link}}\n\n"
+        "We will write again once your time is fixed.",
+    ),
+    (
+        "Room change",
+        MessagePurpose.SCHEDULE_CHANGE,
+        "Your room at {{event_name}} has changed",
+        "Hi {{speaker_first_name}},\n\n"
+        "The room for {{session_title}} has changed. The current time and room are always "
+        "portal: {{portal_link}}\n\n"
+        "Sorry for the shuffle.",
+    ),
+)
+
+
+async def _upsert_message_templates(session: AsyncSession, event: Event) -> None:
+    """Idempotent on (event, name) — reseeding must not grow the list."""
+    for name, purpose, subject, body in MESSAGE_TEMPLATES:
+        row = await session.scalar(
+            select(MessageTemplate).where(
+                MessageTemplate.event_id == event.id, MessageTemplate.name == name
+            )
+        )
+        if row is None:
+            session.add(
+                MessageTemplate(
+                    org_id=event.org_id,
+                    event_id=event.id,
+                    name=name,
+                    purpose=purpose,
+                    subject=subject,
+                    body_markdown=body,
+                )
+            )
     await session.flush()
 
 
@@ -794,6 +852,7 @@ async def seed() -> None:
             event = await _upsert_event(session, org)
             await _upsert_staff(session, org)
             await _upsert_event_staff(session, org, event)
+            await _upsert_message_templates(session, event)
             program = await _upsert_program(session, event)
             form = await _upsert_form(session, event)
             people = await _upsert_speakers(session, event)

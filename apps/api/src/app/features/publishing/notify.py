@@ -102,7 +102,7 @@ async def schedule_changes(
             to_email=person.email,
             to_speaker_id=person.id,
             purpose=MessagePurpose.SCHEDULE_CHANGE,
-            ics_attached=calendar != "",
+            calendar=calendar,
             subject=(
                 f"Your session time at {event.get('name', 'the conference')}"
                 if change["kind"] == "moved"

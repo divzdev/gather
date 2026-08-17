@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { useConsoleChrome } from "@/components/console/chrome";
+import { TemplateEditor } from "@/components/console/TemplateEditor";
 import { Messages, type MessagesData } from "@/components/design/Messages";
 import { ApiError } from "@/lib/api";
 import { authed, getEventId } from "@/lib/session";
@@ -171,6 +172,10 @@ export default function MessagesPage() {
     tabCompose: tab === "compose",
     tabOutbox: tab === "outbox",
     tabTpl: tab === "templates",
+    // The tab used to render an EmptyState reading "Template editing isn't
+    // built", which stopped being true once the API shipped.
+    templates:
+      eventId === null ? null : <TemplateEditor eventId={eventId} toast={toast} />,
 
     tAllM: tile("Queued", preview?.total ?? 0, tab === "compose", () => setTab("compose")),
     tQd: tile("Selected", selected.length, false, () => setTab("compose")),

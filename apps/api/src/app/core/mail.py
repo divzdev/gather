@@ -24,6 +24,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from email.message import EmailMessage
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -108,14 +109,44 @@ def undeliverable_reason(to_email: str) -> str | None:
     return None
 
 
-def _write_to_disk(to_email: str, subject: str, body: str, ref: str) -> None:
+def _write_to_disk(
+    to_email: str, subject: str, body: str, ref: str, calendar: str | None = None
+) -> None:
     MAIL_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-    path = MAIL_DIR / f"{stamp}-{to_email}-{ref}.html"
-    path.write_text(
+    base = MAIL_DIR / f"{stamp}-{to_email}-{ref}"
+    base.with_suffix(".html").write_text(
         f"<!-- to: {to_email} -->\n<h1>{subject}</h1>\n{body}\n",
         encoding="utf-8",
     )
+    # Written as a sibling rather than described in the HTML, so opening it in a
+    # calendar is the same gesture locally as it is from a real inbox. Without
+    # this, the one transport a developer can actually watch is the one that
+    # silently drops the attachment.
+    if calendar:
+        base.with_suffix(".ics").write_text(calendar, encoding="utf-8")
+
+
+def _mime(to_email: str, subject: str, body: str, calendar: str) -> bytes:
+    """One message carrying both the prose and the invite.
+
+    `method=REQUEST` plus a stable `UID` is what makes a client *update* the
+    entry it already has instead of adding a second one — which is the whole
+    point of sending an invite when a session moves. The file is also attached
+    by name, because a client that ignores the calendar part should still leave
+    the speaker something they can open.
+    """
+    message = EmailMessage()
+    message["From"] = get_settings().mail_from
+    message["To"] = to_email
+    message["Subject"] = subject
+    message.set_content("This message needs an HTML-capable reader.")
+    message.add_alternative(body, subtype="html")
+    message.add_alternative(calendar, subtype="calendar", params={"method": "REQUEST"})
+    message.add_attachment(
+        calendar.encode("utf-8"), maintype="text", subtype="calendar", filename="invite.ics"
+    )
+    return message.as_bytes()
 
 
 @lru_cache(maxsize=1)
@@ -132,7 +163,7 @@ def _ses_client() -> Any:
     return boto3.client("sesv2", region_name=get_settings().aws_region)
 
 
-def _send_via_ses(to_email: str, subject: str, body: str) -> str:
+def _send_via_ses(to_email: str, subject: str, body: str, calendar: str | None = None) -> str:
     """Hand one message to SES and return its provider id.
 
     Blocking, so callers run it in a worker thread. Raises on refusal, and on a
@@ -142,15 +173,22 @@ def _send_via_ses(to_email: str, subject: str, body: str) -> str:
     settings = get_settings()
     if reason := undeliverable_reason(to_email):
         raise UndeliverableRecipientError(reason)
-    response = _ses_client().send_email(
-        FromEmailAddress=settings.mail_from,
-        Destination={"ToAddresses": [to_email]},
-        Content={
+    # `Simple` cannot carry an attachment, and `Raw` costs a MIME build — so the
+    # message that has nothing to attach keeps taking the cheaper path.
+    content = (
+        {"Raw": {"Data": _mime(to_email, subject, body, calendar)}}
+        if calendar
+        else {
             "Simple": {
                 "Subject": {"Data": subject, "Charset": "UTF-8"},
                 "Body": {"Html": {"Data": body, "Charset": "UTF-8"}},
             }
-        },
+        }
+    )
+    response = _ses_client().send_email(
+        FromEmailAddress=settings.mail_from,
+        Destination={"ToAddresses": [to_email]},
+        Content=content,
     )
     return str(response["MessageId"])
 
@@ -165,12 +203,17 @@ async def queue(
     purpose: MessagePurpose = MessagePurpose.CUSTOM,
     to_speaker_id: uuid.UUID | None = None,
     batch_id: uuid.UUID | None = None,
-    ics_attached: bool = False,
+    calendar: str | None = None,
 ) -> Message:
     """Record an outbound message. Delivery happens in `deliver`.
 
     `purpose` classifies the send for the caller and for the log; the row itself
     carries it only through its batch, so a single send does not persist it.
+
+    `calendar` is VCALENDAR text. There is deliberately no separate
+    `ics_attached` argument: the flag is derived here, so no caller can set a
+    row claiming an invite it is not carrying. An empty string means the session
+    has no time yet, which `ics.build` returns and which is not an invite.
     """
     message = Message(
         event_id=event_id,
@@ -179,7 +222,8 @@ async def queue(
         batch_id=batch_id,
         subject=subject,
         body_rendered=body,
-        ics_attached=ics_attached,
+        ics_attached=bool(calendar),
+        ics_body=calendar or None,
         status=MessageStatus.QUEUED,
     )
     session.add(message)
@@ -203,13 +247,18 @@ async def deliver(message: Message) -> None:
                 message.subject,
                 message.body_rendered,
                 str(message.id),
+                message.ics_body,
             )
         else:  # pragma: no cover - exercised only against real SES
             # Recorded even on the failure path below, because SES accepting a
             # message and then bouncing it is a support conversation that starts
             # with "what was the message id".
             message.ses_message_id = await anyio.to_thread.run_sync(
-                _send_via_ses, message.to_email, message.subject, message.body_rendered
+                _send_via_ses,
+                message.to_email,
+                message.subject,
+                message.body_rendered,
+                message.ics_body,
             )
         message.status = MessageStatus.SENT
         message.sent_at = datetime.now(UTC)
@@ -277,7 +326,7 @@ async def send_now(
     body: str,
     purpose: MessagePurpose = MessagePurpose.CUSTOM,
     to_speaker_id: uuid.UUID | None = None,
-    ics_attached: bool = False,
+    calendar: str | None = None,
 ) -> Message:
     message = await queue(
         session,
@@ -287,7 +336,7 @@ async def send_now(
         body=body,
         purpose=purpose,
         to_speaker_id=to_speaker_id,
-        ics_attached=ics_attached,
+        calendar=calendar,
     )
     await session.flush()
     await deliver(message)

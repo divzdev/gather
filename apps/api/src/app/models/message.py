@@ -78,3 +78,9 @@ class Message(Base, PrimaryKey, Timestamps, EventScoped):
     bounced_at: Mapped[datetime | None] = mapped_column(nullable=True)
     opened_at: Mapped[datetime | None] = mapped_column(nullable=True)
     ics_attached: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    #: The VCALENDAR text this message carries, if any. Held on the row rather
+    #: than in the caller: the worker delivers messages it did not queue, and an
+    #: invite that lived only in the queueing request would be gone by then.
+    #: Never set apart from `ics_attached` — `mail.queue` derives one from the
+    #: other, so the flag cannot claim an invite that is not here.
+    ics_body: Mapped[str | None] = mapped_column(Text, nullable=True)

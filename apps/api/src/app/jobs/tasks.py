@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenancy import tenancy_disabled, tenant_scope
+from app.features.submissions import service as proposals
 from app.features.tasks import service as deliverables
 from app.models import Event, EventStatus, SpeakerTask, TaskStatus
 
@@ -25,6 +26,11 @@ class SweepResult:
     overdue: int
     reminded: int
     skipped: int
+    #: Holders of an unfinished CFP draft told the call is about to close.
+    #: Counted apart from `reminded`, which is deliverables: they are different
+    #: people at different points in the funnel, and one number covering both
+    #: would answer neither question.
+    drafts_reminded: int = 0
 
 
 #: Archived events are done with; a draft has nobody on it yet. Reminding either
@@ -76,7 +82,7 @@ async def sweep(session: AsyncSession, *, remind: bool = True) -> SweepResult:
     """
     now = datetime.now(UTC)
     events = await _active_events(session)
-    overdue = reminded = skipped = 0
+    overdue = reminded = skipped = drafts = 0
 
     for event in events:
         with tenant_scope(org_id=event.org_id, event_id=event.id):
@@ -85,6 +91,16 @@ async def sweep(session: AsyncSession, *, remind: bool = True) -> SweepResult:
                 sent, held = await deliverables.nudge_outstanding(session)
                 reminded += sent
                 skipped += held
+                # The other half of the funnel: someone who never finished
+                # submitting is not on the roster and owes no deliverable, so
+                # nothing above would ever reach them.
+                drafts += await proposals.remind_unfinished_drafts(session, event=event, now=now)
             await session.flush()
 
-    return SweepResult(events=len(events), overdue=overdue, reminded=reminded, skipped=skipped)
+    return SweepResult(
+        events=len(events),
+        overdue=overdue,
+        reminded=reminded,
+        skipped=skipped,
+        drafts_reminded=drafts,
+    )

@@ -88,6 +88,8 @@ export type MessagesData = {
   readonly tabCompose: boolean;
   readonly tabOutbox: boolean;
   readonly tabTpl: boolean;
+  /** The Templates tab's real editor, mounted from the page. */
+  readonly templates: React.ReactNode;
   readonly tabs: readonly {
     readonly bg: string;
     readonly fg: string;
@@ -1351,17 +1353,7 @@ export function Messages({ d }: { d: MessagesData }) {
                     </div>
                   </div>{" "}
                 </div>{" "}
-                {/* There is no template CRUD anywhere in the product: decision
-                    wording is fixed in the API's message constants, one subject
-                    and one body per outcome, and the Compose tab already renders
-                    a live preview of those exact strings for a real recipient.
-                    An editor here would be a second copy of that text with no
-                    path back into what actually sends — so this tab says the
-                    true thing instead of shipping an empty card. */}
-                <EmptyState
-                  title="Template editing isn't built"
-                  body="Decision wording lives in the API's message constants — one subject and body per outcome — not in an editable template. The preview on the Send decisions tab renders those same constants for a real recipient, so it is always what will actually go out."
-                />{" "}
+                {d.templates}{" "}
               </>
             ) : null}{" "}
           </div>{" "}

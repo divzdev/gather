@@ -89,6 +89,10 @@ class Submission(Base, PrimaryKey, Timestamps, EventScoped):
     # Lets an anonymous speaker resume an unsubmitted draft with no account.
     draft_token: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True, unique=True)
     submitted_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    #: When this draft's holder was last told the call is about to close. The
+    #: floor that stops a nightly sweep sending the same reminder five nights
+    #: running — the same shape as `SpeakerTask.last_nudged_at`.
+    last_reminded_at: Mapped[datetime | None] = mapped_column(nullable=True)
     ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # Maintained by Postgres, backing GET /v1/search. Declared here only so the
