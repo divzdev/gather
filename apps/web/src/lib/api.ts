@@ -18,6 +18,21 @@ export const API_BASE_URL =
     ? `${process.env.API_ORIGIN ?? "http://127.0.0.1:8051"}/v1`
     : (process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1");
 
+/** The browser's view of the API, even when a server component is doing the
+ *  writing.
+ *
+ *  `API_BASE_URL` above is deliberately two different things, and that is right
+ *  for a request the running process makes itself. It is wrong for a URL the
+ *  server only *writes down* for the browser to resolve later — an `<img src>`,
+ *  a download href — because those are serialized into the HTML and fetched
+ *  from a machine that has never heard of the internal service. In production
+ *  that shipped `https://api:8051/...` into the public speaker page, and every
+ *  headshot rendered as a broken image.
+ *
+ *  Use this for anything the browser resolves; use `API_BASE_URL` for anything
+ *  the current process fetches. */
+export const BROWSER_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
+
 /** Mirrors the API error envelope: {error: {code, message, details, field}}. */
 export type ApiErrorBody = {
   error: {
@@ -66,9 +81,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   if (!response.ok) {
     // A proxy or crash can return non-JSON; the error envelope must still hold.
-    const parsed = (await response.json().catch(() => undefined)) as
-      | ApiErrorBody
-      | undefined;
+    const parsed = (await response.json().catch(() => undefined)) as ApiErrorBody | undefined;
     throw new ApiError(response.status, parsed, `${response.status} ${response.statusText}`);
   }
 

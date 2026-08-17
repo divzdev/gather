@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { API_BASE_URL } from "@/lib/api";
+import { BROWSER_API_BASE_URL } from "@/lib/api";
 
 import { PublicShell, getPublic, getPublicOptional, type EventInfo } from "../public";
 import { Card, INK, SANS, Section, trackHue } from "../chrome";
@@ -112,7 +112,7 @@ export default async function Speakers({ params }: { params: Promise<{ slug: str
                        is our own API serving a 48px avatar, and the route already
                        sets an immutable cache header. */
                     <img
-                      src={`${API_BASE_URL}/public/events/${slug}/speakers/${person.headshot_file_id}/photo`}
+                      src={`${BROWSER_API_BASE_URL}/public/events/${slug}/speakers/${person.headshot_file_id}/photo`}
                       alt=""
                       width={48}
                       height={48}
