@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import random
 import re
+import uuid
 from datetime import UTC, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -333,6 +334,65 @@ def _decision(index: int, accepted_so_far: int) -> tuple[SubmissionStatus, Decis
     return SubmissionStatus.SUBMITTED, DecisionStatus.NONE
 
 
+async def _fill_co_speakers(session: AsyncSession, event: Event, people: list[Speaker]) -> None:
+    """Give roughly a third of existing proposals a second name, and give every
+    participant a role. Only touches rows that have none, so it converges rather
+    than rewrites an organiser's own edits."""
+    rows = (
+        (
+            await session.execute(
+                select(Submission).where(Submission.event_id == event.id).order_by(Submission.code)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not rows:
+        return
+
+    links = (
+        (
+            await session.execute(
+                select(SubmissionSpeaker).where(
+                    SubmissionSpeaker.submission_id.in_([row.id for row in rows])
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_submission: dict[uuid.UUID, list[SubmissionSpeaker]] = {}
+    for link in links:
+        by_submission.setdefault(link.submission_id, []).append(link)
+
+    for index, submission in enumerate(rows):
+        existing = by_submission.get(submission.id, [])
+        primary = next((link for link in existing if link.is_primary), None)
+        if primary is not None and primary.role is None:
+            primary.role = "Presenter"
+        for link in existing:
+            if not link.is_primary and link.role is None:
+                link.role = CO_ROLES[index % len(CO_ROLES)]
+
+        if index % 3 != 0 or len(existing) > 1 or primary is None:
+            continue
+        second = people[(index + 7) % len(people)]
+        if second.id == primary.speaker_id:
+            continue
+        session.add(
+            SubmissionSpeaker(
+                org_id=event.org_id,
+                event_id=event.id,
+                submission_id=submission.id,
+                speaker_id=second.id,
+                is_primary=False,
+                role=CO_ROLES[index % len(CO_ROLES)],
+                sort_order=1,
+            )
+        )
+    await session.flush()
+
+
 #: What a second name on a talk actually is. "Co-speaker" was the only thing the
 #: model could say, and it is the least useful of these.
 CO_ROLES = ("Co-presenter", "Co-author", "Moderator", "Demo driver")
@@ -351,6 +411,12 @@ async def _fill_submissions(
     )
     missing = TARGET_SUBMISSIONS - int(have or 0)
     if missing <= 0:
+        # Same rule as headshots: this is an idempotent upsert, so it has to
+        # converge an already-seeded database too. Co-speaker roles arrived
+        # after the live demo was first seeded, and left as a create-time step
+        # every deployed event would show two names on a proposal with nothing
+        # saying which of them is on the stage.
+        await _fill_co_speakers(session, event, people)
         return
 
     tracks = list(program["tracks"].items())
