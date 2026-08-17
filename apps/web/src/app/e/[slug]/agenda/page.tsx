@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { PublicShell, calendarDate, getPublic, getPublicOptional, type EventInfo } from "../public";
 import { Card, INK, MONO, SANS, display, trackHue } from "../chrome";
 import { NotPublished } from "../chrome";
@@ -6,6 +8,9 @@ export const dynamic = "force-dynamic";
 
 type Session = {
   id: string;
+  //: The public agenda payload has always carried this; nothing read it until
+  //: the card became a link.
+  slug: string;
   title: string;
   starts_at: string | null;
   room: string | null;
@@ -136,17 +141,26 @@ export default async function Agenda({ params }: { params: Promise<{ slug: strin
                           {time(session.starts_at, data.event.timezone)}
                         </span>
                         <span style={{ minWidth: 0 }}>
-                          <span
+                          {/* The agenda was the one surface where a talk was a
+                              dead end: the title sat as plain text while the
+                              same session on the Sessions list linked through
+                              to a page carrying its abstract, full time range,
+                              room, track and format. Someone reading the
+                              programme is exactly the person deciding what to
+                              go to, so it is the worst place to stop. */}
+                          <Link
+                            href={`/e/${slug}/schedule/${session.slug}` as never}
                             style={{
                               display: "block",
                               fontFamily: SANS,
                               fontSize: 15.5,
                               fontWeight: 700,
                               color: INK.text,
+                              textDecoration: "none",
                             }}
                           >
                             {session.title}
-                          </span>
+                          </Link>
                           <span
                             style={{
                               display: "block",
