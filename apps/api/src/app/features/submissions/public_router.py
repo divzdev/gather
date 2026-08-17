@@ -65,6 +65,8 @@ def _client_ip(request: Request) -> str:
 @router.get("/cfp-form", response_model=PublicFormRead)
 async def read_cfp_form(event: PublicEvent, session: DbSession) -> PublicFormRead:
     form = await _cfp_form(session, event)
+    schema = FormSchema.model_validate(form.schema)
+    co_min, co_max = schema.settings.co_speaker_rule()
 
     closed_reason: str | None = None
     try:
@@ -84,10 +86,12 @@ async def read_cfp_form(event: PublicEvent, session: DbSession) -> PublicFormRea
         event_location=event.location,
         form_id=form.id,
         form_name=form.name,
-        schema=FormSchema.model_validate(form.schema),
+        schema=schema,
         closes_at=form.closes_at or event.cfp_closes_at,
         event_timezone=event.timezone,
         submission_limit_per_speaker=event.submission_limit_per_speaker,
+        co_speaker_min=co_min,
+        co_speaker_max=co_max,
         is_open=is_open,
         closed_reason=closed_reason,
     )
@@ -104,6 +108,7 @@ async def save_draft(
         identifier=str(body.draft_token or _client_ip(request)),
     )
     form = await _cfp_form(session, event)
+    service.check_drafts_allowed(form)
     submission = await service.save_draft(
         session,
         event=event,

@@ -5431,6 +5431,10 @@ export interface components {
             event_timezone: string;
             /** Submission Limit Per Speaker */
             submission_limit_per_speaker: number | null;
+            /** Co Speaker Min */
+            co_speaker_min: number;
+            /** Co Speaker Max */
+            co_speaker_max: number;
             /** Is Open */
             is_open: boolean;
             /** Closed Reason */

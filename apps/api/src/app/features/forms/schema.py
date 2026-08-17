@@ -167,14 +167,25 @@ class ParticipantRole(Strict):
 
 
 def _default_roles() -> list[ParticipantRole]:
+    """The roles a form asks about before an organiser touches the editor.
+
+    Co-speakers used to default to *disabled, at most 3* while the settings
+    beside them defaulted to *allowed, at most 4* — and since the public form
+    read the second pair and the builder drew the first, the same form told the
+    organiser one thing and the speaker another. These are now the numbers both
+    sides get, which is why they match `allow_co_speakers` / `max_co_speakers`.
+    """
     return [
         ParticipantRole(key="speaker", label="Speaker", minimum=1, maximum=1),
-        ParticipantRole(key="co_speaker", label="Co-speaker", enabled=False, minimum=0, maximum=3),
+        ParticipantRole(key="co_speaker", label="Co-speaker", minimum=0, maximum=4),
     ]
 
 
 class FormSettings(Strict):
     allow_drafts: bool = True
+    #: Superseded by `participant_roles`, and kept only because this model
+    #: forbids unknown keys — dropping a field would fail validation on every
+    #: form already in the database. Read `co_speaker_rule()`, never these two.
     allow_co_speakers: bool = True
     max_co_speakers: int = Field(default=4, ge=0, le=20)
     confirmation_message: str = "Thanks, your proposal is in."
@@ -189,6 +200,23 @@ class FormSettings(Strict):
     participant_roles: list[ParticipantRole] = Field(default_factory=_default_roles)
     notify_admins_on_submit: bool = True
     confirm_participants: bool = True
+
+    def co_speaker_rule(self) -> tuple[int, int]:
+        """How many co-speakers this form accepts, as `(minimum, maximum)`.
+
+        There were two settings for one rule: the roles editor writes
+        `participant_roles`, and the public form was reading `allow_co_speakers`
+        and `max_co_speakers` — so typing "at most 2" into the editor changed
+        nothing, and the form went on offering four boxes. This is the single
+        answer both sides now use, resolved here rather than twice.
+        """
+        if not self.collect_participants:
+            return (0, 0)
+        for role in self.participant_roles:
+            if role.key == "co_speaker":
+                return (role.minimum, role.maximum) if role.enabled else (0, 0)
+        # A form saved before roles existed. Its two flags still mean something.
+        return (0, self.max_co_speakers) if self.allow_co_speakers else (0, 0)
 
 
 class FormSchema(Strict):

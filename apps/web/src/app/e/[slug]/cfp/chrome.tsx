@@ -85,6 +85,7 @@ export function Rail({
   save,
   onRetrySave,
   resumed,
+  keepsDrafts = true,
 }: {
   steps: string[];
   step: number;
@@ -92,8 +93,14 @@ export function Rail({
   save: Save;
   onRetrySave: () => void;
   resumed: string | null;
+  /** False when the organiser requires the proposal in one sitting. */
+  keepsDrafts?: boolean;
 }) {
   const state = (() => {
+    // "Not saved yet" reads as a promise deferred. On a form that keeps no
+    // drafts nothing is coming, so the line says so once rather than implying
+    // a save is due on the next keystroke.
+    if (!keepsDrafts) return { text: "Not saved as you go", tone: "var(--e-muted, #9A9FB1)" };
     if (save.kind === "saving") return { text: "Saving…", tone: "var(--e-muted, #9A9FB1)" };
     if (save.kind === "saved") return { text: `Saved ${save.at}`, tone: "var(--ok)" };
     if (save.kind === "failed") return { text: `Not saved — ${save.message}`, tone: "var(--cn)" };

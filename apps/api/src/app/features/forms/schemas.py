@@ -74,5 +74,10 @@ class PublicFormRead(BaseModel):
     #: What the API will actually enforce on submit. The form used to print a
     #: limit that was a literal string, on an event that had none.
     submission_limit_per_speaker: int | None
+    #: The co-speaker rule, already resolved from `participant_roles`. Sent
+    #: rather than left to the browser so the boxes it draws and the count the
+    #: API enforces cannot be two different numbers.
+    co_speaker_min: int
+    co_speaker_max: int
     is_open: bool
     closed_reason: str | None = None

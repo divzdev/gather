@@ -40,6 +40,9 @@ export type FormSchema = {
     confirmation_message: string;
     welcome_message?: string;
     require_terms?: boolean;
+    allow_drafts?: boolean;
+    /** Superseded by the resolved `co_speaker_min` / `co_speaker_max` the CFP
+     *  endpoint returns. Kept because stored forms still carry them. */
     allow_co_speakers?: boolean;
     max_co_speakers?: number;
   };

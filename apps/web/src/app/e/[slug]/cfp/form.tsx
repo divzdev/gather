@@ -28,6 +28,11 @@ type PublicForm = {
   closes_at: string | null;
   event_timezone: string;
   submission_limit_per_speaker: number | null;
+  /* Resolved by the API from the organiser's roles editor. Deriving it here
+     from `schema.settings` as well is how the page ends up drawing four boxes
+     for a form that accepts two. */
+  co_speaker_min: number;
+  co_speaker_max: number;
   is_open: boolean;
   closed_reason: string | null;
 };
@@ -129,10 +134,16 @@ export function CfpForm({ slug }: { slug: string }) {
   const steps = ["You", ...sections.map((section) => section.title), "Review and submit"];
   const last = steps.length;
   const needsTerms = settings?.require_terms === true;
-  const maxCo = settings?.allow_co_speakers === false ? 0 : (settings?.max_co_speakers ?? 4);
+  const maxCo = form?.co_speaker_max ?? 0;
+  const minCo = form?.co_speaker_min ?? 0;
+  /* An organiser can require the whole proposal in one sitting. That switch was
+     wired to nothing: the page autosaved either way and told every speaker
+     their work was being kept. */
+  const keepsDrafts = settings?.allow_drafts !== false;
 
   // ---- resume ------------------------------------------------------------
   useEffect(() => {
+    if (!keepsDrafts) return;
     const stored = read(slug);
     if (stored === null) return;
     let live = true;
@@ -175,7 +186,7 @@ export function CfpForm({ slug }: { slug: string }) {
     return () => {
       live = false;
     };
-  }, [slug]);
+  }, [slug, keepsDrafts]);
 
   // ---- saving ------------------------------------------------------------
   const cleanCo = () =>
@@ -202,6 +213,9 @@ export function CfpForm({ slug }: { slug: string }) {
   const saveDraft = useMutation({
     mutationFn: async () => {
       const body = payload();
+      // The form may forbid drafts outright, in which case the endpoint answers
+      // 403 and there is nothing to ask it for.
+      if (!keepsDrafts) return null;
       // The API needs both; before then there is nothing to keep, which is not
       // the same as a failure.
       if (body.speaker_email === "" || body.title.trim() === "") return null;
@@ -294,6 +308,16 @@ export function CfpForm({ slug }: { slug: string }) {
       found.push({ key: "email", message: "We need an address to reach you about this.", step: 1 });
     else if (!EMAIL.test(email.trim()))
       found.push({ key: "email", message: "That does not look like an email address.", step: 1 });
+
+    // The organiser can require co-speakers, not merely allow them. The API
+    // refuses either way; catching it here puts the message on the step that
+    // can fix it rather than on the last one.
+    if (cleanCo().length < minCo)
+      found.push({
+        key: "co_speakers",
+        step: last - 1,
+        message: `This form needs at least ${minCo} co-speaker${minCo === 1 ? "" : "s"}, with a name and an email each.`,
+      });
 
     sections.forEach((section, index) => {
       for (const field of section.fields) {
@@ -500,7 +524,7 @@ export function CfpForm({ slug }: { slug: string }) {
             }}
           >
             Anyone else on stage with you
-            <Optional />
+            {minCo === 0 ? <Optional /> : null}
           </p>
           <p
             style={{
@@ -509,7 +533,8 @@ export function CfpForm({ slug }: { slug: string }) {
               margin: "6px 0 0",
             }}
           >
-            Up to {maxCo}. They are added to the roster and hear from us at the same time you do.
+            {minCo > 0 ? `At least ${minCo}, up to ${maxCo}. ` : `Up to ${maxCo}. `}
+            They are added to the roster and hear from us at the same time you do.
           </p>
         </div>
         <datalist id="co-speaker-roles">
@@ -773,9 +798,11 @@ export function CfpForm({ slug }: { slug: string }) {
             will keep, and until the first save there is nothing to come back
             to. Saying which of the two you are in costs one line and is the
             difference between a promise and a guess. */}
-        {kept
-          ? "Your work is saved as you go, so you can close this and come back. Nothing is sent until you press submit on the last step."
-          : "Add your email and a title and this page starts saving itself, so you can close it and come back. Nothing is sent until you press submit on the last step."}
+        {!keepsDrafts
+          ? "This form is not saved as you go — the organiser has asked for proposals in one sitting, so keep this tab open until you press submit on the last step."
+          : kept
+            ? "Your work is saved as you go, so you can close this and come back. Nothing is sent until you press submit on the last step."
+            : "Add your email and a title and this page starts saving itself, so you can close it and come back. Nothing is sent until you press submit on the last step."}
       </p>
       {needsTerms && (
         <Consent
@@ -856,6 +883,7 @@ export function CfpForm({ slug }: { slug: string }) {
           save={save}
           onRetrySave={() => saveDraft.mutate()}
           resumed={resumed}
+          keepsDrafts={keepsDrafts}
         />
 
         <div>

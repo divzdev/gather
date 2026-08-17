@@ -17,16 +17,19 @@ from app.core.errors import (
     NotFoundError,
     SubmissionLimitReachedError,
 )
+from app.core.tenancy import tenancy_disabled
 from app.features.forms.schema import FormSchema
 from app.features.forms.validation import validate_answers
 from app.models import (
     ContentStatus,
     DecisionStatus,
     Event,
+    EventMember,
     EventSpeaker,
     Form,
     FormStatus,
     MessagePurpose,
+    OrgMember,
     Role,
     Session,
     SessionFormat,
@@ -39,6 +42,7 @@ from app.models import (
     SubmissionSpeaker,
     SubmissionStatus,
     Track,
+    User,
 )
 
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no I/O/0/1 — these get read aloud
@@ -72,6 +76,47 @@ def check_window_open(event: Event, form: Form) -> None:
     closes = form.closes_at or event.cfp_closes_at
     if closes is not None and now >= closes:
         raise CfpClosedError("This call for papers has closed.")
+
+
+def check_drafts_allowed(form: Form) -> None:
+    """A form may require the whole proposal in one sitting.
+
+    Deliberately *not* inside `save_draft`: submitting builds its row by calling
+    `save_draft`, so a refusal one level deeper would close the call for papers
+    altogether. It belongs beside `check_window_open`, on the route that exists
+    only to keep a half-written proposal.
+    """
+    if not FormSchema.model_validate(form.schema).settings.allow_drafts:
+        raise ApiError(
+            "This form has to be completed in one sitting — it does not keep drafts.",
+            code="DRAFTS_DISABLED",
+            status_code=403,
+        )
+
+
+def check_co_speaker_count(schema: FormSchema, count: int) -> None:
+    """How many other people may — or must — be on stage.
+
+    The organiser types these numbers into the roles editor. Until now nothing
+    read them, so "at most 2" was advice.
+    """
+    minimum, maximum = schema.settings.co_speaker_rule()
+    if count > maximum:
+        raise ApiError(
+            f"This form takes at most {maximum} co-speaker{'' if maximum == 1 else 's'}."
+            if maximum
+            else "This form does not take co-speakers.",
+            code="VALIDATION_FAILED",
+            status_code=422,
+            field="co_speakers",
+        )
+    if count < minimum:
+        raise ApiError(
+            f"This form needs at least {minimum} co-speaker{'' if minimum == 1 else 's'}.",
+            code="VALIDATION_FAILED",
+            status_code=422,
+            field="co_speakers",
+        )
 
 
 async def _check_limit(session: AsyncSession, event: Event, speaker: Speaker) -> None:
@@ -331,6 +376,113 @@ async def _sync_co_speakers(
             await session.delete(row)
 
 
+async def _program_team(session: AsyncSession, event: Event) -> list[str]:
+    """Addresses of the people who run this event: owners and admins.
+
+    Resolved exactly like `resolve_role` and the team screen — an `EventMember`
+    row overrides the `OrgMember` one — because someone demoted on this event
+    should stop hearing about this event.
+
+    Reviewers are excluded on purpose and not as an oversight: the alert names
+    the speaker, and a reviewer who could read it would be walking around blind
+    review by way of their inbox.
+    """
+    with tenancy_disabled():
+        org_rows = (
+            (
+                await session.execute(
+                    select(OrgMember.user_id, OrgMember.role, User.email)
+                    .join(User, User.id == OrgMember.user_id)
+                    .where(OrgMember.org_id == event.org_id)
+                )
+            )
+            .tuples()
+            .all()
+        )
+        event_rows = (
+            (
+                await session.execute(
+                    select(EventMember.user_id, EventMember.role, User.email)
+                    .join(User, User.id == EventMember.user_id)
+                    .where(EventMember.event_id == event.id)
+                )
+            )
+            .tuples()
+            .all()
+        )
+
+    roles: dict[uuid.UUID, tuple[Role, str]] = {
+        user_id: (role, email) for user_id, role, email in org_rows
+    }
+    roles.update({user_id: (role, email) for user_id, role, email in event_rows})
+    return sorted({email for role, email in roles.values() if role in (Role.OWNER, Role.ADMIN)})
+
+
+async def _alert_program_team(
+    session: AsyncSession, *, event: Event, submission: Submission, speaker: Speaker
+) -> None:
+    console = f"{get_settings().web_origin}/admin/submissions/{submission.id}"
+    body = (
+        f"<p><strong>{submission.title}</strong> was submitted to {event.name}.</p>"
+        f"<p>From {speaker.name} ({speaker.email}). Reference {submission.code}.</p>"
+        f'<p><a href="{console}">Open it in the console</a></p>'
+    )
+    for address in await _program_team(session, event):
+        # `send_now` records the row and never raises on a provider failure, so
+        # a bounced alert cannot turn a speaker's submission into a 500.
+        await mail.send_now(
+            session,
+            event_id=event.id,
+            to_email=address,
+            purpose=MessagePurpose.CUSTOM,
+            subject=f"New proposal: {submission.title}",
+            body=body,
+        )
+
+
+async def _confirm_co_speakers(
+    session: AsyncSession, *, event: Event, submission: Submission, primary: Speaker
+) -> None:
+    """Tell the other people named on a proposal that they are on it.
+
+    They get no `draft_token`: that token authorises editing, it belongs to the
+    person who wrote the proposal, and being named on something is not consent
+    to rewrite it.
+    """
+    rows = (
+        (
+            await session.execute(
+                select(Speaker)
+                .join(SubmissionSpeaker, SubmissionSpeaker.speaker_id == Speaker.id)
+                .where(
+                    SubmissionSpeaker.submission_id == submission.id,
+                    SubmissionSpeaker.is_primary.is_(False),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for person in rows:
+        if person.id == primary.id:
+            continue
+        await mail.send_now(
+            session,
+            event_id=event.id,
+            to_email=person.email,
+            to_speaker_id=person.id,
+            purpose=MessagePurpose.CUSTOM,
+            subject=f"You are named on a proposal for {event.name}",
+            body=(
+                f"<p>{primary.name} submitted <strong>{submission.title}</strong> "
+                f"to {event.name} and named you on it.</p>"
+                f"<p>The reference is <strong>{submission.code}</strong>. "
+                f"{primary.name} can change the proposal until the call for papers "
+                f"closes; you will hear from us again when there is a decision.</p>"
+            ),
+        )
+
+
 async def submit(
     session: AsyncSession,
     *,
@@ -345,6 +497,7 @@ async def submit(
 ) -> Submission:
     check_window_open(event, form)
     schema = FormSchema.model_validate(form.schema)
+    check_co_speaker_count(schema, len(co_speakers or []))
     errors = validate_answers(schema, dict(answers))
     if errors:
         raise ApiError(
@@ -396,6 +549,15 @@ async def submit(
             f"until the call for papers closes.</p>"
         ),
     )
+
+    # The two switches on the form's settings screen that used to do nothing.
+    # The receipt above is unconditional — it carries the code the speaker needs
+    # forever — so `confirm_participants` governs only the other participants.
+    if schema.settings.confirm_participants:
+        await _confirm_co_speakers(session, event=event, submission=submission, primary=speaker)
+    if schema.settings.notify_admins_on_submit:
+        await _alert_program_team(session, event=event, submission=submission, speaker=speaker)
+
     await session.flush()
     return submission
 
