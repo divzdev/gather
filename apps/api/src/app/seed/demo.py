@@ -212,6 +212,7 @@ async def _fill_speakers(session: AsyncSession, event: Event, rng: random.Random
         # as a create-time-only step, every existing deployment would keep a
         # gallery of grey placeholders until someone dropped the database.
         await _fill_headshots(session, event, existing)
+        await _fill_logistics(session, existing)
         return existing
 
     taken = {person.email for person in existing}
@@ -242,7 +243,45 @@ async def _fill_speakers(session: AsyncSession, event: Event, rng: random.Random
         existing.append(speaker)
     await session.flush()
     await _fill_headshots(session, event, existing)
+    await _fill_logistics(session, existing)
     return existing
+
+
+#: What speakers actually write in these boxes. Short, specific, and the kind of
+#: thing an organiser has to act on rather than just read.
+_DIETARY = (
+    'Coeliac — needs a genuinely gluten-free option, not just "no bread".',
+    "Vegan.",
+    "Severe nut allergy. Please keep nuts off the speaker catering entirely.",
+    "Vegetarian, no fish.",
+)
+_ACCESSIBILITY = (
+    "Step-free access to the stage, please — I cannot manage stairs.",
+    "I lip-read, so I need the room lights up rather than fully dimmed.",
+    "Please reserve an aisle seat near the front for the sessions before mine.",
+)
+_AV = (
+    "I present from my own laptop over HDMI. USB-C only rooms are a problem.",
+    "Needs a confidence monitor — the slides are demo-heavy.",
+    "Wireless lapel mic, please. I move around a lot.",
+    "Audio out from the laptop for a short clip mid-talk.",
+)
+
+
+async def _fill_logistics(session: AsyncSession, speakers: list[Speaker]) -> None:
+    """A minority of speakers, which is the honest shape: most people leave these
+    blank, and the ones who fill them in are the ones the organiser must not
+    miss. Seeded because a field nobody can see the point of is a field nobody
+    builds a screen for — this is exactly how it went unread until now."""
+    for speaker in speakers:
+        seed = speaker.id.int
+        if speaker.dietary_notes is None and seed % 5 == 0:
+            speaker.dietary_notes = _DIETARY[seed % len(_DIETARY)]
+        if speaker.accessibility_notes is None and seed % 11 == 0:
+            speaker.accessibility_notes = _ACCESSIBILITY[seed % len(_ACCESSIBILITY)]
+        if speaker.av_notes is None and seed % 4 == 0:
+            speaker.av_notes = _AV[seed % len(_AV)]
+    await session.flush()
 
 
 async def _fill_headshots(session: AsyncSession, event: Event, speakers: list[Speaker]) -> None:

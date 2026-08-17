@@ -22,6 +22,9 @@ type Roster = {
   job_title: string | null;
   pronouns: string | null;
   bio: string | null;
+  dietary_notes: string | null;
+  accessibility_notes: string | null;
+  av_notes: string | null;
   status: string;
   submission_count: number;
   portal_last_seen_at: string | null;
@@ -825,6 +828,16 @@ export default function SpeakersPage() {
     tabSessions: tab === "sessions",
     tabTasks: tab === "tasks",
     tabFiles: tab === "files",
+    /** Only what they actually wrote. An empty block that says "no dietary
+     *  requirements recorded" on eighty speakers is noise, and it is not the
+     *  same claim as "they have none". */
+    logistics: [
+      ["Dietary", open?.dietary_notes],
+      ["Accessibility", open?.accessibility_notes],
+      ["AV", open?.av_notes],
+    ]
+      .filter(([, value]) => typeof value === "string" && value.trim() !== "")
+      .map(([label, value]) => ({ k: label as string, v: value as string })),
     tabNotes: tab === "notes",
     noteDraft,
     onNoteDraft: (event: React.SyntheticEvent) =>

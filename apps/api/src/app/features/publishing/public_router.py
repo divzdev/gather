@@ -351,8 +351,16 @@ def _calendar(body: str, filename: str) -> Response:
 
 
 @router.get("/schedule.ics")
-async def whole_schedule_ics(event: PublicEvent, session: DbSession) -> Response:
-    """The entire published programme as one calendar file.
+async def whole_schedule_ics(
+    event: PublicEvent,
+    session: DbSession,
+    session_ids: str | None = Query(default=None, max_length=4000),
+) -> Response:
+    """The published programme as one calendar file.
+
+    `session_ids` narrows it to the talks an attendee actually picked — the same
+    ids the itinerary holds in its query string, so exporting a personal plan
+    needs no account and no second endpoint. Omitted, it is the whole programme.
 
     SEQUENCE is the published version, so re-importing after a republish updates
     every entry in place rather than duplicating the conference.
@@ -362,9 +370,12 @@ async def whole_schedule_ics(event: PublicEvent, session: DbSession) -> Response
     version = latest.version if latest else 1
     now = datetime.now(UTC)
 
+    picked = {s.strip() for s in (session_ids or "").split(",") if s.strip()}
+    talks = [s for s in data["sessions"] if not picked or s["id"] in picked]
+
     events = [
         body
-        for talk in data["sessions"]
+        for talk in talks
         if (body := ics.build(talk, event=data["event"], sequence=version, now=now))
     ]
     if not events:

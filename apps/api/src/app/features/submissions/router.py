@@ -27,7 +27,12 @@ from app.features.submissions.schemas import (
 )
 from app.models import (
     DecisionStatus,
+    Review,
+    ReviewRound,
+    ReviewScore,
+    ReviewStatus,
     Role,
+    RubricCriterion,
     Speaker,
     Submission,
     SubmissionNote,
@@ -331,6 +336,91 @@ async def list_notes(
             decision_outcome=note.decision_outcome,
         )
         for note, author in rows
+    ]
+
+
+class SubmissionReviewRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    reviewer_name: str
+    status: ReviewStatus
+    score_avg: float | None
+    comment: str | None
+    conflict_of_interest: bool
+    round_name: str | None
+
+
+@router.get("/{submission_id}/reviews", response_model=list[SubmissionReviewRead])
+async def list_reviews(
+    submission_id: uuid.UUID, session: DbSession, _: User = Depends(require_role(*READ))
+) -> list[SubmissionReviewRead]:
+    """What the reviewers actually said about this proposal.
+
+    The scorecard tells a reviewer their comment is "visible to organizers, never
+    to the speaker" — and it was visible to nobody, because no staff-side route
+    read it back. The numbers reached the organiser as an average and the words
+    reached no one.
+
+    `READ` deliberately excludes reviewers: one reviewer reading another's
+    scoring before writing their own is the thing round-based review exists to
+    prevent.
+    """
+    rows = (
+        (
+            await session.execute(
+                select(Review, User, ReviewRound.name)
+                .join(User, User.id == Review.user_id)
+                .join(ReviewRound, ReviewRound.id == Review.review_round_id)
+                .where(Review.submission_id == submission_id)
+                .order_by(Review.created_at)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    if not rows:
+        return []
+
+    # One weighted mean per review, from the same numbers `score_avg` is built
+    # from — `text` criteria carry no number and are excluded rather than
+    # counted as zero, which is why this is not a plain average of `value`.
+    scored = (
+        (
+            await session.execute(
+                select(
+                    ReviewScore.review_id,
+                    func.sum(ReviewScore.value * RubricCriterion.weight),
+                    func.sum(RubricCriterion.weight),
+                )
+                .join(RubricCriterion, RubricCriterion.id == ReviewScore.rubric_criterion_id)
+                .where(
+                    ReviewScore.review_id.in_([review.id for review, _, _ in rows]),
+                    ReviewScore.value.is_not(None),
+                )
+                .group_by(ReviewScore.review_id)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    means = {
+        review_id: float(total) / float(weight)
+        for review_id, total, weight in scored
+        if total is not None and weight is not None and float(weight) > 0
+    }
+
+    return [
+        SubmissionReviewRead(
+            id=review.id,
+            reviewer_name=reviewer.name,
+            status=review.status,
+            score_avg=means.get(review.id),
+            comment=review.comment,
+            conflict_of_interest=review.conflict_of_interest,
+            round_name=round_name,
+        )
+        for review, reviewer, round_name in rows
     ]
 
 

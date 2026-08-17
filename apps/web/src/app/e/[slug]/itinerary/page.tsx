@@ -10,11 +10,13 @@ type Session = {
   id: string;
   slug: string;
   title: string;
+  abstract: string | null;
   starts_at: string | null;
   room: string | null;
   track: string | null;
+  format: string | null;
   duration_minutes: number;
-  speakers: { id: string; name: string }[];
+  speakers: { id: string; name: string; job_title: string | null; company: string | null }[];
 };
 
 type Payload = { event: EventInfo; sessions: Session[] };

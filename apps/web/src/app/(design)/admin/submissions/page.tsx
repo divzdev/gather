@@ -21,6 +21,7 @@ type Speaker = { name: string; organisation: string | null };
 type Submission = {
   id: string;
   code: string;
+  form_id: string;
   title: string;
   answers: Record<string, unknown>;
   status: string;
@@ -34,6 +35,18 @@ type Submission = {
   speakers: Speaker[];
 };
 type Member = { user_id: string; name: string; email: string; role: string };
+type FormField = { key: string; label: string; type: string };
+type FormSection = { key: string; title: string | null; fields: FormField[] };
+type FormSummary = { id: string; kind: string; schema: { sections: FormSection[] } };
+type SubmissionReview = {
+  id: string;
+  reviewer_name: string;
+  status: string;
+  score_avg: number | null;
+  comment: string | null;
+  conflict_of_interest: boolean;
+  round_name: string | null;
+};
 
 type DupePair = {
   left_id: string;
@@ -59,7 +72,12 @@ type Named = { id: string; name: string; hue_index?: number };
 
 /** The prototype's status palette, kept verbatim so the table reads the same. */
 const STATUS = {
-  draft: { label: "Draft", fg: "var(--i3,#54545C)", bg: "var(--sk,#EFEFF2)", dot: "var(--i3,#54545C)" },
+  draft: {
+    label: "Draft",
+    fg: "var(--i3,#54545C)",
+    bg: "var(--sk,#EFEFF2)",
+    dot: "var(--i3,#54545C)",
+  },
   submitted: {
     label: "Submitted",
     fg: "var(--if,#5254B0)",
@@ -84,7 +102,12 @@ const STATUS = {
     bg: "var(--pdw,#FAF0DC)",
     dot: "var(--pd,#92590A)",
   },
-  rejected: { label: "Rejected", fg: "var(--i3,#54545C)", bg: "var(--sk,#EFEFF2)", dot: "var(--i3,#54545C)" },
+  rejected: {
+    label: "Rejected",
+    fg: "var(--i3,#54545C)",
+    bg: "var(--sk,#EFEFF2)",
+    dot: "var(--i3,#54545C)",
+  },
   withdrawn: {
     label: "Withdrawn",
     fg: "var(--i3,#54545C)",
@@ -95,8 +118,6 @@ const STATUS = {
 
 type StatusKey = keyof typeof STATUS;
 const DECIDABLE = ["accepted", "waitlisted", "rejected"] as const;
-
-
 
 type View = "All" | "Needs review" | "Ready to decide" | "Accepted";
 type SortKey = "title" | "score" | "date";
@@ -122,6 +143,10 @@ const MAX_PER_PAGE = 200;
 const EXPORT_LIMIT = 1000;
 
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+
+/** Answer keys the drawer renders somewhere of their own, so the ANSWERS block
+ *  does not print them twice. */
+const DRAWER_PRINTS = new Set(["title", "abstract", "track", "format", "audience_level"]);
 
 function statusOf(row: Submission): (typeof STATUS)[StatusKey] {
   return STATUS[row.status as StatusKey] ?? STATUS.submitted;
@@ -237,6 +262,25 @@ export default function SubmissionsPage() {
     queryKey: ["submission-notes", eventId, openId],
     enabled: eventId !== null && openId !== null,
     queryFn: () => authed<Note[]>(`/events/${eventId}/submissions/${openId}/notes`),
+  });
+
+  /** Answer keys are machine names ("key_takeaway"); the form that produced them
+   *  holds the label the speaker actually read. One fetch, cached, so the drawer
+   *  can print "Key takeaway" rather than a column name. */
+  const { data: forms } = useQuery({
+    queryKey: ["forms", eventId],
+    enabled: eventId !== null,
+    staleTime: 300_000,
+    queryFn: () => authed<FormSummary[]>(`/events/${eventId}/forms`),
+  });
+
+  /** The drawer rendered an empty reviews list because nothing filled it: the
+   *  scorecard promises the reviewer their comment is "visible to organizers",
+   *  and the only organiser-side trace of a review was the averaged number. */
+  const { data: openReviews } = useQuery({
+    queryKey: ["submission-reviews", eventId, openId],
+    enabled: eventId !== null && openId !== null,
+    queryFn: () => authed<SubmissionReview[]>(`/events/${eventId}/submissions/${openId}/reviews`),
   });
 
   const addNote = useMutation({
@@ -528,6 +572,32 @@ export default function SubmissionsPage() {
 
   const openStatus = open === null ? STATUS.submitted : statusOf(open);
   const openScore = open === null ? null : score(open);
+
+  /** Key -> the label the speaker read, from whichever form this proposal was
+   *  submitted against. */
+  const fieldLabels = useMemo(() => {
+    const found = (forms ?? []).find((f) => f.id === open?.form_id) ?? (forms ?? [])[0];
+    const pairs = (found?.schema?.sections ?? []).flatMap((section) =>
+      (section.fields ?? []).map((field) => [field.key, field.label] as const),
+    );
+    return new Map(pairs);
+  }, [forms, open?.form_id]);
+
+  /** Everything the speaker answered except the two the drawer already prints
+   *  in their own places. An organiser who added "Key takeaway" to their form
+   *  could not read a single answer to it on the proposal. */
+  const openAnswers = useMemo(() => {
+    if (open === null) return [];
+    return Object.entries(open.answers)
+      // The four the drawer already prints in their own places: title as the
+      // heading, track and format as chips beside it, abstract in full above.
+      .filter(([key]) => !DRAWER_PRINTS.has(key))
+      .filter(([, value]) => value !== null && value !== undefined && value !== "")
+      .map(([key, value]) => ({
+        k: fieldLabels.get(key) ?? key.replace(/_/g, " "),
+        v: Array.isArray(value) ? value.join(", ") : String(value),
+      }));
+  }, [open, fieldLabels]);
   const decidedAs = (outcome: string, on: string, off: string, border: string) =>
     open?.status === outcome
       ? { bg: `var(--${on})`, fg: "var(--cd,#FFFFFF)", bd: `var(--${on})` }
@@ -758,7 +828,9 @@ export default function SubmissionsPage() {
       tr: open === null ? "" : trackName(open),
       trCol: open === null ? "#000" : trackColour(open),
       fmt: open === null ? "" : formatName(open),
-      lvl: String(open?.answers["level"] ?? "—"),
+      // Read `level`, which no CFP form defines — the key the builder writes is
+      // `audience_level`, so this chip said "—" on every proposal in the event.
+      lvl: String(open?.answers["audience_level"] ?? open?.answers["level"] ?? "—"),
       dt: open?.submitted_at == null ? "" : DAY.format(new Date(open.submitted_at)),
       st: openStatus.label,
       stFg: openStatus.fg,
@@ -776,7 +848,14 @@ export default function SubmissionsPage() {
         openScore === null
           ? [{ n: "Not scored yet", v: "–", w: "0%" }]
           : [{ n: "Average score", v: openScore.toFixed(1), w: `${(openScore / 5) * 100}%` }],
-      revs: [],
+      answers: openAnswers,
+      revs: (openReviews ?? []).map((review) => ({
+        n: review.conflict_of_interest
+          ? `${review.reviewer_name} · conflict of interest`
+          : review.reviewer_name,
+        s: review.score_avg === null ? "—" : review.score_avg.toFixed(1),
+        c: review.comment ?? "No comment left.",
+      })),
       notes: openNotes ?? [],
       decision: DECIDABLE.includes(open?.status as (typeof DECIDABLE)[number])
         ? (open?.status as Outcome)

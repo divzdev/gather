@@ -610,7 +610,22 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** My Events */
+        /**
+         * My Events
+         * @description Every event this account can reach, the one they are running first.
+         *
+         *     The order is load-bearing, not cosmetic: signing in adopts the first row,
+         *     and so does the console's recovery path when a stored event id goes stale.
+         *     Ordering by `starts_on DESC` meant *the event furthest in the future* won,
+         *     so anyone who created an event dated past the real one silently became the
+         *     landing page for every later sign-in — an evaluator made a throwaway
+         *     "Forward Summit 2028" and the seeded demo, 214 proposals and all,
+         *     disappeared behind an empty first-run dashboard nobody could see past.
+         *
+         *     Soonest-unfinished-first is what an organiser means by "my event": the one
+         *     running now, or the one running next. Finished events fall to the end,
+         *     where they are only ever the fallback for an account that has no live one.
+         */
         get: operations["my_events_v1_events_get"];
         put?: never;
         /**
@@ -1830,6 +1845,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/events/{event_id}/submissions/{submission_id}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Reviews
+         * @description What the reviewers actually said about this proposal.
+         *
+         *     The scorecard tells a reviewer their comment is "visible to organizers, never
+         *     to the speaker" — and it was visible to nobody, because no staff-side route
+         *     read it back. The numbers reached the organiser as an average and the words
+         *     reached no one.
+         *
+         *     `READ` deliberately excludes reviewers: one reviewer reading another's
+         *     scoring before writing their own is the thing round-based review exists to
+         *     prevent.
+         */
+        get: operations["list_reviews_v1_events__event_id__submissions__submission_id__reviews_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/events/{event_id}/submissions/export.xlsx": {
         parameters: {
             query?: never;
@@ -2349,7 +2393,16 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Discard Proposal */
+        /**
+         * Discard Proposal
+         * @description Throw a suggestion away.
+         *
+         *     Any reviewer, because a reviewer creates score suggestions and must be able
+         *     to bin their own. **Except a program change**: a reviewer is refused the
+         *     assistant entirely, so they have no business discarding an organiser's
+         *     pending room — the roles are checked per kind rather than per route because
+         *     one route serves both.
+         */
         post: operations["discard_proposal_v1_events__event_id__ai_proposals__proposal_id__discard_post"];
         delete?: never;
         options?: never;
@@ -3040,6 +3093,13 @@ export interface paths {
         /**
          * Gallery
          * @description The speaker gallery: the same people, shaped for a grid of cards.
+         *
+         *     The grid is a grid *of faces* — that is the whole difference between this
+         *     and the speakers list. The projection below used to name six fields and not
+         *     that one, so the gallery was served company and job title and no way to
+         *     resolve a photograph, and rendered a wall of initials no matter how many
+         *     headshots had been approved. The snapshot has always carried it; this only
+         *     stopped dropping it on the way out.
          */
         get: operations["gallery_v1_public_events__event_slug__gallery_get"];
         put?: never;
@@ -3107,7 +3167,11 @@ export interface paths {
         };
         /**
          * Whole Schedule Ics
-         * @description The entire published programme as one calendar file.
+         * @description The published programme as one calendar file.
+         *
+         *     `session_ids` narrows it to the talks an attendee actually picked — the same
+         *     ids the itinerary holds in its query string, so exporting a personal plan
+         *     needs no account and no second endpoint. Omitted, it is the whole programme.
          *
          *     SEQUENCE is the published version, so re-importing after a republish updates
          *     every entry in place rather than duplicating the conference.
@@ -5720,6 +5784,12 @@ export interface components {
             responded_at?: unknown;
             /** Decline Reason */
             decline_reason?: string | null;
+            /** Dietary Notes */
+            dietary_notes?: string | null;
+            /** Accessibility Notes */
+            accessibility_notes?: string | null;
+            /** Av Notes */
+            av_notes?: string | null;
         };
         /**
          * SpeakerStatus
@@ -5753,12 +5823,37 @@ export interface components {
             /** Bio */
             bio?: string | null;
             status?: components["schemas"]["SpeakerStatus"] | null;
+            /** Dietary Notes */
+            dietary_notes?: string | null;
+            /** Accessibility Notes */
+            accessibility_notes?: string | null;
+            /** Av Notes */
+            av_notes?: string | null;
         };
         /** SubmissionPage */
         SubmissionPage: {
             /** Data */
             data: components["schemas"]["app__features__submissions__schemas__SubmissionRead"][];
             meta: components["schemas"]["PageMeta"];
+        };
+        /** SubmissionReviewRead */
+        SubmissionReviewRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reviewer Name */
+            reviewer_name: string;
+            status: components["schemas"]["ReviewStatus"];
+            /** Score Avg */
+            score_avg: number | null;
+            /** Comment */
+            comment: string | null;
+            /** Conflict Of Interest */
+            conflict_of_interest: boolean;
+            /** Round Name */
+            round_name: string | null;
         };
         /**
          * SubmissionStatus
@@ -10316,6 +10411,38 @@ export interface operations {
             };
         };
     };
+    list_reviews_v1_events__event_id__submissions__submission_id__reviews_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionReviewRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     export_xlsx_v1_events__event_id__submissions_export_xlsx_post: {
         parameters: {
             query?: never;
@@ -12750,7 +12877,9 @@ export interface operations {
     };
     whole_schedule_ics_v1_public_events__event_slug__schedule_ics_get: {
         parameters: {
-            query?: never;
+            query?: {
+                session_ids?: string | null;
+            };
             header?: never;
             path: {
                 event_slug: string;

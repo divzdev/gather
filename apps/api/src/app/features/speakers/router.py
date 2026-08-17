@@ -69,6 +69,12 @@ class SpeakerRead(BaseModel):
     #: with this null is an organiser's assumption, and the roster says so.
     responded_at: Any = None
     decline_reason: str | None = None
+    #: Written by the speaker in the portal and, until now, readable only there —
+    #: the one person who needs a dietary requirement is the organiser booking
+    #: the catering, and no staff surface returned it.
+    dietary_notes: str | None = None
+    accessibility_notes: str | None = None
+    av_notes: str | None = None
 
 
 class SpeakerCreate(BaseModel):
@@ -91,6 +97,11 @@ class SpeakerUpdate(BaseModel):
     pronouns: str | None = Field(default=None, max_length=60)
     bio: str | None = None
     status: SpeakerStatus | None = None
+    #: Editable from the console too: plenty of speakers reply to the acceptance
+    #: email with "I'm coeliac" rather than opening the portal.
+    dietary_notes: str | None = None
+    accessibility_notes: str | None = None
+    av_notes: str | None = None
 
 
 class ImportResult(BaseModel):
@@ -144,6 +155,9 @@ async def _roster(session: DbSession) -> list[SpeakerRead]:
             portal_last_seen_at=link.portal_last_seen_at,
             responded_at=link.responded_at,
             decline_reason=link.decline_reason,
+            dietary_notes=speaker.dietary_notes,
+            accessibility_notes=speaker.accessibility_notes,
+            av_notes=speaker.av_notes,
         )
         for link, speaker in rows
     ]

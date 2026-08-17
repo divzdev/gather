@@ -4,24 +4,79 @@
  *
  *  The picks live in the URL, which is the whole design: an attendee can bookmark
  *  their plan, send it to a colleague, or open it on their phone, and none of
- *  that needs a login or a cookie. localStorage would be private to one browser
- *  and a server-side list would need an account.
+ *  that needs a login or a cookie. A server-side list would need an account.
+ *
+ *  localStorage mirrors the URL rather than replacing it. The URL alone loses the
+ *  plan the moment someone opens the page from the nav instead of their bookmark
+ *  — they tick twelve talks, come back tomorrow via the menu, and it is empty.
+ *  So: the URL wins when it carries picks (a shared link must show the sender's
+ *  plan, not the reader's), and the mirror restores them when it does not.
  */
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+
+import { BROWSER_API_BASE_URL } from "@/lib/api";
+
+/** The saved plan, as an external store rather than state restored in an effect.
+ *
+ *  Reading localStorage during render is a hydration mismatch (the server has
+ *  none) and reading it in an effect is a cascading render. `useSyncExternalStore`
+ *  is the shape that is neither: a server snapshot of "nothing", a client
+ *  snapshot of what is stored, and a synchronous notify on write so a tick still
+ *  lands on the very next frame. */
+const listeners = new Set<() => void>();
+
+function subscribe(onChange: () => void) {
+  listeners.add(onChange);
+  // `storage` fires in *other* tabs. Both matter: two tabs of the same plan
+  // should not disagree.
+  window.addEventListener("storage", onChange);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function readStore(key: string): string {
+  try {
+    return window.localStorage.getItem(key) ?? "";
+  } catch {
+    // Private browsing throws on access, not just on write.
+    return "";
+  }
+}
+
+function writeStore(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // A plan that cannot be remembered is not a reason to refuse the tick the
+    // visitor just made.
+  }
+  for (const notify of listeners) notify();
+}
 
 type Session = {
   id: string;
   slug: string;
   title: string;
+  abstract: string | null;
   starts_at: string | null;
   room: string | null;
   track: string | null;
+  format: string | null;
   duration_minutes: number;
-  speakers: { id: string; name: string }[];
+  speakers: { id: string; name: string; job_title: string | null; company: string | null }[];
 };
+
+/** Name, role and employer, skipping the separators for whatever is missing.
+ *  The sessions list has printed this for a while; the itinerary printed bare
+ *  names, so the same speaker read as two different people across two pages. */
+function billing(person: { name: string; job_title: string | null; company: string | null }) {
+  return [person.name, person.job_title, person.company].filter(Boolean).join(", ");
+}
 
 /** Was pinned to UTC, so it disagreed with the agenda *and* with the event.
  *  Both pages read the event's own zone now, which is the invariant CLAUDE.md
@@ -78,17 +133,25 @@ export function Picker({
   const router = useRouter();
   const params = useSearchParams();
 
-  // Local state is the source of truth so a tick lands instantly; the URL is
-  // written alongside it so the plan stays shareable. Driving the checkbox from
-  // the URL alone made it wait on a server round trip before it looked ticked,
-  // which reads as a broken control.
-  const [picked, setLocal] = useState<Set<string>>(
-    () => new Set((params.get("sessions") ?? "").split(",").filter(Boolean)),
+  const store = `itinerary:${slug}`;
+  const saved = useSyncExternalStore(
+    subscribe,
+    () => readStore(store),
+    () => "",
+  );
+
+  /** The URL wins whenever it carries picks: a link someone was sent shows the
+   *  sender's plan, never the reader's. The saved plan is the fallback, which is
+   *  what makes the page survive arriving from the nav instead of a bookmark. */
+  const fromUrl = params.get("sessions") ?? "";
+  const picked = useMemo(
+    () => new Set((fromUrl !== "" ? fromUrl : saved).split(",").filter(Boolean)),
+    [fromUrl, saved],
   );
 
   const setPicked = (next: Set<string>) => {
-    setLocal(next);
     const query = [...next].join(",");
+    writeStore(store, query);
     // replace, not push: twenty picks should not mean twenty back-button presses.
     router.replace(
       query === "" ? `/e/${slug}/itinerary` : `/e/${slug}/itinerary?sessions=${query}`,
@@ -184,8 +247,10 @@ export function Picker({
           >
             Clear all
           </button>
+          {/* This offered only the whole programme, which is the one calendar an
+              attendee who just picked six talks does not want. */}
           <a
-            href={`/api/v1/public/events/${slug}/schedule.ics`}
+            href={`${BROWSER_API_BASE_URL}/public/events/${slug}/schedule.ics?session_ids=${[...picked].join(",")}`}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -198,7 +263,24 @@ export function Picker({
               textDecoration: "none",
             }}
           >
-            Download the full schedule
+            Add my {picked.size} {picked.size === 1 ? "talk" : "talks"} to a calendar
+          </a>
+          <a
+            href={`${BROWSER_API_BASE_URL}/public/events/${slug}/schedule.ics`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              height: "var(--control-h-sm, 36px)",
+              padding: "0 14px",
+              borderRadius: 999,
+              border: "1px solid var(--e-edge-strong, rgba(255,255,255,.18))",
+              background: "none",
+              color: "var(--e-muted, #9A9FB1)",
+              font: "500 12.5px var(--font-manrope), sans-serif",
+              textDecoration: "none",
+            }}
+          >
+            Full schedule
           </a>
         </div>
       ) : null}
@@ -230,7 +312,10 @@ export function Picker({
               </h2>
               <span
                 className="tabular"
-                style={{ font: "400 12px ui-monospace,'SF Mono',Menlo,monospace", color: "var(--e-muted, #9A9FB1)" }}
+                style={{
+                  font: "400 12px ui-monospace,'SF Mono',Menlo,monospace",
+                  color: "var(--e-muted, #9A9FB1)",
+                }}
               >
                 {chosen === 0
                   ? `${day.rows.length} ${day.rows.length === 1 ? "talk" : "talks"}`
@@ -315,10 +400,37 @@ export function Picker({
                         {row.starts_at === null ? "—" : CLOCK.format(new Date(row.starts_at))}
                         {row.room !== null ? ` · ${row.room}` : ""}
                         {row.track !== null ? ` · ${row.track}` : ""}
-                        {row.speakers.length > 0
-                          ? ` · ${row.speakers.map((person) => person.name).join(", ")}`
-                          : ""}
+                        {row.format !== null ? ` · ${row.format}` : ""}
                       </p>
+                      {/* Speakers were a bare comma list on this page while the
+                          sessions list gave each one their role and employer.
+                          Which one an attendee is choosing between is often the
+                          speaker, so it is the wrong page to shorten. */}
+                      {row.speakers.length > 0 ? (
+                        <p
+                          style={{
+                            font: "500 13px var(--font-manrope), sans-serif",
+                            color: "var(--e-text, #F3F4F8)",
+                            margin: "6px 0 0",
+                          }}
+                        >
+                          {row.speakers.map(billing).join(" · ")}
+                        </p>
+                      ) : null}
+                      {row.abstract === null || row.abstract === "" ? null : (
+                        <p
+                          style={{
+                            font: "400 13.5px var(--font-manrope), sans-serif",
+                            lineHeight: 1.55,
+                            color: "var(--e-muted, #9A9FB1)",
+                            margin: "8px 0 0",
+                          }}
+                        >
+                          {row.abstract.length > 220
+                            ? `${row.abstract.slice(0, 220)}…`
+                            : row.abstract}
+                        </p>
+                      )}
                     </div>
                   </article>
                 );

@@ -15,6 +15,7 @@ type Session = {
   starts_at: string | null;
   room: string | null;
   track: string | null;
+  format?: string | null;
   duration_minutes: number;
   /** Role and employer come down in the published snapshot and were dropped on
    *  the floor here, so a card said "Beatriz Fontaine" where the payload said
@@ -37,6 +38,7 @@ type Payload = {
 type Filters = {
   day?: string;
   track?: string;
+  format?: string;
   room?: string;
   q?: string;
   tag?: string;
@@ -53,6 +55,7 @@ function dayOf(session: Session): string | null {
 function matches(session: Session, filters: Filters): boolean {
   if (filters.day !== undefined && dayOf(session) !== filters.day) return false;
   if (filters.track !== undefined && (session.track ?? "") !== filters.track) return false;
+  if (filters.format !== undefined && (session.format ?? "") !== filters.format) return false;
   if (filters.room !== undefined && (session.room ?? "") !== filters.room) return false;
   // `?? []` throughout: a snapshot published before these fields existed is
   // still served, and must filter to nothing rather than throw.
@@ -158,6 +161,7 @@ export default async function SessionsList({
   const filters: Filters = {
     day: one("day"),
     track: one("track"),
+    format: one("format"),
     tag: one("tag"),
     level: one("level"),
     language: one("language"),
@@ -207,6 +211,7 @@ export default async function SessionsList({
     data.sessions.some((session) => session.expertise_level === level),
   );
   const rooms = unique(data.sessions.map((session) => session.room));
+  const formats = unique(data.sessions.map((session) => session.format ?? null));
 
   const shown = data.sessions.filter((session) => matches(session, filters));
   const narrowed = Object.values(filters).some((value) => value !== undefined);
@@ -215,8 +220,11 @@ export default async function SessionsList({
     <PublicShell event={data.event} slug={slug} active="Sessions">
       <div style={{ display: "grid", gap: 10, margin: "0 0 18px" }}>
         <form action={`/e/${slug}/schedule`} method="get" style={{ display: "flex", gap: 6 }}>
-          {/* Carried through so searching does not silently drop the chips. */}
-          {(["day", "track", "room"] as const).map((key) =>
+          {/* Carried through so searching does not silently drop the chips.
+              This listed three of the seven, so narrowing to a tag and then
+              typing a word threw the tag away — and the chip row above still
+              drew it as active, because that reads the same `filters`. */}
+          {(["day", "track", "format", "room", "tag", "level", "language"] as const).map((key) =>
             filters[key] === undefined ? null : (
               <input key={key} type="hidden" name={key} value={filters[key]} />
             ),
@@ -261,6 +269,10 @@ export default async function SessionsList({
 
         <Row label="DAY" options={days} slug={slug} filters={filters} name="day" />
         <Row label="TRACK" options={tracks} slug={slug} filters={filters} name="track" />
+        {/* A talk, a workshop and a lightning slot are three different asks on
+            an attendee's day, and format was the one attribute of a session the
+            filter bar could not narrow by. */}
+        <Row label="FORMAT" options={formats} slug={slug} filters={filters} name="format" />
         <Row label="LEVEL" options={levels} slug={slug} filters={filters} name="level" />
         <Row label="TAG" options={tags} slug={slug} filters={filters} name="tag" />
         <Row label="LANG" options={languages} slug={slug} filters={filters} name="language" />

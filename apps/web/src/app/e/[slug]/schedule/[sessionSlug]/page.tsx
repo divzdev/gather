@@ -6,6 +6,7 @@ import {
   zoneLabel,
   type EventInfo,
 } from "../../public";
+import { Back } from "./back";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +17,10 @@ type Payload = {
     abstract: string | null;
     track: string | null;
     room: string | null;
+    format: string | null;
     starts_at: string | null;
     duration_minutes: number;
-    speakers: { id: string; name: string; company: string | null }[];
+    speakers: { id: string; name: string; job_title: string | null; company: string | null }[];
   };
 };
 
@@ -33,6 +35,7 @@ export default async function SessionDetail({
 
   return (
     <PublicShell event={data.event} slug={slug} active="Sessions">
+      <Back slug={slug} />
       <article
         style={{
           background: "var(--e-raised, #101018)",
@@ -47,7 +50,11 @@ export default async function SessionDetail({
             the talk was without leaving the page. */}
         <p
           className="tabular"
-          style={{ font: "500 14px ui-monospace,'SF Mono',Menlo,monospace", color: "var(--e-text, #F3F4F8)", margin: "0 0 6px" }}
+          style={{
+            font: "500 14px ui-monospace,'SF Mono',Menlo,monospace",
+            color: "var(--e-text, #F3F4F8)",
+            margin: "0 0 6px",
+          }}
         >
           {s.starts_at === null
             ? "Time to be confirmed"
@@ -66,8 +73,22 @@ export default async function SessionDetail({
             margin: "0 0 8px",
           }}
         >
-          {s.track ?? "Unassigned"} · {s.duration_minutes} min
-          {s.room !== null ? ` · ${s.room}` : ""}
+          {/* `format` is in the snapshot and was the one attribute this page
+              dropped — and it is the one telling a visitor whether they are
+              reading about a 30-minute talk, a workshop or a panel.
+
+              Formats here are named with their nominal length ("Keynote
+              (45 min)"), which is not always what this session was scheduled
+              for. Printing both gave "Keynote (45 min) · 30 min", so the real
+              duration is only added when the name does not already claim one. */}
+          {[
+            s.track ?? "Unassigned",
+            s.format,
+            s.format !== null && /\d+\s*min/i.test(s.format) ? null : `${s.duration_minutes} min`,
+            s.room,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
         {/* `PublicShell` already renders the event name as this page's `<h1>` —
             a second one here (the session title) gave every session page two
@@ -83,9 +104,15 @@ export default async function SessionDetail({
           {s.title}
         </h2>
         <p
-          style={{ font: "500 14px var(--font-manrope), sans-serif", color: "var(--e-muted, #9A9FB1)", margin: "0 0 18px" }}
+          style={{
+            font: "500 14px var(--font-manrope), sans-serif",
+            color: "var(--e-muted, #9A9FB1)",
+            margin: "0 0 18px",
+          }}
         >
-          {s.speakers.map((p) => (p.company ? `${p.name}, ${p.company}` : p.name)).join(" · ")}
+          {s.speakers
+            .map((p) => [p.name, p.job_title, p.company].filter(Boolean).join(", "))
+            .join(" · ")}
         </p>
         {s.abstract !== null && (
           <p

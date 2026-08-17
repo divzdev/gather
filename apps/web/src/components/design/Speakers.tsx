@@ -198,6 +198,13 @@ export type SpeakersData = {
     readonly on: (event: React.SyntheticEvent) => void;
     readonly ring: string;
   };
+  /** Dietary, accessibility and AV needs. The speaker writes these in the
+   *  portal and, until this block existed, they were readable only there —
+   *  the caterer, the venue and the AV desk are all on this side of the app. */
+  readonly logistics: readonly {
+    readonly k: React.ReactNode;
+    readonly v: React.ReactNode;
+  }[];
   readonly tabFiles: boolean;
   readonly tabNotes: boolean;
   readonly tabSessions: boolean;
@@ -1851,6 +1858,57 @@ export function Speakers({ d }: { d: SpeakersData }) {
               <div style={{ flex: "1", overflowY: "auto", padding: "20px 24px" }}>
                 {" "}
                 {d.missPanel}{" "}
+                {(d.logistics ?? []).length === 0 ? null : (
+                  <div
+                    style={{
+                      border: "1px solid var(--ln,#E1E7E9)",
+                      borderLeft: "3px solid var(--pd,#B96A1F)",
+                      borderRadius: "8px",
+                      padding: "12px 14px",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        font: "600 10px 'IBM Plex Sans Condensed',sans-serif",
+                        letterSpacing: "0.08em",
+                        color: "var(--i4,#99A6AD)",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      LOGISTICS THEY TOLD US
+                    </div>
+                    {(d.logistics ?? []).map((lg, lgIndex) => (
+                      <Fragment key={lgIndex}>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "110px minmax(0,1fr)",
+                            gap: "12px",
+                            padding: "5px 0",
+                          }}
+                        >
+                          <span
+                            style={{
+                              font: "500 11.5px 'IBM Plex Sans',sans-serif",
+                              color: "var(--i3,#6B7B84)",
+                            }}
+                          >
+                            {lg.k}
+                          </span>
+                          <span
+                            style={{
+                              font: "400 12.5px/19px 'IBM Plex Sans',sans-serif",
+                              color: "var(--ik,#16232B)",
+                            }}
+                          >
+                            {lg.v}
+                          </span>
+                        </div>
+                      </Fragment>
+                    ))}
+                  </div>
+                )}{" "}
                 {d.tabTasks ? (
                   <>
                     {" "}
