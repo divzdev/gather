@@ -785,6 +785,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/events/{event_id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Files Library
+         * @description Every file anyone has uploaded to this event, newest first.
+         *
+         *     Chasing slides meant opening eighty speaker drawers: uploads were reachable
+         *     one person at a time and nowhere together. Only the latest version of each
+         *     group is listed — a deliverable replaced three times is one row that says
+         *     so, not three rows competing to be the current one.
+         */
+        get: operations["files_library_v1_events__event_id__files_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/portal/files/{file_id}/comments": {
         parameters: {
             query?: never;
@@ -943,6 +968,87 @@ export interface paths {
         put?: never;
         /** Send Decisions */
         post: operations["send_decisions_v1_events__event_id__messages_send_decisions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/message-templates/merge-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Merge Fields
+         * @description What a template is allowed to say. The composer reads this rather than
+         *     hard-coding a list that would drift from the resolver.
+         */
+        get: operations["list_merge_fields_v1_events__event_id__message_templates_merge_fields_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/message-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Templates */
+        get: operations["list_templates_v1_events__event_id__message_templates_get"];
+        put?: never;
+        /** Create Template */
+        post: operations["create_template_v1_events__event_id__message_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/message-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Template */
+        patch: operations["update_template_v1_events__event_id__message_templates__template_id__patch"];
+        trace?: never;
+    };
+    "/v1/events/{event_id}/message-templates/{template_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Template
+         * @description The template against a real speaker on this event.
+         *
+         *     Against a *real* one, not a made-up example: a merge field that resolves for
+         *     "Test Person" and breaks on the speaker with no session is exactly the bug a
+         *     preview exists to catch. With no id given it picks the first on the roster,
+         *     so the control works before anyone has chosen anybody.
+         */
+        get: operations["preview_template_v1_events__event_id__message_templates__template_id__preview_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2815,6 +2921,55 @@ export interface paths {
         patch: operations["patch_session_v1_events__event_id__sessions__session_id__patch"];
         trace?: never;
     };
+    "/v1/events/{event_id}/sessions/{session_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Session History
+         * @description Who changed this session's wording, when, and to what.
+         *
+         *     `ActivityLog` has recorded before/after diffs since the first migration and
+         *     nothing read it, so a title that changed under an organiser had no author
+         *     and no previous value. This is a history of one session's content — not the
+         *     audit-log browser the non-goals rule out.
+         */
+        get: operations["session_history_v1_events__event_id__sessions__session_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/sessions/{session_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Session
+         * @description Put back what one edit replaced.
+         *
+         *     Restoring is itself an edit: it writes its own log entry, so the history
+         *     keeps growing and an undo can be undone. Nothing is rewound or deleted —
+         *     the same reason files are versioned rather than overwritten.
+         */
+        post: operations["restore_session_v1_events__event_id__sessions__session_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/events/{event_id}/sessions/bulk": {
         parameters: {
             query?: never;
@@ -4526,6 +4681,29 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HistoryEntry */
+        HistoryEntry: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Actor Name */
+            actor_name: string;
+            /** Before */
+            before: {
+                [key: string]: unknown;
+            };
+            /** After */
+            after: {
+                [key: string]: unknown;
+            };
+        };
         /** Home */
         Home: {
             event: components["schemas"]["EventRead"];
@@ -4576,6 +4754,40 @@ export interface components {
             skipped: number;
             /** Skipped Names */
             skipped_names: string[];
+        };
+        /** LibraryEntry */
+        LibraryEntry: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Filename */
+            filename: string;
+            /** Content Type */
+            content_type: string;
+            /** Byte Size */
+            byte_size: number;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Versions */
+            versions: number;
+            /**
+             * Version Group Id
+             * Format: uuid
+             */
+            version_group_id: string;
+            /** Speaker Name */
+            speaker_name: string | null;
+            /** Speaker Id */
+            speaker_id: string | null;
+            /** Label */
+            label: string;
+            /** Session Title */
+            session_title: string | null;
         };
         /** LocalModel */
         LocalModel: {
@@ -4683,6 +4895,18 @@ export interface components {
              */
             scope: "org" | "event";
         };
+        /** MergeField */
+        MergeField: {
+            /** Token */
+            token: string;
+            /** Description */
+            description: string;
+        };
+        /**
+         * MessagePurpose
+         * @enum {string}
+         */
+        MessagePurpose: "acceptance" | "rejection" | "waitlist" | "task_reminder" | "schedule_change" | "portal_invite" | "reviewer_nudge" | "custom";
         /**
          * MessageStatus
          * @enum {string}
@@ -5064,6 +5288,15 @@ export interface components {
             /** Is Pinned In Portal */
             is_pinned_in_portal: boolean;
         };
+        /** Preview */
+        Preview: {
+            /** Speaker Name */
+            speaker_name: string;
+            /** Subject */
+            subject: string;
+            /** Body */
+            body: string;
+        };
         /** ProfileRead */
         ProfileRead: {
             /**
@@ -5363,6 +5596,14 @@ export interface components {
              */
             id: string;
             status: components["schemas"]["MessageStatus"];
+        };
+        /** RestoreRequest */
+        RestoreRequest: {
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
         };
         /** ReviewRead */
         ReviewRead: {
@@ -6227,50 +6468,6 @@ export interface components {
              */
             sort_order: number;
         };
-        /** TemplateRead */
-        TemplateRead: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Name */
-            name: string;
-            /** Description */
-            description: string | null;
-            kind: components["schemas"]["TaskKind"];
-            /** External Url */
-            external_url: string | null;
-            /** Is Required */
-            is_required: boolean;
-            /** Due Rule */
-            due_rule: {
-                [key: string]: unknown;
-            };
-            /** Applies To */
-            applies_to: {
-                [key: string]: unknown;
-            };
-            /** Accepted File Types */
-            accepted_file_types: {
-                [key: string]: unknown;
-            };
-            /** Max File Mb */
-            max_file_mb: number | null;
-            /** Form Id */
-            form_id: string | null;
-            /** Requires Review */
-            requires_review: boolean;
-            /** Sets Profile Photo */
-            sets_profile_photo: boolean;
-            /** Sort Order */
-            sort_order: number;
-            /**
-             * Assigned Count
-             * @default 0
-             */
-            assigned_count: number;
-        };
         /** TemplateUpdate */
         TemplateUpdate: {
             /** Name */
@@ -6303,6 +6500,17 @@ export interface components {
             sets_profile_photo?: boolean | null;
             /** Sort Order */
             sort_order?: number | null;
+        };
+        /** TemplateWrite */
+        TemplateWrite: {
+            /** Name */
+            name: string;
+            /** @default custom */
+            purpose: components["schemas"]["MessagePurpose"];
+            /** Subject */
+            subject: string;
+            /** Body Markdown */
+            body_markdown: string;
         };
         /** TextBlock */
         TextBlock: {
@@ -6498,6 +6706,21 @@ export interface components {
              */
             batch_id: string;
         };
+        /** TemplateRead */
+        app__features__messaging__templates__TemplateRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            purpose: components["schemas"]["MessagePurpose"];
+            /** Subject */
+            subject: string;
+            /** Body Markdown */
+            body_markdown: string;
+        };
         /** ProfileUpdate */
         app__features__portal__router__ProfileUpdate: {
             /** Name */
@@ -6672,6 +6895,50 @@ export interface components {
             coordinator_user_id: string | null;
             /** Speakers */
             speakers?: components["schemas"]["SpeakerSummary"][];
+        };
+        /** TemplateRead */
+        app__features__tasks__router__TemplateRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            kind: components["schemas"]["TaskKind"];
+            /** External Url */
+            external_url: string | null;
+            /** Is Required */
+            is_required: boolean;
+            /** Due Rule */
+            due_rule: {
+                [key: string]: unknown;
+            };
+            /** Applies To */
+            applies_to: {
+                [key: string]: unknown;
+            };
+            /** Accepted File Types */
+            accepted_file_types: {
+                [key: string]: unknown;
+            };
+            /** Max File Mb */
+            max_file_mb: number | null;
+            /** Form Id */
+            form_id: string | null;
+            /** Requires Review */
+            requires_review: boolean;
+            /** Sets Profile Photo */
+            sets_profile_photo: boolean;
+            /** Sort Order */
+            sort_order: number;
+            /**
+             * Assigned Count
+             * @default 0
+             */
+            assigned_count: number;
         };
     };
     responses: never;
@@ -8538,6 +8805,37 @@ export interface operations {
             };
         };
     };
+    files_library_v1_events__event_id__files_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_own_comments_v1_portal_files__file_id__comments_get: {
         parameters: {
             query?: never;
@@ -8909,6 +9207,173 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["app__features__messaging__router__SendResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_merge_fields_v1_events__event_id__message_templates_merge_fields_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MergeField"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_templates_v1_events__event_id__message_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__features__messaging__templates__TemplateRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_template_v1_events__event_id__message_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__features__messaging__templates__TemplateRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_template_v1_events__event_id__message_templates__template_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__features__messaging__templates__TemplateRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_template_v1_events__event_id__message_templates__template_id__preview_get: {
+        parameters: {
+            query?: {
+                speaker_id?: string | null;
+            };
+            header?: never;
+            path: {
+                template_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preview"];
                 };
             };
             /** @description Validation Error */
@@ -9410,7 +9875,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TemplateRead"][];
+                    "application/json": components["schemas"]["app__features__tasks__router__TemplateRead"][];
                 };
             };
             /** @description Validation Error */
@@ -9445,7 +9910,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TemplateRead"];
+                    "application/json": components["schemas"]["app__features__tasks__router__TemplateRead"];
                 };
             };
             /** @description Validation Error */
@@ -9511,7 +9976,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TemplateRead"];
+                    "application/json": components["schemas"]["app__features__tasks__router__TemplateRead"];
                 };
             };
             /** @description Validation Error */
@@ -12345,6 +12810,76 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SessionPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_history_v1_events__event_id__sessions__session_id__history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_session_v1_events__event_id__sessions__session_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreRequest"];
             };
         };
         responses: {

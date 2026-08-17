@@ -19,10 +19,13 @@ type Round = {
   closes_at: string | null;
 };
 type QueueItem = { submission_id: string; code: string; title: string; completed: boolean };
+type CriterionKind = "rating" | "select" | "text";
 type Criterion = {
   id: string;
   label: string;
   description: string | null;
+  kind: CriterionKind;
+  choices: { value: number; label: string }[];
   scale_min: number;
   scale_max: number;
   is_required: boolean;
@@ -73,7 +76,7 @@ export default function ReviewPage() {
 
   const [index, setIndex] = useState(0);
   const [focus, setFocus] = useState(0);
-  const [scores, setScores] = useState<Record<string, Record<string, number>>>({});
+  const [scores, setScores] = useState<Record<string, Record<string, number | string>>>({});
   const [comments, setComments] = useState<Record<string, string>>({});
   const [aiOpen, setAiOpen] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -202,8 +205,16 @@ export default function ReviewPage() {
 
   const scoredCount = queue.filter((item) => {
     const given = scores[item.submission_id];
-    const complete =
-      criteria.length > 0 && criteria.every((criterion) => given?.[criterion.id] !== undefined);
+    // Only the required ones, and an empty box is not an answer. Before free
+    // text existed every criterion was a scale and this distinction could not
+    // arise; now an optional written question would otherwise hold a proposal
+    // at "not reviewed" forever.
+    const needed = criteria.filter((criterion) => criterion.is_required);
+    const answered = (criterion: Criterion) => {
+      const value = given?.[criterion.id];
+      return value !== undefined && !(typeof value === "string" && value.trim() === "");
+    };
+    const complete = criteria.length > 0 && needed.every(answered);
     return item.completed || complete;
   }).length;
 
@@ -217,13 +228,15 @@ export default function ReviewPage() {
     setUsedProposal(null);
   };
 
-  const setScore = (criterionId: string, value: number) => {
+  const setScore = (criterionId: string, value: number | string, { advance = true } = {}) => {
     if (current === undefined) return;
     setScores((all) => ({
       ...all,
       [current.submission_id]: { ...all[current.submission_id], [criterionId]: value },
     }));
-    setFocus((position) => Math.min(position + 1, Math.max(0, criteria.length - 1)));
+    // Moving on after a keystroke is right for a scale, where one press is the
+    // whole answer, and wrong for a sentence.
+    if (advance) setFocus((position) => Math.min(position + 1, Math.max(0, criteria.length - 1)));
   };
 
   const saveAndNext = () => {
@@ -252,17 +265,25 @@ export default function ReviewPage() {
       { key: "mod+Enter", run: () => saveAndNext(), whileTyping: true },
       { key: "j", run: () => move(1) },
       { key: "k", run: () => move(-1) },
-      ...(focused === undefined
+      // A written answer binds no digits — the keys belong to the box. A
+      // dropdown binds 1..N positionally, so "Accept / Maybe / Reject" is still
+      // one keypress even though its stored values are 5, 3, 1.
+      ...(focused === undefined || focused.kind === "text"
         ? []
-        : Array.from(
-            { length: focused.scale_max - focused.scale_min + 1 },
-            (_, offset) => focused.scale_min + offset,
-          )
-            .filter((value) => value >= 0 && value <= 9)
-            .map((value) => ({
-              key: String(value),
-              run: () => setScore(focused.id, value),
-            }))),
+        : focused.kind === "select"
+          ? focused.choices.slice(0, 9).map((choice, position) => ({
+              key: String(position + 1),
+              run: () => setScore(focused.id, choice.value),
+            }))
+          : Array.from(
+              { length: focused.scale_max - focused.scale_min + 1 },
+              (_, offset) => focused.scale_min + offset,
+            )
+              .filter((value) => value >= 0 && value <= 9)
+              .map((value) => ({
+                key: String(value),
+                run: () => setScore(focused.id, value),
+              }))),
     ],
     queue.length > 0 && !finished,
   );
@@ -305,9 +326,11 @@ export default function ReviewPage() {
      * so keyboard and screen-reader users keep it. The range comes from the
      * rubric, because a round scored 0-3 should not claim 1-5. */
     shortcutHint:
-      focused === undefined
+      focused === undefined || focused.kind === "text"
         ? "⌘⏎ saves · j / k moves between proposals"
-        : `${focused.scale_min}–${focused.scale_max} scores · ⌘⏎ saves · j / k moves between proposals`,
+        : focused.kind === "select"
+          ? `1–${Math.min(focused.choices.length, 9)} picks · ⌘⏎ saves · j / k moves between proposals`
+          : `${focused.scale_min}–${focused.scale_max} scores · ⌘⏎ saves · j / k moves between proposals`,
     doneTitle:
       queue.length === 0
         ? "Nothing assigned to you yet"
@@ -339,30 +362,79 @@ export default function ReviewPage() {
       tools: answer(subject, "key_takeaway") || "—",
     },
 
+    /** Three kinds, three controls. The model has carried all three since the
+     *  schema and this screen drew every one of them as a row of numbers — so
+     *  an organiser who asked "Accept, Maybe or Reject" got 1, 2, 3 with no
+     *  words on them, and one who asked a written question got a scale. */
     crits: criteria.map((criterion, position) => {
       const focused = focus === position;
       const chosen = given[criterion.id];
-      const range = Array.from(
-        { length: criterion.scale_max - criterion.scale_min + 1 },
-        (_, offset) => criterion.scale_min + offset,
-      );
-      return {
+      const choices =
+        criterion.kind === "select"
+          ? criterion.choices.map((choice) => ({ value: choice.value, label: choice.label }))
+          : Array.from(
+              { length: criterion.scale_max - criterion.scale_min + 1 },
+              (_, offset) => criterion.scale_min + offset,
+            ).map((value) => ({ value, label: String(value) }));
+
+      const shell = {
         n: criterion.label,
-        hint: focused ? `press ${criterion.scale_min}–${criterion.scale_max}` : "",
+        req: criterion.is_required,
         bd: focused ? "var(--sg,#E04E4E)" : "var(--ln,#E1E7E9)",
         bg: focused ? "var(--sw,#FFEAE6)" : "var(--cd,#FFFFFF)",
         lc: focused ? "var(--sg,#E04E4E)" : "var(--i3,#6B7B84)",
         onFocus: () => setFocus(position),
-        opts: range.map((value) => ({
-          n: String(value),
+      };
+
+      if (criterion.kind === "text") {
+        return {
+          ...shell,
+          hint: focused ? "a written answer · no score" : "",
+          opts: [],
+          text: (
+            <textarea
+              value={typeof chosen === "string" ? chosen : ""}
+              onChange={(event) => setScore(criterion.id, event.target.value, { advance: false })}
+              onClick={(event) => event.stopPropagation()}
+              placeholder="Your answer"
+              rows={3}
+              aria-label={criterion.label}
+              style={{
+                boxSizing: "border-box",
+                width: "100%",
+                minHeight: 66,
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px solid var(--ls,#C8D2D5)",
+                background: "var(--cd,#FFFFFF)",
+                color: "var(--ik,#16232B)",
+                font: "400 13px/1.5 'IBM Plex Sans',sans-serif",
+                resize: "vertical",
+              }}
+            />
+          ),
+        };
+      }
+
+      return {
+        ...shell,
+        hint: focused
+          ? criterion.kind === "select"
+            ? "pick one"
+            : `press ${criterion.scale_min}–${criterion.scale_max}`
+          : "",
+        opts: choices.map((choice) => ({
+          n: choice.label,
+          // Only a named choice needs the room; a scale stays a row of squares.
+          ...(criterion.kind === "select" ? { w: "auto" } : {}),
           on: (event: React.SyntheticEvent) => {
             event.stopPropagation();
-            setScore(criterion.id, value);
+            setScore(criterion.id, choice.value);
           },
-          bg: chosen === value ? "var(--bt,#FF6B6B)" : "var(--cd,#FFFFFF)",
-          fg: chosen === value ? "var(--bf,#331313)" : "var(--i3,#6B7B84)",
-          bd: chosen === value ? "var(--bt,#FF6B6B)" : "var(--ls,#C8D2D5)",
-          wt: chosen === value ? "600" : "400",
+          bg: chosen === choice.value ? "var(--bt,#FF6B6B)" : "var(--cd,#FFFFFF)",
+          fg: chosen === choice.value ? "var(--bf,#331313)" : "var(--i3,#6B7B84)",
+          bd: chosen === choice.value ? "var(--bt,#FF6B6B)" : "var(--ls,#C8D2D5)",
+          wt: chosen === choice.value ? "600" : "400",
         })),
       };
     }),

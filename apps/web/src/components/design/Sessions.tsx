@@ -229,6 +229,10 @@ export type SessionsData = {
     readonly on: (event: React.SyntheticEvent) => void;
     readonly ring: string;
   };
+  /** Who changed this session's wording and when, with a way back. Hosted at
+   *  the foot of the detail tab: `ActivityLog` has held these diffs since the
+   *  first migration and no screen read them. */
+  readonly history: React.ReactNode;
   readonly tabDet: (event: React.SyntheticEvent) => void;
   readonly tabPar: (event: React.SyntheticEvent) => void;
   readonly titleBd: string;
@@ -2101,6 +2105,7 @@ export function Sessions({ d }: { d: SessionsData }) {
                         isn&rsquo;t set directly.
                       </div>{" "}
                     </div>{" "}
+                    {d.history}{" "}
                   </>
                 ) : null}{" "}
                 {d.onPar ? (

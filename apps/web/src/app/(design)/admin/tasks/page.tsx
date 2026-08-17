@@ -8,6 +8,7 @@ import { stripData, useProgramStats } from "@/components/console/stats";
 import { TaskTemplates } from "@/components/console/TaskTemplates";
 import { Tasks, type TasksData } from "@/components/design/Tasks";
 import { FileThreads, type FileThread } from "@/components/FileThreads";
+import { FilesLibrary } from "@/components/console/FilesLibrary";
 import { authed, download } from "@/lib/session";
 
 type Row = {
@@ -355,6 +356,9 @@ export default function TasksPage() {
   return (
     <>
       <Tasks d={screen} />
+      {eventId === null ? null : (
+        <FilesLibrary eventId={eventId} onError={(message) => toast(message)} />
+      )}
       {/* Rendered alongside the prototype rather than inside it: the Tasks
        *  design is regenerated and exposes no per-row affordance, and the panel
        *  is per-file while its rows are per-task-per-speaker. */}

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { SideDrawer } from "@/components/console/SideDrawer";
+import { SessionHistory } from "@/components/console/SessionHistory";
 import { Sessions, type SessionsData } from "@/components/design/Sessions";
 import { Pager, pill, quietPill } from "@/components/ui";
 import { authed, download } from "@/lib/session";
@@ -733,6 +734,10 @@ export default function SessionsPage() {
       setStart(startDay === "" ? firstDay : startDay, (event.target as HTMLInputElement).value),
 
     // The drawer owns its tabs; the toolbar copies of them are gone.
+    history:
+      open === null || eventId === null ? null : (
+        <SessionHistory eventId={eventId} sessionId={open.id} onRestored={(text) => toast(text)} />
+      ),
     tabDet: () => setTab("detail"),
     tabPar: () => setTab("participants"),
     onDet: tab === "detail",

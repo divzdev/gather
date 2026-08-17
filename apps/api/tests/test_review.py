@@ -14,10 +14,11 @@ from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
-from app.core.tenancy import tenancy_disabled
+from app.core.tenancy import tenancy_disabled, tenant_scope
 from app.models import (
     CriterionKind,
     Event,
@@ -26,7 +27,9 @@ from app.models import (
     FormKind,
     Organization,
     OrgMember,
+    ReviewScore,
     Role,
+    RubricCriterion,
     Speaker,
     Submission,
     SubmissionSpeaker,
@@ -264,6 +267,61 @@ async def test_scorecard_supports_rating_select_and_text(client: AsyncClient, wo
     )
 
     assert [c["kind"] for c in listed.json()] == ["rating", "select", "text"]
+
+
+async def test_all_three_kinds_store_the_answer_they_were_given(
+    client: AsyncClient, world: World, session: AsyncSession
+) -> None:
+    """The kinds existed in the model and the API from the start, and only the
+    numeric one was ever exercised end to end. A dropdown stores the value
+    behind the label; a text criterion stores the words and no number at all."""
+    round_id = await _round(client, world)
+    rating = await _criterion(client, world, round_id, label="Relevance")
+    recommendation = await _criterion(
+        client,
+        world,
+        round_id,
+        label="Recommendation",
+        kind="select",
+        choices=[{"value": 5, "label": "Strong accept"}, {"value": 1, "label": "Reject"}],
+    )
+    notes = await _criterion(
+        client, world, round_id, label="What to change", kind="text", is_required=False
+    )
+    await client.post(
+        f"/v1/events/{world.event.id}/review-rounds/{round_id}/assignments",
+        json={"submission_ids": [str(world.submissions[0])], "user_ids": [str(world.reviewer_id)]},
+        headers=world.headers,
+    )
+
+    await _score(
+        client,
+        world,
+        round_id,
+        world.submissions[0],
+        {rating: 4, recommendation: 5, notes: "Open on the graph, not the apology."},
+    )
+
+    # Reading rows the request wrote, from outside a request — the session
+    # events fail closed without a tenant, which is the point of them.
+    with tenant_scope(org_id=world.event.org_id, event_id=world.event.id):
+        stored = (
+            (
+                await session.execute(
+                    select(ReviewScore, RubricCriterion)
+                    .join(RubricCriterion, RubricCriterion.id == ReviewScore.rubric_criterion_id)
+                    .where(RubricCriterion.review_round_id == round_id)
+                )
+            )
+            .tuples()
+            .all()
+        )
+    by_label = {criterion.label: row for row, criterion in stored}
+
+    assert by_label["Relevance"].value == 4
+    assert by_label["Recommendation"].value == 5, "a dropdown stores the value behind the label"
+    assert by_label["What to change"].value is None, "a written answer is not a number"
+    assert by_label["What to change"].value_text == "Open on the graph, not the apology."
 
 
 async def test_a_select_criterion_needs_choices(client: AsyncClient, world: World) -> None:

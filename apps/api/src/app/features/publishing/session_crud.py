@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -24,6 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import DbSession, bind_tenant, require_role
 from app.core.errors import ApiError, NotFoundError
 from app.models import (
+    ActivityLog,
+    ActorKind,
     ExpertiseLevel,
     Role,
     Session,
@@ -160,7 +163,7 @@ async def patch_session(
     session_id: uuid.UUID,
     body: SessionPatch,
     session: DbSession,
-    _: User = Depends(require_role(*STAFF)),
+    actor: User = Depends(require_role(*STAFF)),
 ) -> dict[str, Any]:
     """Edit one session's content.
 
@@ -191,8 +194,25 @@ async def patch_session(
 
     speaker_ids = changes.pop("speaker_ids", None)
 
+    # Captured before the write, so the log holds what it actually replaced.
+    before = {key: _loggable(getattr(talk, key, None)) for key in changes if key in _CONTENT}
+
     for key, value in changes.items():
         setattr(talk, key, value)
+
+    after = {key: _loggable(value) for key, value in changes.items() if key in _CONTENT}
+    if before != after:
+        session.add(
+            ActivityLog(
+                event_id=talk.event_id,
+                actor_user_id=actor.id,
+                actor_kind=ActorKind.USER,
+                entity_type="session",
+                entity_id=talk.id,
+                action="session.edited",
+                changes={"before": before, "after": after},
+            )
+        )
 
     if speaker_ids is not None:
         for speaker_id in speaker_ids:
@@ -241,3 +261,125 @@ async def delete_session(
         )
     await session.delete(talk)
     await session.flush()
+
+
+#: The fields a change history is *about*. A session's placement moves for a
+#: dozen reasons a day and is already visible on the grid; what an organiser
+#: needs a record of is the words that reach the public page.
+_CONTENT = ("title", "abstract", "expertise_level", "language", "tags")
+
+
+def _loggable(value: Any) -> Any:
+    """JSONB holds no enums and no UUIDs."""
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if hasattr(value, "value"):
+        return value.value
+    return value
+
+
+class HistoryEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID
+    at: datetime
+    actor_name: str
+    #: What the field held *before* this edit — which is what restoring it puts
+    #: back. The current values are on the session itself.
+    before: dict[str, Any]
+    after: dict[str, Any]
+
+
+@router.get("/{session_id}/history", response_model=list[HistoryEntry])
+async def session_history(
+    session_id: uuid.UUID, session: DbSession, _: User = Depends(require_role(*STAFF))
+) -> list[HistoryEntry]:
+    """Who changed this session's wording, when, and to what.
+
+    `ActivityLog` has recorded before/after diffs since the first migration and
+    nothing read it, so a title that changed under an organiser had no author
+    and no previous value. This is a history of one session's content — not the
+    audit-log browser the non-goals rule out.
+    """
+    rows = (
+        (
+            await session.execute(
+                select(ActivityLog, User)
+                .outerjoin(User, User.id == ActivityLog.actor_user_id)
+                .where(
+                    ActivityLog.entity_type == "session",
+                    ActivityLog.entity_id == session_id,
+                    ActivityLog.action == "session.edited",
+                )
+                .order_by(ActivityLog.created_at.desc())
+            )
+        )
+        .tuples()
+        .all()
+    )
+    return [
+        HistoryEntry(
+            id=entry.id,
+            at=entry.created_at,
+            actor_name=user.name if user is not None else "Someone who has since left",
+            before=entry.changes.get("before", {}),
+            after=entry.changes.get("after", {}),
+        )
+        for entry, user in rows
+    ]
+
+
+class RestoreRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entry_id: uuid.UUID
+
+
+@router.post("/{session_id}/restore")
+async def restore_session(
+    session_id: uuid.UUID,
+    body: RestoreRequest,
+    session: DbSession,
+    actor: User = Depends(require_role(*STAFF)),
+) -> dict[str, Any]:
+    """Put back what one edit replaced.
+
+    Restoring is itself an edit: it writes its own log entry, so the history
+    keeps growing and an undo can be undone. Nothing is rewound or deleted —
+    the same reason files are versioned rather than overwritten.
+    """
+    talk = await session.get(Session, session_id)
+    if talk is None:
+        raise NotFoundError(f"No session in this event with id {session_id}.")
+
+    entry = await session.get(ActivityLog, body.entry_id)
+    if entry is None or entry.entity_id != session_id or entry.action != "session.edited":
+        raise NotFoundError("No such change on this session.")
+
+    wanted = {
+        key: value for key, value in entry.changes.get("before", {}).items() if key in _CONTENT
+    }
+    if not wanted:
+        raise ApiError(
+            "That change recorded nothing that can be put back.",
+            code="NOTHING_TO_RESTORE",
+            status_code=409,
+        )
+
+    before = {key: _loggable(getattr(talk, key, None)) for key in wanted}
+    for key, value in wanted.items():
+        setattr(talk, key, value)
+
+    session.add(
+        ActivityLog(
+            event_id=talk.event_id,
+            actor_user_id=actor.id,
+            actor_kind=ActorKind.USER,
+            entity_type="session",
+            entity_id=talk.id,
+            action="session.edited",
+            changes={"before": before, "after": wanted, "restored_from": str(entry.id)},
+        )
+    )
+    await session.flush()
+    return {"id": str(talk.id), "title": talk.title, "restored": sorted(wanted)}

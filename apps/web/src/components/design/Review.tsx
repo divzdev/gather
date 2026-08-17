@@ -48,7 +48,17 @@ export type ReviewData = {
       readonly n: React.ReactNode;
       readonly on: (event: React.SyntheticEvent) => void;
       readonly wt: string;
+      /** Set for a named choice so the button sizes to its label. Absent on a
+       *  rating scale, which stays a row of squares. */
+      readonly w?: string;
     }[];
+    /** A free-text criterion has no options — it has an answer box. Rendered
+     *  instead of the option row when present. */
+    readonly text?: React.ReactNode;
+    /** The prototype marked every criterion required, which was true while the
+     *  only kind was a scale. An optional written question is now possible, and
+     *  an asterisk on it is a lie about what blocks saving. */
+    readonly req?: boolean;
   }[];
   readonly done: boolean;
   readonly doneLine: React.ReactNode;
@@ -424,7 +434,10 @@ export function Review({ d }: { d: ReviewData }) {
                               color: cr.lc,
                             }}
                           >
-                            {cr.n} <span style={{ color: "var(--cn,#D8432B)" }}>*</span>
+                            {cr.n}{" "}
+                            {cr.req === false ? null : (
+                              <span style={{ color: "var(--cn,#D8432B)" }}>*</span>
+                            )}
                           </span>{" "}
                           <span
                             style={{
@@ -435,21 +448,27 @@ export function Review({ d }: { d: ReviewData }) {
                             {cr.hint}
                           </span>{" "}
                         </div>{" "}
-                        <div style={{ display: "flex", gap: "6px" }}>
+                        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                           {" "}
+                          {cr.text}{" "}
                           {(cr.opts ?? []).map((o, oIndex) => (
                             <Fragment key={oIndex}>
                               {" "}
                               <button
                                 onClick={o.on}
                                 style={{
-                                  width: "34px",
-                                  height: "34px",
+                                  // A number fits in a square; "Strong accept"
+                                  // does not. `w` is set for named choices and
+                                  // absent for a rating scale, which keeps the
+                                  // 1–5 row looking exactly as it did.
+                                  minWidth: o.w ?? "36px",
+                                  height: "36px",
+                                  padding: o.w === undefined ? 0 : "0 12px",
                                   borderRadius: "6px",
                                   border: `1px solid ${o.bd}`,
                                   background: o.bg,
                                   color: o.fg,
-                                  font: `${o.wt} 13px 'IBM Plex Mono',monospace`,
+                                  font: `${o.wt} 13px ${o.w === undefined ? "'IBM Plex Mono',monospace" : "'IBM Plex Sans',sans-serif"}`,
                                 }}
                               >
                                 {o.n}
