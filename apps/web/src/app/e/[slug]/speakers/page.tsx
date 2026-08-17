@@ -2,8 +2,15 @@ import Link from "next/link";
 
 import { BROWSER_API_BASE_URL } from "@/lib/api";
 
-import { PublicShell, getPublic, getPublicOptional, type EventInfo } from "../public";
-import { Card, INK, SANS, Section, trackHue } from "../chrome";
+import {
+  PublicShell,
+  eventDay,
+  eventTime,
+  getPublic,
+  getPublicOptional,
+  type EventInfo,
+} from "../public";
+import { Card, INK, MONO, SANS, Section, trackHue } from "../chrome";
 import { NotPublished } from "../chrome";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +21,13 @@ type Speaker = {
   company: string | null;
   job_title: string | null;
   bio: string | null;
-  sessions: { id: string; slug: string; title: string }[];
+  sessions: {
+    id: string;
+    slug: string;
+    title: string;
+    starts_at: string | null;
+    room: string | null;
+  }[];
   headshot_file_id: string | null;
 };
 type Payload = { event: EventInfo; speakers: Speaker[] };
@@ -29,8 +42,16 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
-export default async function Speakers({ params }: { params: Promise<{ slug: string }> }) {
+export default async function Speakers({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { slug } = await params;
+  const query = await searchParams;
+  const openId = Array.isArray(query.speaker) ? query.speaker[0] : query.speaker;
   const data = await getPublicOptional<Payload>(slug, "/speakers");
   if (data === null) {
     const form = await getPublic<{
@@ -60,6 +81,8 @@ export default async function Speakers({ params }: { params: Promise<{ slug: str
       </PublicShell>
     );
   }
+
+  const open = data.speakers.find((person) => person.id === openId);
 
   return (
     <PublicShell event={data.event} slug={slug} active="Speakers">
@@ -128,17 +151,23 @@ export default async function Speakers({ params }: { params: Promise<{ slug: str
                     />
                   )}
                   <span style={{ minWidth: 0 }}>
-                    <span
+                    {/* The gallery was a wall: a card carried a truncated bio
+                        and links to the talks, and no way to read the rest of
+                        the person. The name opens them. */}
+                    <Link
+                      href={`/e/${slug}/speakers?speaker=${person.id}` as never}
+                      scroll={false}
                       style={{
                         display: "block",
                         fontFamily: SANS,
                         fontSize: 16,
                         fontWeight: 700,
                         color: INK.text,
+                        textDecoration: "none",
                       }}
                     >
                       {person.name}
-                    </span>
+                    </Link>
                     <span
                       style={{
                         display: "block",
@@ -199,6 +228,210 @@ export default async function Speakers({ params }: { params: Promise<{ slug: str
           })}
         </div>
       </Section>
+      {open === undefined ? null : (
+        <SpeakerPanel speaker={open} slug={slug} timezone={data.event.timezone} />
+      )}
     </PublicShell>
+  );
+}
+
+/** Server-rendered, opened by `?speaker=`, closed by a link back.
+ *
+ *  A client dialog would have meant shipping the whole grid to the browser to
+ *  hold one id. This way the panel is shareable, the back button closes it, and
+ *  `scroll={false}` on both links means the grid is exactly where it was. */
+function SpeakerPanel({
+  speaker,
+  slug,
+  timezone,
+}: {
+  speaker: Speaker;
+  slug: string;
+  timezone: string;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={speaker.name}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 60,
+        display: "grid",
+        placeItems: "center",
+        padding: 20,
+        background: "rgba(0,0,0,.66)",
+      }}
+    >
+      <Link
+        href={`/e/${slug}/speakers` as never}
+        scroll={false}
+        aria-label="Close"
+        style={{ position: "absolute", inset: 0 }}
+      />
+      <div
+        style={{
+          position: "relative",
+          width: "min(560px, 100%)",
+          maxHeight: "84vh",
+          overflowY: "auto",
+          background: INK.raised,
+          border: `1px solid ${INK.edge}`,
+          borderRadius: 16,
+          padding: 24,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
+          {speaker.headshot_file_id === null ? (
+            <span
+              aria-hidden
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 999,
+                flex: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: INK.page,
+                border: `1px solid ${INK.edge}`,
+                color: INK.muted,
+                fontFamily: SANS,
+                fontWeight: 800,
+                fontSize: 20,
+              }}
+            >
+              {initials(speaker.name)}
+            </span>
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element -- our own API,
+               already cache-immutable; next/image wants a configured host. */
+            <img
+              src={`${BROWSER_API_BASE_URL}/public/events/${slug}/speakers/${speaker.headshot_file_id}/photo`}
+              alt=""
+              width={64}
+              height={64}
+              style={{ width: 64, height: 64, borderRadius: 999, flex: "none", objectFit: "cover" }}
+            />
+          )}
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span
+              style={{
+                display: "block",
+                fontFamily: SANS,
+                fontSize: 20,
+                fontWeight: 700,
+                color: INK.text,
+              }}
+            >
+              {speaker.name}
+            </span>
+            <span
+              style={{
+                display: "block",
+                fontFamily: SANS,
+                fontSize: 13.5,
+                fontWeight: 500,
+                color: INK.muted,
+                marginTop: 2,
+              }}
+            >
+              {[speaker.job_title, speaker.company].filter(Boolean).join(" · ") || "Speaker"}
+            </span>
+          </span>
+          <Link
+            href={`/e/${slug}/speakers` as never}
+            scroll={false}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 40,
+              height: 40,
+              flex: "none",
+              borderRadius: 999,
+              border: `1px solid ${INK.edge}`,
+              color: INK.muted,
+              fontFamily: SANS,
+              fontSize: 15,
+              textDecoration: "none",
+            }}
+          >
+            ✕
+          </Link>
+        </div>
+
+        {speaker.bio === null || speaker.bio === "" ? null : (
+          <p
+            style={{
+              fontFamily: SANS,
+              fontSize: 14.5,
+              fontWeight: 500,
+              color: INK.muted,
+              lineHeight: 1.6,
+              margin: "0 0 20px",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {speaker.bio}
+          </p>
+        )}
+
+        <p
+          style={{
+            fontFamily: MONO,
+            fontSize: 11,
+            letterSpacing: ".08em",
+            color: INK.faint,
+            margin: "0 0 10px",
+          }}
+        >
+          SESSIONS ({speaker.sessions.length})
+        </p>
+        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+          {speaker.sessions.map((session) => (
+            <li key={session.id}>
+              <Link
+                href={`/e/${slug}/schedule/${session.slug}` as never}
+                style={{
+                  display: "block",
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: `1px solid ${INK.edge}`,
+                  textDecoration: "none",
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    fontFamily: SANS,
+                    fontSize: 14.5,
+                    fontWeight: 600,
+                    color: INK.text,
+                  }}
+                >
+                  {session.title}
+                </span>
+                <span
+                  style={{
+                    display: "block",
+                    fontFamily: MONO,
+                    fontSize: 12,
+                    color: INK.faint,
+                    marginTop: 4,
+                  }}
+                >
+                  {session.starts_at === null
+                    ? "Time to be confirmed"
+                    : `${eventDay(session.starts_at, timezone)} · ${eventTime(session.starts_at, timezone)}`}
+                  {session.room === null ? "" : ` · ${session.room}`}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }

@@ -118,6 +118,10 @@ class SubmissionSpeaker(Base, PrimaryKey, Timestamps, EventScoped):
         Uuid, ForeignKey("speakers.id", ondelete="CASCADE"), nullable=False
     )
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # "Co-presenter" and "Co-author" are different promises to an audience: one
+    # will be on the stage, the other wrote the thing. `is_primary` cannot carry
+    # that distinction, and the programme has to print it.
+    role: Mapped[str | None] = mapped_column(String(60), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 

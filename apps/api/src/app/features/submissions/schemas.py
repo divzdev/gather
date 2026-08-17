@@ -14,9 +14,14 @@ class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+#: What a co-speaker is on this talk. Free text rather than an enum: conferences
+#: name these differently (moderator, panellist, demo driver) and an enum here
+#: would mean a migration every time an organiser used a word we had not thought
+#: of. Length-capped because it is printed on a card.
 class CoSpeaker(Strict):
     name: str = Field(min_length=1, max_length=200)
     email: EmailStr
+    role: str | None = Field(default=None, max_length=60)
 
 
 class DraftRequest(Strict):
@@ -54,6 +59,7 @@ class SpeakerSummary(Strict):
     name: str
     email: str
     is_primary: bool
+    role: str | None = None
 
 
 class SubmissionRead(Strict):

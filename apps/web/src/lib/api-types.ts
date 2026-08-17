@@ -1048,6 +1048,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/events/{event_id}/speakers/{event_speaker_id}/headshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Headshot
+         * @description Set a speaker's photo from the console.
+         *
+         *     The only route that could do this was the speaker's own, in the portal — so
+         *     a speaker who emailed their headshot to the organiser could not be helped,
+         *     and the roster showed initials until they logged in. Versioned through the
+         *     same `version_group_id` as their own upload, so an organiser replacing a
+         *     photo does not orphan the one the speaker sent.
+         */
+        post: operations["upload_headshot_v1_events__event_id__speakers__event_speaker_id__headshot_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}/speakers/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invite To Portal
+         * @description Send the portal sign-in link to the named speakers.
+         *
+         *     Portal access existed only as something that happened to a speaker — a link
+         *     fell out of an acceptance email, or they asked for one themselves. There was
+         *     no control an organiser could press, which made "have you got into the
+         *     portal yet?" unanswerable and unfixable.
+         *
+         *     A repeat invite is allowed: a link expires in thirty minutes and losing one
+         *     is the ordinary case. Every send lands in the outbox, so it is repeated
+         *     visibly rather than silently.
+         */
+        post: operations["invite_to_portal_v1_events__event_id__speakers_invite_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/events/{event_id}/sessions/{session_id}/placement": {
         parameters: {
             query?: never;
@@ -3414,6 +3469,11 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_upload_headshot_v1_events__event_id__speakers__event_speaker_id__headshot_post */
+        Body_upload_headshot_v1_events__event_id__speakers__event_speaker_id__headshot_post: {
+            /** File */
+            file: string;
+        };
         /** Body_upload_headshot_v1_portal_profile_headshot_post */
         Body_upload_headshot_v1_portal_profile_headshot_post: {
             /** File */
@@ -3512,6 +3572,8 @@ export interface components {
              * Format: email
              */
             email: string;
+            /** Role */
+            role?: string | null;
         };
         /**
          * CommentAuthorKind
@@ -4501,6 +4563,20 @@ export interface components {
          * @enum {string}
          */
         IntegrationProvider: "accelevents";
+        /** InviteRequest */
+        InviteRequest: {
+            /** Event Speaker Ids */
+            event_speaker_ids: string[];
+        };
+        /** InviteResult */
+        InviteResult: {
+            /** Invited */
+            invited: number;
+            /** Skipped */
+            skipped: number;
+            /** Skipped Names */
+            skipped_names: string[];
+        };
         /** LocalModel */
         LocalModel: {
             /** Name */
@@ -5809,6 +5885,8 @@ export interface components {
             email: string;
             /** Is Primary */
             is_primary: boolean;
+            /** Role */
+            role?: string | null;
         };
         /** SpeakerUpdate */
         SpeakerUpdate: {
@@ -5854,6 +5932,8 @@ export interface components {
             conflict_of_interest: boolean;
             /** Round Name */
             round_name: string | null;
+            /** From Ai Suggestion */
+            from_ai_suggestion: boolean;
         };
         /**
          * SubmissionStatus
@@ -9029,6 +9109,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SpeakerFile"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_headshot_v1_events__event_id__speakers__event_speaker_id__headshot_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_speaker_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_headshot_v1_events__event_id__speakers__event_speaker_id__headshot_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpeakerRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invite_to_portal_v1_events__event_id__speakers_invite_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteResult"];
                 };
             };
             /** @description Validation Error */

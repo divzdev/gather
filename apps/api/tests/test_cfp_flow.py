@@ -829,6 +829,102 @@ async def test_a_proposal_can_name_co_speakers(
     assert set(names) == {"Lead Speaker", "Second Speaker", "Third Speaker"}
 
 
+async def test_a_co_speaker_carries_their_role_to_the_organiser(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """`is_primary` cannot say whether the second name will be on the stage or
+    only wrote the thing, and the programme has to print which."""
+    headers, event, form = cfp
+
+    await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": "Who is actually presenting",
+            "answers": GOOD,
+            "speaker_email": "lead2@example.com",
+            "speaker_name": "Lead Speaker",
+            "co_speakers": [
+                {"name": "On Stage", "email": "stage@example.com", "role": "Co-presenter"},
+                {"name": "Wrote It", "email": "wrote@example.com", "role": "Co-author"},
+            ],
+        },
+    )
+
+    listing = await client.get(f"/v1/events/{event.id}/submissions", headers=headers)
+    row = next(r for r in listing.json()["data"] if r["title"] == "Who is actually presenting")
+    by_name = {person["name"]: person["role"] for person in row["speakers"]}
+
+    assert by_name["On Stage"] == "Co-presenter"
+    assert by_name["Wrote It"] == "Co-author"
+
+
+async def test_a_co_speaker_with_no_role_stated_reads_as_absent_not_blank(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """A speaker who skipped the box has not told us they are a co-author. Null
+    is the honest answer, and it is what the drawer branches on."""
+    headers, event, form = cfp
+
+    await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": "Role left blank",
+            "answers": GOOD,
+            "speaker_email": "lead3@example.com",
+            "speaker_name": "Lead Speaker",
+            "co_speakers": [{"name": "Unstated", "email": "unstated@example.com"}],
+        },
+    )
+
+    listing = await client.get(f"/v1/events/{event.id}/submissions", headers=headers)
+    row = next(r for r in listing.json()["data"] if r["title"] == "Role left blank")
+    unstated = next(p for p in row["speakers"] if p["name"] == "Unstated")
+
+    assert unstated["role"] is None
+
+
+async def test_editing_a_draft_can_change_a_co_speakers_role(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """The reconcile updates an existing link rather than only creating one, so a
+    speaker who picked the wrong word can fix it before submitting."""
+    headers, event, form = cfp
+
+    first = await client.post(
+        f"/v1/public/events/{event.slug}/submissions/draft",
+        json={
+            "form_id": str(form.id),
+            "title": "Changing my mind",
+            "answers": GOOD,
+            "speaker_email": "lead4@example.com",
+            "speaker_name": "Lead Speaker",
+            "co_speakers": [{"name": "Pat", "email": "pat@example.com", "role": "Co-author"}],
+        },
+    )
+    token = first.json()["draft_token"]
+
+    await client.post(
+        f"/v1/public/events/{event.slug}/submissions/draft",
+        json={
+            "form_id": str(form.id),
+            "title": "Changing my mind",
+            "answers": GOOD,
+            "speaker_email": "lead4@example.com",
+            "speaker_name": "Lead Speaker",
+            "co_speakers": [{"name": "Pat", "email": "pat@example.com", "role": "Co-presenter"}],
+            "draft_token": token,
+        },
+    )
+
+    listing = await client.get(f"/v1/events/{event.id}/submissions", headers=headers)
+    row = next(r for r in listing.json()["data"] if r["title"] == "Changing my mind")
+    pat = next(p for p in row["speakers"] if p["name"] == "Pat")
+
+    assert pat["role"] == "Co-presenter"
+
+
 async def test_the_submitter_is_never_duplicated_as_their_own_co_speaker(
     client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
 ) -> None:

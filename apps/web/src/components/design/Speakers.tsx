@@ -201,6 +201,10 @@ export type SpeakersData = {
   /** Dietary, accessibility and AV needs. The speaker writes these in the
    *  portal and, until this block existed, they were readable only there —
    *  the caterer, the venue and the AV desk are all on this side of the app. */
+  /** Controls the prototype never had a place for — inviting this speaker into
+   *  the portal, and setting their photo. Filled by the page so the real
+   *  components live under components/console rather than in here. */
+  readonly actions: React.ReactNode;
   readonly logistics: readonly {
     readonly k: React.ReactNode;
     readonly v: React.ReactNode;
@@ -1620,6 +1624,7 @@ export function Speakers({ d }: { d: SpeakersData }) {
                   >
                     Open portal as speaker
                   </Link>{" "}
+                  {d.actions}{" "}
                   <button
                     onClick={d.closeDrawer}
                     aria-label="Close"

@@ -73,7 +73,7 @@ export function CfpForm({ slug }: { slug: string }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [terms, setTerms] = useState(false);
-  const [co, setCo] = useState<{ name: string; email: string }[]>([]);
+  const [co, setCo] = useState<{ name: string; email: string; role: string }[]>([]);
   const [errors, setErrors] = useState<Problem[]>([]);
   const [save, setSave] = useState<Save>({ kind: "idle" });
   /** Whether the server is actually holding a draft for this person yet.
@@ -181,7 +181,13 @@ export function CfpForm({ slug }: { slug: string }) {
   const cleanCo = () =>
     co
       .filter((person) => person.name.trim() !== "" && person.email.trim() !== "")
-      .map((person) => ({ name: person.name.trim(), email: person.email.trim() }));
+      .map((person) => ({
+        name: person.name.trim(),
+        email: person.email.trim(),
+        // Blank means "not stated", which is a different answer from any of the
+        // roles, and is what the organiser sees if the speaker skips it.
+        role: person.role.trim() === "" ? null : person.role.trim(),
+      }));
 
   const payload = () => ({
     form_id: form?.form_id,
@@ -506,6 +512,12 @@ export function CfpForm({ slug }: { slug: string }) {
             Up to {maxCo}. They are added to the roster and hear from us at the same time you do.
           </p>
         </div>
+        <datalist id="co-speaker-roles">
+          <option value="Co-presenter" />
+          <option value="Co-author" />
+          <option value="Moderator" />
+          <option value="Demo driver" />
+        </datalist>
         {co.map((person, index) => (
           <div key={index} style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <input
@@ -537,6 +549,25 @@ export function CfpForm({ slug }: { slug: string }) {
               }
               style={{ ...CONTROL.input, flex: "1 1 180px", width: "auto" }}
             />
+            {/* "Someone else is on this talk" and "they are presenting it with
+                me" are different claims, and the programme prints the second
+                one. Free text behind a datalist rather than a select: a
+                conference will want a word we did not think of. */}
+            <input
+              className="cfp-control"
+              value={person.role}
+              list="co-speaker-roles"
+              aria-label={`Co-speaker ${index + 1} role`}
+              placeholder="Their role"
+              onChange={(event) =>
+                setCo((current) =>
+                  current.map((row, at) =>
+                    at === index ? { ...row, role: event.target.value } : row,
+                  ),
+                )
+              }
+              style={{ ...CONTROL.input, flex: "1 1 150px", width: "auto" }}
+            />
             <button
               type="button"
               className="cfp-control"
@@ -553,7 +584,7 @@ export function CfpForm({ slug }: { slug: string }) {
             <button
               type="button"
               className="cfp-control"
-              onClick={() => setCo((current) => [...current, { name: "", email: "" }])}
+              onClick={() => setCo((current) => [...current, { name: "", email: "", role: "" }])}
               style={button("secondary")}
             >
               + Add a co-speaker

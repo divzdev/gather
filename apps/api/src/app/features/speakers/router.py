@@ -18,10 +18,13 @@ from fastapi import APIRouter, Depends, File, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import func, select
 
-from app.core.deps import DbSession, bind_tenant, require_role
+from app.core.deps import DbSession, bind_tenant, get_verified_user, require_role
 from app.core.errors import ApiError, NotFoundError
 from app.core.tenancy import current_tenant, tenancy_disabled
+from app.features.auth import service as auth_service
+from app.features.files import service as files
 from app.models import (
+    Event,
     EventSpeaker,
     Role,
     Speaker,
@@ -414,3 +417,118 @@ def _speaker_file(record: FileRecord, *, label: str, is_headshot: bool) -> Speak
         label=label,
         is_headshot=is_headshot,
     )
+
+
+@router.post("/{event_speaker_id}/headshot", response_model=SpeakerRead)
+async def upload_headshot(
+    event_speaker_id: uuid.UUID,
+    session: DbSession,
+    file: Annotated[UploadFile, File()],
+    _: User = Depends(require_role(*WRITE)),
+) -> SpeakerRead:
+    """Set a speaker's photo from the console.
+
+    The only route that could do this was the speaker's own, in the portal — so
+    a speaker who emailed their headshot to the organiser could not be helped,
+    and the roster showed initials until they logged in. Versioned through the
+    same `version_group_id` as their own upload, so an organiser replacing a
+    photo does not orphan the one the speaker sent.
+    """
+    link = await session.get(EventSpeaker, event_speaker_id)
+    if link is None:
+        raise NotFoundError(f"No speaker on this event with id {event_speaker_id}.")
+    person = await session.get(Speaker, link.speaker_id)
+    if person is None:
+        raise NotFoundError("That speaker record is missing.")
+
+    data = await file.read()
+    files.check_upload(
+        filename=file.filename or "headshot",
+        content_type=file.content_type or "application/octet-stream",
+        byte_size=len(data),
+        accepted_extensions=["jpg", "jpeg", "png", "webp"],
+        max_bytes=8 * 1024 * 1024,
+    )
+    previous = (
+        await session.get(FileRecord, person.headshot_file_id) if person.headshot_file_id else None
+    )
+    record = await files.store(
+        session,
+        data=data,
+        filename=file.filename or "headshot",
+        content_type=file.content_type or "application/octet-stream",
+        version_group_id=previous.version_group_id if previous else None,
+    )
+    person.headshot_file_id = record.id
+    await session.flush()
+
+    roster = await _roster(session)
+    found = next((row for row in roster if row.id == event_speaker_id), None)
+    if found is None:
+        raise NotFoundError("That speaker record is missing.")
+    return found
+
+
+class InviteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    event_speaker_ids: list[uuid.UUID] = Field(min_length=1, max_length=500)
+
+
+class InviteResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    invited: int
+    skipped: int
+    #: Named, not counted. "3 skipped" tells an organiser nothing they can act on.
+    skipped_names: list[str]
+
+
+@router.post("/invite", response_model=InviteResult)
+async def invite_to_portal(
+    body: InviteRequest,
+    session: DbSession,
+    _: User = Depends(require_role(*WRITE)),
+    __: User = Depends(get_verified_user),
+) -> InviteResult:
+    """Send the portal sign-in link to the named speakers.
+
+    Portal access existed only as something that happened to a speaker — a link
+    fell out of an acceptance email, or they asked for one themselves. There was
+    no control an organiser could press, which made "have you got into the
+    portal yet?" unanswerable and unfixable.
+
+    A repeat invite is allowed: a link expires in thirty minutes and losing one
+    is the ordinary case. Every send lands in the outbox, so it is repeated
+    visibly rather than silently.
+    """
+    tenant = current_tenant()
+    event = await session.get(Event, tenant.event_id)
+    if event is None:
+        raise NotFoundError("This event is missing.")
+
+    rows = (
+        (
+            await session.execute(
+                select(EventSpeaker, Speaker)
+                .join(Speaker, Speaker.id == EventSpeaker.speaker_id)
+                .where(EventSpeaker.id.in_(body.event_speaker_ids))
+            )
+        )
+        .tuples()
+        .all()
+    )
+
+    invited = 0
+    skipped: list[str] = []
+    for link, person in rows:
+        # A speaker who is no longer presenting should not be invited into a
+        # portal that would show them tasks for a talk they withdrew.
+        if link.status in (SpeakerStatus.DECLINED, SpeakerStatus.WITHDRAWN):
+            skipped.append(person.name)
+            continue
+        await auth_service.issue_magic_link(session, email=person.email, event_id=event.id)
+        invited += 1
+
+    await session.flush()
+    return InviteResult(invited=invited, skipped=len(skipped), skipped_names=sorted(skipped))

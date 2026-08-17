@@ -742,7 +742,41 @@ export default function FormsPage() {
       ),
     fields: (section?.fields ?? []).map((field, index) => ({
       n: field.label,
-      req: field.required ? "required" : "optional",
+      // Was a static word. Making a question required is the one structural
+      // edit a locked form still allows — locking protects *answers*, and a
+      // required flag destroys none — but the only way to reach it was to open
+      // the field editor, which is not somewhere you look for a toggle.
+      req: (
+        <button
+          type="button"
+          aria-pressed={field.required}
+          title={
+            field.required
+              ? "Required. Click to make it optional."
+              : "Optional. Click to make it required."
+          }
+          onClick={(event) => {
+            event.stopPropagation();
+            patch((row) => {
+              const first = row.schema.sections[0];
+              const target = first?.fields.find((entry) => entry.key === field.key);
+              if (target !== undefined) target.required = !target.required;
+            });
+          }}
+          style={{
+            border: "none",
+            background: "none",
+            padding: "2px 4px",
+            font: "500 12px var(--font-plex-sans), sans-serif",
+            color: field.required ? "var(--cn,#D8432B)" : "var(--i3,#6B7B84)",
+            cursor: "pointer",
+            textDecoration: "underline dotted",
+            textUnderlineOffset: 3,
+          }}
+        >
+          {field.required ? "required" : "optional"}
+        </button>
+      ),
       meta: `${field.type.replace(/_/g, " ")}${field.choices.length > 0 ? ` · ${field.choices.length} choices` : ""}`,
       // A locked form keeps its fields: deletion becomes "hide from new
       // submissions" so answers already given keep their meaning.

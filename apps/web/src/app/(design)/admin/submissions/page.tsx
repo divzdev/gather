@@ -17,7 +17,12 @@ import { Pager, StatusTabs } from "@/components/ui";
 import { useHotkeys } from "@/lib/hotkeys";
 import { authed, download } from "@/lib/session";
 
-type Speaker = { name: string; organisation: string | null };
+type Speaker = {
+  name: string;
+  organisation: string | null;
+  is_primary: boolean;
+  role: string | null;
+};
 type Submission = {
   id: string;
   code: string;
@@ -46,6 +51,7 @@ type SubmissionReview = {
   comment: string | null;
   conflict_of_interest: boolean;
   round_name: string | null;
+  from_ai_suggestion: boolean;
 };
 
 type DupePair = {
@@ -842,7 +848,12 @@ export default function SubmissionsPage() {
       spList: (open?.speakers ?? []).map((speaker) => ({
         ini: initials(speaker.name),
         n: speaker.name,
-        c: speaker.organisation ?? "",
+        // Who is actually on the stage. Two names on a proposal, both drawn
+        // identically, told an organiser nothing about which of them to expect
+        // in the room — and that is the thing the programme has to get right.
+        c: [speaker.role ?? (speaker.is_primary ? "Primary" : null), speaker.organisation]
+          .filter(Boolean)
+          .join(" · "),
       })),
       crits:
         openScore === null
@@ -850,9 +861,17 @@ export default function SubmissionsPage() {
           : [{ n: "Average score", v: openScore.toFixed(1), w: `${(openScore / 5) * 100}%` }],
       answers: openAnswers,
       revs: (openReviews ?? []).map((review) => ({
-        n: review.conflict_of_interest
-          ? `${review.reviewer_name} · conflict of interest`
-          : review.reviewer_name,
+        // Machine judgement and human judgement read identically on a results
+        // screen unless one of them says so. The score is still the reviewer's
+        // — they accepted it under their own name — but where it started is
+        // the thing an organiser weighing a borderline proposal wants to know.
+        n: [
+          review.reviewer_name,
+          review.from_ai_suggestion ? "accepted an AI suggestion" : null,
+          review.conflict_of_interest ? "conflict of interest" : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
         s: review.score_avg === null ? "—" : review.score_avg.toFixed(1),
         c: review.comment ?? "No comment left.",
       })),

@@ -132,6 +132,19 @@ async def test_a_weighted_scorecard_is_weighted_here_too(client: AsyncClient, wo
     assert body[0]["score_avg"] == 4.0
 
 
+async def test_a_review_typed_by_a_human_is_not_marked_as_a_suggestion(
+    client: AsyncClient, world: World
+) -> None:
+    round_id = await _round(client, world)
+    relevance = await _criterion(client, world, round_id, label="Relevance")
+    await _assign(client, world, round_id, world.reviewer_id)
+    await _score(client, world, round_id, world.submissions[0], {relevance: 4})
+
+    body = (await _reviews(client, world, world.headers)).json()
+
+    assert body[0]["from_ai_suggestion"] is False
+
+
 async def test_a_submission_nobody_has_reviewed_returns_an_empty_list(
     client: AsyncClient, world: World
 ) -> None:

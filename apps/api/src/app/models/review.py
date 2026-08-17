@@ -112,6 +112,15 @@ class Review(Base, PrimaryKey, Timestamps, EventScoped):
     )
     conflict_of_interest: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     submitted_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    #: Set when this review was written by accepting a model suggestion, and null
+    #: when a human typed it cold. This is *provenance*, not authorship —
+    #: `user_id` is still the accepting human and still NOT NULL, so an
+    #: AI-authored review remains unrepresentable. Without it the results screen
+    #: cannot tell machine judgement from human judgement, which is exactly the
+    #: thing an organiser reading a borderline score needs to know.
+    ai_proposal_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("ai_proposals.id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class ReviewScore(Base, PrimaryKey, Timestamps, EventScoped):

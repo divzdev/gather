@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SideDrawer } from "@/components/console/SideDrawer";
+import { SpeakerActions } from "@/components/console/SpeakerActions";
 import { useConsoleChrome } from "@/components/console/chrome";
 import { stripData, useProgramStats } from "@/components/console/stats";
 import { Speakers, type SpeakersData } from "@/components/design/Speakers";
@@ -124,6 +125,7 @@ export default function SpeakersPage() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [missingFilter, setMissingFilter] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const photoInput = useRef<HTMLInputElement>(null);
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<1 | -1>(1);
   const [hover, setHover] = useState<string | null>(null);
@@ -206,6 +208,37 @@ export default function SpeakersPage() {
    *  in an afternoon quietly sends nothing. Reporting the skipped count is the
    *  difference between "nothing happened" and "nothing needed to happen".
    */
+  const invite = useMutation({
+    mutationFn: (eventSpeakerIds: string[]) =>
+      authed<{ invited: number; skipped: number; skipped_names: string[] }>(
+        `/events/${eventId}/speakers/invite`,
+        { method: "POST", body: { event_speaker_ids: eventSpeakerIds } },
+      ),
+    onSuccess: (result) =>
+      toast(
+        result.invited === 0
+          ? `Nobody invited. ${result.skipped_names.join(", ")} ${result.skipped === 1 ? "has" : "have"} left the programme.`
+          : `${result.invited} invitation${result.invited === 1 ? "" : "s"} sent.` +
+              (result.skipped > 0 ? ` Skipped ${result.skipped_names.join(", ")}.` : ""),
+      ),
+    onError: (error: Error) => toast(error.message),
+  });
+
+  /** The only route that set a photo was the speaker's own, so a headshot sent
+   *  by email could not be used at all. */
+  const setPhoto = useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const form = new FormData();
+      form.append("file", file);
+      return authed(`/events/${eventId}/speakers/${id}/headshot`, { method: "POST", body: form });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["roster", eventId] });
+      toast("Photo saved. It is on the roster and the public gallery now.");
+    },
+    onError: (error: Error) => toast(error.message),
+  });
+
   const nudge = useMutation({
     mutationFn: (speakerIds: string[]) =>
       authed<{ sent: number; skipped: number }>(`/events/${eventId}/tasks/nudge`, {
@@ -689,7 +722,11 @@ export default function SpeakersPage() {
       return nudge.mutate(ids);
     },
     bulkTask: () => toast("Task assignment is not built yet."),
-    bulkLink: () => toast(`${selected.length} magic links would go out. Sending is not wired yet.`),
+    // Was a toast describing a feature. The route exists now, so this sends.
+    bulkLink: () => {
+      if (selected.length === 0) return toast("Select the speakers you want to invite first.");
+      return invite.mutate(selected);
+    },
     exportCsv,
 
     // See the same note on the sessions screen.
@@ -828,6 +865,17 @@ export default function SpeakersPage() {
     tabSessions: tab === "sessions",
     tabTasks: tab === "tasks",
     tabFiles: tab === "files",
+    actions:
+      open === null ? null : (
+        <SpeakerActions
+          eventSpeakerId={open.id}
+          name={open.name}
+          busy={invite.isPending || setPhoto.isPending}
+          onInvite={() => invite.mutate([open.id])}
+          onPhoto={(file: File) => setPhoto.mutate({ id: open.id, file })}
+          inputRef={photoInput}
+        />
+      ),
     /** Only what they actually wrote. An empty block that says "no dietary
      *  requirements recorded" on eighty speakers is noise, and it is not the
      *  same claim as "they have none". */

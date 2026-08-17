@@ -148,7 +148,7 @@ async def save_draft(
     answers: dict[str, object],
     speaker_email: str,
     speaker_name: str,
-    co_speakers: list[tuple[str, str]] | None = None,
+    co_speakers: list[tuple[str, str, str | None]] | None = None,
     draft_token: uuid.UUID | None = None,
 ) -> Submission:
     """Drafts validate loosely — a half-finished proposal must never lose input.
@@ -262,7 +262,7 @@ async def _sync_co_speakers(
     form: Form,
     submission: Submission,
     primary: Speaker,
-    wanted: list[tuple[str, str]],
+    wanted: list[tuple[str, str, str | None]],
 ) -> None:
     """Replace the non-primary speakers with the ones named in this save.
 
@@ -271,11 +271,11 @@ async def _sync_co_speakers(
     person holding the draft token.
     """
     settings = FormSchema.model_validate(form.schema).settings
-    unique: dict[str, str] = {}
-    for name, email in wanted:
+    unique: dict[str, tuple[str, str | None]] = {}
+    for name, email, role in wanted:
         if email.casefold() == primary.email.casefold():
             continue
-        unique.setdefault(email.casefold(), name)
+        unique.setdefault(email.casefold(), (name, role))
 
     if not settings.allow_co_speakers and unique:
         raise ApiError(
@@ -306,7 +306,7 @@ async def _sync_co_speakers(
         .all()
     )
     keep: set[uuid.UUID] = set()
-    for index, (email, name) in enumerate(unique.items()):
+    for index, (email, (name, role)) in enumerate(unique.items()):
         person = await upsert_speaker(
             session, org_id=event.org_id, event_id=event.id, email=email, name=name
         )
@@ -318,11 +318,13 @@ async def _sync_co_speakers(
                     submission_id=submission.id,
                     speaker_id=person.id,
                     is_primary=False,
+                    role=role,
                     sort_order=index + 1,
                 )
             )
         else:
             already.sort_order = index + 1
+            already.role = role
 
     for row in existing:
         if row.speaker_id not in keep:
@@ -338,7 +340,7 @@ async def submit(
     answers: dict[str, object],
     speaker_email: str,
     speaker_name: str,
-    co_speakers: list[tuple[str, str]] | None = None,
+    co_speakers: list[tuple[str, str, str | None]] | None = None,
     draft_token: uuid.UUID | None = None,
 ) -> Submission:
     check_window_open(event, form)

@@ -80,6 +80,7 @@ async def _with_speakers(session: DbSession, rows: list[Submission]) -> list[Sub
                 name=speaker.name,
                 email=speaker.email,
                 is_primary=link.is_primary,
+                role=link.role,
             )
         )
     return [
@@ -349,6 +350,9 @@ class SubmissionReviewRead(BaseModel):
     comment: str | None
     conflict_of_interest: bool
     round_name: str | None
+    #: True when this review began as a model suggestion the reviewer accepted.
+    #: The score is still theirs — this says where it started.
+    from_ai_suggestion: bool
 
 
 @router.get("/{submission_id}/reviews", response_model=list[SubmissionReviewRead])
@@ -419,6 +423,7 @@ async def list_reviews(
             comment=review.comment,
             conflict_of_interest=review.conflict_of_interest,
             round_name=round_name,
+            from_ai_suggestion=review.ai_proposal_id is not None,
         )
         for review, reviewer, round_name in rows
     ]

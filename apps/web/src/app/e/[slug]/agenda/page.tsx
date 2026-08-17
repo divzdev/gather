@@ -41,8 +41,16 @@ function time(iso: string | null, timezone: string): string {
   }).format(new Date(iso));
 }
 
-export default async function Agenda({ params }: { params: Promise<{ slug: string }> }) {
+export default async function Agenda({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { slug } = await params;
+  const query = await searchParams;
+  const rawDay = Array.isArray(query.day) ? query.day[0] : query.day;
   const data = await getPublicOptional<Payload>(slug, "/agenda");
   if (data === null) {
     const form = await getPublic<{
@@ -78,10 +86,65 @@ export default async function Agenda({ params }: { params: Promise<{ slug: strin
   // empty days once anything is scheduled; if nothing is scheduled anywhere,
   // keep them, because a wall of headings at least shows the shape to come.
   const anyScheduled = data.days.some((day) => day.sessions.length > 0);
-  const days = anyScheduled ? data.days.filter((day) => day.sessions.length > 0) : data.days;
+  const withSessions = anyScheduled
+    ? data.days.filter((day) => day.sessions.length > 0)
+    : data.days;
+
+  /** Day navigation, as links rather than client state.
+   *
+   *  This page rendered every day at once and offered no way to move between
+   *  them: on a three-day conference that is a wall you scroll past to reach
+   *  Thursday. Links keep it a Server Component, keep one day shareable, and
+   *  work with JavaScript off — and "All days" keeps the view that existed
+   *  before, because reading the whole programme at once is a real thing to
+   *  want. An unknown ?day= falls back to all rather than to nothing. */
+  const selected = withSessions.some((day) => day.date === rawDay) ? rawDay : undefined;
+  const days =
+    selected === undefined ? withSessions : withSessions.filter((d) => d.date === selected);
+
+  const dayTab = (label: string, href: string, on: boolean) => (
+    <Link
+      key={href}
+      href={href as never}
+      aria-current={on ? "page" : undefined}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        height: 40,
+        padding: "0 18px",
+        borderRadius: 999,
+        border: `1px solid ${on ? "transparent" : INK.edge}`,
+        background: on ? INK.text : "transparent",
+        color: on ? INK.page : INK.muted,
+        fontFamily: SANS,
+        fontSize: 13.5,
+        fontWeight: 600,
+        textDecoration: "none",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </Link>
+  );
 
   return (
     <PublicShell event={data.event} slug={slug} active="Agenda">
+      {withSessions.length < 2 ? null : (
+        <nav
+          aria-label="Conference days"
+          style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "0 0 28px" }}
+        >
+          {dayTab("All days", `/e/${slug}/agenda`, selected === undefined)}
+          {withSessions.map((day) =>
+            dayTab(
+              day.label ??
+                calendarDate(day.date, { weekday: "short", day: "numeric", month: "short" }),
+              `/e/${slug}/agenda?day=${day.date}`,
+              selected === day.date,
+            ),
+          )}
+        </nav>
+      )}
       <div style={{ display: "grid", gap: 40 }}>
         {days.map((day, dayIndex) => (
           <section key={day.id}>

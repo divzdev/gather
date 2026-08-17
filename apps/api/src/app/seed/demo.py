@@ -333,6 +333,11 @@ def _decision(index: int, accepted_so_far: int) -> tuple[SubmissionStatus, Decis
     return SubmissionStatus.SUBMITTED, DecisionStatus.NONE
 
 
+#: What a second name on a talk actually is. "Co-speaker" was the only thing the
+#: model could say, and it is the least useful of these.
+CO_ROLES = ("Co-presenter", "Co-author", "Moderator", "Demo driver")
+
+
 async def _fill_submissions(
     session: AsyncSession,
     event: Event,
@@ -399,8 +404,26 @@ async def _fill_submissions(
                 submission_id=submission.id,
                 speaker_id=people[index % len(people)].id,
                 is_primary=True,
+                role="Presenter",
             )
         )
+        # Roughly a third of talks have a second name on them, which is about
+        # right for a developer conference — and it is the only way the role
+        # label is visible on a seeded database at all.
+        if index % 3 == 0:
+            second = people[(index + 7) % len(people)]
+            if second.id != people[index % len(people)].id:
+                session.add(
+                    SubmissionSpeaker(
+                        org_id=event.org_id,
+                        event_id=event.id,
+                        submission_id=submission.id,
+                        speaker_id=second.id,
+                        is_primary=False,
+                        role=CO_ROLES[index % len(CO_ROLES)],
+                        sort_order=1,
+                    )
+                )
     await session.flush()
 
 

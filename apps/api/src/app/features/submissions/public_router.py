@@ -112,7 +112,7 @@ async def save_draft(
         answers=body.answers,
         speaker_email=str(body.speaker_email),
         speaker_name=body.speaker_name,
-        co_speakers=[(person.name, str(person.email)) for person in body.co_speakers],
+        co_speakers=[(person.name, str(person.email), person.role) for person in body.co_speakers],
         draft_token=body.draft_token,
     )
     return DraftResponse(
@@ -151,7 +151,7 @@ async def submit(
         answers=body.answers,
         speaker_email=str(body.speaker_email),
         speaker_name=body.speaker_name,
-        co_speakers=[(person.name, str(person.email)) for person in body.co_speakers],
+        co_speakers=[(person.name, str(person.email), person.role) for person in body.co_speakers],
         draft_token=body.draft_token,
     )
     submission.ip_hash = hash_ip(_client_ip(request))

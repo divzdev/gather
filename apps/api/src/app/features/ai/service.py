@@ -382,5 +382,13 @@ async def accept_scores(
         values=dict(chosen),
         comment=comment,
     )
+    # Provenance, not authorship. `review.user_id` is still the accepting human
+    # and still NOT NULL, so an AI-authored review remains unrepresentable —
+    # this only records that a suggestion was where the numbers started. Without
+    # it the results screen shows a score with no way to tell whether a person
+    # reached it or agreed with it, which is the difference an organiser reading
+    # a borderline proposal most wants.
+    review.ai_proposal_id = proposal.id
+    await session.flush()
     await proposals.resolve(session, proposal, status=AiProposalStatus.ACCEPTED)
     return review
