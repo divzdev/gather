@@ -109,6 +109,15 @@ const dayName = (timezone: string) =>
     timeZone: timezone,
   });
 
+/** Short date for a card that may be read on its own. */
+const stamp = (timezone: string) =>
+  new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: timezone,
+  });
+
 const clock = (timezone: string) =>
   new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
@@ -130,6 +139,7 @@ export function Picker({
 }) {
   const WHEN = when(timezone);
   const CLOCK = clock(timezone);
+  const STAMP = stamp(timezone);
   const router = useRouter();
   const params = useSearchParams();
 
@@ -395,9 +405,14 @@ export function Picker({
                           margin: 0,
                         }}
                       >
-                        {/* The weekday moved to the day heading above, so the row
-                      carries the time and nothing the heading already said. */}
-                        {row.starts_at === null ? "—" : CLOCK.format(new Date(row.starts_at))}
+                        {/* The date is repeated from the day heading on purpose.
+                            A personal schedule is a thing people screenshot and
+                            send one card of, and a card that says only "09:00"
+                            has lost the half that matters once it leaves the
+                            page it was grouped on. */}
+                        {row.starts_at === null
+                          ? "—"
+                          : `${STAMP.format(new Date(row.starts_at))} · ${CLOCK.format(new Date(row.starts_at))}`}
                         {row.room !== null ? ` · ${row.room}` : ""}
                         {row.track !== null ? ` · ${row.track}` : ""}
                         {row.format !== null ? ` · ${row.format}` : ""}

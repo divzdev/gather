@@ -389,6 +389,7 @@ test("a submitter finds their proposal by code and corrects it while the call is
       track: "AI Engineering",
       format: "Talk (30 min)",
       speaker_bio: "Short bio.",
+      key_takeaway: "One sentence worth remembering.",
     },
     speaker_email: `e2e-edit-${Date.now()}@example.com`,
     speaker_name: "Edie Torres",

@@ -214,20 +214,18 @@ async def _fill_speakers(session: AsyncSession, event: Event, rng: random.Random
         # gallery of grey placeholders until someone dropped the database.
         await _fill_headshots(session, event, existing)
         await _fill_logistics(session, existing)
+        await _fill_bios(session, existing)
         return existing
 
     taken = {person.email for person in existing}
-    for name, email, company, role in _people(rng, missing, taken):
+    for index, (name, email, company, role) in enumerate(_people(rng, missing, taken)):
         speaker = Speaker(
             org_id=event.org_id,
             name=name,
             email=email,
             company=company,
             job_title=role,
-            bio=(
-                f"{name} is a {role.lower()} at {company}. They write about the parts of "
-                "the job that do not fit in a diagram."
-            ),
+            bio=_bio(name, role, company, index),
             tags=rng.sample(["keynote", "workshop", "returning", "local"], k=rng.randint(0, 2)),
             crm_status=rng.choice(["prospect", "invited", "confirmed", "alum"]),
         )
@@ -245,6 +243,7 @@ async def _fill_speakers(session: AsyncSession, event: Event, rng: random.Random
     await session.flush()
     await _fill_headshots(session, event, existing)
     await _fill_logistics(session, existing)
+    await _fill_bios(session, existing)
     return existing
 
 
@@ -391,6 +390,56 @@ async def _fill_co_speakers(session: AsyncSession, event: Event, people: list[Sp
             )
         )
     await session.flush()
+
+
+#: A real conference bio runs to a paragraph or three, and every seeded speaker
+#: carrying the same single templated sentence made the gallery look like filler
+#: — it also meant nothing on the page was ever long enough to need the "show
+#: more" the speaker panel offers. Roughly one in three gets the long form.
+_LONG_BIO = (
+    "{name} is a {role_lower} at {company}, where they spend most of their time on the "
+    "unglamorous half of the job: the build that got slow, the migration that stalled, "
+    "the dashboard nobody trusted. They have been shipping production systems for over a "
+    "decade and have opinions about all of it, most of which they have changed at least "
+    "once.\n\n"
+    "They write and speak about the parts of engineering that do not fit in a diagram — "
+    "how decisions actually get made, what it costs to reverse one, and why the second "
+    "attempt usually works. Outside work they are usually found somewhere with poor "
+    "internet and a long book."
+)
+
+
+async def _fill_bios(session: AsyncSession, speakers: list[Speaker]) -> None:
+    """Give a third of an already-seeded roster the long bio.
+
+    Only rows still carrying the short template verbatim, so an organiser who
+    has edited someone's bio keeps their words — the same rule the other
+    converge steps follow.
+    """
+    for index, speaker in enumerate(sorted(speakers, key=lambda person: person.email)):
+        if index % 3 != 0 or speaker.bio is None:
+            continue
+        if speaker.bio != _short_bio(speaker.name, speaker.job_title or "", speaker.company or ""):
+            continue
+        speaker.bio = _LONG_BIO.format(
+            name=speaker.name,
+            role_lower=(speaker.job_title or "engineer").lower(),
+            company=speaker.company or "their team",
+        )
+    await session.flush()
+
+
+def _short_bio(name: str, role: str, company: str) -> str:
+    return (
+        f"{name} is a {role.lower()} at {company}. They write about the parts of "
+        "the job that do not fit in a diagram."
+    )
+
+
+def _bio(name: str, role: str, company: str, index: int) -> str:
+    if index % 3 == 0:
+        return _LONG_BIO.format(name=name, role_lower=role.lower(), company=company)
+    return _short_bio(name, role, company)
 
 
 #: What a second name on a talk actually is. "Co-speaker" was the only thing the

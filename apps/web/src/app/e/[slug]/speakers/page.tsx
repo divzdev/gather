@@ -12,6 +12,7 @@ import {
 } from "../public";
 import { Card, INK, MONO, SANS, Section, trackHue } from "../chrome";
 import { NotPublished } from "../chrome";
+import { Bio } from "./bio";
 
 export const dynamic = "force-dynamic";
 
@@ -363,19 +364,7 @@ function SpeakerPanel({
         </div>
 
         {speaker.bio === null || speaker.bio === "" ? null : (
-          <p
-            style={{
-              fontFamily: SANS,
-              fontSize: 14.5,
-              fontWeight: 500,
-              color: INK.muted,
-              lineHeight: 1.6,
-              margin: "0 0 20px",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {speaker.bio}
-          </p>
+          <Bio text={speaker.bio} color={INK.muted} font={SANS} />
         )}
 
         <p

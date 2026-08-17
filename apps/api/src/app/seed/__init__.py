@@ -167,6 +167,11 @@ CFP_SCHEMA: dict[str, Any] = {
                     "key": "key_takeaway",
                     "type": "short_text",
                     "label": "Key takeaway",
+                    # Required, which the bulk seed's own comment already claimed
+                    # and this schema did not say. A CFP that asks for the one
+                    # sentence an attendee should remember and then accepts a
+                    # proposal without it is asking rhetorically.
+                    "required": True,
                     "help_text": "One sentence an attendee should remember.",
                 },
                 {
