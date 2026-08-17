@@ -22,6 +22,8 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.tenancy import tenant_scope
+from app.features.files import service as files
 from app.features.publishing import snapshot
 from app.features.review import service as review_service
 from app.models import (
@@ -60,7 +62,7 @@ from app.models import (
     TaskTemplate,
     User,
 )
-from app.seed import deliverables
+from app.seed import avatars, deliverables
 
 TARGET_SPEAKERS = 80
 TARGET_SUBMISSIONS = 214
@@ -204,6 +206,12 @@ async def _fill_speakers(session: AsyncSession, event: Event, rng: random.Random
     )
     missing = TARGET_SPEAKERS - len(existing)
     if missing <= 0:
+        # Not an early return any more. The seed is an idempotent upsert, so it
+        # has to converge an *already seeded* database on the target state too —
+        # and headshots were added to it after this demo was first seeded. Left
+        # as a create-time-only step, every existing deployment would keep a
+        # gallery of grey placeholders until someone dropped the database.
+        await _fill_headshots(session, event, existing)
         return existing
 
     taken = {person.email for person in existing}
@@ -233,7 +241,39 @@ async def _fill_speakers(session: AsyncSession, event: Event, rng: random.Random
         )
         existing.append(speaker)
     await session.flush()
+    await _fill_headshots(session, event, existing)
     return existing
+
+
+async def _fill_headshots(session: AsyncSession, event: Event, speakers: list[Speaker]) -> None:
+    """Give every seeded speaker a face, except roughly one in seven.
+
+    The speaker gallery is a grid *of faces*, and the demo published none: the
+    widget an organiser is most likely to show off rendered as a wall of grey,
+    which reads as a missing feature rather than thin data.
+
+    Identicons, not photographs. Inventing realistic faces for people who do not
+    exist would make the demo lie about its own data; symmetric geometry is
+    honestly synthetic and still fills a grid.
+
+    The one-in-seven left bare is deliberate. The initials fallback is part of
+    the design, and a demo where everyone has a photo never shows it working.
+    """
+    for speaker in speakers:
+        if speaker.headshot_file_id is not None or speaker.id.int % 7 == 0:
+            continue
+        # The rest of the seed runs under `tenancy_disabled()`; `files.store`
+        # reads the event off the tenant context, so it needs one.
+        with tenant_scope(event.org_id, event.id):
+            record = await files.store(
+                session,
+                data=avatars.identicon(speaker.name),
+                filename=f"{speaker.email.split('@')[0]}-headshot.png",
+                content_type="image/png",
+                uploaded_by_speaker_id=speaker.id,
+            )
+        speaker.headshot_file_id = record.id
+    await session.flush()
 
 
 def _decision(index: int, accepted_so_far: int) -> tuple[SubmissionStatus, DecisionStatus]:

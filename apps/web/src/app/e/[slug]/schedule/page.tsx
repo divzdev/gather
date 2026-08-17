@@ -16,7 +16,11 @@ type Session = {
   room: string | null;
   track: string | null;
   duration_minutes: number;
-  speakers: { id: string; name: string }[];
+  /** Role and employer come down in the published snapshot and were dropped on
+   *  the floor here, so a card said "Beatriz Fontaine" where the payload said
+   *  "Beatriz Fontaine, Head of Data at Harbour Labs". Who someone is is most of
+   *  why an attendee picks one talk over another in the same slot. */
+  speakers: { id: string; name: string; job_title?: string | null; company?: string | null }[];
   tags?: string[];
   expertise_level?: string | null;
   language?: string | null;
@@ -83,7 +87,9 @@ const chip = (on: boolean) => ({
   padding: "0 14px",
   borderRadius: 999,
   border: `1px solid ${on ? "var(--e-accent, #FF6B6B)" : "var(--e-edge, rgba(255,255,255,.10))"}`,
-  background: on ? "color-mix(in srgb, var(--e-accent, #FF6B6B) 15%, transparent)" : "var(--e-raised, #101018)",
+  background: on
+    ? "color-mix(in srgb, var(--e-accent, #FF6B6B) 15%, transparent)"
+    : "var(--e-raised, #101018)",
   color: on ? "var(--e-accent, #FF6B6B)" : "var(--e-muted, #9A9FB1)",
   font: "500 12.5px var(--font-manrope), sans-serif",
   textDecoration: "none",
@@ -268,7 +274,10 @@ export default async function SessionsList({
         {narrowed && (
           <>
             {" · "}
-            <Link href={`/e/${slug}/schedule` as never} style={{ color: "var(--e-accent, #FF6B6B)" }}>
+            <Link
+              href={`/e/${slug}/schedule` as never}
+              style={{ color: "var(--e-accent, #FF6B6B)" }}
+            >
               Clear filters
             </Link>
           </>
@@ -299,7 +308,6 @@ export default async function SessionsList({
     </PublicShell>
   );
 }
-
 
 /** Sixty-one talks as one flat list is a wall. Grouped by the day they run, in
  *  the order they run, so scanning it answers "what is on Wednesday morning"
@@ -378,11 +386,11 @@ function Grouped({
                           fontVariantNumeric: "tabular-nums",
                         }}
                       >
-                        {session.starts_at === null
-                          ? "—"
-                          : eventTime(session.starts_at, timezone)}
+                        {session.starts_at === null ? "—" : eventTime(session.starts_at, timezone)}
                       </div>
-                      <div style={{ fontFamily: MONO, fontSize: 11.5, color: INK.faint, marginTop: 4 }}>
+                      <div
+                        style={{ fontFamily: MONO, fontSize: 11.5, color: INK.faint, marginTop: 4 }}
+                      >
                         {session.duration_minutes} MIN
                       </div>
                     </div>
@@ -406,7 +414,14 @@ function Grouped({
                             margin: "8px 0 0",
                           }}
                         >
-                          {session.speakers.map((speaker) => speaker.name).join(", ")}
+                          {session.speakers
+                            .map((speaker) => {
+                              const role = [speaker.job_title, speaker.company]
+                                .filter(Boolean)
+                                .join(", ");
+                              return role === "" ? speaker.name : `${speaker.name}, ${role}`;
+                            })
+                            .join(" · ")}
                         </p>
                       )}
                       {session.abstract === null ? null : (
@@ -425,9 +440,7 @@ function Grouped({
                             : session.abstract}
                         </p>
                       )}
-                      <div
-                        style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}
-                      >
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
                         {session.track === null ? null : (
                           <Chip hue={hue}>
                             <Dot hue={hue} />

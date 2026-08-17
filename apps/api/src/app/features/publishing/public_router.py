@@ -234,7 +234,15 @@ async def speaker_detail(speaker_id: str, event: PublicEvent, session: DbSession
 
 @router.get("/gallery")
 async def gallery(event: PublicEvent, session: DbSession) -> dict[str, Any]:
-    """The speaker gallery: the same people, shaped for a grid of cards."""
+    """The speaker gallery: the same people, shaped for a grid of cards.
+
+    The grid is a grid *of faces* — that is the whole difference between this
+    and the speakers list. The projection below used to name six fields and not
+    that one, so the gallery was served company and job title and no way to
+    resolve a photograph, and rendered a wall of initials no matter how many
+    headshots had been approved. The snapshot has always carried it; this only
+    stopped dropping it on the way out.
+    """
     data = await snapshot.require_latest(session)
     return {
         "event": data["event"],
@@ -244,6 +252,9 @@ async def gallery(event: PublicEvent, session: DbSession) -> dict[str, Any]:
                 "name": p["name"],
                 "company": p["company"],
                 "job_title": p["job_title"],
+                #: Resolved through /speakers/{file_id}/photo, which serves a
+                #: file only when the snapshot names it as a headshot.
+                "headshot_file_id": p.get("headshot_file_id"),
                 "session_count": len(p["sessions"]),
                 "sessions": p["sessions"],
             }
