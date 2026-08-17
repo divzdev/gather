@@ -18,10 +18,15 @@ test.beforeAll(async ({ request }) => {
  *  nav, rather than being one of four editors stacked on a single scroll. */
 type Section = "rooms" | "tracks" | "session-formats" | "days";
 
-async function openProgram(page: Page, section: Section) {
+async function openProgram(page: Page, section: Section, eventId?: string) {
   await page.goto("/login");
   await page.getByRole("button", { name: /^Organizer$/i }).click();
   await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 });
+  // A scratch event, when the test brought one: the console reads the event it
+  // is pointed at from storage, so switching there costs no UI navigation.
+  if (eventId !== undefined) {
+    await page.evaluate((id) => window.localStorage.setItem("gather.event", id), eventId);
+  }
   await page.goto(`/admin/program/${section}`);
   await expect(page.getByRole("heading").first()).toBeVisible({ timeout: 15_000 });
 }
@@ -120,14 +125,42 @@ test("20b. a nonsense duration is refused with a reason", async ({ page }) => {
   await expect(drawer, "a refused submit closed the drawer").toBeVisible();
 });
 
-test("21. an event day is added and removed again", async ({ page }) => {
-  await openProgram(page, "days");
+test("21. an event day is added and removed again", async ({ page, request }) => {
+  // A day has to fall inside the event's own dates, and the seeded conference
+  // runs three days with all three already built — so there is no free date on
+  // it. This used to reach for a date years out, which the range check now
+  // refuses (correctly, and with the valid range named on screen).
+  //
+  // So the round trip runs on an event of its own. Widening the seeded event
+  // instead was the first attempt and was worse: its date range is read by the
+  // header strip and the public pages, so tests running alongside this one saw
+  // the conference change length underneath them.
+  const login = await request.post(`${API}/v1/auth/demo-login`, { data: { role: "organizer" } });
+  const headers = { Authorization: `Bearer ${(await login.json()).access_token}` };
+  const stamp = Date.now();
+  const made = await request.post(`${API}/v1/events`, {
+    headers,
+    data: {
+      name: `Day round trip ${stamp}`,
+      slug: `day-round-trip-${stamp}`,
+      timezone: "UTC",
+      starts_on: "2031-03-01",
+      ends_on: "2031-03-04",
+    },
+  });
+  expect(made.ok(), `could not create a scratch event: ${await made.text()}`).toBe(true);
+  const eventId = ((await made.json()) as { id: string }).id;
+
+  try {
+    await runDayRoundTrip(page, eventId, "2031-03-02");
+  } finally {
+    await request.delete(`${API}/v1/events/${eventId}`, { headers });
+  }
+});
+
+async function runDayRoundTrip(page: Page, eventId: string, date: string) {
+  await openProgram(page, "days", eventId);
   const label = `Day ${Date.now()}`;
-  // A date far enough out, and jittered, that concurrent or repeated runs cannot
-  // collide on the unique (event, date) pair — a collision here fails the add
-  // and made this flake in the full suite while passing alone.
-  const offset = 900 + Math.floor(Math.random() * 5000);
-  const date = new Date(Date.now() + 86_400_000 * offset).toISOString().slice(0, 10);
 
   const drawer = await openAdd(page);
   await drawer.getByLabel(/^date$/i).fill(date);
@@ -181,7 +214,7 @@ test("21. an event day is added and removed again", async ({ page }) => {
   await expect(edit).toBeHidden();
 
   await removeRow(after, shown);
-});
+}
 
 test("23-24. an unused track deletes; one in use does not crash the screen", async ({
   page,

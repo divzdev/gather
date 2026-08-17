@@ -27,6 +27,7 @@ from app.models import (
     CriterionKind,
     Event,
     EventDay,
+    EventMember,
     EventSpeaker,
     EventStatus,
     Form,
@@ -64,6 +65,17 @@ STAFF = [
     # than describing one, and a score is a mean of two opinions rather than a
     # single number wearing an average's clothes.
     ("Noor Haddad", "sbek-reviewer2@example.com", "SbekTest!2027-rev2", Role.REVIEWER),
+]
+
+#: Staff on *this event only*, as an `EventMember` rather than an `OrgMember`.
+#:
+#: The two tiers are a real distinction the Team screen draws — it marks who
+#: reaches every event and who reaches this one, which is the on-screen answer
+#: to "why can't I open the Directory?". With everybody seeded at org level the
+#: list held one tier, so the screen never said either half of that sentence and
+#: the distinction existed only in the code.
+EVENT_STAFF = [
+    ("Robin Achterberg", "sbek-coordinator@example.com", "SbekTest!2027-coord", Role.COORDINATOR),
 ]
 
 SPEAKERS = [
@@ -289,6 +301,27 @@ async def _upsert_staff(session: AsyncSession, org: Organization) -> None:
         )
         if member is None:
             session.add(OrgMember(org_id=org.id, user_id=user.id, role=role))
+    await session.flush()
+
+
+async def _upsert_event_staff(session: AsyncSession, org: Organization, event: Event) -> None:
+    """One person scoped to this event and no other, so the Team list holds both
+    tiers and can say which is which."""
+    for name, email, password, role in EVENT_STAFF:
+        user = await session.scalar(select(User).where(User.email == email))
+        if user is None:
+            user = User(email=email, name=name, password_hash=hash_password(password))
+            session.add(user)
+            await session.flush()
+        if user.email_verified_at is None:
+            user.email_verified_at = datetime.now(UTC)
+        member = await session.scalar(
+            select(EventMember).where(
+                EventMember.event_id == event.id, EventMember.user_id == user.id
+            )
+        )
+        if member is None:
+            session.add(EventMember(org_id=org.id, event_id=event.id, user_id=user.id, role=role))
     await session.flush()
 
 
@@ -755,6 +788,7 @@ async def seed() -> None:
             org = await _upsert_org(session)
             event = await _upsert_event(session, org)
             await _upsert_staff(session, org)
+            await _upsert_event_staff(session, org, event)
             program = await _upsert_program(session, event)
             form = await _upsert_form(session, event)
             people = await _upsert_speakers(session, event)

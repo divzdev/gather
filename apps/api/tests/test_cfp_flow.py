@@ -801,6 +801,55 @@ async def test_closing_the_cfp_from_settings_shuts_the_public_form(
     assert public.json()["closed_reason"] is not None
 
 
+async def test_a_call_can_be_recorded_as_already_closed_on_a_new_event(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """Moving a conference that has been running for years into this app means
+    typing a deadline that has already passed. The floor was the row's creation,
+    so an event added today had no past at all and the honest edit this guard
+    exists to permit was refused on every new event."""
+    headers, event, form = cfp
+    last_week = (datetime.now(UTC) - timedelta(days=7)).isoformat()
+
+    response = await client.patch(
+        f"/v1/events/{event.id}/forms/{form.id}",
+        json={"closes_at": last_week},
+        headers=headers,
+    )
+
+    assert response.status_code == 200, response.text
+
+    # And it really is shut, not merely stored.
+    shut = await client.post(
+        f"/v1/public/events/{event.slug}/submissions",
+        json={
+            "form_id": str(form.id),
+            "title": "Too late",
+            "answers": GOOD,
+            "speaker_email": "late@example.com",
+            "speaker_name": "Late Speaker",
+        },
+    )
+    assert shut.status_code == 403
+
+
+async def test_a_mistyped_year_is_still_refused(
+    client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
+) -> None:
+    """The whole point of the floor. A deadline in 2005 makes the form report
+    itself permanently shut behind a countdown that expired two decades ago."""
+    headers, event, form = cfp
+
+    response = await client.patch(
+        f"/v1/events/{event.id}/forms/{form.id}",
+        json={"closes_at": "2005-06-01T09:00:00+00:00"},
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+    assert "Check the year" in response.json()["error"]["message"]
+
+
 async def test_a_proposal_can_name_co_speakers(
     client: AsyncClient, cfp: tuple[dict[str, str], Event, Form]
 ) -> None:

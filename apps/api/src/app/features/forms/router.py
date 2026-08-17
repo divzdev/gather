@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
@@ -38,29 +38,36 @@ def _read(form: Form) -> FormRead:
 async def _dates_are_not_older_than_the_event(
     session: DbSession, *, opens_at: datetime | None, closes_at: datetime | None
 ) -> None:
-    """A form window cannot start before the event it belongs to existed.
+    """A form window cannot start absurdly before the event it belongs to.
 
     Closing *before the conference* is normal — a call for papers has to. What
     is not is a deadline in 2005, which is what a mistyped year in a
     datetime field produces; the form then reports itself permanently shut and
     the public page shows a countdown that expired two decades ago.
 
-    The floor is the event's creation, deliberately, not `now`. Backdating a
-    deadline to last week is a real thing an organiser does — recording a call
-    that has already closed — and a `now` floor would refuse that honest edit to
-    catch the typo. Everything before the event existed is unambiguously wrong.
+    Backdating a deadline to last week is a real thing an organiser does —
+    recording a call that has already closed, or moving a conference that has
+    been running for years into this app. Flooring at `created_at` alone
+    refused exactly that: an event added today has no past at all, so the
+    honest edit this check was written to permit was rejected on every event
+    less than a week old, which in practice meant every new one.
+
+    So the floor is the *earlier* of the row's creation and a year before the
+    conference runs. A year is wide enough for any real call for papers and
+    narrow enough that a mistyped year is still caught.
     """
     tenant = current_tenant()
     with tenancy_disabled():
         event = await session.get(Event, tenant.event_id)
     if event is None:  # pragma: no cover - bind_tenant proved it exists
         return
-    floor = event.created_at
+    a_year_before = datetime.combine(event.starts_on - timedelta(days=365), time.min, tzinfo=UTC)
+    floor = min(event.created_at, a_year_before)
     for field, value in (("opens_at", opens_at), ("closes_at", closes_at)):
         if value is not None and value < floor:
             raise ApiError(
-                f"That date is before {event.name} was created "
-                f"({floor:%-d %b %Y}), so it cannot be right. "
+                f"That date is more than a year before {event.name} runs "
+                f"(nothing earlier than {floor:%-d %b %Y}), so it cannot be right. "
                 "Check the year.",
                 code="VALIDATION_FAILED",
                 status_code=422,

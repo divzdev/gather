@@ -89,7 +89,9 @@ test("97. a failed message can be retried, and a delivered one cannot", async ({
   );
   // Counted against the total, not the page: once the outbox passes 200 rows the
   // page length stops moving and this compared 200 to 200 forever.
-  expect(body.meta.total, "the retry did not appear in the outbox").toBeGreaterThan(before.meta.total);
+  expect(body.meta.total, "the retry did not appear in the outbox").toBeGreaterThan(
+    before.meta.total,
+  );
 });
 
 test("98. deciding and sending move the same proposal through its notified state", async ({
@@ -101,9 +103,11 @@ test("98. deciding and sending move the same proposal through its notified state
     `${API}/v1/events/${ctx.eventId}/submissions?per_page=200&filter[status]=submitted`,
     { headers: ctx.headers },
   );
-  const [target] = ((await listing.json()) as {
-    data: { id: string; decision_status: string }[];
-  }).data;
+  const [target] = (
+    (await listing.json()) as {
+      data: { id: string; decision_status: string }[];
+    }
+  ).data;
   test.skip(target === undefined, "no undecided proposal to work with");
 
   const read = async () => {
@@ -128,16 +132,21 @@ test("98. deciding and sending move the same proposal through its notified state
     expect(decided.status).toBe("waitlisted");
     expect(decided.decision_status, "deciding did not queue a notification").toBe("pending_send");
 
-    const pending = await request.get(`${API}/v1/events/${ctx.eventId}/submissions/pending-decisions`, {
-      headers: ctx.headers,
-    });
+    const pending = await request.get(
+      `${API}/v1/events/${ctx.eventId}/submissions/pending-decisions`,
+      {
+        headers: ctx.headers,
+      },
+    );
     const counts = (await pending.json()) as { waitlisted: number; total: number };
     expect(counts.waitlisted, "the pending count did not move").toBeGreaterThan(0);
   } finally {
-    await request.post(`${API}/v1/events/${ctx.eventId}/submissions/${target!.id}/decision`, {
-      headers: ctx.headers,
-      data: { outcome: before.status === "submitted" ? "waitlisted" : before.status },
-    }).catch(() => undefined);
+    await request
+      .post(`${API}/v1/events/${ctx.eventId}/submissions/${target!.id}/decision`, {
+        headers: ctx.headers,
+        data: { outcome: before.status === "submitted" ? "waitlisted" : before.status },
+      })
+      .catch(() => undefined);
   }
 });
 
@@ -153,7 +162,32 @@ test("103. a form task comes back with what the speaker already answered", async
   const form = payload.tasks.find((task) => task.kind === "form");
   test.skip(form === undefined, "the seeded speaker has no form task");
 
-  const answer = { availability: "Any time on the Thursday", accessibility: "None" };
+  // Answer the form the task actually carries. Hard-coding field keys here
+  // coupled the test to whichever questions the seed happened to ask, so
+  // changing the demo's task form broke a test about round-tripping answers —
+  // which is not what it is checking.
+  const detail = await request.get(`${API}/v1/portal/tasks/${form!.id}`, { headers });
+  expect(detail.status(), await detail.text()).toBe(200);
+  const schema = (await detail.json()) as {
+    schema: {
+      sections: {
+        fields: { key: string; type: string; required?: boolean; choices?: { value: string }[] }[];
+      }[];
+    } | null;
+  };
+  expect(schema.schema, "a form task arrived with no questions on it").not.toBeNull();
+
+  const fields = schema.schema!.sections.flatMap((section) => section.fields);
+  const answer: Record<string, string> = {};
+  for (const field of fields.filter((f) => f.required)) {
+    answer[field.key] =
+      field.choices !== undefined && field.choices.length > 0
+        ? field.choices[0]!.value
+        : `Answered by the E2E suite at ${new Date().toISOString()}`;
+  }
+  const [firstAnswered] = Object.keys(answer);
+  expect(firstAnswered, "the seeded form task asks nothing required").toBeDefined();
+
   const saved = await request.put(`${API}/v1/portal/tasks/${form!.id}`, {
     headers,
     data: { form_response: answer },
@@ -166,7 +200,7 @@ test("103. a form task comes back with what the speaker already answered", async
     const reopened = await request.get(`${API}/v1/portal/tasks/${form!.id}`, { headers });
     const stored = (await reopened.json()) as { form_response: Record<string, string> | null };
     expect(stored.form_response, "the task came back empty").not.toBeNull();
-    expect(stored.form_response!.availability).toBe(answer.availability);
+    expect(stored.form_response![firstAnswered!]).toBe(answer[firstAnswered!]);
   } finally {
     await request
       .put(`${API}/v1/portal/tasks/${form!.id}`, {
@@ -195,9 +229,7 @@ test("109. Google and Outlook links sit beside the .ics, and all three describe 
   test.skip(talk === undefined, "the seeded speaker has no scheduled session");
 
   // Most speakers never download an .ics; they click the calendar they use.
-  expect(talk!.calendar_links.google, "no Google Calendar link").toContain(
-    "calendar.google.com",
-  );
+  expect(talk!.calendar_links.google, "no Google Calendar link").toContain("calendar.google.com");
   expect(talk!.calendar_links.outlook, "no Outlook link").toContain("outlook");
 
   // Both links carry the real title, not a placeholder.

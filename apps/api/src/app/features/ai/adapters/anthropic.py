@@ -23,6 +23,24 @@ from app.features.ai.adapters.base import Completion
 API_URL = "https://api.anthropic.com/v1/messages"
 API_VERSION = "2023-06-01"
 
+
+def refusal(status_code: int, body: str) -> ApiError:
+    """The provider's own sentence, not its JSON envelope.
+
+    This reaches an `ai_proposals` row and from there an organiser's screen, so
+    `{"type":"error","error":{"type":"authentication_error","message":"API key
+    is invalid."},"request_id":null}` is nine tenths noise around the one clause
+    that tells them what to do. Falls back to the raw body when it does not
+    parse — an error we cannot read is still better shown than swallowed.
+    """
+    try:
+        parsed = json.loads(body)
+        message = parsed["error"]["message"]
+    except (ValueError, KeyError, TypeError):
+        message = body[:300]
+    return ApiError(f"The model provider refused the request ({status_code}): {message}")
+
+
 #: A model call is slow by nature; the connect timeout is what should be short.
 #: Without an explicit read timeout httpx would wait five seconds and give up
 #: mid-answer, which reads as "the AI is broken" rather than "we hung up".
@@ -61,12 +79,8 @@ class AnthropicAdapter:
             )
         if response.status_code != 200:
             # The provider's own message is the useful part; it names bad keys,
-            # rate limits and oversized requests specifically. Truncated because
-            # it reaches a proposal row and then a screen.
-            raise ApiError(
-                f"The model provider refused the request ({response.status_code}): "
-                f"{response.text[:300]}"
-            )
+            # rate limits and oversized requests specifically.
+            raise refusal(response.status_code, response.text)
 
         payload = response.json()
         blocks = payload.get("content", [])
@@ -99,9 +113,7 @@ class AnthropicAdapter:
         ):
             if response.status_code != 200:
                 body = (await response.aread()).decode(errors="replace")
-                raise ApiError(
-                    f"The model provider refused the request ({response.status_code}): {body[:300]}"
-                )
+                raise refusal(response.status_code, body)
             async for line in response.aiter_lines():
                 if not line.startswith("data:"):
                     continue

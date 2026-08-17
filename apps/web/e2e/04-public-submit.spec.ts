@@ -16,6 +16,65 @@ test.beforeAll(async ({ request }) => {
   test.skip(health === null || !health.ok(), `API not reachable at ${API}.`);
 });
 
+/** Answer whatever the current step is showing, generically.
+ *
+ *  Generic on purpose: this file's point is that the *schema* decides what the
+ *  form asks, so a helper that knew the field names would be asserting the same
+ *  hard-coded list the test exists to stop trusting.
+ *
+ *  There is no `<form>` element and no `required` attribute — the CFP marks a
+ *  required question with an asterisk in its label and validates in React — so
+ *  this fills every visible control rather than selecting on `[required]`. */
+async function fillVisibleControls(page: Page) {
+  const controls = page.locator("input, textarea, select");
+  for (let index = 0; index < (await controls.count()); index += 1) {
+    const control = controls.nth(index);
+    if (!(await control.isVisible().catch(() => false))) continue;
+    const tag = await control.evaluate((node) => node.tagName.toLowerCase());
+
+    if (tag === "select") {
+      const values = await control
+        .locator("option")
+        .evaluateAll((options) =>
+          options
+            .map((option) => (option as HTMLOptionElement).value)
+            .filter((value) => value !== ""),
+        );
+      if (values.length > 0) await control.selectOption(values[0]!).catch(() => undefined);
+      continue;
+    }
+
+    const type = (await control.getAttribute("type")) ?? "text";
+    if (type === "checkbox" || type === "radio") {
+      await control.check().catch(() => undefined);
+      continue;
+    }
+    if (type === "file" || (await control.inputValue().catch(() => "x")) !== "") continue;
+    await control
+      .fill(
+        type === "email"
+          ? "walker@example.com"
+          : type === "url"
+            ? "https://example.com/walker"
+            : "Filled by the E2E walk so the wizard will advance",
+      )
+      .catch(() => undefined);
+  }
+
+  // Choice questions are not `<select>` or `<input type=radio>` — they are
+  // buttons carrying the ARIA role, which is why a walker that only knew about
+  // form controls sat on the proposal step forever being told to pick a track.
+  const groups = page.locator('[role="radiogroup"], [role="group"]');
+  for (let index = 0; index < (await groups.count()); index += 1) {
+    const group = groups.nth(index);
+    if (!(await group.isVisible().catch(() => false))) continue;
+    const already = await group.locator('[aria-checked="true"]').count();
+    if (already > 0) continue;
+    const option = group.locator('[role="radio"], [role="checkbox"]').first();
+    if ((await option.count()) > 0) await option.click().catch(() => undefined);
+  }
+}
+
 async function openForm(page: Page) {
   const response = await page.goto(`/e/${SLUG}/cfp`);
   expect(response?.status()).toBeLessThan(400);
@@ -93,15 +152,30 @@ test("44. every field configured on the form is collected somewhere", async ({ p
 
   await openForm(page);
 
-  // The form is a four-step wizard, so "on the page" means across its steps.
-  let body = "";
-  for (const step of ["You", "Your proposal", "Speakers", "Review and submit"]) {
-    const tab = page.getByRole("button", { name: new RegExp(step, "i") }).first();
-    if ((await tab.count()) > 0) {
-      await tab.click();
-      await page.waitForTimeout(400);
-    }
-    body += await page.locator("body").innerText();
+  // The form is a wizard, so "on the page" means across its steps — and the
+  // steps are walked the way a speaker walks them. Clicking the numbered step
+  // buttons does not work and should not: you cannot jump over a step whose
+  // required fields are empty. This test used to click them anyway, never left
+  // step one, and so reported every field on every later step as missing.
+  // Wait for the wizard itself, not just the first heading `openForm` waits on.
+  // The heading is server-rendered and Continue is not, so counting the button
+  // straight away found nothing, broke the walk on its first pass, and reported
+  // every field beyond step one as missing.
+  const firstNext = page.getByRole("button", { name: /^Continue$/i });
+  await expect(firstNext, "the CFP wizard never rendered").toBeVisible({ timeout: 20_000 });
+
+  let body = await page.locator("body").innerText();
+  for (let step = 0; step < 8; step += 1) {
+    const next = page.getByRole("button", { name: /^Continue$/i });
+    if ((await next.count()) === 0) break;
+
+    // Fill whatever this step is asking for before asking to leave it.
+    await fillVisibleControls(page);
+    await next.click();
+    await page.waitForTimeout(400);
+    const now = await page.locator("body").innerText();
+    if (now === body) break;
+    body += now;
   }
 
   const haystack = body.toLowerCase();

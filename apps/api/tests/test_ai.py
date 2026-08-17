@@ -743,3 +743,27 @@ async def test_duplicate_detection_writes_nothing_to_the_submissions(
         for sid in (left, right)
     ]
     assert before == after
+
+
+def test_a_provider_refusal_shows_its_sentence_not_its_json() -> None:
+    """This string reaches an `ai_proposals` row and from there a screen. The
+    envelope around the useful clause is nine tenths of its length."""
+    from app.features.ai.adapters.anthropic import refusal
+
+    error = refusal(
+        401,
+        '{"type":"error","error":{"type":"authentication_error",'
+        '"message":"API key is invalid."},"request_id":null}',
+    )
+
+    assert str(error) == "The model provider refused the request (401): API key is invalid."
+
+
+def test_an_unreadable_refusal_is_still_shown() -> None:
+    """A gateway that answers with HTML is an error we cannot parse, and one we
+    must not swallow — the organiser still needs to know something refused."""
+    from app.features.ai.adapters.anthropic import refusal
+
+    error = refusal(502, "<html><body>Bad Gateway</body></html>")
+
+    assert "Bad Gateway" in str(error)

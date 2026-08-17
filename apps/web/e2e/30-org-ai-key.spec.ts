@@ -48,11 +48,33 @@ test("a bad key is refused inline, in the Settings card, with the reason", async
 
 test("the stub duplicates answer points an owner at Settings", async ({ page }) => {
   await signInAsOrganizer(page);
+
+  // This is a test about the *stub's* label, so it only means anything when the
+  // stub is what answers. A developer with a real key configured — or a dead one
+  // still sitting in their environment — would otherwise see this fail for a
+  // reason that has nothing to do with the label. Asked through the page so it
+  // reuses the session the sign-in just established.
+  const provider = await page.evaluate(async () => {
+    const event = window.localStorage.getItem("gather.event");
+    const token = window.localStorage.getItem("gather.token");
+    if (event === null || token === null) return "unknown";
+    const response = await fetch(`/api/v1/events/${event}/ai/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    });
+    if (!response.ok) return "unknown";
+    return ((await response.json()) as { provider?: string }).provider ?? "unknown";
+  });
+  test.skip(
+    provider !== "stub" && provider !== "unknown",
+    `a ${provider} key is configured, so the stub does not answer`,
+  );
+
   await page.goto("/admin/submissions");
   await page.getByRole("button", { name: /Find duplicates/ }).click();
 
-  // No key on the E2E stack, so the stub answers — and for an owner the label
-  // is the feature's own advertisement, linked to where the key goes.
+  // No key, so the stub answers — and for an owner the label is the feature's
+  // own advertisement, linked to where the key goes.
   const dialog = page.getByRole("dialog", { name: /Possible duplicates/ });
   await expect(dialog.getByText(/Sample answer — no model ran/)).toBeVisible({ timeout: 20_000 });
   await expect(dialog.getByRole("link", { name: /^Settings$/ })).toBeVisible();
